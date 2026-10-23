@@ -13,3 +13,4 @@ pipeline/cache/
 src/.observablehq/cache/
 __pycache__/
 .pytest_cache/
+conferences/*/data/papers.raw.json
