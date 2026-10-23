@@ -25,7 +25,14 @@
   "homepage": "https://github.com/john-guerra/papers_navigator#readme",
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
-    "@observablehq/framework": "^1.13.4"
+    "@john-guerra/search-checkbox": "^1.0.0",
+    "@observablehq/framework": "^1.13.4",
+    "@observablehq/inputs": "^0.12.0",
+    "htl": "^1.0.0",
+    "multi-auto-select": "^0.0.13",
+    "navio": "^0.3.1",
+    "reactive-widget-helper": "^0.0.4",
+    "vega-selected": "^0.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
