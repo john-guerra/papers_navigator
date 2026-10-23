@@ -6,3 +6,10 @@ dist/
 # exported notebooks & raw downloads (large / not ours to republish)
 notebooks/*.tgz
 data/*.tgz
+
+# build / env
+pipeline/cache/
+.venv/
+src/.observablehq/cache/
+__pycache__/
+.pytest_cache/
