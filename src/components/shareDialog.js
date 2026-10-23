@@ -1,10 +1,21 @@
 import { html } from "htl";
 import QRCode from "qrcode";
 
+/** Above this many papers a QR code gets too dense for phones to scan (~1 KB). */
+export const QR_MAX_PAPERS = 100;
+
 /** Link + copy button + QR code for sending the followed list to another device. */
-export function renderShareDialog(url) {
-  const canvas = document.createElement("canvas");
-  QRCode.toCanvas(canvas, url, { width: 240, margin: 1, errorCorrectionLevel: "L" });
+export function renderShareDialog(url, { count = 0 } = {}) {
+  const qr = html`<div class="share-qr"></div>`;
+  if (count > QR_MAX_PAPERS) {
+    qr.textContent = `You follow ${count} papers, too many papers for a QR code. Copy the link instead, or use Export JSON.`;
+  } else {
+    const canvas = document.createElement("canvas");
+    qr.append(canvas);
+    QRCode.toCanvas(canvas, url, { width: 240, margin: 1, errorCorrectionLevel: "L" }).catch(() => {
+      qr.textContent = "Could not draw a QR code for this list. Copy the link instead, or use Export JSON.";
+    });
+  }
   const copy = html`<button>📋 Copy link</button>`;
   copy.onclick = async () => {
     await navigator.clipboard.writeText(url);
@@ -12,7 +23,7 @@ export function renderShareDialog(url) {
   };
   return html`<div class="share-dialog">
     <p>Scan with your phone, or copy the link. Reasons stay on this device; use Export for those.</p>
-    ${canvas}
+    ${qr}
     <div><input readonly value=${url} style="width: 100%"> ${copy}</div>
   </div>`;
 }
@@ -24,6 +35,13 @@ export function renderShareBanner({ ids, unknown }, { onMerge, onReplace, onIgno
     b.onclick = fn;
     return b;
   };
+  if (!ids.length) {
+    // Never offer Replace here: it would wipe the list with nothing
+    return html`<div class="share-banner">
+      📱 This link shares ${unknown.length} ${unknown.length === 1 ? "paper" : "papers"}, but none of them are in the current program.
+      ${button("Dismiss", onIgnore)}
+    </div>`;
+  }
   return html`<div class="share-banner">
     📱 <strong>${ids.length} ${ids.length === 1 ? "paper" : "papers"} shared with you</strong>${unknown.length ? ` (${unknown.length} not in the program)` : ""}.
     ${button("Merge", onMerge)} ${button("Replace", onReplace)} ${button("Ignore", onIgnore)}

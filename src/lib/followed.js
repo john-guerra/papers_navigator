@@ -29,10 +29,10 @@ function parseList(text) {
   if (!Array.isArray(list) || !list.every(isEntry)) {
     throw new Error("invalid followed papers file: expected a list of {id, reason, addedOn}");
   }
-  return list.map(({ id, reason = "", addedOn = new Date().toISOString() }) => ({
+  return list.map(({ id, reason, addedOn }) => ({
     id,
-    reason,
-    addedOn,
+    reason: reason == null ? "" : String(reason),
+    addedOn: Number.isNaN(Date.parse(addedOn)) ? new Date().toISOString() : addedOn,
   }));
 }
 
@@ -41,16 +41,32 @@ function parseList(text) {
  * `.value` is the list and every change dispatches `input`, so `Generators.input(store)`
  * works in Framework.
  */
-export function createFollowedStore(conferenceId, storage = globalThis.localStorage) {
+export function createFollowedStore(
+  conferenceId,
+  storage = globalThis.localStorage,
+  events = globalThis,
+) {
   const key = `papersNavigator:${conferenceId}:followed`;
   const store = new EventTarget();
 
-  let value;
-  try {
-    value = parseList(storage?.getItem(key) ?? "[]");
-  } catch {
-    value = [];
-  }
+  const load = () => {
+    try {
+      return parseList(storage?.getItem(key) ?? "[]");
+    } catch {
+      return [];
+    }
+  };
+  let value = load();
+
+  // Another tab saved: adopt its list so we never write a stale one back
+  events?.addEventListener?.("storage", (event) => {
+    if (event.key !== key) return;
+    value = load();
+    store.dispatchEvent(new Event("input"));
+  });
+
+  // Every mutation starts from what is saved now (another tab may have changed it)
+  const update = (fn) => set(fn(load()));
 
   const set = (next) => {
     value = next;
@@ -66,17 +82,17 @@ export function createFollowedStore(conferenceId, storage = globalThis.localStor
   Object.assign(store, {
     add(papers, reason, now = new Date()) {
       const addedOn = now.toISOString();
-      set(mergeLists(value, papers.map((p) => ({ id: p.id, reason, addedOn }))));
+      update((current) => mergeLists(current, papers.map((p) => ({ id: p.id, reason, addedOn }))));
     },
     remove(ids) {
       const drop = new Set(ids);
-      set(value.filter((d) => !drop.has(d.id)));
+      update((current) => current.filter((d) => !drop.has(d.id)));
     },
     replace(list) {
       set(list.filter(isEntry).map((d) => ({ ...d })));
     },
     merge(list) {
-      set(mergeLists(value, list.filter(isEntry)));
+      update((current) => mergeLists(current, list.filter(isEntry)));
     },
     has(id) {
       return value.some((d) => d.id === id);
@@ -84,8 +100,11 @@ export function createFollowedStore(conferenceId, storage = globalThis.localStor
     exportJSON() {
       return JSON.stringify(value, null, 2);
     },
-    importJSON(text) {
-      set(parseList(text));
+    /** Merges the file into the list (or replaces it with `{replace: true}`). */
+    importJSON(text, { replace = false } = {}) {
+      const list = parseList(text);
+      if (replace) set(list);
+      else update((current) => mergeLists(current, list));
     },
   });
   return store;

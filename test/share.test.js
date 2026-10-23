@@ -39,3 +39,21 @@ describe("resolveShortIds", () => {
     });
   });
 });
+
+describe("resolveShortIds with older links", () => {
+  it("resolves a token by unique id prefix when the short id length changed", () => {
+    const longer = [
+      { id: "a1b2c3d4-0000", shortId: "a1b2c3d4-0" },
+      { id: "e5f6a7b8-1111", shortId: "e5f6a7b8-1" },
+    ];
+    expect(resolveShortIds(["a1b2c3d4"], longer)).toEqual({ ids: ["a1b2c3d4-0000"], unknown: [] });
+  });
+
+  it("treats an ambiguous prefix as unknown", () => {
+    const twins = [
+      { id: "slot_1790", shortId: "slot_1790" },
+      { id: "slot_1792", shortId: "slot_1792" },
+    ];
+    expect(resolveShortIds(["slot_179"], twins)).toEqual({ ids: [], unknown: ["slot_179"] });
+  });
+});

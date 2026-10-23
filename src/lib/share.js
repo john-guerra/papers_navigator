@@ -15,13 +15,22 @@ export function decodeShareHash(hash) {
     .filter((id) => VALID_ID.test(id));
 }
 
+/**
+ * Maps link tokens to paper ids: exact shortId first, otherwise a unique id prefix, so
+ * links keep working if a re-scrape makes short ids longer.
+ */
 export function resolveShortIds(shortIds, papers) {
   const byShortId = new Map(papers.map((p) => [p.shortId, p.id]));
   const ids = [];
   const unknown = [];
-  for (const shortId of shortIds) {
-    if (byShortId.has(shortId)) ids.push(byShortId.get(shortId));
-    else unknown.push(shortId);
+  for (const token of shortIds) {
+    if (byShortId.has(token)) {
+      ids.push(byShortId.get(token));
+      continue;
+    }
+    const matches = papers.filter((p) => p.id.startsWith(token));
+    if (matches.length === 1) ids.push(matches[0].id);
+    else unknown.push(token);
   }
   return { ids, unknown };
 }

@@ -114,6 +114,10 @@ describe("nowNext", () => {
     expect(result.next.map((s) => s.recommended.sessionId)).toEqual(["modern", "figuring"]);
   });
 
+  it("returns null after the day's last followed session", () => {
+    expect(nowNext(days, new Date(at(10, "20:00")), TZ)).toBeNull();
+  });
+
   it("returns null outside conference days", () => {
     expect(nowNext(days, new Date("2026-11-20T15:00:00Z"), TZ)).toBeNull();
   });

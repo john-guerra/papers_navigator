@@ -93,7 +93,7 @@ export function groupIntoSlots(items, tz) {
 
 /**
  * Current slot (if any), the next followed talk in its recommended session, and the
- * remaining slots of today. Null when `now` is not on a conference day with slots.
+ * remaining slots of today. Null when nothing followed is left today.
  */
 export function nowNext(days, now, tz) {
   const today = days.find((d) => d.date === dayKey(now, tz));
@@ -103,5 +103,6 @@ export function nowNext(days, now, tz) {
   const nowItem =
     current?.recommended.items.find((d) => time(d.end) > t) ?? null;
   const next = today.slots.filter((s) => s.start > t);
+  if (!current && !next.length) return null; // done for the day: show the itinerary
   return { now: current, nowItem, next };
 }
