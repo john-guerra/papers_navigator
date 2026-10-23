@@ -47,7 +47,7 @@
 - [ ] **Step 2:** Write `config.json` for VIS 2026 with `timezone: "US/Eastern"`, `days: ["2026-11-08" … "2026-11-13"]`, `listingUrl: "https://ieeevis.org/year/2026/program/content/"`, `deployPath: "/var/www/viz/ieeevis2026Papers"`.
 - [ ] **Step 3:** Write the failing test `test/conference.test.js`: `getConferenceId({})` is `"ieeevis2026"`; `getConferenceId({CONFERENCE: "chi2027"})` is `"chi2027"`; `(await loadConferenceConfig("ieeevis2026")).timezone` is `"US/Eastern"`.
 - [ ] **Step 4:** Run `npx vitest run test/conference.test.js`. Expected: FAIL, module not found.
-- [ ] **Step 5:** Implement `src/lib/conference.js`. Make `observablehq.config.js` read the config for `title` (`"IEEE VIS 2026 Papers"`), `root: "src"` and pages `[Explore → /, My Papers → /my-papers]`.
+- [ ] **Step 5:** Implement `src/lib/conference.js`. Make `observablehq.config.js` read the config for `title` (`"IEEE VIS 2026 Papers"`), `root: "src"` and pages `[Explore → /, My Papers → /my-papers]`, and a `head` with the `og:image`/`og:title` meta tags taken from config.
 - [ ] **Step 6:** Run `npm test && npm run build`. Expected: tests PASS, and `dist/index.html` exists.
 - [ ] **Step 7:** Create `.venv` with `/opt/homebrew/Caskroom/miniforge/base/bin/python -m venv .venv`, `pip install -r pipeline/requirements.txt`, then `.venv/bin/pytest pipeline` (expected: "no tests ran", exit 5 is acceptable).
 - [ ] **Step 8:** Commit `chore: scaffold Framework app, config, test tooling`.
@@ -167,14 +167,15 @@
 
 **Interfaces:**
 - Consumes: Tasks 4–7.
-- Produces: `PapersList(papers, {actions?: (p) => Node, preamble?: (p) => Node, header?}) -> HTMLElement`, ported from `d97257fb03e0681b@230.js` plus the myPapers `renderItem`. It shows a title link to `url`, authors with affiliations, type, session, room, the time in the conference timezone, an award emoji and a scrollable abstract. `addToFollowed(store, papers, {label, reason}) -> HTMLElement`: Add/Remove buttons showing the selection count.
+- Produces: `PapersList(papers, {actions?: (p) => Node, preamble?: (p) => Node, header?}) -> HTMLElement`, ported from `d97257fb03e0681b@230.js` plus the myPapers `renderItem`. It shows a title link to `url`, authors with affiliations, type, session, room, the time in the conference timezone, an award emoji, public links (preprint/video) and a scrollable abstract. `addToFollowed(store, papers, {label, reason}) -> HTMLElement`: Add/Remove buttons showing the selection count.
 
 - [ ] **Step 1: Write a failing test:** `PapersList` renders one item per paper, and the time for `2026-11-11T18:00:00.000Z` reads `13:00` under `US/Eastern`.
 - [ ] **Step 2:** Run. Expected: FAIL. Then implement until it PASSES.
 - [ ] **Step 3:** Assemble `src/index.md`:
   - a query input with a live-search toggle; the score comes from `rankBySimilarity` once the embedder resolves, and the page shows "loading model…" until then
   - filters for type, authors, affiliations, keywords and session
-  - the map colored by `type` and sized by score
+  - the map sized by score, with a color-by control (default `type`)
+  - a navio summary (npm `navio`) of the current filtered set
   - a histogram of the score range
   - max-papers and min-score controls
   - a list of brushed ∩ filtered ∩ score-range papers
