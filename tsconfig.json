@@ -1,0 +1,4 @@
+{
+  "//": "Needed because vega 6 packages ship a tsconfig.json extending ../../tsconfig.json, which resolves here when Framework bundles node_modules.",
+  "compilerOptions": {}
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { vegaSelected } from "../src/widgets/vegaSelected.js";
+import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import {
   BrushableScatterPlot,
   brushFilter,
@@ -14,7 +14,7 @@ const data = [
   { id: "c", x: 10, y: 10, type: "full", score: 0.5 },
 ];
 
-describe("vegaSelected adapter", () => {
+describe("vega-selected (npm)", () => {
   it("exposes signal changes as .value and emits input", async () => {
     const spec = {
       data: { values: data },
@@ -22,7 +22,7 @@ describe("vegaSelected adapter", () => {
       params: [{ name: "drag", select: "interval" }],
       encoding: { x: { field: "x", type: "quantitative" }, y: { field: "y", type: "quantitative" } },
     };
-    const widget = await vegaSelected(spec, { renderer: "svg" });
+    const widget = await vegaSelected(spec, { vegaConfig: { renderer: "svg", actions: false } });
     expect(widget.value).toEqual({});
     let fired = 0;
     widget.addEventListener("input", () => fired++);

@@ -23,6 +23,11 @@ describe("scentedCheckbox", () => {
     expect(widget.value).toEqual(["full"]);
   });
 
+  it("formats option labels", () => {
+    const widget = scentedCheckbox(counts, { format: (v) => v.toUpperCase() });
+    expect(widget.textContent).toContain("FULL");
+  });
+
   it("reflects a value set from outside", () => {
     const widget = scentedCheckbox(counts, { label: "Type", value: [] });
     widget.value = ["short"];

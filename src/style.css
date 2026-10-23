@@ -1,0 +1,83 @@
+@import url("observablehq:default.css");
+@import url("observablehq:theme-air.css");
+
+.lede {
+  max-width: 70ch;
+  font-size: 1.05em;
+}
+
+.search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.search-status {
+  min-height: 1.4em;
+  color: var(--theme-foreground-muted);
+  font-style: italic;
+}
+
+.map-controls,
+.follow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin: 0.5rem 0;
+}
+
+.add-to-followed {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.papers-list .paper {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--theme-foreground-faintest);
+}
+
+.paper-title {
+  font-weight: 600;
+}
+
+.paper-authors {
+  font-style: italic;
+  max-height: 4em;
+  overflow: auto;
+}
+
+.paper-where,
+.paper-preamble {
+  font-size: 0.9em;
+  color: var(--theme-foreground-muted);
+}
+
+.paper-abstract {
+  max-height: 6em;
+  overflow: auto;
+  margin-top: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  border: 0.5px solid var(--theme-foreground-faint);
+  border-radius: 5px;
+  font-size: 0.9em;
+}
+
+.btn-follow {
+  margin-left: 0.5rem;
+  font-size: 0.85em;
+}
+
+.btn-follow.following {
+  color: #b8860b;
+}
+
+.chip {
+  display: inline-block;
+  margin: 2px;
+  padding: 1px 6px;
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 5px;
+}

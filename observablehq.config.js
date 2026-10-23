@@ -15,4 +15,5 @@ export default {
 <meta name="twitter:card" content="summary_large_image">`,
   footer: `Built by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a> · Papers Navigator`,
   search: false,
+  style: "style.css",
 };

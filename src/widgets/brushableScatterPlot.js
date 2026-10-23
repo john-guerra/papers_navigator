@@ -1,4 +1,5 @@
-import { vegaSelected } from "./vegaSelected.js";
+// The npm "main" is a UMD bundle; import the ES build explicitly.
+import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 
 /** Points inside a Vega-Lite interval brush ({[xField]: [lo, hi], [yField]: [lo, hi]}). */
 export function brushFilter(data, drag, { x = "x", y = "y" } = {}) {
@@ -57,7 +58,9 @@ export function scatterSpec(
  */
 export async function BrushableScatterPlot(data, options = {}) {
   const { x = "x", y = "y", id = "id", renderer = "canvas" } = options;
-  const chart = await vegaSelected(scatterSpec(data, options), { renderer });
+  const chart = await vegaSelected(scatterSpec(data, options), {
+    vegaConfig: { renderer, actions: false },
+  });
   const target = document.createElement("div");
   target.className = "brushable-scatterplot";
   target.append(chart);
