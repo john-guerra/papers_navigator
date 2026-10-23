@@ -85,6 +85,8 @@ One JSON array; each item:
 | `links` | preprint, video, supplemental when public |
 | `award` | optional |
 
+**Pluggable DR (decided with John):** the pipeline writes one file per projection method, `conferences/<id>/data/projections/<method>.json` = `{id: [x, y]}`; methods listed in config (`projections: ["umap", "tsne", "pca"]`, first = default). Adding a method = one function + config entry. ZADU metrics per projection (offline `metrics.json` and/or zadu-js) come in Stage 3 with the Advanced panel; the storage format is chosen so they need no rework.
+
 Plus pipeline outputs keyed by `id`: embeddings (384-dim, `all-MiniLM-L6-v2`, title + "\n" + abstract), UMAP `x,y`, cluster id, and cluster topic labels (c-TF-IDF, as in `chi2026_papers/scripts/compute_topic_labels.py`). Items with no abstract embed title only.
 
 ### 5.3 VIS 2026 data source
@@ -99,6 +101,7 @@ Plus pipeline outputs keyed by `id`: embeddings (384-dim, `all-MiniLM-L6-v2`, ti
 Keep all current features (reference: VIS 2025 notebook `@john-guerra/ieeevis2025-papers`, CHI 2026 notebook `@john-guerra/chi2026-papers`; exported sources in `notebooks/*.tgz`; current page shell in `/Users/aguerra/workspace/chi2026_papers/page/` and `/Users/aguerra/workspace/ieeevis2025_papers/page/`):
 
 - **Semantic search**: query embedded in-browser with Transformers.js (same model as the pipeline), cosine similarity against precomputed paper embeddings; result score drives point size and list ordering; min-score / max-papers controls; live-search toggle.
+- **Projection selector**: switches the map between precomputed projections (UMAP default, t-SNE, PCA).
 - **Embedding map**: brushable scatterplot (current `BrushableScatterPlot` / Vega-Lite) from precomputed UMAP; color by attribute; brushing selects papers.
 - **Filters**: type, authors, institutions/affiliations, keywords, session (faceted search, multi-auto-select, scented checkboxes), navio summary.
 - **Clusters**: precomputed HDBScan clusters with topic labels drawn on the map; clusters page as today.

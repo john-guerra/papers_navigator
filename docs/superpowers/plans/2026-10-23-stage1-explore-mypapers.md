@@ -44,7 +44,7 @@
 - Produces: `conferences/<id>/config.json` with keys `id, name, year, timezone, days (["2026-11-10", …]), baseUrl, listingUrl, deployPath, ogImage`. `getConferenceId(env = process.env) -> string` (default `"ieeevis2026"`), `loadConferenceConfig(id) -> Promise<object>` (Node only, used by config and loaders).
 
 - [ ] **Step 1:** `npm init -y`, then install `@observablehq/framework@^1.13.4`, plus dev deps `vitest jsdom eslint @eslint/js globals eslint-config-prettier prettier`. Set scripts: `dev: observable preview`, `build: observable build`, `test: vitest run`, `lint: eslint src test`. Also set `"type": "module"`.
-- [ ] **Step 2:** Write `config.json` for VIS 2026 with `timezone: "US/Eastern"`, `days: ["2026-11-08" … "2026-11-13"]`, `listingUrl: "https://ieeevis.org/year/2026/program/content/"`, `deployPath: "/var/www/viz/ieeevis2026Papers"`.
+- [ ] **Step 2:** Write `config.json` for VIS 2026 with `timezone: "US/Eastern"`, `days: ["2026-11-08" … "2026-11-13"]`, `listingUrl: "https://ieeevis.org/year/2026/program/content/"`, `deployPath: "/var/www/viz/ieeevis2026Papers"`, `projections: ["umap", "tsne", "pca"]`.
 - [ ] **Step 3:** Write the failing test `test/conference.test.js`: `getConferenceId({})` is `"ieeevis2026"`; `getConferenceId({CONFERENCE: "chi2027"})` is `"chi2027"`; `(await loadConferenceConfig("ieeevis2026")).timezone` is `"US/Eastern"`.
 - [ ] **Step 4:** Run `npx vitest run test/conference.test.js`. Expected: FAIL, module not found.
 - [ ] **Step 5:** Implement `src/lib/conference.js`. Make `observablehq.config.js` read the config for `title` (`"IEEE VIS 2026 Papers"`), `root: "src"` and pages `[Explore → /, My Papers → /my-papers]`, and a `head` with the `og:image`/`og:title` meta tags taken from config.
@@ -80,11 +80,13 @@
 
 **Interfaces:**
 - Consumes: `papers.raw.json` (Task 2).
-- Produces: `embed_texts(papers) -> list[str]`, `write_embeddings(matrix: np.ndarray, path)`, `run(conference_id, encoder=None, reducer=None)`. Writes `conferences/<id>/data/papers.json` (raw fields plus `x`, `y`, plus `authorNames` and `affiliations` joined strings for tooltips) and `embeddings.bin`. The UMAP pipeline matches CHI 2026: StandardScaler, then `umap.UMAP(random_state=42)`.
+- Produces: `embed_texts(papers) -> list[str]`, `write_embeddings(matrix: np.ndarray, path)`, `REDUCERS: dict[str, Callable[[np.ndarray], np.ndarray]]` with `umap` (StandardScaler → `umap.UMAP(random_state=42)`, as in CHI 2026), `tsne` (`sklearn.manifold.TSNE(random_state=42, init="pca")`), `pca` (`sklearn.decomposition.PCA(2)`), and `run(conference_id, encoder=None, reducers=None)`. Writes `conferences/<id>/data/papers.json` (raw fields plus `x`, `y` from the first configured projection, plus `authorNames` and `affiliations` joined strings for tooltips), `embeddings.bin`, and `projections/<method>.json` = `{id: [x, y]}` for each method in config `projections`.
 
 - [ ] **Step 1: Write failing tests**, using an injected fake encoder (returns `np.ones((n, 384))`) and a fake reducer (returns `np.zeros((n, 2))`):
   - `embed_texts` uses `"T\nA"` when an abstract exists and `"T"` when it doesn't.
   - After `run`, `embeddings.bin` size is `n*384*4`; `papers.json` keeps input order and every item has numeric `x`, `y`.
+  - With fake reducers `{"a": zeros, "b": ones}` and config `projections: ["a", "b"]`, both `projections/a.json` and `projections/b.json` exist with one `[x, y]` per id, and `papers.json` x/y come from `a`.
+  - An unknown method name in config raises `ValueError` naming the method.
 - [ ] **Step 2:** Run `.venv/bin/pytest pipeline/tests/test_embed.py -v`. Expected: FAIL.
 - [ ] **Step 3:** Implement. The default encoder is `SentenceTransformer("all-MiniLM-L6-v2").encode(texts, normalize_embeddings=True)`. Write float32 little-endian with `matrix.astype("<f4").tofile(path)`.
 - [ ] **Step 4:** Run the tests. Expected: PASS. Then run the real pipeline: `.venv/bin/python -m pipeline.embed --conference ieeevis2026`.
@@ -93,14 +95,14 @@
 ### Task 4: Data loaders + semantic search
 
 **Files:**
-- Create: `src/data/papers.json.js`, `src/data/embeddings.bin.js`, `src/lib/search.js`, `src/lib/embedder.js`
+- Create: `src/data/papers.json.js`, `src/data/embeddings.bin.js`, `src/data/projections.json.js` (bundles all `projections/*.json` into `{method: {id: [x, y]}}`), `src/lib/search.js`, `src/lib/embedder.js`, `src/lib/projections.js`
 - Test: `test/search.test.js`
 
 **Interfaces:**
 - Consumes: `getConferenceId`, `loadConferenceConfig` (Task 1); data files (Task 3).
-- Produces: `toMatrix(buffer: ArrayBuffer, n: number, dims = 384) -> Float32Array` (throws `"embeddings/papers mismatch"` when `byteLength !== n*dims*4`), `rankBySimilarity(query: Float32Array, matrix: Float32Array, papers: object[], dims = 384) -> object[]` (copies of the papers with a `score` in [-1, 1], sorted descending), `getEmbedder() -> Promise<(text: string) => Promise<Float32Array>>` (lazy and memoized; dynamically imports `@huggingface/transformers`).
+- Produces: `toMatrix(buffer: ArrayBuffer, n: number, dims = 384) -> Float32Array` (throws `"embeddings/papers mismatch"` when `byteLength !== n*dims*4`), `rankBySimilarity(query: Float32Array, matrix: Float32Array, papers: object[], dims = 384) -> object[]` (copies of the papers with a `score` in [-1, 1], sorted descending), `getEmbedder() -> Promise<(text: string) => Promise<Float32Array>>` (lazy and memoized; dynamically imports `@huggingface/transformers`), `applyProjection(papers, projection: {[id]: [x, y]}) -> object[]` (copies with `x`, `y` replaced; papers missing from the projection are dropped and counted in a returned `missing` number: returns `{papers, missing}`).
 
-- [ ] **Step 1: Write failing tests:** `toMatrix(new ArrayBuffer(8), 1, 384)` throws `"embeddings/papers mismatch"`. With 3 papers and 2-dim unit vectors `[1,0]`, `[0,1]`, `[0.6,0.8]`, querying `[1,0]` ranks ids `a, c, b` with scores `1, 0.6, 0`. Ranking does not mutate the input papers.
+- [ ] **Step 1: Write failing tests:** `applyProjection([{id:"a",x:0,y:0},{id:"b"}], {a:[5,6]})` returns `papers: [{id:"a",x:5,y:6}]` and `missing: 1`, and the input is unchanged. `toMatrix(new ArrayBuffer(8), 1, 384)` throws `"embeddings/papers mismatch"`. With 3 papers and 2-dim unit vectors `[1,0]`, `[0,1]`, `[0.6,0.8]`, querying `[1,0]` ranks ids `a, c, b` with scores `1, 0.6, 0`. Ranking does not mutate the input papers.
 - [ ] **Step 2:** Run `npx vitest run test/search.test.js`. Expected: FAIL.
 - [ ] **Step 3:** Implement. The loaders read `conferences/${getConferenceId()}/data/*` and write to stdout. Vectors are already normalized, so the dot product is the cosine.
 - [ ] **Step 4:** Run the tests. Expected: PASS.
@@ -174,6 +176,7 @@
 - [ ] **Step 3:** Assemble `src/index.md`:
   - a query input with a live-search toggle; the score comes from `rankBySimilarity` once the embedder resolves, and the page shows "loading model…" until then
   - filters for type, authors, affiliations, keywords and session
+  - a Projection selector (options from config `projections`, default the first) feeding `applyProjection` before the map
   - the map sized by score, with a color-by control (default `type`)
   - a navio summary (npm `navio`) of the current filtered set
   - a histogram of the score range
