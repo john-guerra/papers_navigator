@@ -81,3 +81,140 @@
   border: 1px solid var(--theme-foreground-faint);
   border-radius: 5px;
 }
+
+/* My Papers */
+.my-papers-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.import input {
+  display: none;
+}
+
+.import {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.day-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0.8rem 0;
+}
+
+.day-tabs button {
+  padding: 3px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--theme-foreground-faint);
+  background: none;
+  cursor: pointer;
+}
+
+.day-tabs button.on {
+  background: var(--theme-foreground-focus);
+  border-color: var(--theme-foreground-focus);
+  color: white;
+}
+
+details.slot {
+  border-top: 1px solid var(--theme-foreground-faintest);
+  padding: 0.5rem 0;
+}
+
+details.slot > summary {
+  cursor: pointer;
+}
+
+.slot-time {
+  display: inline-block;
+  min-width: 7.5em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+details.session {
+  margin: 0.4rem 0 0.4rem 1.5rem;
+  padding: 0.2rem 0.6rem;
+  border-left: 4px solid var(--theme-foreground-focus);
+}
+
+details.session.alternative {
+  border-left: 4px dashed #e0912f;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--theme-foreground-focus);
+  color: white;
+  font-size: 0.75em;
+  text-align: center;
+}
+
+.conflict {
+  color: #e0912f;
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+.itinerary-item .time {
+  display: inline-block;
+  min-width: 3.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+.itinerary-item .reason {
+  margin-left: 0.4rem;
+  font-size: 0.8em;
+  color: var(--theme-foreground-muted);
+}
+
+button.unfollow {
+  margin-left: 0.4rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--theme-foreground-muted);
+}
+
+.now-next {
+  max-width: 420px;
+}
+
+.now {
+  margin: 0.5rem 0;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: var(--theme-foreground-focus);
+  color: white;
+}
+
+.now .room {
+  font-size: 1.4em;
+  font-weight: 700;
+}
+
+.now .label,
+.now .small {
+  font-size: 0.8em;
+  opacity: 0.9;
+}
+
+.now.idle {
+  background: var(--theme-background-alt);
+  color: inherit;
+}
+
+.next {
+  margin: 0.4rem 0;
+  padding: 0.6rem;
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 10px;
+  font-size: 0.9em;
+}
