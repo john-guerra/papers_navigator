@@ -218,3 +218,17 @@ button.unfollow {
   border-radius: 10px;
   font-size: 0.9em;
 }
+
+.share-dialog,
+.share-banner {
+  margin: 0.6rem 0;
+  padding: 0.8rem;
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 10px;
+  max-width: 420px;
+}
+
+.share-banner {
+  max-width: none;
+  background: var(--theme-background-alt);
+}

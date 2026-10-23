@@ -9,6 +9,8 @@ import { groupIntoSlots, nowNext } from "./lib/schedule.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
+import { decodeShareHash, resolveShortIds, shareUrl } from "./lib/share.js";
+import { renderShareBanner, renderShareDialog } from "./components/shareDialog.js";
 ```
 
 ```js
@@ -33,7 +35,38 @@ const current = nowNext(schedule.days, now, tz);
 
 <h1>My Papers <small>(${items.length})</small></h1>
 
-<div class="my-papers-tools">${viewInput} ${exportButton} ${importInput}</div>
+```js
+const hash = Generators.observe((notify) => {
+  const update = () => notify(location.hash);
+  update();
+  addEventListener("hashchange", update);
+  return () => removeEventListener("hashchange", update);
+});
+```
+
+```js
+const shared = resolveShortIds(decodeShareHash(hash), papers);
+const clearHash = () => history.replaceState(null, "", location.pathname + location.search);
+const sharedReason = () => shared.ids.map((id) => ({ id, reason: "📱 shared", addedOn: new Date().toISOString() }));
+const banner = html`<div></div>`;
+if (shared.ids.length || shared.unknown.length) {
+  const done = () => {
+    clearHash();
+    banner.replaceChildren();
+  };
+  banner.append(
+    renderShareBanner(shared, {
+      onMerge: () => (store.merge(sharedReason()), done()),
+      onReplace: () => (store.replace(sharedReason()), done()),
+      onIgnore: done,
+    }),
+  );
+}
+display(banner);
+```
+
+<div class="my-papers-tools">${viewInput} ${shareButton} ${exportButton} ${importInput}</div>
+<div>${sharePanel}</div>
 
 ```js
 const isSmall = window.matchMedia("(max-width: 640px)").matches;
@@ -44,6 +77,12 @@ const viewMode = Generators.input(viewInput);
 ```
 
 ```js
+const sharePanel = html`<div></div>`;
+const shareButton = html`<button>📱 Send to my phone</button>`;
+shareButton.onclick = () =>
+  sharePanel.childElementCount
+    ? sharePanel.replaceChildren()
+    : sharePanel.replaceChildren(renderShareDialog(shareUrl(store.value, papers)));
 const exportButton = html`<button>⬇️ Export JSON</button>`;
 exportButton.onclick = () => {
   const blob = new Blob([store.exportJSON()], { type: "application/json" });
@@ -73,13 +112,13 @@ importInput.querySelector("input").onchange = async (event) => {
 
 ```js
 const unfollow = (id) => store.remove([id]);
-display(
-  viewMode === "Now / Next" && current
-    ? renderNowNext(current, { tz })
-    : viewMode === "Now / Next"
-      ? html`<p class="muted">The conference is not in session right now. Here is your itinerary.</p>`
-      : "",
-);
+if (viewMode === "Now / Next") {
+  display(
+    current
+      ? renderNowNext(current, { tz })
+      : html`<p class="muted">The conference is not in session right now. Here is your itinerary.</p>`,
+  );
+}
 if (viewMode === "Itinerary" || !current) display(renderItinerary(schedule, { tz, onUnfollow: unfollow, now }));
 ```
 
