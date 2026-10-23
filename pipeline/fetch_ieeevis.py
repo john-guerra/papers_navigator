@@ -86,13 +86,13 @@ def parse_paper(html: str) -> dict:
     note = time_dd.select_one(".presentation-details__note [data-tz-start]") if time_dd else None
     room_dd = _presentation_value(soup, "Room")
 
-    links = []
+    links = {}
     for a in soup.select(".paper-links a[href]"):
-        label = a.get_text(" ", strip=True)
+        label = a.get_text(" ", strip=True).replace("(opens in new tab)", "").strip()
         href = a["href"]
-        if not href.startswith("http") or "Sign in" in label or label.startswith("Paper PDF"):
+        if not href.startswith("http") or not label or "Sign in" in label or label.startswith("Paper PDF"):
             continue
-        links.append({"label": label, "url": href})
+        links.setdefault(href, {"label": label, "url": href})
 
     return {
         "title": _text(soup.find("h1")),
@@ -110,8 +110,38 @@ def parse_paper(html: str) -> dict:
         "sessionEnd": note.get("data-tz-end") if note else None,
         "room": _text(room_dd),
         "abstract": _text(soup.select_one(".paper-abstract p")),
-        "links": links,
+        "links": list(links.values()),
     }
+
+
+def parse_session(html: str) -> dict:
+    """Session page: title, room and time (used for workshops/challenges whose pages lack them)."""
+    soup = BeautifulSoup(html, "html.parser")
+    room = None
+    for meta in soup.select("p.program-event-meta"):
+        label = meta.find("strong")
+        if label and label.get_text(strip=True).rstrip(":") == "Room":
+            room = meta.get_text(" ", strip=True).split(":", 1)[1].strip() or None
+    when = soup.select_one(".program-event-meta [data-tz-start]")
+    return {
+        "sessionName": _text(soup.find("h1")),
+        "room": room,
+        "sessionStart": when.get("data-tz-start") if when else None,
+        "sessionEnd": when.get("data-tz-end") if when else None,
+    }
+
+
+def decode_body(content: bytes) -> str:
+    """The site serves UTF-8 without a charset header; never trust requests' Latin-1 guess."""
+    return content.decode("utf-8", errors="replace")
+
+
+def repair_mojibake(text: str) -> str:
+    """Undo UTF-8 text that was decoded as Latin-1 (older cache files); leave good text alone."""
+    try:
+        return text.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
 
 
 def assign_short_ids(ids: list[str], min_len: int = 8) -> dict[str, str]:
@@ -127,15 +157,16 @@ def fetch_cached(url: str, cache_dir: Path, min_interval: float = 1.0, refresh: 
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / (hashlib.sha256(url.encode()).hexdigest()[:24] + ".html")
     if path.exists() and not refresh:
-        return path.read_text()
+        return repair_mojibake(path.read_text())
     wait = min_interval - (time.monotonic() - _last_request)
     if wait > 0:
         time.sleep(wait)
     response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
     _last_request = time.monotonic()
     response.raise_for_status()
-    path.write_text(response.text)
-    return response.text
+    text = decode_body(response.content)
+    path.write_text(text)
+    return text
 
 
 def run(conference_id: str, refresh_listing: bool = True) -> Path:
@@ -148,6 +179,10 @@ def run(conference_id: str, refresh_listing: bool = True) -> Path:
     records = []
     for n, item in enumerate(listing, 1):
         page = parse_paper(fetch_cached(item["url"], cache_dir))
+        if not page["sessionId"] and item["sessionKey"]:
+            session_url = f"{config['baseUrl']}/program/session/{item['sessionKey']}/"
+            session = parse_session(fetch_cached(session_url, cache_dir))
+            page = {**page, **{k: v for k, v in session.items() if v}, "sessionId": item["sessionKey"]}
         if not page["abstract"]:
             print(f"⚠️  no abstract: {item['id']} {page['title']}")
         records.append(normalize_record({**item, **page, "shortId": short_ids[item["id"]]}))

@@ -85,3 +85,35 @@ def test_short_ids():
         "aaaaaaaa-1": "aaaaaaaa",
         "bbbbbbbb-2": "bbbbbbbb",
     }
+
+
+def test_parse_session():
+    from pipeline.fetch_ieeevis import parse_session
+
+    session = parse_session((FIXTURES / "ieeevis2026_session_accessvis.html").read_text())
+    assert session == {
+        "sessionName": "AccessViz: 3rd Workshop on Accessible Data Visualization",
+        "room": "St. George C-D",
+        "sessionStart": "2026-11-09T13:00:00+00:00",
+        "sessionEnd": "2026-11-09T16:30:00+00:00",
+    }
+
+
+def test_decode_body_ignores_wrong_charset_guess():
+    from pipeline.fetch_ieeevis import decode_body
+
+    assert decode_body("Intent–Artifact".encode("utf-8")) == "Intent–Artifact"
+
+
+def test_repair_mojibake():
+    from pipeline.fetch_ieeevis import repair_mojibake
+
+    garbled = "Intent–Artifact".encode("utf-8").decode("latin-1")
+    assert repair_mojibake(garbled) == "Intent–Artifact"
+    assert repair_mojibake("already fine – 日本") == "already fine – 日本"
+
+
+def test_links_are_deduplicated(paper):
+    urls = [link["url"] for link in paper["links"]]
+    assert len(urls) == len(set(urls))
+    assert all(link["label"] for link in paper["links"])
