@@ -3,7 +3,9 @@ import { fileURLToPath } from "node:url";
 
 export const DEFAULT_CONFERENCE = "ieeevis2026";
 
-const conferencesDir = fileURLToPath(new URL("../../conferences/", import.meta.url));
+const conferencesDir = fileURLToPath(
+  new URL("../../conferences/", import.meta.url),
+);
 
 export function getConferenceId(env = process.env) {
   return env.CONFERENCE || DEFAULT_CONFERENCE;

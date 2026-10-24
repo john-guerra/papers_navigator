@@ -6,7 +6,9 @@ export function brushFilter(data, drag, { x = "x", y = "y" } = {}) {
   if (!drag || !drag[x] || !drag[y]) return data;
   const [x0, x1] = drag[x];
   const [y0, y1] = drag[y];
-  return data.filter((d) => d[x] >= x0 && d[x] <= x1 && d[y] >= y0 && d[y] <= y1);
+  return data.filter(
+    (d) => d[x] >= x0 && d[x] <= x1 && d[y] >= y0 && d[y] <= y1,
+  );
 }
 
 export function scatterSpec(
@@ -16,7 +18,8 @@ export function scatterSpec(
     y = "y",
     id = "id",
     color = null,
-    colorScheme = "tableau20",
+    colorType = "nominal",
+    colorScheme = colorType === "quantitative" ? "viridis" : "tableau20",
     size = null,
     sizeRange = [10, 200],
     tooltip = [id],
@@ -40,10 +43,19 @@ export function scatterSpec(
       x: { field: x, type: "quantitative", axis: null, scale: { zero: false } },
       y: { field: y, type: "quantitative", axis: null, scale: { zero: false } },
       ...(color && {
-        color: { field: color, type: "nominal", scale: { scheme: colorScheme } },
+        color: {
+          field: color,
+          type: colorType,
+          scale: { scheme: colorScheme },
+        },
       }),
       ...(size && {
-        size: { field: size, type: "quantitative", scale: { range: sizeRange }, legend: null },
+        size: {
+          field: size,
+          type: "quantitative",
+          scale: { range: sizeRange },
+          legend: null,
+        },
       }),
       tooltip: tooltip.map((field) => ({ field })),
     },

@@ -40,6 +40,8 @@ export function shareUrl(followed, papers, base = location.href) {
   const shortIds = new Map(papers.map((p) => [p.id, p.shortId]));
   const url = new URL(base);
   url.search = "";
-  url.hash = encodeShareHash(followed.map((d) => shortIds.get(d.id)).filter(Boolean));
+  url.hash = encodeShareHash(
+    followed.map((d) => shortIds.get(d.id)).filter(Boolean),
+  );
   return url.toString();
 }

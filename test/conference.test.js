@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getConferenceId, loadConferenceConfig } from "../src/lib/conference.js";
+import {
+  getConferenceId,
+  loadConferenceConfig,
+} from "../src/lib/conference.js";
 
 describe("conference config", () => {
   it("defaults to ieeevis2026", () => {

@@ -38,28 +38,39 @@ describe("facetValues", () => {
   });
 
   it("counts affiliations once per paper even with two authors from it", () => {
-    const twoMit = [{ authors: [{ affiliation: "MIT" }, { affiliation: "MIT" }] }];
-    expect(facetValues(twoMit, "affiliations")).toEqual([{ value: "MIT", count: 1 }]);
+    const twoMit = [
+      { authors: [{ affiliation: "MIT" }, { affiliation: "MIT" }] },
+    ];
+    expect(facetValues(twoMit, "affiliations")).toEqual([
+      { value: "MIT", count: 1 },
+    ]);
   });
 
   it("skips null values", () => {
-    expect(facetValues(papers, "sessionName").map((d) => d.value)).toEqual(["S1", "S2"]);
+    expect(facetValues(papers, "sessionName").map((d) => d.value)).toEqual([
+      "S1",
+      "S2",
+    ]);
   });
 });
 
 describe("applyFilters", () => {
   it("ANDs across facets and ORs within one", () => {
-    const result = applyFilters(papers, { types: ["full"], affiliations: ["MIT"] });
+    const result = applyFilters(papers, {
+      types: ["full"],
+      affiliations: ["MIT"],
+    });
     expect(result.map((d) => d.id)).toEqual(["1"]);
-    const either = applyFilters(papers, { affiliations: ["Stanford", "Northeastern"] });
+    const either = applyFilters(papers, {
+      affiliations: ["Stanford", "Northeastern"],
+    });
     expect(either.map((d) => d.id)).toEqual(["2", "3"]);
   });
 
   it("treats empty or missing facets as no filter", () => {
     expect(applyFilters(papers, {})).toHaveLength(3);
-    expect(applyFilters(papers, { types: [], keywords: ["DR"] }).map((d) => d.id)).toEqual([
-      "1",
-      "2",
-    ]);
+    expect(
+      applyFilters(papers, { types: [], keywords: ["DR"] }).map((d) => d.id),
+    ).toEqual(["1", "2"]);
   });
 });

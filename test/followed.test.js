@@ -32,7 +32,9 @@ describe("createFollowedStore", () => {
     const store = createFollowedStore("conf", storage);
     store.add([{ id: "a" }, { id: "b" }], "r", T1);
     store.remove(["a"]);
-    expect(createFollowedStore("conf", storage).value.map((d) => d.id)).toEqual(["b"]);
+    expect(createFollowedStore("conf", storage).value.map((d) => d.id)).toEqual(
+      ["b"],
+    );
   });
 
   it("emits input on every change", () => {
@@ -45,7 +47,10 @@ describe("createFollowedStore", () => {
   });
 
   it("loads corrupt storage as an empty list", () => {
-    const store = createFollowedStore("conf", memoryStorage({ [KEY]: "{not json" }));
+    const store = createFollowedStore(
+      "conf",
+      memoryStorage({ [KEY]: "{not json" }),
+    );
     expect(store.value).toEqual([]);
   });
 
@@ -106,10 +111,11 @@ describe("followed store across tabs", () => {
     const tabB = createFollowedStore("conf", storage);
     tabB.add([{ id: "new" }], "explore", T1);
     tabA.add([{ id: "mine" }], "my papers", T2);
-    expect(createFollowedStore("conf", storage).value.map((d) => d.id).sort()).toEqual([
-      "mine",
-      "new",
-    ]);
+    expect(
+      createFollowedStore("conf", storage)
+        .value.map((d) => d.id)
+        .sort(),
+    ).toEqual(["mine", "new"]);
   });
 
   it("removals in one tab keep the other tab's additions", () => {
@@ -119,7 +125,9 @@ describe("followed store across tabs", () => {
     const tabB = createFollowedStore("conf", storage);
     tabB.add([{ id: "b" }], "r", T1);
     tabA.remove(["a"]);
-    expect(createFollowedStore("conf", storage).value.map((d) => d.id)).toEqual(["b"]);
+    expect(createFollowedStore("conf", storage).value.map((d) => d.id)).toEqual(
+      ["b"],
+    );
   });
 
   it("reloads and emits input on a storage event for its key", () => {
@@ -128,7 +136,10 @@ describe("followed store across tabs", () => {
     const store = createFollowedStore("conf", storage, target);
     let fired = 0;
     store.addEventListener("input", () => fired++);
-    storage.setItem(KEY, JSON.stringify([{ id: "x", reason: "r", addedOn: T1.toISOString() }]));
+    storage.setItem(
+      KEY,
+      JSON.stringify([{ id: "x", reason: "r", addedOn: T1.toISOString() }]),
+    );
     target.dispatchEvent(Object.assign(new Event("storage"), { key: KEY }));
     expect(store.value.map((d) => d.id)).toEqual(["x"]);
     expect(fired).toBe(1);
@@ -139,7 +150,11 @@ describe("followed import", () => {
   it("merges an imported file by default, keeping local papers", () => {
     const store = createFollowedStore("conf", memoryStorage());
     store.add([{ id: "local" }], "mine", T1);
-    store.importJSON(JSON.stringify([{ id: "other", reason: "theirs", addedOn: T2.toISOString() }]));
+    store.importJSON(
+      JSON.stringify([
+        { id: "other", reason: "theirs", addedOn: T2.toISOString() },
+      ]),
+    );
     expect(store.value.map((d) => d.id)).toEqual(["local", "other"]);
   });
 
@@ -152,7 +167,9 @@ describe("followed import", () => {
 
   it("coerces odd field types instead of crashing later", () => {
     const store = createFollowedStore("conf", memoryStorage());
-    store.importJSON(JSON.stringify([{ id: "a", reason: 5, addedOn: "not a date" }]));
+    store.importJSON(
+      JSON.stringify([{ id: "a", reason: 5, addedOn: "not a date" }]),
+    );
     store.add([{ id: "a" }], "more", T1);
     expect(store.value[0].reason).toBe("5 · more");
     expect(Number.isNaN(Date.parse(store.value[0].addedOn))).toBe(false);

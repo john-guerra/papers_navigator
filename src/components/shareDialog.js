@@ -12,8 +12,13 @@ export function renderShareDialog(url, { count = 0 } = {}) {
   } else {
     const canvas = document.createElement("canvas");
     qr.append(canvas);
-    QRCode.toCanvas(canvas, url, { width: 240, margin: 1, errorCorrectionLevel: "L" }).catch(() => {
-      qr.textContent = "Could not draw a QR code for this list. Copy the link instead, or use Export JSON.";
+    QRCode.toCanvas(canvas, url, {
+      width: 240,
+      margin: 1,
+      errorCorrectionLevel: "L",
+    }).catch(() => {
+      qr.textContent =
+        "Could not draw a QR code for this list. Copy the link instead, or use Export JSON.";
     });
   }
   const copy = html`<button>📋 Copy link</button>`;
@@ -22,14 +27,20 @@ export function renderShareDialog(url, { count = 0 } = {}) {
     copy.textContent = "✅ Copied";
   };
   return html`<div class="share-dialog">
-    <p>Scan with your phone, or copy the link. Reasons stay on this device; use Export for those.</p>
+    <p>
+      Scan with your phone, or copy the link. Reasons stay on this device; use
+      Export for those.
+    </p>
     ${qr}
-    <div><input readonly value=${url} style="width: 100%"> ${copy}</div>
+    <div><input readonly value=${url} style="width: 100%" /> ${copy}</div>
   </div>`;
 }
 
 /** Banner offering to merge or replace the local list with papers from a share link. */
-export function renderShareBanner({ ids, unknown }, { onMerge, onReplace, onIgnore }) {
+export function renderShareBanner(
+  { ids, unknown },
+  { onMerge, onReplace, onIgnore },
+) {
   const button = (label, fn) => {
     const b = html`<button>${label}</button>`;
     b.onclick = fn;
@@ -38,12 +49,18 @@ export function renderShareBanner({ ids, unknown }, { onMerge, onReplace, onIgno
   if (!ids.length) {
     // Never offer Replace here: it would wipe the list with nothing
     return html`<div class="share-banner">
-      📱 This link shares ${unknown.length} ${unknown.length === 1 ? "paper" : "papers"}, but none of them are in the current program.
-      ${button("Dismiss", onIgnore)}
+      📱 This link shares ${unknown.length}
+      ${unknown.length === 1 ? "paper" : "papers"}, but none of them are in the
+      current program. ${button("Dismiss", onIgnore)}
     </div>`;
   }
   return html`<div class="share-banner">
-    📱 <strong>${ids.length} ${ids.length === 1 ? "paper" : "papers"} shared with you</strong>${unknown.length ? ` (${unknown.length} not in the program)` : ""}.
-    ${button("Merge", onMerge)} ${button("Replace", onReplace)} ${button("Ignore", onIgnore)}
+    📱
+    <strong
+      >${ids.length} ${ids.length === 1 ? "paper" : "papers"} shared with
+      you</strong
+    >${unknown.length ? ` (${unknown.length} not in the program)` : ""}.
+    ${button("Merge", onMerge)} ${button("Replace", onReplace)}
+    ${button("Ignore", onIgnore)}
   </div>`;
 }

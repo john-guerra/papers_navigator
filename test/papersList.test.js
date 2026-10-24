@@ -25,14 +25,19 @@ describe("PapersList", () => {
     expect(items).toHaveLength(2);
     expect(items[0].textContent).toContain("Wed Nov 11 13:00");
     expect(items[0].textContent).toContain("Ann (MIT)");
-    expect(items[0].querySelector("a.title").href).toBe("https://ieeevis.org/x");
+    expect(items[0].querySelector("a.title").href).toBe(
+      "https://ieeevis.org/x",
+    );
     expect(items[0].textContent).toContain("Preprint PDF");
   });
 
   it("renders actions and preamble for each paper", () => {
     const list = PapersList(papers, {
       tz: "US/Eastern",
-      actions: (p) => Object.assign(document.createElement("button"), { textContent: `x${p.id}` }),
+      actions: (p) =>
+        Object.assign(document.createElement("button"), {
+          textContent: `x${p.id}`,
+        }),
       preamble: (p) => `reason ${p.id}`,
     });
     expect(list.querySelectorAll("button")).toHaveLength(2);

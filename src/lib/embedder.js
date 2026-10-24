@@ -5,12 +5,17 @@ let embedder;
 
 /** Lazily loads Transformers.js and the model on first use. */
 export function getEmbedder() {
-  embedder ??= import("@huggingface/transformers").then(async ({ pipeline }) => {
-    const extractor = await pipeline("feature-extraction", MODEL);
-    return async (text) => {
-      const output = await extractor(text, { pooling: "mean", normalize: true });
-      return output.data;
-    };
-  });
+  embedder ??= import("@huggingface/transformers").then(
+    async ({ pipeline }) => {
+      const extractor = await pipeline("feature-extraction", MODEL);
+      return async (text) => {
+        const output = await extractor(text, {
+          pooling: "mean",
+          normalize: true,
+        });
+        return output.data;
+      };
+    },
+  );
   return embedder;
 }

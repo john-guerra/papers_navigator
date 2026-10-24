@@ -5,7 +5,7 @@ toc: false
 
 ```js
 import { createFollowedStore } from "./lib/followed.js";
-import { rankBySimilarity, toMatrix } from "./lib/search.js";
+import { defaultScoreRange, rankBySimilarity, toMatrix } from "./lib/search.js";
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
 import { applyFilters, facetValues } from "./lib/filters.js";
@@ -115,7 +115,7 @@ const projectionInput = Inputs.select(conference.projections, {
   format: (d) => d.toUpperCase(),
 });
 const projection = Generators.input(projectionInput);
-const colorByInput = Inputs.select(new Map([["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"]]), {
+const colorByInput = Inputs.select(new Map([["Score", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"]]), {
   label: "Color by",
 });
 const colorBy = Generators.input(colorByInput);
@@ -125,7 +125,9 @@ const colorBy = Generators.input(colorByInput);
 const positioned = applyProjection(filtered, projections[projection]).papers;
 const map = view(
   await BrushableScatterPlot(positioned, {
-    color: colorBy,
+    // Score only exists after a search; until then color by type
+    color: colorBy === "score" && !query?.trim() ? "typeLabel" : colorBy,
+    colorType: colorBy === "score" && query?.trim() ? "quantitative" : "nominal",
     size: query?.trim() ? "score" : null,
     tooltip: ["title", "authorNames", "typeLabel", "sessionName", "score"],
     width: Math.max(300, width - 40),
@@ -140,7 +142,7 @@ const scoreRange = query?.trim()
   ? view(
       BrushableHistogram(map.brushed, {
         x: (d) => d.score,
-        value: [Math.max(0.3, d3.min(map.brushed, (d) => d.score) ?? 0), d3.max(map.brushed, (d) => d.score) ?? 1],
+        value: defaultScoreRange(map.brushed.map((d) => d.score)),
         xLabel: "Similarity score",
         width: Math.max(300, width - 40),
       }),

@@ -36,8 +36,12 @@ describe("groupIntoSlots", () => {
     talk("agents", "Essex Center", 10, "10:00", "11:30", "10:24", "10:36"),
     talk("agents", "Essex Center", 10, "10:00", "11:30", "10:12", "10:24"),
   ];
-  const picture = [talk("picture", "America Center", 10, "10:00", "11:30", "10:48", "11:00")];
-  const afternoon = [talk("modern", "America Center", 10, "13:00", "14:30", "13:00", "13:12")];
+  const picture = [
+    talk("picture", "America Center", 10, "10:00", "11:30", "10:48", "11:00"),
+  ];
+  const afternoon = [
+    talk("modern", "America Center", 10, "13:00", "14:30", "13:00", "13:12"),
+  ];
 
   it("groups parallel sessions into one slot and recommends the busiest", () => {
     const { days } = groupIntoSlots([...picture, ...agents, ...afternoon], TZ);
@@ -54,7 +58,10 @@ describe("groupIntoSlots", () => {
 
   it("joins a long workshop with every session it overlaps", () => {
     const workshop = [talk("ws", "Room W", 10, "09:00", "12:30", null, null)];
-    const { days } = groupIntoSlots([...agents, ...picture, ...workshop, ...afternoon], TZ);
+    const { days } = groupIntoSlots(
+      [...agents, ...picture, ...workshop, ...afternoon],
+      TZ,
+    );
     expect(days[0].slots).toHaveLength(2);
     expect(days[0].slots[0].sessions.map((s) => s.sessionId).sort()).toEqual([
       "agents",
@@ -71,7 +78,9 @@ describe("groupIntoSlots", () => {
   });
 
   it("lists untimed items after timed ones inside a session", () => {
-    const untimed = { ...talk("agents", "Essex Center", 10, "10:00", "11:30", null, null) };
+    const untimed = {
+      ...talk("agents", "Essex Center", 10, "10:00", "11:30", null, null),
+    };
     const { days } = groupIntoSlots([untimed, ...agents], TZ);
     const items = days[0].slots[0].recommended.items;
     expect(items.at(-1).id).toBe(untimed.id);
@@ -105,13 +114,19 @@ describe("nowNext", () => {
     const result = nowNext(days, new Date(at(10, "10:14")), TZ);
     expect(result.now.recommended.sessionId).toBe("agents");
     expect(result.nowItem.id).toBe(items[1].id);
-    expect(result.next.map((s) => s.recommended.sessionId)).toEqual(["modern", "figuring"]);
+    expect(result.next.map((s) => s.recommended.sessionId)).toEqual([
+      "modern",
+      "figuring",
+    ]);
   });
 
   it("has no current slot between sessions but still lists the next ones", () => {
     const result = nowNext(days, new Date(at(10, "12:00")), TZ);
     expect(result.now).toBeNull();
-    expect(result.next.map((s) => s.recommended.sessionId)).toEqual(["modern", "figuring"]);
+    expect(result.next.map((s) => s.recommended.sessionId)).toEqual([
+      "modern",
+      "figuring",
+    ]);
   });
 
   it("returns null after the day's last followed session", () => {

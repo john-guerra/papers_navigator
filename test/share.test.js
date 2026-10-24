@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { decodeShareHash, encodeShareHash, resolveShortIds } from "../src/lib/share.js";
+import {
+  decodeShareHash,
+  encodeShareHash,
+  resolveShortIds,
+} from "../src/lib/share.js";
 
 const papers = [
   { id: "a1b2c3d4-0000", shortId: "a1b2c3d4" },
@@ -46,7 +50,10 @@ describe("resolveShortIds with older links", () => {
       { id: "a1b2c3d4-0000", shortId: "a1b2c3d4-0" },
       { id: "e5f6a7b8-1111", shortId: "e5f6a7b8-1" },
     ];
-    expect(resolveShortIds(["a1b2c3d4"], longer)).toEqual({ ids: ["a1b2c3d4-0000"], unknown: [] });
+    expect(resolveShortIds(["a1b2c3d4"], longer)).toEqual({
+      ids: ["a1b2c3d4-0000"],
+      unknown: [],
+    });
   });
 
   it("treats an ambiguous prefix as unknown", () => {
@@ -54,6 +61,9 @@ describe("resolveShortIds with older links", () => {
       { id: "slot_1790", shortId: "slot_1790" },
       { id: "slot_1792", shortId: "slot_1792" },
     ];
-    expect(resolveShortIds(["slot_179"], twins)).toEqual({ ids: [], unknown: ["slot_179"] });
+    expect(resolveShortIds(["slot_179"], twins)).toEqual({
+      ids: [],
+      unknown: ["slot_179"],
+    });
   });
 });

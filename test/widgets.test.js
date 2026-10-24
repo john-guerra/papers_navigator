@@ -10,7 +10,9 @@ const counts = [
 
 describe("scentedCheckbox", () => {
   it("starts with the given value", () => {
-    expect(scentedCheckbox(counts, { label: "Type", value: ["short"] }).value).toEqual(["short"]);
+    expect(
+      scentedCheckbox(counts, { label: "Type", value: ["short"] }).value,
+    ).toEqual(["short"]);
   });
 
   it("emits input when a box is clicked", () => {
@@ -32,7 +34,9 @@ describe("scentedCheckbox", () => {
     const widget = scentedCheckbox(counts, { label: "Type", value: [] });
     widget.value = ["short"];
     widget.dispatchEvent(new Event("input", { bubbles: true }));
-    const checked = [...widget.querySelectorAll("input:checked")].map((d) => d.value);
+    const checked = [...widget.querySelectorAll("input:checked")].map(
+      (d) => d.value,
+    );
     expect(checked).toHaveLength(1);
   });
 });
@@ -46,7 +50,9 @@ describe("multi-auto-select (npm)", () => {
   };
   const type = (widget, text) => {
     widget.querySelector("input").value = text;
-    widget.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    widget
+      .querySelector("form")
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   };
 
   it("starts with the given value", () => {

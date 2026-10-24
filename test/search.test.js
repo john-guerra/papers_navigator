@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { defaultScoreRange, rankBySimilarity, toMatrix } from "../src/lib/search.js";
+import {
+  defaultScoreRange,
+  rankBySimilarity,
+  toMatrix,
+} from "../src/lib/search.js";
 import { applyProjection } from "../src/lib/projections.js";
 
 describe("toMatrix", () => {
   it("rejects a buffer that does not match the papers", () => {
-    expect(() => toMatrix(new ArrayBuffer(8), 1, 384)).toThrow("embeddings/papers mismatch");
+    expect(() => toMatrix(new ArrayBuffer(8), 1, 384)).toThrow(
+      "embeddings/papers mismatch",
+    );
   });
 
   it("wraps a matching buffer as Float32Array", () => {
@@ -18,7 +24,12 @@ describe("rankBySimilarity", () => {
   const matrix = new Float32Array([1, 0, 0, 1, 0.6, 0.8]);
 
   it("sorts papers by cosine similarity to the query", () => {
-    const ranked = rankBySimilarity(new Float32Array([1, 0]), matrix, papers, 2);
+    const ranked = rankBySimilarity(
+      new Float32Array([1, 0]),
+      matrix,
+      papers,
+      2,
+    );
     expect(ranked.map((d) => d.id)).toEqual(["a", "c", "b"]);
     expect(ranked.map((d) => d.score)).toEqual([1, expect.closeTo(0.6, 5), 0]);
   });

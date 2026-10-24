@@ -1,4 +1,6 @@
-const unique = (values) => [...new Set(values.filter((v) => v != null && v !== ""))];
+const unique = (values) => [
+  ...new Set(values.filter((v) => v != null && v !== "")),
+];
 
 /** Values of each facet for one paper (deduplicated within the paper). */
 const ACCESSORS = {
@@ -21,11 +23,15 @@ const FILTER_FACETS = {
 export function facetValues(papers, key) {
   const counts = new Map();
   for (const paper of papers) {
-    for (const value of ACCESSORS[key](paper)) counts.set(value, (counts.get(value) ?? 0) + 1);
+    for (const value of ACCESSORS[key](paper))
+      counts.set(value, (counts.get(value) ?? 0) + 1);
   }
   return [...counts]
     .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value)));
+    .sort(
+      (a, b) =>
+        b.count - a.count || String(a.value).localeCompare(String(b.value)),
+    );
 }
 
 /** AND across facets, OR within a facet; empty or missing facets don't filter. */
@@ -34,6 +40,8 @@ export function applyFilters(papers, filters = {}) {
     .filter(([name]) => filters[name]?.length)
     .map(([name, key]) => [new Set(filters[name]), ACCESSORS[key]]);
   return papers.filter((paper) =>
-    active.every(([selected, accessor]) => accessor(paper).some((v) => selected.has(v))),
+    active.every(([selected, accessor]) =>
+      accessor(paper).some((v) => selected.has(v)),
+    ),
   );
 }

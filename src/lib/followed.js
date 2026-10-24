@@ -14,7 +14,12 @@ function mergeLists(current, incoming) {
   for (const entry of incoming) {
     const existing = byId.get(entry.id);
     if (existing) existing.reason = joinReasons(existing.reason, entry.reason);
-    else byId.set(entry.id, { id: entry.id, reason: entry.reason ?? "", addedOn: entry.addedOn });
+    else
+      byId.set(entry.id, {
+        id: entry.id,
+        reason: entry.reason ?? "",
+        addedOn: entry.addedOn,
+      });
   }
   return [...byId.values()];
 }
@@ -27,12 +32,16 @@ function parseList(text) {
     throw new Error("invalid followed papers file: not JSON");
   }
   if (!Array.isArray(list) || !list.every(isEntry)) {
-    throw new Error("invalid followed papers file: expected a list of {id, reason, addedOn}");
+    throw new Error(
+      "invalid followed papers file: expected a list of {id, reason, addedOn}",
+    );
   }
   return list.map(({ id, reason, addedOn }) => ({
     id,
     reason: reason == null ? "" : String(reason),
-    addedOn: Number.isNaN(Date.parse(addedOn)) ? new Date().toISOString() : addedOn,
+    addedOn: Number.isNaN(Date.parse(addedOn))
+      ? new Date().toISOString()
+      : addedOn,
   }));
 }
 
@@ -82,7 +91,12 @@ export function createFollowedStore(
   Object.assign(store, {
     add(papers, reason, now = new Date()) {
       const addedOn = now.toISOString();
-      update((current) => mergeLists(current, papers.map((p) => ({ id: p.id, reason, addedOn }))));
+      update((current) =>
+        mergeLists(
+          current,
+          papers.map((p) => ({ id: p.id, reason, addedOn })),
+        ),
+      );
     },
     remove(ids) {
       const drop = new Set(ids);
@@ -117,7 +131,8 @@ export function resolveFollowed(followed, papers) {
   const missing = [];
   for (const entry of followed) {
     const paper = byId.get(entry.id);
-    if (paper) items.push({ ...paper, reason: entry.reason, addedOn: entry.addedOn });
+    if (paper)
+      items.push({ ...paper, reason: entry.reason, addedOn: entry.addedOn });
     else missing.push(entry);
   }
   return { items, missing };

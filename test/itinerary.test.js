@@ -18,7 +18,10 @@ const item = (id, sessionId, room, day, from, to, talk) => ({
   sessionStart: at(day, from),
   sessionEnd: at(day, to),
   start: at(day, talk),
-  end: at(day, talk.replace(/:(\d\d)$/, (_, m) => `:${String(+m + 9).padStart(2, "0")}`)),
+  end: at(
+    day,
+    talk.replace(/:(\d\d)$/, (_, m) => `:${String(+m + 9).padStart(2, "0")}`),
+  ),
   reason: "🔍 llm",
   authors: [],
 });
@@ -36,7 +39,9 @@ describe("renderItinerary", () => {
     const el = renderItinerary(schedule, { tz: TZ });
     const slots = el.querySelectorAll("details.slot");
     expect(slots).toHaveLength(2);
-    expect(slots[0].querySelector("summary").textContent).toContain("📍 Essex Center");
+    expect(slots[0].querySelector("summary").textContent).toContain(
+      "📍 Essex Center",
+    );
     expect(slots[0].querySelector("summary").textContent).toContain("10:00");
     expect(slots[0].textContent).toContain("⚠ also");
     expect(slots[1].textContent).not.toContain("⚠ also");
@@ -49,13 +54,19 @@ describe("renderItinerary", () => {
 
   it("calls onUnfollow with the paper id", () => {
     const removed = [];
-    const el = renderItinerary(schedule, { tz: TZ, onUnfollow: (id) => removed.push(id) });
+    const el = renderItinerary(schedule, {
+      tz: TZ,
+      onUnfollow: (id) => removed.push(id),
+    });
     el.querySelector("button.unfollow").click();
     expect(removed).toEqual(["a"]);
   });
 
   it("lists unscheduled items", () => {
-    const el = renderItinerary(groupIntoSlots([{ id: "p", title: "Poster" }], TZ), { tz: TZ });
+    const el = renderItinerary(
+      groupIntoSlots([{ id: "p", title: "Poster" }], TZ),
+      { tz: TZ },
+    );
     expect(el.textContent).toContain("Poster");
     expect(el.textContent).toContain("No scheduled time");
   });
@@ -75,6 +86,39 @@ describe("renderNowNext", () => {
 
   it("says when nothing is happening right now", () => {
     const result = nowNext(schedule.days, new Date(at(10, "12:00")), TZ);
-    expect(renderNowNext(result, { tz: TZ }).textContent).toContain("Nothing you follow right now");
+    expect(renderNowNext(result, { tz: TZ }).textContent).toContain(
+      "Nothing you follow right now",
+    );
+  });
+});
+
+describe("renderItinerary state", () => {
+  it("keeps the selected day across re-renders", () => {
+    const state = {};
+    const first = renderItinerary(schedule, {
+      tz: TZ,
+      state,
+      now: new Date(at(1, "10:00")),
+    });
+    first.querySelector(".day-tabs button").click();
+    expect(state.day).toBe("2026-11-10");
+    const second = renderItinerary(schedule, {
+      tz: TZ,
+      state,
+      now: new Date(at(1, "10:00")),
+    });
+    expect(second.querySelector(".day-tabs button.on").textContent.trim()).toBe(
+      "Tue Nov 10",
+    );
+  });
+
+  it("keeps open slots open across re-renders", () => {
+    const state = {};
+    const first = renderItinerary(schedule, { tz: TZ, state });
+    const slot = first.querySelector("details.slot");
+    slot.open = true;
+    slot.dispatchEvent(new Event("toggle"));
+    const second = renderItinerary(schedule, { tz: TZ, state });
+    expect(second.querySelector("details.slot").open).toBe(true);
   });
 });

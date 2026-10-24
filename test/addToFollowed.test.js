@@ -29,6 +29,8 @@ describe("addToFollowed", () => {
   it("disables the buttons for an empty selection", () => {
     const store = createFollowedStore("c", memory());
     const el = addToFollowed(store, [], { label: "Search", reason: "r" });
-    expect([...el.querySelectorAll("button")].every((b) => b.disabled)).toBe(true);
+    expect([...el.querySelectorAll("button")].every((b) => b.disabled)).toBe(
+      true,
+    );
   });
 });

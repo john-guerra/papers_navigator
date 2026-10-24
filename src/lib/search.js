@@ -15,7 +15,8 @@ export function rankBySimilarity(query, matrix, papers, dims = DIMS) {
   return papers
     .map((paper, i) => {
       let score = 0;
-      for (let j = 0, offset = i * dims; j < dims; j++) score += query[j] * matrix[offset + j];
+      for (let j = 0, offset = i * dims; j < dims; j++)
+        score += query[j] * matrix[offset + j];
       return { ...paper, score };
     })
     .sort((a, b) => b.score - a.score);

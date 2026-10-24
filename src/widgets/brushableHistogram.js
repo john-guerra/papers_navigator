@@ -76,7 +76,9 @@ export function BrushableHistogram(
     ])
     .on("end", (event) => {
       if (!event.sourceEvent) return; // ignore programmatic moves
-      widget.setValue(event.selection ? event.selection.map(xScale.invert) : xScale.domain());
+      widget.setValue(
+        event.selection ? event.selection.map(xScale.invert) : xScale.domain(),
+      );
     });
   const brushG = svg.append("g").call(brush);
   if (value.length === 2) brushG.call(brush.move, value.map(xScale));
