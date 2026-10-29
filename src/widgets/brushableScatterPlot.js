@@ -19,7 +19,7 @@ export function scatterSpec(
     id = "id",
     color = null,
     colorType = "nominal",
-    colorScheme = colorType === "quantitative" ? "viridis" : "tableau20",
+    colorScheme = colorType === "quantitative" ? "brownbluegreen" : "tableau20",
     size = null,
     sizeRange = [10, 200],
     tooltip = [id],
@@ -47,6 +47,7 @@ export function scatterSpec(
           field: color,
           type: colorType,
           scale: { scheme: colorScheme },
+          legend: { orient: "bottom", columns: colorType === "quantitative" ? undefined : 4 },
         },
       }),
       ...(size && {

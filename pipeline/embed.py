@@ -63,6 +63,8 @@ def run(conference_id: str, root: Path = ROOT, encoder=None, reducers=None) -> N
 
     data_dir = conf_dir / "data"
     papers = json.loads((data_dir / "papers.raw.json").read_text())
+    excluded = set(config.get("excludeTypeLabels", []))
+    papers = [p for p in papers if p.get("typeLabel") not in excluded]
     matrix = np.asarray(encoder(embed_texts(papers)), dtype=np.float32)
     write_embeddings(matrix, data_dir / "embeddings.bin")
 

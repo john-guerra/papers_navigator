@@ -6,10 +6,10 @@ import pytest
 from pipeline import embed
 
 
-def make_conference(tmp_path, papers, projections):
+def make_conference(tmp_path, papers, projections, **config):
     conf = tmp_path / "conferences" / "testconf"
     (conf / "data").mkdir(parents=True)
-    (conf / "config.json").write_text(json.dumps({"id": "testconf", "projections": projections}))
+    (conf / "config.json").write_text(json.dumps({"id": "testconf", "projections": projections, **config}))
     (conf / "data" / "papers.raw.json").write_text(json.dumps(papers))
     return conf
 
@@ -50,6 +50,19 @@ def test_run_writes_one_file_per_projection(tmp_path):
     assert b["p2"] == [1.0, 1.0]
     papers = json.loads((conf / "data" / "papers.json").read_text())
     assert papers[0]["x"] == 0.0
+
+
+def test_run_drops_excluded_type_labels(tmp_path):
+    papers = [
+        {**PAPERS[0], "typeLabel": "Full VIS Paper"},
+        {**PAPERS[1], "typeLabel": "Keynote"},
+        {**PAPERS[2], "typeLabel": "Plenary Session"},
+    ]
+    conf = make_conference(tmp_path, papers, ["a"], excludeTypeLabels=["Keynote", "Plenary Session"])
+    embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": lambda m: np.zeros((len(m), 2))})
+    assert [p["id"] for p in json.loads((conf / "data" / "papers.json").read_text())] == ["p1"]
+    assert (conf / "data" / "embeddings.bin").stat().st_size == 1 * 384 * 4
+    assert list(json.loads((conf / "data" / "projections" / "a.json").read_text())) == ["p1"]
 
 
 def test_unknown_projection_raises(tmp_path):

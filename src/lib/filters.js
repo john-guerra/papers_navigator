@@ -45,3 +45,18 @@ export function applyFilters(papers, filters = {}) {
     ),
   );
 }
+
+/** type → display name: its label if all papers of that type share one, else overrides[type] ?? type. */
+export function typeNames(papers, overrides = {}) {
+  const labels = new Map();
+  for (const { type, typeLabel } of papers) {
+    if (!labels.has(type)) labels.set(type, new Set());
+    labels.get(type).add(typeLabel ?? type);
+  }
+  return new Map(
+    [...labels].map(([type, set]) => [
+      type,
+      set.size === 1 ? [...set][0] : (overrides[type] ?? type),
+    ]),
+  );
+}

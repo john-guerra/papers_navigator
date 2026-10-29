@@ -232,3 +232,150 @@ button.unfollow {
   max-width: none;
   background: var(--theme-background-alt);
 }
+
+/* Explore layout (after johnguerra.co/viz/chi2026Papers): map | list | collapsible filters */
+.explore-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.example-query {
+  padding: 0 0.35rem;
+  border: 1px solid var(--theme-foreground-focus);
+  border-radius: 4px;
+  background: none;
+  color: var(--theme-foreground-focus);
+  font: inherit;
+  cursor: pointer;
+}
+
+.example-query:hover {
+  background: var(--theme-foreground-focus);
+  color: white;
+}
+
+.explore-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.explore-layout.filters-open {
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr) 240px;
+}
+
+.explore-map,
+.explore-list,
+.filters-panel {
+  min-width: 0;
+}
+
+.filters-panel {
+  display: none;
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 0 0.8rem 0.8rem;
+  border-left: 1px solid var(--theme-foreground-faintest);
+}
+
+.filters-open .filters-panel {
+  display: block;
+}
+
+.filters-panel form {
+  width: 100%;
+}
+
+.filters-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filters-header h2 {
+  margin: 0.5rem 0;
+}
+
+.filters-toggle,
+.filters-close {
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 6px;
+  background: var(--theme-background);
+  cursor: pointer;
+}
+
+.search-status .error {
+  color: #b23b3b;
+  font-style: normal;
+}
+
+@media (max-width: 1100px) {
+  .explore-layout,
+  .explore-layout.filters-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On narrow screens the filters become a drawer over the page */
+  .filters-panel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    top: 0;
+    z-index: 20;
+    width: min(320px, 85vw);
+    max-height: none;
+    background: var(--theme-background);
+    box-shadow: -4px 0 16px rgb(0 0 0 / 0.15);
+  }
+}
+
+/* Where to go? */
+.where-intro .min-score {
+  width: 4rem;
+}
+
+.where-section > summary h3 {
+  display: inline-block;
+  margin: 0.4rem 0;
+}
+
+.where-day,
+.where-group {
+  margin-left: 1.2rem;
+}
+
+.where-group summary,
+.where-day summary {
+  cursor: pointer;
+}
+
+.where-paper {
+  margin-left: 1.5rem;
+  font-size: 0.9em;
+}
+
+/* Top navigation (the Framework sidebar is disabled) */
+.top-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  align-items: baseline;
+}
+
+.top-nav a {
+  color: var(--theme-foreground-muted);
+  text-decoration: none;
+}
+
+.top-nav a:hover {
+  color: var(--theme-foreground-focus);
+}
+
+.top-nav .brand {
+  font-weight: 700;
+  color: var(--theme-foreground);
+}

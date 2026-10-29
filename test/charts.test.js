@@ -73,7 +73,7 @@ describe("scatterSpec color scales", () => {
       colorType: "quantitative",
     });
     expect(spec.encoding.color.type).toBe("quantitative");
-    expect(spec.encoding.color.scale.scheme).toBe("viridis");
+    expect(spec.encoding.color.scale.scheme).toBe("brownbluegreen");
   });
 
   it("keeps a categorical scale by default", () => {
@@ -111,5 +111,13 @@ describe("BrushableHistogram", () => {
     });
     expect(widget.value).toEqual([0.3, 0.9]);
     expect(widget.querySelector("svg")).not.toBeNull();
+  });
+});
+
+describe("scatterSpec legend", () => {
+  it("puts the color legend below the plot so it doesn't take map width", async () => {
+    const { scatterSpec } = await import("../src/widgets/brushableScatterPlot.js");
+    const spec = scatterSpec([], { color: "typeLabel" });
+    expect(spec.encoding.color.legend).toMatchObject({ orient: "bottom" });
   });
 });

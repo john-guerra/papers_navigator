@@ -3,12 +3,33 @@
   "name": "IEEE VIS 2026",
   "year": 2026,
   "timezone": "US/Eastern",
-  "days": ["2026-11-08", "2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13"],
+  "days": [
+    "2026-11-08",
+    "2026-11-09",
+    "2026-11-10",
+    "2026-11-11",
+    "2026-11-12",
+    "2026-11-13"
+  ],
   "baseUrl": "https://ieeevis.org/year/2026",
   "listingUrl": "https://ieeevis.org/year/2026/program/content/",
   "fetcher": "ieeevis",
   "projections": ["umap", "tsne", "pca"],
   "deployPath": "/var/www/viz/ieeevis2026Papers",
   "siteUrl": "https://johnguerra.co/viz/ieeevis2026Papers/",
-  "ogImage": "og.png"
+  "ogImage": "og.png",
+  "excludeTypeLabels": ["Keynote", "Capstone", "Plenary Session"],
+  "defaultTypes": ["full", "short", "tvcg", "cg&a"],
+  "typeNames": {
+    "workshop": "Workshop Paper"
+  },
+  "exampleQueries": [
+    "LLM agents",
+    "Dimensionality reduction",
+    "Accessibility",
+    "Uncertainty",
+    "Visualization literacy",
+    "Immersive analytics",
+    "Healthcare"
+  ]
 }

@@ -74,3 +74,22 @@ describe("applyFilters", () => {
     ).toEqual(["1", "2"]);
   });
 });
+
+describe("typeNames", () => {
+  it("uses the label when a type has one, the override or the type otherwise", async () => {
+    const { typeNames } = await import("../src/lib/filters.js");
+    const names = typeNames(
+      [
+        { type: "full", typeLabel: "Full VIS Paper" },
+        { type: "workshop", typeLabel: "BELIV Workshop Paper" },
+        { type: "workshop", typeLabel: "EduVis Workshop Paper" },
+        { type: "panel", typeLabel: "Panel A" },
+        { type: "panel", typeLabel: "Panel B" },
+      ],
+      { workshop: "Workshop Paper" },
+    );
+    expect(names.get("full")).toBe("Full VIS Paper");
+    expect(names.get("workshop")).toBe("Workshop Paper");
+    expect(names.get("panel")).toBe("panel");
+  });
+});
