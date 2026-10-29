@@ -121,3 +121,11 @@ describe("scatterSpec legend", () => {
     expect(spec.encoding.color.legend).toMatchObject({ orient: "bottom" });
   });
 });
+
+describe("scatterSpec color title", () => {
+  it("uses colorTitle for the legend", async () => {
+    const { scatterSpec } = await import("../src/widgets/brushableScatterPlot.js");
+    const spec = scatterSpec([], { color: "score", colorType: "quantitative", colorTitle: "Similarity" });
+    expect(spec.encoding.color.title).toBe("Similarity");
+  });
+});

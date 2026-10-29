@@ -18,6 +18,7 @@ export function scatterSpec(
     y = "y",
     id = "id",
     color = null,
+    colorTitle = color,
     colorType = "nominal",
     colorScheme = colorType === "quantitative" ? "brownbluegreen" : "tableau20",
     size = null,
@@ -46,6 +47,7 @@ export function scatterSpec(
         color: {
           field: color,
           type: colorType,
+          title: colorTitle,
           scale: { scheme: colorScheme },
           legend: { orient: "bottom", columns: colorType === "quantitative" ? undefined : 4 },
         },

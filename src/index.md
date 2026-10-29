@@ -34,19 +34,16 @@ const followed = Generators.input(store);
 const typeLabels = typeNames(papers, conference.typeNames);
 ```
 
-<div class="explore-header">
-  <h1>${conference.name} Papers</h1>
-  ${filtersToggle}
-</div>
+<h1>${conference.name} Papers</h1>
 
 <p class="lede">Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning. Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and follow the ones you want to attend. Your list lives in <a href="./my-papers">My Papers</a> (${followed.length} followed).</p>
 
 <div id="explore" class="explore-layout">
 <section id="explore-map" class="explore-map">
-  <div class="search-row">${queryInput}${liveSearchInput}</div>
-  <div class="search-status">${searchStatus}</div>
-  <div class="map-controls">${projectionInput}${colorByInput}${sizeByInput}</div>
+  <div class="search-row">${queryInput}</div>
+  <div class="map-controls">${liveSearchInput}</div>
   ${mapInput}
+  <div class="map-controls">${colorByInput}${sizeByInput}</div>
   ${scoreRangeInput ?? ""}
   <div class="follow-actions">${followActions}</div>
   <details class="navio-summary">
@@ -60,23 +57,28 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${maxPapersInput}
   ${papersList}
 </section>
-<aside id="filters-panel" class="filters-panel" aria-label="Options and Filtering">
-  <div class="filters-header"><h2>Options and Filtering</h2>${filtersClose}</div>
+<aside id="filters-panel" class="filters-panel" aria-label="Options">
+  <div class="filters-header"><h2>Options</h2>${filtersClose}</div>
   ${typesInput}
   ${authorsInput}
   ${affiliationsInput}
   ${keywordsInput}
   ${sessionsInput}
+  <h3>Dimensionality reduction</h3>
+  ${projectionInput}
   ${filtersDone}
 </aside>
 </div>
 
 ```js
-// Filters live in an offcanvas sidebar on the right (as in the CHI 2026 explorer); closed by default.
+// Options (filters, projection) live in an offcanvas sidebar on the right, as in the
+// CHI 2026 explorer, opened from the navbar's Options button; closed by default.
 const layout = document.getElementById("explore");
 const filtersOpenKey = `papersNavigator:${conference.id}:filtersOpen`;
-const filtersToggle = html`<button class="filters-toggle" aria-controls="filters-panel">◂ Options and Filtering</button>`;
-const filtersClose = html`<button class="filters-close" aria-label="Close filters">Close ✕</button>`;
+const filtersToggle = document.querySelector(".navbar-options");
+filtersToggle.hidden = false;
+invalidation.then(() => (filtersToggle.hidden = true));
+const filtersClose = html`<button class="filters-close" aria-label="Close options">Close ✕</button>`;
 const filtersDone = html`<button class="filters-done">Done</button>`;
 const setFiltersOpen = (open) => {
   layout.classList.toggle("filters-open", open);
@@ -119,15 +121,16 @@ const exampleChips = html`${(conference.exampleQueries ?? []).map((q, i) => {
 ```
 
 ```js
-const liveSearchInput = Inputs.toggle({ label: "Live search" });
+const liveSearchInput = Inputs.toggle({ label: "Live search", value: true });
 const liveSearch = Generators.input(liveSearchInput);
 ```
 
 ```js
+const queryPlaceholder = "Describe what you are looking for, e.g. LLM agents for scientific visualization";
 const queryInput = Inputs.text({
-  placeholder: "Describe what you are looking for, e.g. LLM agents for scientific visualization",
+  placeholder: queryPlaceholder,
   submit: liveSearch ? false : "Search",
-  width: 420,
+  value: conference.defaultQuery ?? "",
 });
 const query = Generators.input(queryInput);
 ```
@@ -144,17 +147,32 @@ const modelStatus = Generators.observe((notify) => {
 ```
 
 ```js
-const searchStatus =
-  modelStatus === "loading"
-    ? html`<span>⏳ Loading the language model…</span>`
-    : modelStatus === "ready"
-      ? html`<span>✓ Language model ready</span>`
-      : html`<span class="error">⚠ The language model failed to load, so search is unavailable (${modelStatus.slice(7)}). The map and filters still work.</span>`;
+// Search stays disabled, with the reason inside the box, until the model is ready.
+{
+  const input = queryInput.querySelector("input");
+  const button = queryInput.querySelector("button");
+  const ready = modelStatus === "ready";
+  if (!ready) {
+    input.dataset.query ??= input.value;
+    input.value = "";
+    input.placeholder =
+      modelStatus === "loading"
+        ? "⏳ Loading the language model…"
+        : `⚠ Search unavailable: the language model failed to load (${modelStatus.slice(7)})`;
+  } else if (input.dataset.query != null) {
+    input.value = input.dataset.query;
+    delete input.dataset.query;
+    input.placeholder = queryPlaceholder;
+  }
+  input.disabled = !ready;
+  if (button) button.disabled = !ready;
+}
 ```
 
 ```js
+// Draw the map right away; scores (color/size) arrive once the model is ready.
 const scored = await (async () => {
-  if (!query?.trim()) return papers.map((p) => ({ ...p, score: null }));
+  if (!query?.trim() || modelStatus !== "ready") return papers.map((p) => ({ ...p, score: null }));
   const embed = await getEmbedder();
   const matrix = toMatrix(embeddingsBuffer, papers.length);
   return rankBySimilarity(await embed(query), matrix, papers);
@@ -215,11 +233,14 @@ const mapWidth = Generators.width(document.getElementById("explore-map"));
 
 ```js
 const positioned = applyProjection(filtered, projections[projection]).papers;
-// Similarity only exists after a search; until then color by type
-const hasQuery = Boolean(query?.trim());
+const hasQuery = Boolean(query?.trim()) && modelStatus === "ready";
+// Similarity only exists after a search; until then one neutral color
+const colorField = colorBy === "score" && !hasQuery ? null : colorBy;
+const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session" };
 const mapInput = await BrushableScatterPlot(positioned, {
-  color: colorBy === "score" && !hasQuery ? "typeLabel" : colorBy,
+  color: colorField,
   colorType: colorBy === "score" && hasQuery ? "quantitative" : "nominal",
+  colorTitle: colorTitles[colorField],
   size: hasQuery ? sizeBy : null,
   tooltip: ["title", "authorNames", "typeLabel", "sessionName", "score"],
   width: Math.max(260, mapWidth - 20),
@@ -230,7 +251,7 @@ const map = Generators.input(mapInput);
 ```
 
 ```js
-const scoreRangeInput = query?.trim()
+const scoreRangeInput = hasQuery
   ? BrushableHistogram(map.brushed, {
       x: (d) => d.score,
       value: defaultScoreRange(map.brushed.map((d) => d.score)),
@@ -267,7 +288,7 @@ const filterReason = [
   .filter(Boolean)
   .join(" ");
 const followActions = html`${addToFollowed(store, map.brushed.length < positioned.length ? map.brushed : [], { label: "Map selection", reason: "By scatterplot selection" })}
-  ${query?.trim() ? addToFollowed(store, inRange, { label: "Search results in score range", reason: `🔍 ${query}` }) : ""}
+  ${hasQuery ? addToFollowed(store, inRange, { label: "Search results in score range", reason: `🔍 ${query}` }) : ""}
   ${filtersActive ? addToFollowed(store, filtered, { label: "Filtered papers", reason: filterReason }) : ""}`;
 ```
 
@@ -294,7 +315,7 @@ const navioSummary = NavioWidget(
 
 ```js
 const followedIds = new Set(followed.map((d) => d.id));
-const ordered = query?.trim() ? selected : [...selected].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
+const ordered = hasQuery ? selected : [...selected].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
 const papersList = PapersList(ordered, {
   tz,
   max: maxPapers,
@@ -304,7 +325,7 @@ const papersList = PapersList(ordered, {
     const following = followedIds.has(p.id);
     const button = html`<button class="btn-follow ${following ? "following" : ""}">${following ? "★ Following" : "☆ Follow"}</button>`;
     button.onclick = () =>
-      following ? store.remove([p.id]) : store.add([p], query?.trim() ? `🔍 ${query}` : "Picked from list");
+      following ? store.remove([p.id]) : store.add([p], hasQuery ? `🔍 ${query}` : "Picked from list");
     return button;
   },
 });

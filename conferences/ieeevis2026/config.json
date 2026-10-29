@@ -23,6 +23,7 @@
   "typeNames": {
     "workshop": "Workshop Paper"
   },
+  "defaultQuery": "Dimensionality reduction",
   "exampleQueries": [
     "LLM agents",
     "Dimensionality reduction",

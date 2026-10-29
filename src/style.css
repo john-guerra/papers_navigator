@@ -13,12 +13,6 @@
   align-items: center;
 }
 
-.search-status {
-  min-height: 1.4em;
-  color: var(--theme-foreground-muted);
-  font-style: italic;
-}
-
 .map-controls,
 .follow-actions {
   display: flex;
@@ -234,13 +228,6 @@ button.unfollow {
 }
 
 /* Explore layout (after johnguerra.co/viz/chi2026Papers): map | list | collapsible filters */
-.explore-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .example-query {
   padding: 0 0.35rem;
   border: 1px solid var(--theme-foreground-focus);
@@ -319,7 +306,6 @@ button.unfollow {
   margin: 0.8rem 0;
 }
 
-.filters-toggle,
 .filters-close,
 .filters-done {
   min-height: 44px;
@@ -336,11 +322,6 @@ button.unfollow {
   display: block;
   width: 100%;
   margin-top: 1rem;
-}
-
-.search-status .error {
-  color: #b23b3b;
-  font-style: normal;
 }
 
 @media (max-width: 1100px) {
@@ -374,24 +355,121 @@ button.unfollow {
   font-size: 0.9em;
 }
 
-/* Top navigation (the Framework sidebar is disabled) */
-.top-nav {
+/* Navbar (Bootstrap-style; the Framework sidebar is disabled) */
+.navbar {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
+  flex: 1;
+  align-items: center;
   gap: 1.2rem;
-  align-items: baseline;
 }
 
-.top-nav a {
+.navbar-brand {
+  font-weight: 700;
+  color: var(--theme-foreground);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 1.2rem;
+}
+
+.navbar-links a {
   color: var(--theme-foreground-muted);
   text-decoration: none;
 }
 
-.top-nav a:hover {
+.navbar-links a:hover,
+.navbar-links a[aria-current="page"] {
   color: var(--theme-foreground-focus);
 }
 
-.top-nav .brand {
-  font-weight: 700;
-  color: var(--theme-foreground);
+.navbar-links a[aria-current="page"] {
+  font-weight: 600;
+}
+
+.navbar-options {
+  margin-left: auto;
+}
+
+.navbar-toggler,
+.navbar-options {
+  min-height: 36px;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--theme-foreground-faint);
+  border-radius: 6px;
+  background: var(--theme-background);
+  font: inherit;
+  cursor: pointer;
+}
+
+.navbar-options[aria-expanded="true"] {
+  background: var(--theme-foreground-focus);
+  border-color: var(--theme-foreground-focus);
+  color: white;
+}
+
+.navbar-toggler {
+  display: none;
+}
+
+@media (max-width: 576px) {
+  .navbar {
+    gap: 0.6rem;
+  }
+
+  .navbar-brand {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .navbar-toggler {
+    display: block;
+    order: -1;
+  }
+
+  /* Links collapse into a dropdown under the header */
+  .navbar-links {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: -2rem;
+    right: -2rem;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.3rem 2rem;
+    background: var(--theme-background);
+    border-bottom: 1px solid var(--theme-foreground-faint);
+    box-shadow: 0 4px 8px rgb(0 0 0 / 0.08);
+  }
+
+  .navbar.open .navbar-links {
+    display: flex;
+  }
+
+  .navbar-links a {
+    padding: 0.6rem 0;
+  }
+}
+
+/* Compact search and map controls so the map shows up early on phones */
+.search-row form {
+  width: 100%;
+  max-width: 640px;
+}
+
+.search-row form input[type="text"] {
+  width: 100%;
+}
+
+.map-controls form {
+  --label-width: auto;
+  width: auto;
+}
+
+.map-controls form > label {
+  width: auto;
+  margin-right: 0.4em;
 }
