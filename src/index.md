@@ -60,36 +60,49 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${maxPapersInput}
   ${papersList}
 </section>
-<aside class="filters-panel" aria-label="Filters">
-  <div class="filters-header"><h2>Filters</h2>${filtersClose}</div>
+<aside id="filters-panel" class="filters-panel" aria-label="Options and Filtering">
+  <div class="filters-header"><h2>Options and Filtering</h2>${filtersClose}</div>
   ${typesInput}
   ${authorsInput}
   ${affiliationsInput}
   ${keywordsInput}
   ${sessionsInput}
+  ${filtersDone}
 </aside>
 </div>
 
 ```js
-// Collapsible filters panel: docked on wide screens, a drawer on narrow ones.
+// Filters live in an offcanvas sidebar on the right (as in the CHI 2026 explorer); closed by default.
 const layout = document.getElementById("explore");
 const filtersOpenKey = `papersNavigator:${conference.id}:filtersOpen`;
-const filtersToggle = html`<button class="filters-toggle"></button>`;
-const filtersClose = html`<button class="filters-close" aria-label="Close filters">✕</button>`;
+const filtersToggle = html`<button class="filters-toggle" aria-controls="filters-panel">◂ Options and Filtering</button>`;
+const filtersClose = html`<button class="filters-close" aria-label="Close filters">Close ✕</button>`;
+const filtersDone = html`<button class="filters-done">Done</button>`;
 const setFiltersOpen = (open) => {
   layout.classList.toggle("filters-open", open);
-  filtersToggle.textContent = open ? "Hide filters ▸" : "◂ Filters";
+  filtersToggle.setAttribute("aria-expanded", String(open));
   try {
     localStorage.setItem(filtersOpenKey, JSON.stringify(open));
   } catch {}
 };
 filtersToggle.onclick = () => setFiltersOpen(!layout.classList.contains("filters-open"));
-filtersClose.onclick = () => setFiltersOpen(false);
+filtersClose.onclick = filtersDone.onclick = () => setFiltersOpen(false);
+// Tapping outside the sidebar closes it (the only way out besides the buttons on a phone)
+const closeOnOutsideClick = (event) => {
+  const panel = document.getElementById("filters-panel");
+  if (layout.classList.contains("filters-open") && event.target.isConnected && !panel.contains(event.target) && !filtersToggle.contains(event.target))
+    setFiltersOpen(false);
+};
+document.addEventListener("click", closeOnOutsideClick);
+invalidation.then(() => document.removeEventListener("click", closeOnOutsideClick));
+const closeOnEscape = (event) => event.key === "Escape" && setFiltersOpen(false);
+document.addEventListener("keydown", closeOnEscape);
+invalidation.then(() => document.removeEventListener("keydown", closeOnEscape));
 let savedOpen = null;
 try {
   savedOpen = JSON.parse(localStorage.getItem(filtersOpenKey));
 } catch {}
-setFiltersOpen(savedOpen ?? window.innerWidth >= 1200);
+setFiltersOpen(savedOpen ?? false);
 ```
 
 ```js
