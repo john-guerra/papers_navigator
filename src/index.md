@@ -7,14 +7,14 @@ toc: false
 import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore, matches } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
-import { defaultScoreRange, rankBySimilarity, toMatrix } from "./lib/search.js";
+import { rankBySimilarity, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
 import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
 import { facetStrip } from "./widgets/facetStrip.js";
 import { BrushableScatterPlot, topCategories } from "./widgets/brushableScatterPlot.js";
 import { bindMyPapersBadge } from "./components/badge.js";
-import { BrushableHistogram } from "./widgets/brushableHistogram.js";
+import { relevanceControl } from "./widgets/relevanceControl.js";
 import { PapersList } from "./widgets/papersList.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
@@ -50,13 +50,13 @@ const typeLabels = typeNames(papers, conference.typeNames);
   <div class="search-row">${queryInput}</div>
   ${facetsInput}
   ${chipsRow}
+  ${relevanceInput ?? ""}
   <div class="map-controls">${liveSearchInput}${mapToggle}</div>
 </section>
 <section id="explore-map" class="explore-map">
   ${selectRegionButton}
   ${mapInput}
   <div class="map-controls">${colorByInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
-  ${scoreRangeInput ?? ""}
   <details class="navio-summary">
     <summary>Summary of the current selection (navio)</summary>
     ${navioSummary}
@@ -275,6 +275,7 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // Survive re-runs: the paper last scrolled to, and how far the list is expanded
 const lastScrolled = { id: null };
+const relevanceState = { level: "good", people: 0 };
 const listState = { key: null, shown: 100 };
 // Bumped by the "Map region ✕" chip: redraws the map without its brush
 const mapReset = Mutable(0);
@@ -312,21 +313,27 @@ mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 ```
 
 ```js
-const scoreRangeInput = hasQuery
-  ? BrushableHistogram(map.brushed, {
-      x: (d) => d.score,
-      value: defaultScoreRange(map.brushed.map((d) => d.score)),
-      xLabel: "Similarity score",
-      width: Math.max(260, mapWidth - 20),
-    })
+// Relevance (#9): Strong / Good / All with counts, one threshold for list, Add and map region.
+// Cuts come from the search results alone (not facets or map region), so "Good" means the same
+// thing whatever you filter; counts are of the papers in view.
+// Adding a person or institution during a search switches to All, so all their papers show
+// (decided in #1); the choice survives re-renders.
+const peopleCount = authors.length + affiliations.length;
+if (hasQuery && peopleCount > relevanceState.people && relevanceState.level !== "all") {
+  relevanceState.level = "all";
+  showToast("Showing All matches for the people and institutions you picked");
+}
+relevanceState.people = peopleCount;
+const cuts = relevanceCuts(scored.map((d) => d.score));
+const relevanceInput = hasQuery
+  ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level })
   : null;
-const scoreRange = scoreRangeInput ? Generators.input(scoreRangeInput) : null;
+const relevance = relevanceInput ? Generators.input(relevanceInput) : "all";
 ```
 
 ```js
-const inRange = scoreRange
-  ? map.brushed.filter((d) => d.score >= scoreRange[0] && d.score <= scoreRange[1])
-  : map.brushed;
+if (relevanceInput) relevanceState.level = relevance;
+const inRange = relevance === "all" ? map.brushed : map.brushed.filter((d) => d.score >= cuts[relevance]);
 // The list is exactly the matching papers: query, relevance, facets and map region
 const selected = inRange;
 ```
@@ -361,7 +368,11 @@ const clearQuery = () => {
   queryInput.dispatchEvent(new Event("input", { bubbles: true }));
 };
 const chips = [
-  hasQuery && { label: "Search", value: query, onClear: clearQuery },
+  hasQuery && {
+    label: "Search",
+    value: `${query} · ${{ strong: "Strong", good: "Good", all: "All" }[relevance]} matches`,
+    onClear: clearQuery,
+  },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
 ].filter(Boolean);
 const chipsRow = renderChips(chips, {
@@ -395,10 +406,13 @@ const chipsRow = renderChips(chips, {
 ```
 
 ```js
-const navioSummary = NavioWidget(
-  selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score })),
-  { height: 300 },
-);
+// navio throws on an empty dataset (e.g. Strong with 0 matches)
+const navioSummary = selected.length
+  ? NavioWidget(
+      selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score })),
+      { height: 300 },
+    )
+  : html`<p class="muted">No matching papers to summarize.</p>`;
 ```
 
 ```js

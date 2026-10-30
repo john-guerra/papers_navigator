@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  defaultScoreRange,
-  rankBySimilarity,
-  toMatrix,
-} from "../src/lib/search.js";
+import { rankBySimilarity, toMatrix } from "../src/lib/search.js";
 import { applyProjection } from "../src/lib/projections.js";
 
 describe("toMatrix", () => {
@@ -47,19 +43,5 @@ describe("applyProjection", () => {
     expect(papers).toEqual([{ id: "a", x: 5, y: 6 }]);
     expect(missing).toBe(1);
     expect(input[0]).toEqual({ id: "a", x: 0, y: 0 });
-  });
-});
-
-describe("defaultScoreRange", () => {
-  it("starts at 0.3 when scores go above it", () => {
-    expect(defaultScoreRange([0.1, 0.5, 0.7])).toEqual([0.3, 0.7]);
-  });
-
-  it("never starts above the best score", () => {
-    expect(defaultScoreRange([0.1, 0.2, 0.25])).toEqual([0.1, 0.25]);
-  });
-
-  it("handles an empty list", () => {
-    expect(defaultScoreRange([])).toEqual([0, 1]);
   });
 });
