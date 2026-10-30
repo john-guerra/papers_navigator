@@ -1,5 +1,6 @@
 import { html } from "htl";
 import { paperWhen } from "../widgets/papersList.js";
+import { followToggles } from "./followToggles.js";
 
 const AWARDS = {
   best: "🏆 Best paper",
@@ -16,21 +17,7 @@ export function renderPaperDetail(
   paper,
   { tz, related = [], inMyPapers, onToggle, onOpen, onClose },
 ) {
-  const toggles = [];
-  const sync = (button, p) => {
-    const on = inMyPapers(p.id);
-    button.setAttribute("aria-pressed", String(on));
-    button.lastChild.textContent = on ? "In My Papers" : "Add to My Papers";
-  };
-  const toggle = (p) => {
-    const button = html`<button class="follow-toggle">
-      <span class="ring" aria-hidden="true"></span><span></span>
-    </button>`;
-    button.onclick = () => onToggle(p);
-    sync(button, p);
-    toggles.push([button, p]);
-    return button;
-  };
+  const { toggle, update } = followToggles({ inMyPapers, onToggle });
   const close = html`<button
     class="filters-close paper-detail-close"
     aria-label="Close details"
@@ -89,6 +76,6 @@ export function renderPaperDetail(
     }
   </aside>`;
   // Refresh the My Papers toggles in place (keeps the panel's scroll and focus)
-  el.update = () => toggles.forEach(([button, p]) => sync(button, p));
+  el.update = update;
   return el;
 }

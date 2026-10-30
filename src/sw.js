@@ -9,15 +9,18 @@
 //   as we're online; the cached copy is used offline or when the network is too slow.
 // - Framework's hashed build assets (_file/, _import/, _node/, _npm/, _observablehq/):
 //   cache-first, they're immutable by hash.
-// - Other origins (the Transformers.js model and WASM, Google Fonts): not touched.
+// - The self-hosted ONNX runtime WASM (_node/onnxruntime-web@<version>/*.wasm, 14-27 MB,
+//   #21): not touched. Transformers.js keeps its own copy in Cache Storage
+//   (useWasmCache), so caching it here too would store it twice.
+// - Other origins (the Transformers.js model, Google Fonts): not touched.
 //
 // The pure helpers at the top are tested in test/sw.test.js (loaded with node:vm).
 
 /* global ServiceWorkerGlobalScope */
-// Bump the "v1" when the caching rules change; `npm run build` (scripts/buildSw.js)
+// Bump the "v2" when the caching rules change; `npm run build` (scripts/buildSw.js)
 // appends a build id, so every deploy installs a new worker that re-precaches and
 // drops the previous deploy's cache.
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE_PREFIX = "papersNavigator-";
 const ASSET_DIRS = [
   "_file",
@@ -38,6 +41,7 @@ function strategyFor(url, scope, method = "GET") {
   if (target.origin !== base.origin) return "none";
   if (!target.pathname.startsWith(base.pathname)) return "none";
   const parts = target.pathname.slice(base.pathname.length).split("/");
+  if (parts[0] === "_node" && parts.at(-1).endsWith(".wasm")) return "none";
   if (
     parts.length > 1 &&
     ASSET_DIRS.includes(parts[0]) &&

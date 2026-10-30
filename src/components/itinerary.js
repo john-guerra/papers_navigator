@@ -17,15 +17,24 @@ function renderItem(p, { tz, onUnfollow }) {
   </li>`;
 }
 
-function renderSession(session, options, { alternative = false } = {}) {
+function renderSession(
+  session,
+  options,
+  { alternative = false, showTime = false } = {},
+) {
+  const { tz } = options;
   return html`<details
     class="session ${alternative ? "alternative" : "recommended"}"
     open=${!alternative}
   >
     <summary>
-      ${alternative ? html`<span class="conflict">⚠ also</span> ` : ""}<strong
-        >📍 ${session.room ?? "Room TBA"}</strong
-      >
+      ${alternative ? html`<span class="conflict">⚠ also</span> ` : ""}${
+        showTime
+          ? html`<span class="session-time"
+              >${formatTime(session.start, tz)}–${formatTime(session.end, tz)}</span
+            > `
+          : ""
+      }<strong>📍 ${session.room ?? "Room TBA"}</strong>
       — ${session.sessionName}
       <span class="badge">${session.items.length}</span>
     </summary>
@@ -39,6 +48,9 @@ function renderSlot(slot, options) {
   const { tz, state } = options;
   const { recommended, alternatives } = slot;
   const key = String(slot.start);
+  // Conflicting sessions rarely share the slot's range: each row shows its own, so the
+  // recommendation (most papers, then earliest talk) can be weighed against the others
+  const showTime = alternatives.length > 0;
   const details = html`<details class="slot" open=${state.open.has(key)}>
     <summary>
       <span class="slot-time"
@@ -49,8 +61,8 @@ function renderSlot(slot, options) {
       <span class="badge">${recommended.items.length}</span>
       ${alternatives.length ? html`<span class="conflict">⚠ ${alternatives.length} also</span>` : ""}
     </summary>
-    ${renderSession(recommended, options)}
-    ${alternatives.map((s) => renderSession(s, options, { alternative: true }))}
+    ${renderSession(recommended, options, { showTime })}
+    ${alternatives.map((s) => renderSession(s, options, { alternative: true, showTime }))}
   </details>`;
   details.addEventListener("toggle", () =>
     details.open ? state.open.add(key) : state.open.delete(key),

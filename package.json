@@ -25,7 +25,6 @@
   "homepage": "https://github.com/john-guerra/papers_navigator#readme",
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
-    "@john-guerra/search-checkbox": "^1.0.0",
     "@observablehq/framework": "^1.13.4",
     "@observablehq/inputs": "^0.12.0",
     "d3": "^7.9.0",

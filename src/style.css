@@ -957,6 +957,13 @@ details.session > summary strong {
   font-feature-settings: "tnum" 1;
 }
 
+/* A conflicting session's own range (#21), quieter than the slot's */
+.session-time {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-md);
+  font-feature-settings: "tnum" 1;
+}
+
 /* Sessions inside a slot: indented, no accent stripe; a conflicting session
    sits on primary-container */
 details.session {

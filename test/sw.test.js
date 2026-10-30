@@ -69,6 +69,19 @@ describe("strategyFor", () => {
     ).toBe("none");
   });
 
+  it("leaves the self-hosted ONNX runtime WASM to Transformers.js's own cache (#21)", () => {
+    const dir = "./_node/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/";
+    for (const file of [
+      "ort-wasm-simd-threaded.asyncify.wasm",
+      "ort-wasm-simd-threaded.wasm",
+    ])
+      expect(strategyFor(at(dir + file), scope), file).toBe("none");
+    // The small factory script is imported by URL (Transformers.js doesn't cache it).
+    expect(
+      strategyFor(at(dir + "ort-wasm-simd-threaded.asyncify.mjs"), scope),
+    ).toBe("network-first");
+  });
+
   it("leaves paths outside the scope and non-GET requests alone", () => {
     expect(
       strategyFor(
@@ -138,10 +151,10 @@ describe("freshRequest", () => {
 describe("build id (scripts/buildSw.js)", () => {
   it("stamps the build id into VERSION, so each deploy gets a new cache", () => {
     const stamped = stampVersion(source, "abc123");
-    expect(stamped).toContain('const VERSION = "v1-abc123";');
+    expect(stamped).toContain('const VERSION = "v2-abc123";');
     const built = { URL, Request };
     vm.runInNewContext(stamped, built);
-    expect(built.cacheName(scope)).toBe(`papersNavigator-v1-abc123:${scope}`);
+    expect(built.cacheName(scope)).toBe(`papersNavigator-v2-abc123:${scope}`);
     expect(built.isStaleCache(cacheName(scope), scope)).toBe(true);
   });
 
