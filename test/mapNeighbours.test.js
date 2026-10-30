@@ -245,3 +245,108 @@ describe("BrushableScatterPlot neighbours (#102)", () => {
     expect(widget.view.signal("nnIds")).toEqual([]);
   });
 });
+
+// #112: the empty `nn` dataset must not feed the shared x/y domains (Vega warned
+// "Infinite extent for field fx/nx/…" on every render with no neighbours shown)
+describe("neighbour layers and the shared scales (#112)", () => {
+  const views = [];
+  afterEach(() => {
+    while (views.length) views.pop().finalize();
+  });
+  async function render(spec, nn = []) {
+    const vega = await import("vega");
+    const { compile } = await import("vega-lite");
+    const warnings = [];
+    const base = vega.logger(vega.Warn);
+    const logger = Object.assign(Object.create(base), {
+      warn: (...args) => {
+        warnings.push(args.join(" "));
+        return logger;
+      },
+    });
+    const view = new vega.View(vega.parse(compile(spec).spec), {
+      renderer: "none",
+      logger,
+    });
+    views.push(view);
+    await view.runAsync();
+    if (nn.length) {
+      view.change(
+        "nn",
+        view
+          .changeset()
+          .remove(() => true)
+          .insert(nn),
+      );
+      await view.runAsync();
+    }
+    return { view, warnings };
+  }
+  const position = (key) => {
+    const d = data.find((p) => p.id === key);
+    return [d.x, d.y];
+  };
+  const pinnedRows = neighbourRows(
+    "a",
+    {
+      neighbours: [
+        { id: "c", similarity: 0.9, missing: true },
+        { id: "b", similarity: 0.8, missing: false },
+      ],
+      falseNeighbours: ["x"],
+    },
+    position,
+  );
+  const size = { width: 200, height: 200 };
+
+  it("renders without warnings when no paper is pinned", async () => {
+    const { warnings } = await render(
+      scatterSpec(data, { ...size, neighbours: true }),
+    );
+    expect(warnings).toEqual([]);
+  });
+
+  it("keeps the points' extent as the domain, with or without a pin", async () => {
+    const spec = scatterSpec(data, { ...size, neighbours: true });
+    const empty = await render(spec);
+    const pinned = await render(spec, pinnedRows);
+    const plain = await render(scatterSpec(data, size));
+    for (const r of [empty, pinned]) {
+      expect(r.view.scale("x").domain()).toEqual(
+        plain.view.scale("x").domain(),
+      );
+      expect(r.view.scale("y").domain()).toEqual(
+        plain.view.scale("y").domain(),
+      );
+    }
+    expect(pinned.warnings).toEqual([]);
+    // The pinned paper's neighbour labels are drawn
+    const svg = await pinned.view.toSVG();
+    expect(svg).toContain(">90%<");
+    expect(svg).toContain(">80%<");
+  });
+
+  it("renders without warnings through a motion (#82 tween)", async () => {
+    const { planTransition } =
+      await import("../src/widgets/scatterTransition.js");
+    const moved = data.map((d) => ({ ...d, x: d.x * 2, y: d.y + 1 }));
+    const from = {
+      positions: new Map(data.map((d) => [d.id, [d.x, d.y]])),
+      rows: new Map(data.map((d) => [d.id, d])),
+      xDomain: [0, 10],
+      yDomain: [0, 10],
+      labels: [],
+    };
+    const transition = planTransition(moved, from, { duration: 500 });
+    expect(transition).not.toBeNull();
+    const { view, warnings } = await render(
+      scatterSpec(moved, { ...size, neighbours: true, transition }),
+    );
+    view.signal("tm", transition.total / 2);
+    await view.runAsync();
+    view.signal("tm", transition.total);
+    await view.runAsync();
+    expect(warnings).toEqual([]);
+    expect(view.scale("x").domain()[1]).toBeGreaterThan(19);
+  });
+});

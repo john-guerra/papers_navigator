@@ -99,6 +99,12 @@ export function cullLabels(
 
 const extent = (values) => [Math.min(...values), Math.max(...values)];
 
+/** An explicit scale domain: the extent of `field` in `data` (none without finite values). */
+function fixedDomain(data, field) {
+  const values = data.map((d) => d[field]).filter(Number.isFinite);
+  return values.length ? { domain: extent(values) } : {};
+}
+
 /** A tooltip entry: a field name, or {field, title, format} for a readable label/number. */
 const tooltipField = (entry) =>
   typeof entry === "string" ? { field: entry } : { ...entry };
@@ -216,19 +222,15 @@ export function scatterSpec(
   const levelCut = { name: "levelCut", value: null };
   // nice: false + padding in pixels, so cullLabels can mirror the scales exactly
   const scale = { zero: false, nice: false, padding: 10 };
+  // Explicit domains (#112): the points' extent, or the tween's eased one. Every layer shares
+  // the x/y scales, so data-driven domains would union all of them, and the neighbour layers'
+  // dataset is usually empty (Vega then warns "Infinite extent" on each render). The other
+  // layers (rings, topic labels, overlay cells) all sit inside the points' extent anyway.
+  const xScale = { ...scale, ...(tween?.xScale ?? fixedDomain(data, x)) };
+  const yScale = { ...scale, ...(tween?.yScale ?? fixedDomain(data, y)) };
   const position = {
-    x: {
-      field: x,
-      type: "quantitative",
-      axis: null,
-      scale: { ...scale, ...tween?.xScale },
-    },
-    y: {
-      field: y,
-      type: "quantitative",
-      axis: null,
-      scale: { ...scale, ...tween?.yScale },
-    },
+    x: { field: x, type: "quantitative", axis: null, scale: xScale },
+    y: { field: y, type: "quantitative", axis: null, scale: yScale },
   };
   const points = {
     // Mid-motion, leaving points can sit outside the new extent: clip them so the chart
@@ -380,7 +382,9 @@ export function scatterSpec(
       tooltip: null,
     },
   };
-  const nn = neighbours ? neighbourLayers({ scale, tween, transition }) : null;
+  const nn = neighbours
+    ? neighbourLayers({ xScale, yScale, tween, transition })
+    : null;
   const layers = [
     ...(shade ? [shade] : []),
     points,
@@ -451,7 +455,7 @@ const NEIGHBOURS_DATA = "nn";
  * Mid-motion (#82) the rows describe the final layout, so they stay hidden and fade in as the
  * motion settles.
  */
-function neighbourLayers({ scale, tween, transition }) {
+function neighbourLayers({ xScale, yScale, tween, transition }) {
   const fade = (opacity) =>
     tween
       ? {
@@ -459,18 +463,8 @@ function neighbourLayers({ scale, tween, transition }) {
         }
       : opacity;
   const at = (xf, yf) => ({
-    x: {
-      field: xf,
-      type: "quantitative",
-      axis: null,
-      scale: { ...scale, ...tween?.xScale },
-    },
-    y: {
-      field: yf,
-      type: "quantitative",
-      axis: null,
-      scale: { ...scale, ...tween?.yScale },
-    },
+    x: { field: xf, type: "quantitative", axis: null, scale: xScale },
+    y: { field: yf, type: "quantitative", axis: null, scale: yScale },
   });
   const layer = (kinds, mark, encoding) => ({
     data: { name: NEIGHBOURS_DATA },
@@ -647,7 +641,8 @@ function tweenParts({ duration: D, total: T, xDomain, yDomain }, { x, y }) {
   const domain = ([from, to], i) => ({
     expr: `${from[i]} + (${to[i] - from[i]}) * ${easeExpr(`clamp(tm / ${T}, 0, 1)`)}`,
   });
-  const axis = (d) => ({ domainMin: domain(d, 0), domainMax: domain(d, 1) });
+  // A whole explicit domain (not domainMin/domainMax, which still compute the data extent)
+  const axis = (d) => ({ domain: [domain(d, 0), domain(d, 1)] });
   return {
     params: [{ name: "tm", value: 0 }],
     transform: [

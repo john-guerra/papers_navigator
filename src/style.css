@@ -777,7 +777,9 @@ a.navbar-brand {
 @media print {
   .tabbar,
   .navbar-options,
-  .neighbours-panel {
+  .neighbours-panel,
+  .filters-panel,
+  #vg-tooltip-element {
     display: none !important;
   }
 
@@ -2218,7 +2220,10 @@ details.missing > summary {
 }
 
 /* Map tooltip (vega-tooltip): page tokens instead of its light/dark defaults, both themes */
+/* Owns its stacking (#112): above every page layer (the floating neighbours card, drawers,
+   sheets), not only by grace of vega-tooltip's injected default style */
 body #vg-tooltip-element {
+  z-index: 1000;
   max-width: 360px;
   padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
   border: 1px solid var(--color-outline);
