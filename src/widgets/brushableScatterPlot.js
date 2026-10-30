@@ -467,6 +467,8 @@ export function scatterSpec(
 const NEIGHBOURS_DATA = "nn";
 // Named dataset of the query marker (#100), replaced with view.change (no redraw)
 const QUERY_DATA = "query";
+// Opacity of a query marker placed among barely similar papers (heavy filters)
+const FAINT_OPACITY = 0.4;
 
 /**
  * Opacity for marks that describe the final layout: as given, or mid-motion (#82) hidden and
@@ -496,11 +498,28 @@ function queryLayers({ xScale, yScale, tween, transition }) {
     x: { field: "x", type: "quantitative", axis: null, scale: xScale },
     y: { field: "y", type: "quantitative", axis: null, scale: yScale },
   };
-  const layer = (filter, mark, encoding = {}) => ({
+  // Marks with `opacity: faded`: full, or FAINT_OPACITY when few similar papers are visible
+  // (datum.faint, lib/placeQuery.js); both fade in after a motion
+  const faded = Symbol("faded");
+  const fadedOpacity = {
+    condition: { test: "datum.faint", value: fade(FAINT_OPACITY) },
+    value: fade(1),
+  };
+  const layer = (filter, { opacity, ...mark }, encoding = {}) => ({
     data: { name: QUERY_DATA },
     transform: [{ filter }],
-    mark: { interactive: false, clip: true, ...mark },
-    encoding: { tooltip: null, ...position, ...encoding },
+    mark: {
+      interactive: false,
+      clip: true,
+      ...mark,
+      ...(opacity !== faded && opacity !== undefined && { opacity }),
+    },
+    encoding: {
+      tooltip: null,
+      ...position,
+      ...(opacity === faded && { opacity: fadedOpacity }),
+      ...encoding,
+    },
   });
   const primary = token("color-primary", "#903129");
   const background = token("color-background", "#fcf9f3");
@@ -513,7 +532,7 @@ function queryLayers({ xScale, yScale, tween, transition }) {
         fontSize: 12,
         fontWeight: 700,
         font: token("font-sans", "sans-serif"),
-        opacity: fade(1),
+        opacity: faded,
         ...mark,
       },
       { text: { field: "label" } },
@@ -532,7 +551,7 @@ function queryLayers({ xScale, yScale, tween, transition }) {
           strokeOpacity: 0.55,
           strokeWidth: 1,
           strokeDash: [3, 3],
-          opacity: fade(1),
+          opacity: faded,
         },
         { size: { field: "size", type: "quantitative", scale: null } },
       ),
@@ -551,7 +570,7 @@ function queryLayers({ xScale, yScale, tween, transition }) {
         fill: primary,
         stroke: background,
         strokeWidth: 2,
-        opacity: fade(1),
+        opacity: faded,
       }),
       label({
         fill: background,
@@ -586,10 +605,18 @@ export function queryRows(
         x: m.x,
         y: m.y,
         size: (2 * radius) ** 2,
+        faint: Boolean(m.faint),
       });
     for (const n of m.nearest)
       lines.push({ kind: "line", m: i, x: m.x, y: m.y, x2: n.x, y2: n.y });
-    marks.push({ kind: "marker", m: i, x: m.x, y: m.y, label: m.label });
+    marks.push({
+      kind: "marker",
+      m: i,
+      x: m.x,
+      y: m.y,
+      label: m.label,
+      faint: Boolean(m.faint),
+    });
   });
   return [...halos, ...lines, ...marks];
 }
@@ -600,7 +627,7 @@ export function queryTooltip(marker, { nearest = 3 } = {}) {
   const keys = ["Nearest", "2nd nearest", "3rd nearest"];
   return {
     [marker.label.replace(/^★\s*/, "")]: marker.text,
-    Position: `approximate (from its ${marker.nearest.length} most similar papers)`,
+    Position: `approximate (from its ${marker.nearest.length} most similar papers)${marker.faint ? " (few similar papers visible)" : ""}`,
     ...Object.fromEntries(
       marker.nearest
         .slice(0, Math.min(nearest, keys.length))

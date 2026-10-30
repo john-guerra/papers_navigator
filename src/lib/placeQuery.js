@@ -58,13 +58,49 @@ export function placeByNeighbours(
   return { x, y, spread: Math.sqrt(squared / total), neighbours: top };
 }
 
+/** How far below the program's best match the best visible one may be before the marker fades. */
+export const FAINT_GAP = 0.1;
+
+/** The highest similarity of `vector` to any of the first `n` rows of `matrix`. */
+function bestSimilarity(vector, matrix, n, dims) {
+  let best = -Infinity;
+  for (let i = 0; i < n; i++) {
+    let s = 0;
+    for (let d = 0, o = i * dims; d < dims; d++) s += vector[d] * matrix[o + d];
+    if (s > best) best = s;
+  }
+  return best;
+}
+
+/**
+ * One sentence per marker for screen readers (an aria-live region by the map): where the search
+ * or each abstract lands, by its nearest papers. "" without markers.
+ */
+export function queryAnnouncement(markers, { nearest = 3 } = {}) {
+  return markers
+    .map((m) => {
+      const who = m.label.replace(/^★\s*/, "");
+      const titles = m.nearest
+        .slice(0, nearest)
+        .map((d) => d.title)
+        .join("; ");
+      const note = m.faint ? ", few similar papers visible" : "";
+      return `${who} lands near: ${titles} (approximate${note}).`;
+    })
+    .join(" ");
+}
+
 /**
  * The markers for the map (#100): one for a search, one per abstract in My research (numbered
  * when there are several). `vectors` are the query embeddings (rows of `matrix` ↔ `papers`),
  * `shown` the papers on the map with their drawn coordinates, so the marker sits among the dots
  * on screen (inside their extent: an average of their positions) and follows filters, live and
- * aligned projections. Each marker: {label, text, x, y, spread, nearest: [{id, title, x, y,
- * similarity}]}. Everything stays in the browser.
+ * aligned projections. Each marker: {label, text, x, y, spread, faint, nearest: [{id, title, x,
+ * y, similarity}]}. Everything stays in the browser.
+ *
+ * `faint`: few similar papers are visible (heavy filters), so the marker sits among papers that
+ * barely match: the best visible similarity is under `weakCut` (the ranking's Weak cut), or more
+ * than `gap` below the best over the whole program. The map draws it faded and says so.
  */
 export function queryMarkers({
   vectors,
@@ -77,6 +113,8 @@ export function queryMarkers({
   dims = DIMS,
   x = "x",
   y = "y",
+  weakCut = -Infinity,
+  gap = FAINT_GAP,
 }) {
   if (!vectors?.length || !shown?.length) return [];
   const drawn = new Map(shown.map((d) => [d.id, d]));
@@ -90,6 +128,10 @@ export function queryMarkers({
     .map((vector, i) => {
       const place = placeByNeighbours(vector, matrix, positions, { k, dims });
       if (!place) return null;
+      const bestShown = place.neighbours[0].similarity;
+      const faint =
+        bestShown < weakCut ||
+        bestShown < bestSimilarity(vector, matrix, papers.length, dims) - gap;
       const label = research
         ? `★ My research${vectors.length > 1 ? ` ${i + 1}` : ""}`
         : "★ Your search";
@@ -104,6 +146,7 @@ export function queryMarkers({
         x: place.x,
         y: place.y,
         spread: place.spread,
+        faint,
         nearest: place.neighbours.map(({ index, similarity }) => ({
           id: papers[index].id,
           title: papers[index].title,

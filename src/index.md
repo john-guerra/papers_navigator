@@ -22,7 +22,7 @@ const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
-import { queryMarkers } from "./lib/placeQuery.js";
+import { queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
 import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
@@ -97,6 +97,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
   <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   <div class="map-stage">
   ${mapInput}
+  <p id="query-live" class="sr-only" aria-live="polite"></p>
   <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
   ${neighboursCard}
   </div>
@@ -642,7 +643,14 @@ const map = Generators.input(mapInput);
 ```js
 // "★ Your search" / "★ My research" (#100): placed among the papers on the map (drawn, aligned
 // coordinates) by their nearest neighbours in the embedding, all in the browser
-mapInput.placeQuery(queryMarkers({ vectors: rankingVectors, matrix: toMatrix(embeddingsBuffer, papers.length), papers, shown: positioned, query: query ?? "", research: researchMode }));
+// Faded when few similar papers are visible (best visible match under the Weak cut). Screen
+// readers hear where it lands from the aria-live line by the map (never in the URL).
+{
+  const markers = queryMarkers({ vectors: rankingVectors, matrix: toMatrix(embeddingsBuffer, papers.length), papers, shown: positioned, query: query ?? "", research: researchMode, weakCut: rankingVectors ? cutsFor(scored.map((d) => d.score)).weak : -Infinity });
+  mapInput.placeQuery(markers);
+  const live = document.getElementById("query-live");
+  if (live && live.textContent !== queryAnnouncement(markers)) live.textContent = queryAnnouncement(markers);
+}
 ```
 
 ```js

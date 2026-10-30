@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { placeByNeighbours, queryMarkers } from "../src/lib/placeQuery.js";
+import {
+  placeByNeighbours,
+  queryAnnouncement,
+  queryMarkers,
+} from "../src/lib/placeQuery.js";
 
 const DIMS = 3;
 const unit = (v) => {
@@ -217,5 +221,69 @@ describe("queryMarkers", () => {
         dims: DIMS,
       }),
     ).toEqual([]);
+  });
+
+  describe("faint: few similar papers visible", () => {
+    const query = unit([1, 0.02, 0.02]);
+    const run = (options) =>
+      queryMarkers({
+        vectors: [query],
+        matrix,
+        papers,
+        k: 3,
+        dims: DIMS,
+        shown,
+        ...options,
+      })[0];
+
+    it("not faint when the best matches are on the map", () => {
+      expect(run({}).faint).toBe(false);
+      expect(run({ weakCut: 0.2 }).faint).toBe(false);
+    });
+
+    it("faint when only dissimilar papers are visible (heavy filters)", () => {
+      // Only the e2 group (similarity ~0.3) is left: far below the program's best (~0.95)
+      expect(run({ shown: shown.slice(3) }).faint).toBe(true);
+    });
+
+    it("faint when the best visible match is under the Weak cut", () => {
+      expect(run({ weakCut: 0.99 }).faint).toBe(true);
+    });
+  });
+});
+
+describe("queryAnnouncement", () => {
+  it("is read from a visually hidden polite live region by the map", async () => {
+    const { readFileSync } = await import("node:fs");
+    const page = readFileSync(
+      new URL("../src/index.md", import.meta.url),
+      "utf8",
+    );
+    expect(page).toMatch(
+      /<p id="query-live" class="sr-only" aria-live="polite"><\/p>/,
+    );
+    expect(page).toMatch(/getElementById\("query-live"\)/);
+  });
+
+  const near = (titles) => titles.map((title) => ({ title }));
+  it("one sentence per marker, approximate, with its nearest papers", () => {
+    expect(
+      queryAnnouncement([
+        {
+          label: "★ Your search",
+          nearest: near(["FADEx", "MAPLE", "Split", "Other"]),
+          faint: false,
+        },
+      ]),
+    ).toBe("Your search lands near: FADEx; MAPLE; Split (approximate).");
+    expect(
+      queryAnnouncement([
+        { label: "★ My research 1", nearest: near(["A"]), faint: false },
+        { label: "★ My research 2", nearest: near(["B"]), faint: true },
+      ]),
+    ).toBe(
+      "My research 1 lands near: A (approximate). My research 2 lands near: B (approximate, few similar papers visible).",
+    );
+    expect(queryAnnouncement([])).toBe("");
   });
 });

@@ -61,6 +61,35 @@ describe("queryTooltip", () => {
       "2nd nearest": "Paper C (42%)",
     });
   });
+
+  it("says when few similar papers are visible", () => {
+    expect(queryTooltip({ ...marker, faint: true }).Position).toBe(
+      "approximate (from its 2 most similar papers) (few similar papers visible)",
+    );
+  });
+});
+
+describe("faint marker", () => {
+  it("rows carry `faint`, and the marker layers fade it", async () => {
+    const rows = queryRows([{ ...marker, faint: true }], { pixelsPerUnit: 10 });
+    expect(
+      rows.filter((r) => r.kind !== "line").every((r) => r.faint === true),
+    ).toBe(true);
+    const spec = scatterSpec(data, { width: 200, height: 200, query: true });
+    const diamond = spec.layer.find((l) => l.mark.shape === "diamond");
+    expect(diamond.encoding.opacity).toEqual({
+      condition: { test: "datum.faint", value: 0.4 },
+      value: 1,
+    });
+    expect(diamond.mark.opacity).toBeUndefined();
+  });
+
+  it("is drawn at lower opacity", async () => {
+    const widget = await build();
+    await widget.placeQuery([{ ...marker, faint: true }]);
+    const svg = widget.querySelector("svg").innerHTML;
+    expect(svg).toMatch(/opacity="0.4"/);
+  });
 });
 
 describe("scatterSpec with a query layer", () => {
