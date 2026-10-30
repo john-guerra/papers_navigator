@@ -35,6 +35,38 @@ export function similarityRange() {
   ];
 }
 
+/** The `n` most common values of `field` (ties alphabetical) — the categories that get a hue. */
+export function topCategories(data, field, n = 3) {
+  const counts = new Map();
+  for (const d of data)
+    if (d[field] != null) counts.set(d[field], (counts.get(d[field]) ?? 0) + 1);
+  return [...counts]
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+    .slice(0, n)
+    .map(([value]) => value);
+}
+
+const OTHER = "Other";
+
+function categoryRange() {
+  return [
+    token("color-viz-cat-1", "#2a78d6"),
+    token("color-viz-cat-2", "#eb6834"),
+    token("color-viz-cat-3", "#1baf7a"),
+    token("color-viz-cat-other", "#c9c3bb"),
+  ];
+}
+
+/**
+ * Vega-Lite spec for the map. DESIGN.md → Data Visualization:
+ * - quantitative color (similarity) uses the sequential ramp;
+ * - categorical color highlights at most 3 `categories` (pass them from the whole program so
+ *   filtering never repaints survivors; default: top 3 of `data`), everything else is Other;
+ * - points outside the brush are dimmed;
+ * - with `ringIds`, those papers get a ring (In My Papers) on a layer of their own, so it shows
+ *   regardless of color; the ids live in the `mine` param, so pages update them with
+ *   `view.signal("mine", ids)` without redrawing (which would lose the brush).
+ */
 export function scatterSpec(
   data,
   {
@@ -44,27 +76,46 @@ export function scatterSpec(
     color = null,
     colorTitle = color,
     colorType = "nominal",
-    // Quantitative (similarity) uses DESIGN.md's ramp unless a scheme is passed.
-    // Categorical colors (viz-cat-1..3 + viz-cat-other) are left to issue #10.
-    colorScheme = colorType === "quantitative" ? null : "tableau20",
+    colorScheme = null,
+    categories,
+    ringIds = null,
     size = null,
-    sizeRange = [10, 200],
+    sizeRange = [12, 80],
     tooltip = [id],
     width = "container",
     height = 500,
     title,
   } = {},
 ) {
-  return {
-    $schema: "https://vega.github.io/schema/vega-lite/v6.json",
-    width,
-    height,
-    title,
-    data: { values: data },
+  const categorical = color && colorType !== "quantitative";
+  const highlighted =
+    categorical && !colorScheme
+      ? (categories ?? topCategories(data, color)).slice(0, 3)
+      : null;
+  const values = highlighted
+    ? data.map((d) => ({
+        ...d,
+        __color: highlighted.includes(d[color]) ? d[color] : OTHER,
+      }))
+    : data;
+  const palette = categoryRange();
+  const colorScale = colorScheme
+    ? { scheme: colorScheme }
+    : highlighted
+      ? {
+          domain: [...highlighted, OTHER],
+          range: [...palette.slice(0, highlighted.length), palette[3]],
+        }
+      : { range: similarityRange() };
+
+  const position = {
+    x: { field: x, type: "quantitative", axis: null, scale: { zero: false } },
+    y: { field: y, type: "quantitative", axis: null, scale: { zero: false } },
+  };
+  const points = {
     mark: {
       type: "point",
       filled: true,
-      opacity: 0.6,
       color: token("color-viz-neutral", "#605954"),
     },
     params: [
@@ -72,17 +123,21 @@ export function scatterSpec(
       { name: "click", select: { type: "point", fields: [id], on: "click" } },
     ],
     encoding: {
-      x: { field: x, type: "quantitative", axis: null, scale: { zero: false } },
-      y: { field: y, type: "quantitative", axis: null, scale: { zero: false } },
+      ...position,
+      opacity: {
+        condition: { param: "drag", empty: true, value: 0.75 },
+        value: 0.12,
+      },
       ...(color && {
         color: {
-          field: color,
-          type: colorType,
+          field: highlighted ? "__color" : color,
+          type: highlighted ? "nominal" : colorType,
           title: colorTitle,
-          scale: colorScheme
-            ? { scheme: colorScheme }
-            : { range: similarityRange() },
-          legend: { orient: "bottom", columns: colorType === "quantitative" ? undefined : 4 },
+          scale: colorScale,
+          legend: {
+            orient: "bottom",
+            columns: colorType === "quantitative" ? undefined : 4,
+          },
         },
       }),
       ...(size && {
@@ -95,6 +150,28 @@ export function scatterSpec(
       }),
       tooltip: tooltip.map((field) => ({ field })),
     },
+  };
+  const rings = ringIds && {
+    transform: [{ filter: `indexof(mine, datum.${id}) >= 0` }],
+    mark: {
+      type: "point",
+      filled: false,
+      size: 110,
+      strokeWidth: 1.5,
+      color: token("color-viz-followed-ring", "#241e1a"),
+    },
+    encoding: { ...position, tooltip: tooltip.map((field) => ({ field })) },
+  };
+
+  return {
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json",
+    width,
+    height,
+    title,
+    data: { values },
+    ...(rings
+      ? { params: [{ name: "mine", value: ringIds }], layer: [points, rings] }
+      : points),
     // Transparent so the page's paper shows through (Vega defaults to white)
     // and the title/legend take the page's ink and sans font (both themes).
     config: {

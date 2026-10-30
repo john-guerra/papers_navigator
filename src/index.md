@@ -10,7 +10,8 @@ import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
 import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
 import { facetStrip } from "./widgets/facetStrip.js";
-import { BrushableScatterPlot } from "./widgets/brushableScatterPlot.js";
+import { BrushableScatterPlot, topCategories } from "./widgets/brushableScatterPlot.js";
+import { bindMyPapersBadge } from "./components/badge.js";
 import { BrushableHistogram } from "./widgets/brushableHistogram.js";
 import { PapersList } from "./widgets/papersList.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
@@ -33,6 +34,7 @@ const embeddingsBuffer = FileAttachment("data/embeddings.bin").arrayBuffer();
 const tz = conference.timezone;
 const store = createFollowedStore(conference.id);
 const followed = Generators.input(store);
+invalidation.then(bindMyPapersBadge(store));
 const typeLabels = typeNames(papers, conference.typeNames);
 ```
 
@@ -47,7 +49,7 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${chipsRow}
   <div class="map-controls">${liveSearchInput}</div>
   ${mapInput}
-  <div class="map-controls">${colorByInput}${sizeByInput}</div>
+  <div class="map-controls">${colorByInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
   ${scoreRangeInput ?? ""}
   <details class="navio-summary">
     <summary>Summary of the current selection (navio)</summary>
@@ -215,8 +217,6 @@ const colorByInput = Inputs.select(new Map([["Similarity", "score"], ["Type", "t
   label: "Color by",
 });
 const colorBy = Generators.input(colorByInput);
-const sizeByInput = Inputs.select(new Map([["Similarity", "score"], ["None", null]]), { label: "Size by" });
-const sizeBy = Generators.input(sizeByInput);
 ```
 
 ```js
@@ -239,13 +239,23 @@ const mapInput = await BrushableScatterPlot(positioned, {
   color: colorField,
   colorType: colorBy === "score" && hasQuery ? "quantitative" : "nominal",
   colorTitle: colorTitles[colorField],
-  size: hasQuery ? sizeBy : null,
+  // Size only echoes similarity, subtly (DESIGN.md: never a second variable)
+  size: hasQuery ? "score" : null,
+  // Hues for the 3 largest categories of the whole program, so filtering never repaints them
+  categories: colorField && colorField !== "score" ? topCategories(papers, colorField) : undefined,
+  // Read once (not reactive); later changes go through the "mine" signal below
+  ringIds: store.value.map((d) => d.id),
   tooltip: ["title", "authorNames", "typeLabel", "sessionName", "score"],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to “${query}”` : ""}`,
 });
 const map = Generators.input(mapInput);
+```
+
+```js
+// Rings follow My Papers live without redrawing the map (a redraw would drop the brush)
+mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 ```
 
 ```js

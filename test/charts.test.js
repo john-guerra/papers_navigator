@@ -61,7 +61,8 @@ describe("scatterSpec", () => {
     });
     expect(spec.params.map((p) => p.name)).toEqual(["drag", "click"]);
     expect(spec.encoding.x.axis).toBeNull();
-    expect(spec.encoding.color.field).toBe("type");
+    // categorical color goes through the 3 + Other mapping (DESIGN.md)
+    expect(spec.encoding.color.field).toBe("__color");
     expect(spec.encoding.size.field).toBe("score");
   });
 });
@@ -102,10 +103,11 @@ describe("scatterSpec color scales", () => {
     expect(spec.mark.color).toBe("#605954");
   });
 
-  it("keeps a categorical scale by default", () => {
+  it("uses the viz-cat tokens (not a library scheme) for categories", () => {
     const spec = scatterSpec(data, { color: "type" });
     expect(spec.encoding.color.type).toBe("nominal");
-    expect(spec.encoding.color.scale.scheme).toBe("tableau20");
+    expect(spec.encoding.color.scale.scheme).toBeUndefined();
+    expect(spec.encoding.color.scale.domain.at(-1)).toBe("Other");
   });
 });
 
@@ -167,5 +169,59 @@ describe("selectionFromChart", () => {
   it("clears clicked when the click selection is empty", async () => {
     const { selectionFromChart } = await import("../src/widgets/brushableScatterPlot.js");
     expect(selectionFromChart({ drag: null, click: null }, data).clicked).toEqual([]);
+  });
+});
+
+describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories", () => {
+  it("adds a ring layer driven by a `mine` id list, so it can update without a redraw", async () => {
+    const { scatterSpec } = await import("../src/widgets/brushableScatterPlot.js");
+    const spec = scatterSpec(data, { color: "type", ringIds: ["b"] });
+    expect(spec.params).toEqual([{ name: "mine", value: ["b"] }]);
+    expect(spec.layer).toHaveLength(2);
+    const [points, rings] = spec.layer;
+    expect(points.params.map((p) => p.name)).toEqual(["drag", "click"]);
+    expect(rings.mark).toMatchObject({ type: "point", filled: false });
+    expect(rings.transform).toEqual([{ filter: "indexof(mine, datum.id) >= 0" }]);
+    expect(rings.encoding.color).toBeUndefined();
+  });
+
+  it("updates the rings through the mine signal", async () => {
+    const widget = await BrushableScatterPlot(data, { renderer: "svg", ringIds: [] });
+    await widget.view.signal("mine", ["a", "c"]).runAsync();
+    expect(widget.view.signal("mine")).toEqual(["a", "c"]);
+  });
+
+  it("dims points outside the brush and keeps all points bright without one", async () => {
+    const { scatterSpec } = await import("../src/widgets/brushableScatterPlot.js");
+    const opacity = scatterSpec(data).encoding.opacity;
+    expect(opacity.condition).toMatchObject({ param: "drag", empty: true });
+    expect(opacity.condition.value).toBeGreaterThan(opacity.value);
+  });
+
+  it("colors only the given categories and groups the rest as Other", async () => {
+    const { scatterSpec } = await import("../src/widgets/brushableScatterPlot.js");
+    const rows = [{ type: "a" }, { type: "b" }, { type: "c" }, { type: "d" }];
+    const spec = scatterSpec(rows, { color: "type", categories: ["b", "c", "a"] });
+    expect(spec.data.values.map((d) => d.__color)).toEqual(["a", "b", "c", "Other"]);
+    expect(spec.encoding.color.field).toBe("__color");
+    expect(spec.encoding.color.scale.domain).toEqual(["b", "c", "a", "Other"]);
+    expect(spec.encoding.color.scale.range).toHaveLength(4);
+  });
+});
+
+describe("topCategories", () => {
+  it("returns the n most common values", async () => {
+    const { topCategories } = await import("../src/widgets/brushableScatterPlot.js");
+    const rows = ["x", "y", "y", "z", "z", "z", "w"].map((type) => ({ type }));
+    // ties (w, x both 1) break alphabetically
+    expect(topCategories(rows, "type", 3)).toEqual(["z", "y", "w"]);
+  });
+});
+
+describe("BrushableScatterPlot with rings", () => {
+  it("still brushes when the spec is layered", async () => {
+    const widget = await BrushableScatterPlot(data, { renderer: "svg", ringIds: ["a"] });
+    await widget.view.signal("drag_x", [1, 11]).signal("drag_y", [1, 11]).runAsync();
+    expect(widget.value.brushed.map((d) => d.id)).toEqual(["b", "c"]);
   });
 });

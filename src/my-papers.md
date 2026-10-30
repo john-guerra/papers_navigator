@@ -11,6 +11,7 @@ import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
 import { decodeShareHash, resolveShortIds, shareUrl } from "./lib/share.js";
 import { renderShareBanner, renderShareDialog } from "./components/shareDialog.js";
+import { bindMyPapersBadge } from "./components/badge.js";
 ```
 
 ```js
@@ -22,6 +23,7 @@ const papers = FileAttachment("data/papers.json").json();
 const tz = conference.timezone;
 const store = createFollowedStore(conference.id);
 const followed = Generators.input(store);
+invalidation.then(bindMyPapersBadge(store));
 // Debug: ?now=2026-11-10T15:14:00Z pretends it is that moment (and freezes the clock)
 const nowParam = new URLSearchParams(location.search).get("now");
 // Survives re-renders: selected day and open slots of the itinerary
