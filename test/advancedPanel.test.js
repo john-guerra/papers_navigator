@@ -98,3 +98,47 @@ describe("advancedPanel value identity", () => {
     expect(link.closest("p").textContent).toContain("LGPL-3.0");
   });
 });
+
+describe("advancedPanel quality (#83)", () => {
+  it("adds steadiness and cohesiveness and exposes per-point scores", async () => {
+    const panel = make();
+    document.body.append(panel);
+    const onQuality = vi.fn();
+    panel.addEventListener("quality", onQuality);
+    expect(
+      [...panel.querySelectorAll("thead th")].map(
+        (th) => th.title || th.textContent,
+      ),
+    ).toEqual([
+      "Projection",
+      "Trustworthiness",
+      "Continuity",
+      "Steadiness",
+      "Cohesiveness",
+    ]);
+    await vi.waitFor(() =>
+      expect(
+        [...panel.querySelectorAll("tbody td")].map((td) => td.textContent),
+      ).not.toContain("…"),
+    );
+    expect(onQuality).toHaveBeenCalled();
+    for (const metric of [
+      "trustworthiness",
+      "continuity",
+      "steadiness",
+      "cohesiveness",
+    ]) {
+      const local = panel.localScores("umap", metric);
+      expect(local.k).toBe(10);
+      expect(local.localScores).toHaveLength(papers.length);
+    }
+    expect(panel.localScores("tsne")).toBeUndefined();
+    expect(panel.textContent).toContain("seed 42");
+    panel.remove();
+  });
+
+  it("credits zadu-js and its license", () => {
+    const link = make().querySelector('a[href*="zadu-js"]');
+    expect(link.closest("p").textContent).toContain("MIT");
+  });
+});
