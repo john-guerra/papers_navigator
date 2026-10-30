@@ -16,16 +16,19 @@ export function renderPaperDetail(
   paper,
   { tz, related = [], inMyPapers, onToggle, onOpen, onClose },
 ) {
-  const toggle = (p) => {
+  const toggles = [];
+  const sync = (button, p) => {
     const on = inMyPapers(p.id);
-    const button = html`<button
-      class="follow-toggle"
-      aria-pressed=${String(on)}
-    >
-      <span class="ring" aria-hidden="true"></span
-      >${on ? "In My Papers" : "Add to My Papers"}
+    button.setAttribute("aria-pressed", String(on));
+    button.lastChild.textContent = on ? "In My Papers" : "Add to My Papers";
+  };
+  const toggle = (p) => {
+    const button = html`<button class="follow-toggle">
+      <span class="ring" aria-hidden="true"></span><span></span>
     </button>`;
     button.onclick = () => onToggle(p);
+    sync(button, p);
+    toggles.push([button, p]);
     return button;
   };
   const close = html`<button
@@ -46,7 +49,7 @@ export function renderPaperDetail(
   ]
     .filter(Boolean)
     .join(" · ");
-  return html`<aside
+  const el = html`<aside
     class="paper-detail"
     role="dialog"
     aria-label=${`Details: ${paper.title}`}
@@ -85,4 +88,7 @@ export function renderPaperDetail(
         : ""
     }
   </aside>`;
+  // Refresh the My Papers toggles in place (keeps the panel's scroll and focus)
+  el.update = () => toggles.forEach(([button, p]) => sync(button, p));
+  return el;
 }

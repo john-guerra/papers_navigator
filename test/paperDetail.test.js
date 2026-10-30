@@ -85,3 +85,31 @@ describe("renderPaperDetail", () => {
     el.remove();
   });
 });
+
+describe("renderPaperDetail update (#66 review)", () => {
+  it("updates its toggles in place, so the panel keeps its scroll and node", () => {
+    const mine = new Set();
+    const el = renderPaperDetail(
+      { id: "a", title: "A" },
+      {
+        tz: "US/Eastern",
+        related: [{ id: "b", title: "B", score: 0.5 }],
+        inMyPapers: (id) => mine.has(id),
+        onToggle() {},
+        onOpen() {},
+        onClose() {},
+      },
+    );
+    const toggles = () =>
+      [...el.querySelectorAll(".follow-toggle")].map((b) =>
+        b.getAttribute("aria-pressed"),
+      );
+    expect(toggles()).toEqual(["false", "false"]);
+    mine.add("b");
+    el.update();
+    expect(toggles()).toEqual(["false", "true"]);
+    expect(el.querySelectorAll(".follow-toggle")[1].textContent).toContain(
+      "In My Papers",
+    );
+  });
+});
