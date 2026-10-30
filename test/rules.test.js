@@ -524,3 +524,17 @@ describe("weak research topics", () => {
     ).toBe("weak");
   });
 });
+
+describe("clamped research topic thresholds", () => {
+  it("drops cached matches below the clamped threshold", () => {
+    const rule = normalizeRule({
+      type: "topic",
+      value: "x",
+      level: "weak",
+      threshold: 0.05,
+      matches: { a: 0.3, b: 0.07 },
+    });
+    expect(rule.threshold).toBe(MIN_TOPIC_THRESHOLD);
+    expect(Object.keys(rule.matches)).toEqual(["a"]);
+  });
+});

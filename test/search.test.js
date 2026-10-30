@@ -83,3 +83,13 @@ describe("Weak relevance level", () => {
     });
   });
 });
+
+describe("Weak never above Good", () => {
+  it("holds when the fallback Good cut is negative", () => {
+    const cuts = relevanceCuts([
+      0.1, 0.05, 0, -0.01, -0.02, -0.03, -0.04, -0.05, -0.06, -0.07, -0.08,
+    ]);
+    expect(cuts.good).toBeLessThan(0);
+    expect(cuts.weak).toBeLessThanOrEqual(cuts.good);
+  });
+});

@@ -105,7 +105,9 @@ function topicFields(rule) {
           id.length > 0 &&
           id.length <= 64 &&
           typeof score === "number" &&
-          Number.isFinite(score),
+          Number.isFinite(score) &&
+          // a clamped threshold drops cached matches below it
+          score >= fields.threshold,
       );
     fields.matches = Object.fromEntries(entries);
   }
