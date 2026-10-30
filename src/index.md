@@ -9,6 +9,7 @@ import { createMyPapers, createRulesStore, matches } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
 import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
 import { renderPaperDetail } from "./components/paperDetail.js";
+import { followToggles } from "./components/followToggles.js";
 const scoreRampDomain = (papers) => {
   const scores = papers.map((d) => d.score).filter((s) => s != null);
   return scores.length ? [relevanceCuts(scores).good, Math.max(...scores)] : null;
@@ -475,6 +476,19 @@ const ordered = hasQuery ? selected : [...selected].sort((a, b) => d3.ascending(
 // Keep "Show more" expansion while only My Papers changes; reset it when the matches change
 const listKey = ordered.map((p) => p.id).join();
 if (listKey !== listState.key) Object.assign(listState, { key: listKey, shown: 100 });
+// reads the store, not `followed`, so adding/removing doesn't rebuild the list (see the next cell)
+const listToggles = followToggles({
+  inMyPapers: (id) => store.value.some((d) => d.id === id),
+  onToggle: (p) => {
+    if (store.value.some((d) => d.id === p.id)) {
+      const undo = store.remove([p.id]);
+      showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
+    } else {
+      const undo = addWithUndo(store, [p], hasQuery ? `★ ${query}` : "★ Added by hand");
+      showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
+    }
+  },
+});
 const papersList = PapersList(ordered, {
   max: 100,
   shown: listState.shown,
@@ -483,24 +497,17 @@ const papersList = PapersList(ordered, {
   header: "",
   preamble: (p) => (p.score != null ? `🔍 ${(p.score * 100).toFixed(1)}%` : ""),
   actions: (p) => {
-    const entry = followed.find((d) => d.id === p.id);
-    const toggle = html`<button class="follow-toggle" aria-pressed=${entry ? "true" : "false"}
-      title=${entry ? "In My Papers — remove" : "Add to My Papers"}>
-      <span class="ring" aria-hidden="true"></span>${entry ? "In My Papers" : "Add to My Papers"}</button>`;
-    toggle.onclick = () => {
-      if (entry) {
-        const undo = store.remove([p.id]);
-        showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
-      } else {
-        const undo = addWithUndo(store, [p], hasQuery ? `★ ${query}` : "★ Added by hand");
-        showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
-      }
-    };
     const details = html`<button class="btn-text paper-details-open">Details</button>`;
     details.onclick = () => openPaper(p.shortId ?? p.id);
-    return html`<span class="paper-actions">${toggle}${details}</span>`;
+    return html`<span class="paper-actions">${listToggles.toggle(p)}${details}</span>`;
   },
 });
+papersList.update = listToggles.update;
+```
+
+```js
+followed;
+papersList.update();
 ```
 
 ```js
