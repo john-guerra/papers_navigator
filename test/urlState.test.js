@@ -69,6 +69,48 @@ describe("encodeExploreState", () => {
     ).toBe("q=");
   });
 
+  it("after Clear all (empty search, Main tracks, no region) leaves only q=", () => {
+    const cleared = {
+      ...fresh(),
+      query: "",
+      facets: { ...fresh().facets, types: [...defaults.types] },
+      region: null,
+    };
+    expect(encodeExploreState(cleared, defaults).toString()).toBe("q=");
+  });
+
+  it("never writes more than MAX_HASH: drops the region first, then facet values, and warns", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const authors = Array.from(
+      { length: 50 },
+      (_, i) => `${i} ${"x".repeat(150)}`,
+    );
+    const state = {
+      ...fresh(),
+      query: "LLM",
+      facets: { ...fresh().facets, authors },
+      region: { projection: "umap", x: [0, 1], y: [0, 1] },
+    };
+    const params = encodeExploreState(state, defaults);
+    expect(params.toString().length).toBeLessThanOrEqual(MAX_HASH);
+    expect(params.has("region")).toBe(false);
+    expect(params.get("q")).toBe("LLM");
+    expect(params.getAll("author").length).toBeGreaterThan(0);
+    expect(params.getAll("author")).toEqual(
+      authors.slice(0, params.getAll("author").length),
+    );
+    expect(warn).toHaveBeenCalledOnce();
+    // Short enough: the region stays, no warning
+    warn.mockClear();
+    const small = encodeExploreState(
+      { ...state, facets: fresh().facets },
+      defaults,
+    );
+    expect(small.has("region")).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("writes an empty type when all types are shown", () => {
     const state = { ...fresh(), facets: { ...fresh().facets, types: [] } };
     expect(encodeExploreState(state, defaults).toString()).toBe("type=");

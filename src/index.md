@@ -711,14 +711,14 @@ const chips = [
   },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
 ].filter(Boolean);
-// Clear all = back to the view a fresh visit opens with (the default search, no region), so the
-// URL fragment is clean again (#104)
+// Clear all empties the search (like its chip's ✕; the default search is for first visits only)
+// and the map region; the facet strip's Clear all goes back to Main tracks. URL: just "q=" (#104)
 const chipsRow = renderChips(chips, {
   onClearAll:
     chips.length > 1
       ? () => {
           leaveResearch();
-          setQuery(conference.defaultQuery ?? "");
+          clearQuery();
           resetMap();
         }
       : null,

@@ -16,7 +16,7 @@ export const STORAGE_ITEMS = [
   },
   {
     key: "papersNavigator:<id>:rules",
-    what: "Your watches (people, institutions, research topics) and their cached matches",
+    what: "Your watches (researchers, institutions, research topics) and their cached matches",
   },
   {
     key: "papersNavigator:<id>:research",

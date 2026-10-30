@@ -138,7 +138,7 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 ### Filter the program
 
 - The facet buttons under the search narrow the matching papers: **Type** (main tracks by default), **Author**, **Institution**, **Keyword**, **Topic** and **Session**. Each opens a list with counts among the matching papers and a search box.
-- An active facet shows its value on the button; its ✕ clears it. **Clear all** goes back to the view the page opens with (the example search, Main tracks, no map region).
+- An active facet shows its value on the button; its ✕ clears it. **Clear all** empties the search and the map region; in the filters it goes back to Main tracks.
 - Constraints that aren't facets (your search, a map region) appear as chips with a ✕.
 - On a phone the facets fold into one **Filters (n)** button.
 - **Share a view:** your search, relevance, filters, map region and map options are kept in the page address, so a reload brings you back to the same view. Copy the address from your browser to send someone exactly what you see. (Your abstracts from My research are never in it. A link with a search pauses My research on the device that opens it; the message offers **Resume**.)

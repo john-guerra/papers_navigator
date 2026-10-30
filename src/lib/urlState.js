@@ -92,7 +92,28 @@ export function encodeExploreState(state, defaults = {}) {
   const { region } = state;
   if (projectionEncodable && region?.projection === state.projection)
     params.set("region", [...region.x, ...region.y].map(round).join(","));
-  return params;
+  return capParams(params);
+}
+
+/**
+ * Keeps a written fragment under `max` (what cleanHash accepts at load, so a reload never drops
+ * the whole view): drops the region first, then facet values from the last one, with a warning.
+ */
+function capParams(params, max = MAX_HASH) {
+  if (params.toString().length <= max) return params;
+  console.warn(
+    `The view is too long for the URL (over ${max} characters): shortening it`,
+  );
+  params.delete("region");
+  const facetKeys = Object.values(FACET_KEYS);
+  const entries = [...params];
+  let length = params.toString().length;
+  for (let i = entries.length - 1; i >= 0 && length > max; i--) {
+    if (!facetKeys.includes(entries[i][0])) continue;
+    entries.splice(i, 1);
+    length = new URLSearchParams(entries).toString().length;
+  }
+  return new URLSearchParams(entries);
 }
 
 /**

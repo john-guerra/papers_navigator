@@ -83,7 +83,7 @@ export function renderPaperDetail(
   const el = html`<aside
     class="paper-detail"
     role="dialog"
-    aria-label=${`Details: ${paper.title}`}
+    aria-label=${`Paper: ${paper.title}`}
   >
     <div class="paper-detail-header">
       ${close}
