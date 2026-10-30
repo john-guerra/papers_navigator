@@ -24,6 +24,63 @@ function cellArea(cell) {
   return Math.abs(area) / 2;
 }
 
+/** Centroid of a Voronoi cell (a closed polygon). */
+function centroid(cell) {
+  let a = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0, n = cell.length; i < n; i++) {
+    const [x0, y0] = cell[i];
+    const [x1, y1] = cell[(i + 1) % n];
+    const f = x0 * y1 - x1 * y0;
+    a += f;
+    cx += (x0 + x1) * f;
+    cy += (y0 + y1) * f;
+  }
+  return a ? [cx / (3 * a), cy / (3 * a)] : cell[0];
+}
+
+/**
+ * Nudged places for a label of `width` px around its point (px, py): above, below, right and
+ * left, farther each round. {lx, ly, anchor, dy, box}: where the text is anchored and how.
+ */
+export function nudgedPlacements(
+  px,
+  py,
+  width,
+  fontSize,
+  steps = [12, 26, 40],
+) {
+  const height = fontSize * 1.2;
+  const sides = [
+    [0, -1, "middle", "bottom", null],
+    [0, 1, "middle", "top", "0.71em"],
+    [1, 0, "start", "middle", "0.35em"],
+    [-1, 0, "end", "middle", "0.35em"],
+  ];
+  return steps.flatMap((step) =>
+    sides.map(([sx, sy, anchor, baseline, dy]) => {
+      const lx = px + sx * step;
+      const ly = py + sy * step;
+      return {
+        lx,
+        ly,
+        anchor,
+        dy,
+        box: textBox({
+          x: lx,
+          y: ly,
+          width,
+          height,
+          anchor,
+          baseline,
+          margin: 1,
+        }),
+      };
+    }),
+  );
+}
+
 /**
  * The boxes of the map's legends in canvas pixels (the overlay's frame), from Vega's scenegraph:
  * item bounds are in their group's frame, so group offsets add up on the way down.
@@ -56,10 +113,12 @@ export function legendBoxes(view) {
  * tooltip, #89, already shows the label first), so the pointer costs nothing here.
  *
  * Positions come from the view's scales and origin, like pointAt. Labels are drawn only for papers
- * in color (`labelFilter`), next to their point on the side with the most room, and then kept in
- * priority order (`chooseLabels`): the pinned paper, `emphasis` ids (top matches, the query's
- * nearest paper), then by room, never over `obstacles(toPixel)` (topic labels, the query marker,
- * the legend) or each other, at most `labelBudget` of the space-based ones.
+ * in color (`labelFilter`), toward the center of their Voronoi cell (at most `reach` px away) with a
+ * thin leader line to the point when apart, then kept in priority order (`chooseLabels`): the
+ * pinned paper (always, nudged if it must be), `emphasis` ids (top matches, the query's nearest
+ * paper), then by room, never over `obstacles(toPixel)` (topic labels, the query marker, the
+ * legend) or each other, at most `labelBudget` minus `reserved()` (other text on the map, e.g.
+ * neighbour percentages) of the space-based ones. Leader lines are masked out of the obstacles.
  *
  * Returns a controller: `update({enabled, emphasis})`, `schedule()` (debounced redraw), `render()`,
  * `clear()`, `shown()` (the ids drawn) and `svg`.
@@ -81,11 +140,14 @@ export function attachPaperLabels(
     pinned = () => null,
     focusIds = () => null,
     obstacles = () => [],
+    reserved = () => 0,
     font = "sans-serif",
     fontSize = 10,
-    fill = "#241e1a",
+    fill = "#605954",
     halo = "#fcf9f3",
+    leader = "#605954",
     threshold = 1200,
+    reach = 30,
     delay = 120,
   },
 ) {
@@ -114,27 +176,38 @@ export function attachPaperLabels(
     shown = new Set();
     svg.replaceChildren();
   };
+  let maskCount = 0;
 
-  /** Lays the overlay over the Vega surface; false while the map isn't on the page yet. */
+  /**
+   * Lays the overlay over the Vega surface, sized from the surface's own box (Vega's padding
+   * isn't symmetric); [width, height] in px, or null while the map isn't on the page yet.
+   */
   const place = () => {
     const surface = target.querySelector(".marks");
-    if (!surface || !target.isConnected) return false;
+    if (!surface || !target.isConnected) return null;
     const parent = surface.parentElement;
     if (getComputedStyle(parent).position === "static")
       parent.style.position = "relative";
     if (svg.parentElement !== parent) parent.append(svg);
     svg.style.left = `${surface.offsetLeft}px`;
     svg.style.top = `${surface.offsetTop}px`;
+    // jsdom has no layout: the plot plus its origin on both sides
     const [ox, oy] = view.origin();
-    svg.setAttribute("width", String(view.width() + 2 * ox));
-    svg.setAttribute("height", String(view.height() + 2 * oy));
-    return true;
+    const w = surface.clientWidth || view.width() + 2 * ox;
+    const h = surface.clientHeight || view.height() + 2 * oy;
+    svg.setAttribute("width", String(w));
+    svg.setAttribute("height", String(h));
+    return [w, h];
   };
 
   const render = () => {
     timer = null;
-    if (!state.enabled || moving()) return clear();
-    if (!place()) {
+    // Always from scratch: smart-labels reuses existing <text> nodes and keeps their old
+    // x/y/dy, which shifted labels by their previous orientation
+    clear();
+    if (!state.enabled || moving()) return;
+    const size = place();
+    if (!size) {
       // Framework shows the map after the cell returns: try again for about a second
       if (retries++ < 60)
         (globalThis.requestAnimationFrame ?? ((f) => setTimeout(f, 16)))(
@@ -143,6 +216,7 @@ export function attachPaperLabels(
       return;
     }
     retries = 0;
+    const [w, h] = size;
     const allowed = labelFilter({
       brush: brush(),
       levelCut: levelCut(),
@@ -166,9 +240,6 @@ export function attachPaperLabels(
     // space counts as room, and a brushed or filtered few get labels where they now stand out.
     // smart-labels clips the cells to its points' extent: the canvas corners (never labelled)
     // keep the cells of points near the edge as big as their room on screen.
-    const [ox, oy] = view.origin();
-    const w = view.width() + 2 * ox;
-    const h = view.height() + 2 * oy;
     const items = [
       ...rows.filter(allowed).map((d) => {
         const [px, py] = toPixel([d[x], d[y]]);
@@ -181,7 +252,9 @@ export function attachPaperLabels(
         [w, h],
       ].map(([px, py]) => ({ d: {}, px, py, ok: false })),
     ];
-    if (!items.some((o) => o.ok)) return clear();
+    if (!items.some((o) => o.ok)) return;
+    // Labels toward their Voronoi cell's center (where the room is), joined to their point by
+    // smart-labels' anchor line: the leader line
     const result = smartLabels(items, {
       target: svg,
       x: (o) => o.px,
@@ -195,48 +268,125 @@ export function attachPaperLabels(
       strokeWidth: 3,
       hover: false,
       useOcclusion: false,
-      labelsInCentroids: false,
+      labelsInCentroids: true,
+      anchorsStroke: leader,
       backgroundFill: "none",
       showLabel: (o, cell) =>
         o.ok && (always.has(o.d[id]) || cellArea(cell) > threshold),
     });
     // Rounded joins on the halo, like the topic labels
     svg.querySelector("g.labels")?.setAttribute("stroke-linejoin", "round");
+    const anchorGroup = svg.querySelector("g#anchors");
+    anchorGroup?.setAttribute("stroke-width", "0.75");
+    anchorGroup?.setAttribute("stroke-opacity", "0.7");
     const texts = svg.querySelectorAll("g.labels > text");
+    const lines = svg.querySelectorAll("g#anchors > path.anchor");
     const candidates = [];
     result.cells.forEach(({ d: o, cell, show }, i) => {
       const text = texts[i];
-      if (!show || !text) return;
+      if (!show || !text || !cell) return;
       const key = o.d[id];
-      const dy = text.getAttribute("dy");
+      // A big cell's center can be far away: keep the label within `reach` px of its point
+      const [cx, cy] = centroid(cell);
+      const far = Math.hypot(cx - o.px, cy - o.py);
+      const k = far > reach ? reach / far : 1;
+      const lx = o.px + (cx - o.px) * k;
+      const ly = o.py + (cy - o.py) * k;
       const width =
         text.getComputedTextLength?.() || estimateWidth(o.d[label], fontSize);
-      candidates.push({
-        key,
-        text,
-        always: always.has(key),
-        rank: always.has(key) ? always.get(key) : -cellArea(cell),
+      const dy = text.getAttribute("dy");
+      const primary = {
+        lx,
+        ly,
         box: textBox({
-          x: o.px + Number(text.getAttribute("x") ?? 0),
-          y: o.py + Number(text.getAttribute("y") ?? 0),
+          x: lx + Number(text.getAttribute("x") ?? 0),
+          y: ly + Number(text.getAttribute("y") ?? 0),
           width,
           height: fontSize * 1.2,
           anchor: text.getAttribute("text-anchor") ?? "middle",
           baseline: dy === "0.71em" ? "top" : dy ? "middle" : "bottom",
           margin: 1,
         }),
+      };
+      // The pinned paper always gets its label: nudged around its point if it must be
+      const nudges =
+        key === focus ? nudgedPlacements(o.px, o.py, width, fontSize) : [];
+      candidates.push({
+        key,
+        text,
+        line: lines[i],
+        point: [o.px, o.py],
+        placements: [primary, ...nudges],
+        always: always.has(key),
+        force: key === focus,
+        rank: always.has(key) ? always.get(key) : -cellArea(cell),
+        box: primary.box,
+        alternatives: nudges.map((n) => n.box),
       });
     });
     const blocked = obstacles(toPixel);
     stats = { candidates: candidates.length, obstacles: blocked.length };
-    shown = chooseLabels(candidates, {
+    const kept = chooseLabels(candidates, {
       obstacles: blocked,
-      // The Vega canvas (plot plus its padding): the overlay doesn't clip, the page would
+      // The Vega canvas: the overlay doesn't clip, the page would
       bounds: [0, 0, w, h],
-      max: labelBudget(view.width(), view.height()),
+      max: Math.max(0, labelBudget(view.width(), view.height()) - reserved()),
     });
-    for (const c of candidates)
-      if (!shown.has(c.key)) c.text.setAttribute("display", "none");
+    shown = new Set(kept.keys());
+    for (const c of candidates) {
+      if (!kept.has(c.key)) {
+        c.text.setAttribute("display", "none");
+        c.line?.setAttribute("display", "none");
+        continue;
+      }
+      const spot = c.placements[kept.get(c.key)];
+      if (spot.anchor) {
+        // A nudge: anchor the text itself at the nudged point
+        c.text.setAttribute("text-anchor", spot.anchor);
+        c.text.removeAttribute("x");
+        c.text.removeAttribute("y");
+        if (spot.dy) c.text.setAttribute("dy", spot.dy);
+        else c.text.removeAttribute("dy");
+      }
+      c.text.setAttribute("transform", `translate(${spot.lx}, ${spot.ly})`);
+      // The leader line, only when the label sits apart from its point; it stops short of the dot
+      if (!c.line) continue;
+      const [px, py] = c.point;
+      const apart = Math.hypot(spot.lx - px, spot.ly - py);
+      if (apart < 10) c.line.setAttribute("display", "none");
+      else {
+        const t = 3 / apart;
+        c.line.setAttribute(
+          "d",
+          `M${spot.lx},${spot.ly}L${px + (spot.lx - px) * t},${py + (spot.ly - py) * t}`,
+        );
+      }
+    }
+    // Leader lines pass under the topic labels, the query marker and the legend: the overlay sits
+    // above the canvas, so a mask keeps them out of those boxes
+    if (anchorGroup && blocked.length) {
+      const maskId = `paper-labels-mask-${(maskCount += 1)}`;
+      const defs = document.createElementNS(SVG, "defs");
+      const mask = document.createElementNS(SVG, "mask");
+      mask.setAttribute("id", maskId);
+      mask.setAttribute("maskUnits", "userSpaceOnUse");
+      const rect = (box, color) => {
+        const r = document.createElementNS(SVG, "rect");
+        r.setAttribute("x", String(box[0]));
+        r.setAttribute("y", String(box[1]));
+        r.setAttribute("width", String(box[2] - box[0]));
+        r.setAttribute("height", String(box[3] - box[1]));
+        r.setAttribute("fill", color);
+        return r;
+      };
+      mask.append(
+        rect([-w, -h, 3 * w, 3 * h], "white"),
+        ...blocked.map((box) => rect(box, "black")),
+      );
+      defs.append(mask);
+      svg.prepend(defs);
+      anchorGroup.setAttribute("mask", `url(#${maskId})`);
+    }
   };
 
   const schedule = () => {

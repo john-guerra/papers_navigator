@@ -614,7 +614,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   ringIds: store.value.map((d) => d.id),
   // Largest topics first: a label that would overlap a bigger topic's is left out
   labels: showTopics ? clusterLabels(positioned) : null,
-  labelSize: mapWidth < 500 ? 10 : 11,
+  labelSize: mapWidth < 500 ? 13 : 15,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
   scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
   // DESIGN.md → Legend: the ramp says "less / more similar", not scores

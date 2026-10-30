@@ -78,11 +78,14 @@ const inside = (box, [x0, y0, x1, y1]) =>
   box[0] >= x0 && box[1] >= y0 && box[2] <= x1 && box[3] <= y1;
 
 /**
- * The labels to draw, greedily in priority order: `labels` are {key, box, rank, always} (lower
- * rank first; `always` labels — pinned, top matches — come before the rest whatever their rank);
- * `obstacles` (topic labels, the query marker, the legend) are boxes already on the map. A label
- * is dropped when it overlaps an obstacle or a kept label, or leaves `bounds` (the plot). At most
- * `max` labels that aren't `always` are kept (DESIGN.md: text density). Returns the kept keys.
+ * The labels to draw, greedily in priority order: `labels` are {key, box, rank, always, force,
+ * alternatives} (lower rank first; `always` labels (pinned, top matches) come before the rest
+ * whatever their rank); `obstacles` (topic labels, the query marker, the legend) are boxes already
+ * on the map. A label is dropped when it overlaps an obstacle or a kept label, or leaves `bounds`
+ * (the plot). A `force` label (the pinned paper) is never dropped: it takes the first of its
+ * `box` and `alternatives` (nudged boxes, drawn with a leader line) that is free, else its `box`.
+ * At most `max` labels that aren't `always` are kept (DESIGN.md: text density).
+ * Returns a Map from each kept key to the index of its box (0: `box`, i: `alternatives[i - 1]`).
  */
 export function chooseLabels(
   labels,
@@ -90,18 +93,27 @@ export function chooseLabels(
 ) {
   const ordered = [...labels].sort(
     (a, b) =>
-      Number(Boolean(b.always)) - Number(Boolean(a.always)) || a.rank - b.rank,
+      Number(Boolean(b.force)) - Number(Boolean(a.force)) ||
+      Number(Boolean(b.always)) - Number(Boolean(a.always)) ||
+      a.rank - b.rank,
   );
   const taken = [...obstacles];
-  const kept = new Set();
+  const kept = new Map();
+  const free = (box) =>
+    (!bounds || inside(box, bounds)) && !taken.some((t) => overlaps(box, t));
   let optional = 0;
   for (const label of ordered) {
-    if (!label.always && optional >= max) continue;
-    if (bounds && !inside(label.box, bounds)) continue;
-    if (taken.some((box) => overlaps(label.box, box))) continue;
-    taken.push(label.box);
-    kept.add(label.key);
-    if (!label.always) optional++;
+    if (!label.always && !label.force && optional >= max) continue;
+    const boxes = [
+      label.box,
+      ...(label.force ? (label.alternatives ?? []) : []),
+    ];
+    let index = boxes.findIndex(free);
+    if (index < 0 && label.force) index = 0;
+    if (index < 0) continue;
+    taken.push(boxes[index]);
+    kept.set(label.key, index);
+    if (!label.always && !label.force) optional++;
   }
   return kept;
 }
@@ -157,7 +169,8 @@ export function emphasisIds(
 
 /**
  * At most how many space-based labels a plot of width × height px gets: one per 14,000 px² (about
- * 35 on a 800 × 600 map, 15 on a phone), so labels stay a sprinkle, not a carpet.
+ * 30 on the 735 × 567 desktop map, 8 on a 360 × 330 phone map), so labels stay a sprinkle, not a
+ * carpet.
  */
 export const labelBudget = (width, height) =>
   Math.max(0, Math.floor((width * height) / 14000));

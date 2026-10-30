@@ -101,7 +101,7 @@ describe("chooseLabels", () => {
       { key: "a", box: box(0, 0), rank: 1 },
       { key: "c", box: box(100, 0), rank: 3 },
     ]);
-    expect([...kept]).toEqual(["a", "c"]);
+    expect([...kept.keys()]).toEqual(["a", "c"]);
   });
 
   it("never draws over an obstacle (topic labels, query marker, legend)", () => {
@@ -112,7 +112,7 @@ describe("chooseLabels", () => {
       ],
       { obstacles: [box(5, 5)] },
     );
-    expect([...kept]).toEqual(["b"]);
+    expect([...kept.keys()]).toEqual(["b"]);
   });
 
   it("puts `always` labels first and outside the budget", () => {
@@ -125,7 +125,7 @@ describe("chooseLabels", () => {
       ],
       { max: 1 },
     );
-    expect([...kept]).toEqual(["pinned", "other"]);
+    expect([...kept.keys()]).toEqual(["pinned", "other"]);
   });
 
   it("drops labels that leave the plot", () => {
@@ -136,7 +136,29 @@ describe("chooseLabels", () => {
       ],
       { bounds: [0, 0, 100, 100] },
     );
-    expect([...kept]).toEqual(["in"]);
+    expect([...kept.keys()]).toEqual(["in"]);
+  });
+
+  it("always places a forced label (the pinned paper): the first free nudge, else its own box", () => {
+    const blocked = { obstacles: [box(0, 0, 30, 30)] };
+    const nudged = chooseLabels(
+      [
+        {
+          key: "pinned",
+          box: box(5, 5),
+          rank: 0,
+          force: true,
+          alternatives: [box(10, 10), box(50, 50)],
+        },
+      ],
+      blocked,
+    );
+    expect([...nudged]).toEqual([["pinned", 2]]);
+    const stuck = chooseLabels(
+      [{ key: "pinned", box: box(5, 5), rank: 0, force: true }],
+      blocked,
+    );
+    expect([...stuck]).toEqual([["pinned", 0]]);
   });
 });
 

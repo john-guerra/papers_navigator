@@ -69,17 +69,72 @@ describe("paper labels overlay (#99)", () => {
     );
   });
 
-  it("places labels at the points' pixels (view scales + origin, like pointAt)", async () => {
+  it("places labels near the points' pixels (view scales + origin, like pointAt), with a leader line", async () => {
     const widget = await make();
     widget.paperLabels.render();
     const view = widget.view;
     const [ox, oy] = view.origin();
-    const text = [...widget.querySelectorAll("svg.paper-labels text")].find(
-      (t) => t.textContent === "Alpha",
-    );
-    expect(text.getAttribute("transform")).toBe(
-      `translate(${ox + view.scale("x")(20)}, ${oy + view.scale("y")(20)})`,
-    );
+    const [px, py] = [ox + view.scale("x")(20), oy + view.scale("y")(20)];
+    const texts = [
+      ...widget.querySelectorAll("svg.paper-labels g.labels > text"),
+    ];
+    const i = texts.findIndex((t) => t.textContent === "Alpha");
+    const [lx, ly] = texts[i]
+      .getAttribute("transform")
+      .match(/translate\(([^,]+), ([^)]+)\)/)
+      .slice(1)
+      .map(Number);
+    // Toward its cell's center, at most 30 px away
+    expect(Math.hypot(lx - px, ly - py)).toBeLessThanOrEqual(30.001);
+    expect(Math.hypot(lx - px, ly - py)).toBeGreaterThan(10);
+    // The leader line runs from the label to 3 px short of the point
+    const line = widget.querySelectorAll("svg.paper-labels g#anchors > path")[
+      i
+    ];
+    expect(line.getAttribute("display")).toBeNull();
+    const [, x0, y0, x1, y1] = line
+      .getAttribute("d")
+      .match(/M([^,]+),([^L]+)L([^,]+),(.+)/)
+      .map(Number);
+    expect([x0, y0]).toEqual([lx, ly]);
+    expect(Math.hypot(x1 - px, y1 - py)).toBeCloseTo(3);
+    const group = widget.querySelector("svg.paper-labels g#anchors");
+    expect(group.getAttribute("stroke-width")).toBe("0.75");
+    expect(group.getAttribute("pointer-events")).toBe("none");
+  });
+
+  it("redraws from scratch: no attributes left over from the previous layout", async () => {
+    const widget = await make();
+    widget.paperLabels.render();
+    const first = widget.querySelector("svg.paper-labels").innerHTML;
+    await widget.view.signal("levelCut", 0.5).runAsync();
+    widget.paperLabels.render();
+    await widget.view.signal("levelCut", null).runAsync();
+    widget.paperLabels.render();
+    expect(widget.querySelector("svg.paper-labels").innerHTML).toBe(first);
+  });
+
+  it("always places the pinned paper's label, nudged if its spot is taken", async () => {
+    const widget = await make({
+      labels: [{ text: "Crowd", x: 50, y: 50 }],
+    });
+    Object.defineProperty(widget, "neighbours", {
+      value: { pinned: "m0:0", neighbours: [] },
+      configurable: true,
+    });
+    widget.paperLabels.render();
+    expect(drawn(widget)).toContain("Centre");
+  });
+
+  it("keeps leader lines out of the topic labels (mask)", async () => {
+    const widget = await make({
+      labels: [{ text: "A topic", x: 50, y: 20 }],
+    });
+    widget.paperLabels.render();
+    const group = widget.querySelector("svg.paper-labels g#anchors");
+    const id = group.getAttribute("mask").match(/url\(#(.+)\)/)[1];
+    const mask = widget.querySelector(`svg.paper-labels mask#${id}`);
+    expect(mask.querySelectorAll("rect[fill=black]").length).toBe(1);
   });
 
   it("always shows emphasized papers, even in a crowded spot", async () => {
