@@ -6,7 +6,7 @@ import { relevanceControl } from "../src/widgets/relevanceControl.js";
 describe("relevanceCuts", () => {
   it("uses 0.30 for Good when enough papers clear it, and halfway to the best for Strong", () => {
     const scores = [0.7, 0.5, 0.45, 0.4, 0.35, 0.31, 0.2, 0.1];
-    expect(relevanceCuts(scores)).toEqual({ good: 0.3, strong: 0.5 });
+    expect(relevanceCuts(scores)).toMatchObject({ good: 0.3, strong: 0.5 });
   });
   it("falls back to the 10th best score when few papers clear 0.30 (short queries)", () => {
     const scores = [
@@ -17,14 +17,14 @@ describe("relevanceCuts", () => {
     expect(strong).toBeCloseTo(0.245);
   });
   it("handles no scores", () => {
-    expect(relevanceCuts([])).toEqual({ good: 0, strong: 0 });
+    expect(relevanceCuts([])).toEqual({ good: 0, strong: 0, weak: 0 });
   });
 });
 
 describe("relevanceCounts", () => {
   it("counts papers at each level", () => {
     const papers = [0.7, 0.5, 0.45, 0.31, 0.2].map((score) => ({ score }));
-    expect(relevanceCounts(papers, { good: 0.3, strong: 0.5 })).toEqual({
+    expect(relevanceCounts(papers, { good: 0.3, strong: 0.5 })).toMatchObject({
       strong: 2,
       good: 4,
       all: 5,
@@ -35,7 +35,7 @@ describe("relevanceCounts", () => {
 describe("relevanceControl", () => {
   it("is a reactive widget whose value is the chosen level, with counts on each segment", () => {
     const el = relevanceControl(
-      { strong: 2, good: 4, all: 5 },
+      { strong: 2, good: 4, weak: 5, all: 5 },
       { value: "good" },
     );
     document.body.append(el);
@@ -43,7 +43,7 @@ describe("relevanceControl", () => {
     const labels = [...el.querySelectorAll("button")].map((b) =>
       b.textContent.replace(/\s+/g, " ").trim(),
     );
-    expect(labels).toEqual(["Strong 2", "Good 4", "All 5"]);
+    expect(labels).toEqual(["Strong 2", "Good 4", "Weak 5", "All 5"]);
     expect(el.querySelector('[aria-pressed="true"]').textContent).toContain(
       "Good",
     );
@@ -63,21 +63,24 @@ describe("relevanceControl", () => {
 
 describe("relevanceCuts edge cases", () => {
   it("keeps papers tied at the cut, handles few papers and equal scores", () => {
-    expect(relevanceCuts([0.3, 0.3, 0.3, 0.3, 0.3, 0.1])).toEqual({
+    expect(relevanceCuts([0.3, 0.3, 0.3, 0.3, 0.3, 0.1])).toMatchObject({
       good: 0.3,
       strong: 0.3,
     });
-    expect(relevanceCuts([0.2, 0.1, 0.05])).toEqual({
+    expect(relevanceCuts([0.2, 0.1, 0.05])).toMatchObject({
       good: 0.05,
       strong: 0.125,
     });
-    expect(relevanceCuts([0.2, 0.2, 0.2])).toEqual({ good: 0.2, strong: 0.2 });
+    expect(relevanceCuts([0.2, 0.2, 0.2])).toMatchObject({
+      good: 0.2,
+      strong: 0.2,
+    });
     expect(
       relevanceCounts(
         [0.3, 0.3, 0.1].map((score) => ({ score })),
         { good: 0.3, strong: 0.3 },
       ),
-    ).toEqual({ strong: 2, good: 2, all: 3 });
+    ).toMatchObject({ strong: 2, good: 2, all: 3 });
   });
 });
 

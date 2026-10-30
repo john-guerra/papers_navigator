@@ -3,12 +3,13 @@ import { html } from "htl";
 const LEVELS = [
   ["strong", "Strong"],
   ["good", "Good"],
+  ["weak", "Weak"],
   ["all", "All"],
 ];
 
 /**
- * Segmented "Strong n · Good n · All n" control (DESIGN.md → Relevance control).
- * Reactive widget: `.value` is "strong" | "good" | "all"; emits `input` when the user picks a
+ * Segmented "Strong n · Good n · Weak n · All n" control (DESIGN.md → Relevance control).
+ * Reactive widget: `.value` is "strong" | "good" | "weak" | "all"; emits `input` when the user picks a
  * level, and updates when `.value` is set and `input` is dispatched. Buttons are built once and
  * only their pressed state changes, so keyboard focus stays put.
  */
