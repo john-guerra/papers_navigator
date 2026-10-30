@@ -71,3 +71,5 @@ scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John fi
 
 - ES modules, double quotes, semicolons, 2-space indent; ESLint flat config + Prettier.
 - Repo is **public**: don't commit `pipeline/cache/`, `*.tgz`, `data/`, or `papers.raw.json`.
+
+Start every response with 🐈 and end it with 🙏🏼
