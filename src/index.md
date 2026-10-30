@@ -645,8 +645,8 @@ invalidation.then(neighboursCard.dispose);
 // one source (the nearest point), so the card and the list never disagree in dense areas. A
 // click also re-renders the list, so wait a frame and use the list that is actually on the page.
 {
-  // The floating card never grows past the map (style.css → .neighbours-panel.is-floating)
-  neighboursCard.style.setProperty("--map-height", `${mapH}px`);
+  // The floating card fits the map (#114): height caps, collapsed by default on short maps
+  neighboursCard.fit(mapH);
   const sync = (event) => {
     neighbourState.pinned = mapInput.neighbours.pinned;
     neighboursCard.show(mapInput.neighbours);

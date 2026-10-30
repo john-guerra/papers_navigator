@@ -199,3 +199,76 @@ describe("neighboursPanel, floating over the sticky map (desktop, #114)", () => 
     el.remove();
   });
 });
+
+describe("neighboursPanel, compact floating rows and fit (#114)", () => {
+  const papers = new Map(
+    Array.from({ length: 12 }, (_, i) => [
+      `p${i}`,
+      { id: `p${i}`, title: `A long paper title number ${i}` },
+    ]),
+  );
+  const state = (pinned = "p0") => ({
+    pinned,
+    k: 10,
+    reach: 30,
+    neighbours: Array.from({ length: 10 }, (_, i) => ({
+      id: `p${i + 1}`,
+      similarity: 0.8 - i / 100,
+      mapRank: i + 2,
+      missing: i === 1,
+    })),
+  });
+  const setup = () => {
+    const el = neighboursPanel({
+      paperOf: (id) => papers.get(id),
+      href: (p) => `?paper=${p.id}`,
+      onOpen: () => {},
+      onClose: () => {},
+      floating: { matches: true, addEventListener() {} },
+    });
+    document.body.append(el);
+    return el;
+  };
+  const rows = (el) => el.querySelectorAll(".neighbours-list li").length;
+
+  it("one row per neighbour: the title (full text on hover/focus) and its similarity", () => {
+    const el = setup();
+    el.show(state());
+    const [first, second] = el.querySelectorAll(".neighbours-list li");
+    expect(first.querySelector(".neighbours-meta").textContent).toBe("80%");
+    expect(second.querySelector(".neighbours-meta").textContent).toBe(
+      "79% far",
+    );
+    expect(first.querySelector("a").title).toBe(
+      "A long paper title number 1 (80% similar · map #2)",
+    );
+    expect(el.querySelector("h3").textContent.replace(/\s+/g, " ").trim()).toBe(
+      "10 neighbours of ‘A long paper title number 0’",
+    );
+    expect(el.querySelector(".neighbours-header").title).toContain(
+      "9 of 10 close on the map",
+    );
+    el.remove();
+  });
+
+  it("fit() caps the expanded card at 60% of the map and collapses it on short maps", () => {
+    const el = setup();
+    el.fit(620);
+    el.show(state());
+    expect(el.style.getPropertyValue("--neighbours-expanded-max")).toBe(
+      "372px",
+    );
+    expect(rows(el)).toBe(5);
+    el.fit(540); // a short map: just the header until opened
+    expect(rows(el)).toBe(0);
+    expect(el.querySelector(".neighbours-collapse").textContent.trim()).toBe(
+      "▸",
+    );
+    el.querySelector(".neighbours-collapse").click();
+    expect(rows(el)).toBe(5);
+    // the reader's choice now holds across pins and redraws
+    el.show(state("p4"));
+    expect(rows(el)).toBe(5);
+    el.remove();
+  });
+});

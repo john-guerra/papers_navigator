@@ -1869,52 +1869,80 @@ details.missing > summary {
   grid-row: 2;
 }
 
+/* Compact (#114): a one-line header, one-line rows (title clamped with an ellipsis, full title on
+   hover/focus and in the details it opens; similarity on the same line): 5 rows stay under
+   ~280px. Expanded ("Show all k") or not, it never passes 60% of the map's height
+   (--neighbours-expanded-max, from fit()); the list scrolls inside it. */
 .neighbours-panel.is-floating {
   grid-row: 1;
   align-self: end;
   justify-self: end;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
   width: min(280px, calc(100% - 2 * var(--spacing-md)));
-  max-height: calc(var(--map-height, 320px) - 2 * var(--spacing-md));
-  overflow-y: auto;
+  max-height: var(
+    --neighbours-expanded-max,
+    calc(var(--map-height, 320px) - 2 * var(--spacing-md))
+  );
   margin: var(--spacing-md);
-  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-md);
+  padding: 0 var(--spacing-sm) var(--spacing-xs) var(--spacing-md);
   border-top: none;
   border-radius: var(--rounded-md);
   background: var(--color-surface);
   box-shadow: var(--elevation-1);
-}
-
-/* Compact type: titles still wrap (never truncated), at body-sm */
-/* The title wraps around the buttons (floated) instead of squeezing beside them */
-.neighbours-panel.is-floating .neighbours-header {
-  display: block;
+  font: var(--typography-body-sm);
 }
 
 .neighbours-panel.is-floating .neighbours-header {
-  position: relative;
+  flex: none;
+  align-items: center;
+  min-height: 40px;
 }
 
-.neighbours-panel.is-floating .neighbours-buttons {
-  position: absolute;
-  top: 0;
-  right: calc(-1 * var(--spacing-sm));
+.neighbours-panel.is-floating .neighbours-header h3 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--typography-label-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* A float at the start of the heading keeps its first line clear of the buttons */
-.neighbours-panel.is-floating .neighbours-header h3::before {
-  content: "";
-  float: right;
-  width: 64px;
-  height: 32px;
+.neighbours-panel.is-floating .neighbours-header h3 .neighbours-title {
+  font: var(--typography-body-sm);
+  font-family: var(--font-serif);
 }
 
-@media (pointer: coarse) {
-  .neighbours-panel.is-floating .neighbours-header h3::before {
-    width: 88px;
-    height: var(--spacing-touch);
-  }
+.neighbours-panel.is-floating .neighbours-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.neighbours-panel.is-floating .neighbours-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 40px;
+  padding: 0;
+  border-top: 1px solid var(--color-outline);
+}
+
+.neighbours-panel.is-floating .neighbours-list .neighbours-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.neighbours-panel.is-floating .neighbours-meta {
+  flex: none;
+  margin: 0;
 }
 
 .neighbours-panel.is-floating :is(.neighbours-close, .neighbours-collapse) {
@@ -1922,25 +1950,23 @@ details.missing > summary {
   min-height: 32px;
 }
 
+.neighbours-panel.is-floating .neighbours-more {
+  flex: none;
+  align-self: flex-start;
+  min-height: 32px;
+  margin: 0;
+}
+
 @media (pointer: coarse) {
-  .neighbours-panel.is-floating :is(.neighbours-close, .neighbours-collapse) {
+  .neighbours-panel.is-floating .neighbours-list li {
+    min-height: var(--spacing-touch);
+  }
+
+  .neighbours-panel.is-floating
+    :is(.neighbours-close, .neighbours-collapse, .neighbours-more) {
     min-width: var(--spacing-touch);
     min-height: var(--spacing-touch);
   }
-}
-
-.neighbours-panel.is-floating .neighbours-header h3,
-.neighbours-panel.is-floating .neighbours-header h3 .neighbours-title,
-.neighbours-panel.is-floating .neighbours-list {
-  font: var(--typography-body-sm);
-}
-
-.neighbours-panel.is-floating .neighbours-title {
-  font-family: var(--font-serif);
-}
-
-.neighbours-panel.is-floating .neighbours-meta {
-  white-space: normal;
 }
 
 .neighbours-buttons {
