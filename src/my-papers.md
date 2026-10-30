@@ -444,26 +444,31 @@ paperDetail.update?.();
 // like yours are ranked against My Papers; dismissals stay on this device
 const dismissedStore = createDismissedStore(conference.id);
 const dismissed = Generators.input(dismissedStore);
-const recommendState = { shown: 10, focus: null };
+const recommendState = { shown: 10, focus: null, key: null, retry: null };
+// Created once: the cell below redraws it only when the recommendations change (`now` ticks)
+const recommendedSection = html`<div></div>`;
 const recommendMatrix = Generators.observe((notify) => {
-  notify({ status: "loading" });
-  afterFirstPaint(() =>
+  // Also "Try again" after a failed load (offline): lazyLoader retries a failed load
+  const load = () => {
+    notify({ status: "loading" });
     loadMatrix().then(
       (matrix) => notify({ status: "ready", matrix }),
       () => notify({ status: "error" }),
-    ),
-  );
+    );
+  };
+  recommendState.retry = load;
+  afterFirstPaint(load);
 });
 ```
 
 ```js
-// Only the current program: papers no longer in it neither get recommended nor recommend
+// Only the current program: papers no longer in it neither get recommended nor recommend, and
+// papers already over aren't recommended
 const recommendations = !items.length
   ? { status: "empty" }
   : recommendMatrix.status !== "ready"
     ? recommendMatrix
-    : { status: "ready", recs: recommendPapers(items.map((d) => d.id), recommendMatrix.matrix, papers, { exclude: new Set(dismissed) }) };
-const recommendedSection = html`<div></div>`;
+    : { status: "ready", recs: recommendPapers(items.map((d) => d.id), recommendMatrix.matrix, papers, { exclude: new Set(dismissed), now }) };
 const drawRecommended = () => {
   recommendedSection.replaceChildren(
     renderRecommended(recommendations, {
@@ -474,6 +479,7 @@ const drawRecommended = () => {
         drawRecommended();
       },
       onOpen: (p) => openPaper(p),
+      onRetry: () => recommendState.retry?.(),
       onAdd: (p) => {
         recommendState.focus = recommendations.recs.indexOf(p);
         const undo = addWithUndo(store, [p], recommendReason(p.because));
@@ -487,7 +493,11 @@ const drawRecommended = () => {
     }),
   );
 };
-drawRecommended();
+const recommendKey = `${recommendations.status}:${(recommendations.recs ?? []).map((p) => p.id).join()}`;
+if (recommendKey !== recommendState.key) {
+  recommendState.key = recommendKey;
+  drawRecommended();
+}
 // After Add or Dismiss the row is gone: keep the keyboard on the row that took its place
 if (recommendState.focus != null) {
   const index = recommendState.focus;

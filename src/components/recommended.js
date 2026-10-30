@@ -11,7 +11,7 @@ const STEP = 10;
  */
 export function renderRecommended(
   state,
-  { tz, shown = STEP, onAdd, onDismiss, onOpen, onShowMore },
+  { tz, shown = STEP, onAdd, onDismiss, onOpen, onShowMore, onRetry },
 ) {
   const note = (text) => html`<p class="muted">${text}</p>`;
   const body = (() => {
@@ -20,10 +20,16 @@ export function renderRecommended(
         "Add papers to My Papers and papers similar to them show up here.",
       );
     if (state.status === "loading") return note("Finding papers like yours…");
-    if (state.status === "error")
-      return note(
-        "Recommendations are unavailable: the paper embeddings couldn't load (offline before they were saved on this device?).",
-      );
+    if (state.status === "error") {
+      const retry = html`<button class="btn-text recommended-retry">
+        Try again
+      </button>`;
+      retry.onclick = () => onRetry?.();
+      return html`<p class="muted">
+        Recommendations are unavailable: the paper embeddings couldn't load
+        (offline before they were saved on this device?). ${retry}
+      </p>`;
+    }
     const { recs } = state;
     if (!recs.length)
       return note("No more papers to recommend: you've seen them all.");

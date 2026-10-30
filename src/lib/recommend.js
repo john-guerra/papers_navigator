@@ -14,14 +14,16 @@ import { DIMS } from "./search.js";
 
 /**
  * `myIds`: ids in My Papers (ids not in `papers` are ignored); `matrix` row i ↔ papers[i];
- * `exclude`: ids never recommended (dismissed). Returns every other paper, best first, as
+ * `exclude`: ids never recommended (dismissed); `now`: papers that ended before it (talk end,
+ * else session end) aren't recommended, papers without a time are. End times are absolute
+ * instants, so the comparison holds in the conference timezone. Returns every other paper, best first, as
  * `{...paper, score, because}` where `because` is the most similar paper in My Papers.
  */
 export function recommendPapers(
   myIds,
   matrix,
   papers,
-  { exclude = new Set(), dims = DIMS } = {},
+  { exclude = new Set(), now = null, dims = DIMS } = {},
 ) {
   const mine = new Set(myIds);
   const sources = [];
@@ -29,7 +31,8 @@ export function recommendPapers(
   if (!sources.length) return [];
   const recs = [];
   papers.forEach((paper, i) => {
-    if (mine.has(paper.id) || exclude.has(paper.id)) return;
+    if (mine.has(paper.id) || exclude.has(paper.id) || isOver(paper, now))
+      return;
     let best = -Infinity;
     let because = -1;
     const a = i * dims;
@@ -42,6 +45,12 @@ export function recommendPapers(
     recs.push({ ...paper, score: best, because: papers[because] });
   });
   return recs.sort((x, y) => y.score - x.score);
+}
+
+/** True when the paper's talk (else its session) ended before `now`; never without a time. */
+export function isOver(paper, now) {
+  const end = Date.parse(paper.end ?? paper.sessionEnd ?? "");
+  return now != null && !Number.isNaN(end) && end < +now;
 }
 
 /** Reason recorded when a recommendation is added: "✨ Like <title>" (≤ 60 characters). */

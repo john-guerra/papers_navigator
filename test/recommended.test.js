@@ -77,7 +77,11 @@ describe("renderRecommended", () => {
       "Add papers to My Papers",
     );
     expect(setup({ status: "loading" }).el.textContent).toContain("Finding");
-    expect(setup({ status: "error" }).el.textContent).toContain("unavailable");
+    const onRetry = vi.fn();
+    const { el } = setup({ status: "error" }, { onRetry });
+    expect(el.textContent).toContain("unavailable");
+    el.querySelector(".recommended-retry").click();
+    expect(onRetry).toHaveBeenCalled();
     expect(setup({ status: "ready", recs: [] }).el.textContent).toContain(
       "No more",
     );

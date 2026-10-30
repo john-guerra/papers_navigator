@@ -43,6 +43,21 @@ describe("recommendPapers", () => {
     expect(recs.map((p) => p.id)).not.toContain("ml");
     expect(recs[0].because.id).toBe("ml");
   });
+  it("leaves out papers that are already over; papers without a time stay", () => {
+    const timed = papers.map((p) =>
+      p.id === "hci2"
+        ? { ...p, sessionEnd: "2026-11-10T15:00:00Z" } // over
+        : p.id === "ml2"
+          ? { ...p, end: "2026-11-10T17:00:00Z" } // still on
+          : p,
+    );
+    const now = new Date("2026-11-10T16:00:00Z");
+    const ids = recommendPapers(["ml", "hci"], matrix, timed, {
+      dims: DIMS,
+      now,
+    }).map((p) => p.id);
+    expect(ids).toEqual(["ml2", "mid", "far"]);
+  });
   it("returns [] when My Papers is empty", () => {
     expect(recommendPapers([], matrix, papers, { dims: DIMS })).toEqual([]);
   });
