@@ -67,6 +67,16 @@ describe("createAuthorRoute (#78)", () => {
     expect(win.location.href).toBe(base);
   });
 
+  it("keeps other params such as ?now= (changes only name and paper)", () => {
+    const now = "now=2026-11-10T15%3A14%3A00Z";
+    const win = fakeWindow(`${base}?${now}&name=Ann&paper=p1`);
+    const route = createAuthorRoute({ win });
+    route.open("Bo");
+    expect(win.location.href).toBe(`${base}?${now}&name=Bo`);
+    route.open(null);
+    expect(win.location.href).toBe(`${base}?${now}`);
+  });
+
   it("intercepts plain clicks on links to this page", () => {
     const win = fakeWindow(base);
     const route = createAuthorRoute({ win });

@@ -43,7 +43,11 @@
   border-bottom: 1px solid var(--color-outline);
 }
 
+/* 44px targets at every width: the index is a list of links you scan and tap */
 .author-name {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--spacing-touch, 44px);
   font: var(--typography-title-paper);
 }
 
@@ -83,8 +87,12 @@
 }
 
 /* The Watch toggle as a secondary button here (in facet rows it's a text button) */
+.author-actions .watch-toggle,
+.author-actions .btn-primary {
+  min-height: var(--spacing-touch, 44px);
+}
+
 .author-actions .watch-toggle {
-  min-height: 36px;
   padding: 0 var(--spacing-md, 12px);
   border: 1px solid var(--color-outline);
   border-radius: var(--rounded-sm, 3px);
@@ -171,7 +179,6 @@
     grid-row: 2;
   }
 
-  .author-name,
   .author-coauthors a,
   .author-back a {
     display: inline-flex;
@@ -181,10 +188,5 @@
 
   .author-coauthors {
     columns: 1;
-  }
-
-  .author-actions .watch-toggle,
-  .author-actions .btn-primary {
-    min-height: var(--spacing-touch, 44px);
   }
 }

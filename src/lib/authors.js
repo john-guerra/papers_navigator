@@ -1,4 +1,5 @@
 import { dayKey, formatDay, formatTime } from "./time.js";
+import { normalizeText } from "./rules.js";
 
 /**
  * Researchers (#78): everyone listed as an author in this conference's program. There are no
@@ -6,13 +7,11 @@ import { dayKey, formatDay, formatTime } from "./time.js";
  * listed so a merge is visible).
  */
 
-/** Identity of a researcher: NFKC, case-folded, whitespace collapsed. */
-export const normalizeName = (name) =>
-  String(name ?? "")
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+/**
+ * Identity of a researcher: the same key author Watch rules match on (case-, accent- and
+ * whitespace-insensitive), so a profile groups exactly the papers its Watch rule keeps.
+ */
+export const normalizeName = normalizeText;
 
 /** Profile URL of a researcher (relative: the site lives in a subfolder; cleanUrls is off). */
 export const authorUrl = (name) =>
@@ -98,8 +97,7 @@ export function distinctAffiliations(affiliations) {
 }
 
 /** Accent-insensitive text for searching ("zurich" finds "ETH Zürich"). */
-const searchText = (s) =>
-  normalizeName(s).normalize("NFKD").replace(/\p{M}/gu, "");
+const searchText = normalizeName;
 
 /** Researchers whose name or affiliations contain every term of `query` (order kept). */
 export function filterAuthors(index, query) {

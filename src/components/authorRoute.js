@@ -24,8 +24,10 @@ export function createAuthorRoute({
 
   route.open = (name) => {
     const url = new URL(win.location.href);
-    // A profile is its own view: an open paper's details and other params don't carry over
-    url.search = "";
+    // A profile is its own view: an open paper's details don't carry over (other params such
+    // as ?now= do)
+    url.searchParams.delete("paper");
+    url.searchParams.delete(param);
     url.hash = "";
     if (name) url.searchParams.set(param, name);
     if (url.href === win.location.href) return;

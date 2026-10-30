@@ -25,9 +25,6 @@ export function authorsLine(authors = [], authorHref) {
 }
 
 function renderPaper(p, { tz, actions, preamble, authorHref }) {
-  const authors = (p.authors ?? [])
-    .map((a) => (a.affiliation ? `${a.name} (${a.affiliation})` : a.name))
-    .join(", ");
   const where = [p.typeLabel ?? p.type, p.sessionName, p.room && `📍${p.room}`]
     .filter(Boolean)
     .join(" · ");
@@ -52,7 +49,8 @@ function renderPaper(p, { tz, actions, preamble, authorHref }) {
     ${p.abstract ? html`<div class="paper-abstract">${p.abstract}</div>` : ""}
   </div>`;
   // Authors and abstract are clamped; "More" expands the row in place (no inner scrolling)
-  if (p.abstract || authors.length > 160) {
+  const authorsText = row.querySelector(".paper-authors").textContent;
+  if (p.abstract || authorsText.length > 160) {
     const more = html`<button class="btn-text paper-more" aria-expanded="false">
       More
     </button>`;

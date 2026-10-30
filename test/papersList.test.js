@@ -163,6 +163,17 @@ describe("PapersList More toggle", () => {
     more.click();
     expect(row.classList.contains("expanded")).toBe(false);
   });
+  it("offers More for a long author list without an abstract", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const authors = Array.from({ length: 12 }, (_, i) => ({
+      name: `Author Number ${i}`,
+      affiliation: "Some University",
+    }));
+    const el = PapersList([{ id: "p", title: "T", authors }], {
+      tz: "US/Eastern",
+    });
+    expect(el.querySelector(".paper-more")).not.toBeNull();
+  });
   it("has no More toggle when there is nothing to expand", async () => {
     const { PapersList } = await import("../src/widgets/papersList.js");
     const el = PapersList([{ id: "p", title: "T" }], { tz: "US/Eastern" });

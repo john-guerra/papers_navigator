@@ -13,6 +13,7 @@ import {
   normalizeName,
   topics,
 } from "../src/lib/authors.js";
+import { matches, normalizeRule } from "../src/lib/rules.js";
 
 const tz = "US/Eastern";
 const papers = [
@@ -61,10 +62,30 @@ const papers = [
 ];
 
 describe("normalizeName", () => {
-  it("is NFKC, case-folded and whitespace-collapsed", () => {
+  it("is compatibility-normalized, case-folded and whitespace-collapsed", () => {
     expect(normalizeName("  Ann   LEE ")).toBe("ann lee");
     expect(normalizeName("Ａnn Lee")).toBe("ann lee");
     expect(normalizeName(null)).toBe("");
+  });
+  it("ignores accents, like author watch rules", () => {
+    expect(normalizeName("José Núñez")).toBe(normalizeName("Jose Nunez"));
+  });
+});
+
+describe("profile and Watch rule agree (#78)", () => {
+  it("groups exactly the papers the author's Watch rule matches", () => {
+    const program = [
+      { id: "a", authors: [{ name: "José Núñez" }] },
+      { id: "b", authors: [{ name: "Jose Nunez" }] },
+      { id: "c", authors: [{ name: "Josefa N" }] },
+    ];
+    const index = buildAuthorIndex(program);
+    expect(index).toHaveLength(2);
+    const profile = findAuthor(index, "Jose Nunez");
+    const rule = normalizeRule({ type: "author", value: profile.name });
+    expect(profile.papers.map((p) => p.id)).toEqual(
+      program.filter((p) => matches(rule, p)).map((p) => p.id),
+    );
   });
 });
 
@@ -142,6 +163,15 @@ describe("daySummary", () => {
     expect(daySummaryText(summary)).toBe(
       "Tue 1 talk · Thu 1 talk · 1 poster without a time",
     );
+  });
+  it("uses the conference day: 02:00Z belongs to the previous Eastern day", () => {
+    const late = [{ id: "n", type: "full", start: "2026-11-11T02:00:00Z" }];
+    expect(daySummary(late, tz).days).toEqual([
+      { key: "2026-11-10", label: "Tue", kinds: [{ kind: "talk", count: 1 }] },
+    ]);
+    expect(
+      nextPresentation(late, new Date("2026-11-10T12:00:00Z"), tz).label,
+    ).toBe("Tue Nov 10 21:00");
   });
   it("pluralizes", () => {
     const two = [papers[0], { ...papers[0], id: "q" }];
