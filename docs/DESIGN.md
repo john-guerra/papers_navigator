@@ -148,7 +148,7 @@ components:
     height: 20px
     padding: 0 6px
   search-field:
-    backgroundColor: transparent
+    backgroundColor: "{colors.background}"
     textColor: "{colors.on-surface}"
     typography: "{typography.search}"
     rounded: "{rounded.none}"
@@ -164,14 +164,14 @@ components:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
   chip:
-    backgroundColor: transparent
+    backgroundColor: "{colors.background}"
     textColor: "{colors.on-surface}"
     typography: "{typography.label-md}"
     rounded: "{rounded.full}"
     height: 28px
     padding: 0 6px 0 10px
   facet-button:
-    backgroundColor: transparent
+    backgroundColor: "{colors.background}"
     textColor: "{colors.on-surface}"
     typography: "{typography.label-md}"
     rounded: "{rounded.sm}"
@@ -200,11 +200,11 @@ components:
     height: 34px
     padding: 0 12px
   button-text:
-    backgroundColor: transparent
+    backgroundColor: "{colors.background}"
     textColor: "{colors.primary}"
     typography: "{typography.label-md}"
   follow-toggle:
-    backgroundColor: transparent
+    backgroundColor: "{colors.background}"
     textColor: "{colors.primary}"
     rounded: "{rounded.full}"
     size: 28px
@@ -217,7 +217,7 @@ components:
     textColor: "{colors.on-surface}"
     rounded: "{rounded.lg}"
   paper-row:
-    backgroundColor: transparent
+    backgroundColor: "{colors.background}"
     textColor: "{colors.on-surface}"
     typography: "{typography.title-paper}"
     padding: 14px 0
