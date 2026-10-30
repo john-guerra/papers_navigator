@@ -155,3 +155,23 @@ describe("Researchers index search in the URL (#92)", () => {
     expect(win.location.href).toBe(`${base}#q=Lee`);
   });
 });
+
+describe("Researchers search pasted in the address bar (#92)", () => {
+  it("starts over when only the fragment's search changed", () => {
+    const win = fakeWindow(`${base}#q=Lee`);
+    const onExternalChange = vi.fn();
+    createAuthorRoute({ win, onExternalChange });
+    win.history.pushState(null, "", `${base}#q=Kim`);
+    win.dispatchEvent(new Event("popstate"));
+    expect(onExternalChange).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't on Back from a profile to the index", () => {
+    const win = fakeWindow(`${base}#q=Lee`);
+    const onExternalChange = vi.fn();
+    const route = createAuthorRoute({ win, onExternalChange });
+    route.open("Ann Lee");
+    win.history.back();
+    expect(onExternalChange).not.toHaveBeenCalled();
+  });
+});

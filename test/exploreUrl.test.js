@@ -104,6 +104,7 @@ describe("startExploreUrl (#92)", () => {
       win,
     });
     other.update({ facets: { ...other.state.facets, types: [] } });
+    other.flush();
     expect(win.location.href).toBe("https://x.org/conf/?paper=abc#type=");
   });
 });

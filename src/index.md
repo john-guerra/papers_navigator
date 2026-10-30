@@ -803,7 +803,8 @@ papersList.update();
 ```js
 // Paper details (#22) and related papers (#23): ?paper=<shortId> is the source of truth
 // (shared with My Papers, #70); Close goes back past related papers and returns focus
-const paperRoute = createPaperRoute({ resolveId: (key) => papers.find((p) => p.shortId === key || p.id === key)?.id });
+// beforeOpen: the paper's entry starts from the latest view (URL writes are debounced, #92)
+const paperRoute = createPaperRoute({ resolveId: (key) => papers.find((p) => p.shortId === key || p.id === key)?.id, beforeOpen: urlSync.flush });
 invalidation.then(() => paperRoute.stop());
 const paperParam = Generators.input(paperRoute);
 const openPaper = (key) => paperRoute.open(key);

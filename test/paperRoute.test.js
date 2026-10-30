@@ -189,12 +189,31 @@ describe("createPaperRoute", () => {
 });
 
 describe("route.href", () => {
-  it("is the current page with ?paper=<key>, keeping other params", () => {
+  it("is the current page with ?paper=<key>, keeping other params and the fragment (#92)", () => {
     const win = fakeWindow(
-      "https://x.org/viz/index.html?now=2026-11-10&paper=old#top",
+      "https://x.org/viz/index.html?now=2026-11-10&paper=old#q=LLM&type=full",
     );
     const route = createPaperRoute({ win });
-    expect(route.href("s1")).toBe("/viz/index.html?now=2026-11-10&paper=s1");
+    // A new tab opened from the link keeps Explore's view
+    expect(route.href("s1")).toBe(
+      "/viz/index.html?now=2026-11-10&paper=s1#q=LLM&type=full",
+    );
+    route.stop();
+  });
+});
+
+describe("beforeOpen (#92)", () => {
+  it("runs before the paper's history entry is pushed", () => {
+    const win = fakeWindow("https://x.org/viz/index.html");
+    const calls = [];
+    const push = win.history.pushState.bind(win.history);
+    win.history.pushState = (...args) => (calls.push("push"), push(...args));
+    const route = createPaperRoute({
+      win,
+      beforeOpen: () => calls.push("before"),
+    });
+    route.open("s1");
+    expect(calls).toEqual(["before", "push"]);
     route.stop();
   });
 });

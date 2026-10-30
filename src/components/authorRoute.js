@@ -18,6 +18,7 @@ export function createAuthorRoute({
   win = globalThis.window,
   param = "name",
   queryParam = "q",
+  onExternalChange = () => win.location.reload(),
 } = {}) {
   const route = new EventTarget();
   const read = () => new URL(win.location.href).searchParams.get(param) || null;
@@ -35,7 +36,18 @@ export function createAuthorRoute({
         [queryParam],
       ),
     );
+  const withoutHash = (href) => href.replace(/#.*$/, "");
+  const hashQuery = () => hashParams(win.location.href).get(queryParam) ?? "";
+  // The URL as this page last left it, to tell a pasted #q= from Back/Forward
+  let last = win.location.href;
   const sync = () => {
+    const external =
+      withoutHash(win.location.href) === withoutHash(last) &&
+      read() == null &&
+      hashQuery() !== query;
+    last = win.location.href;
+    // Only the fragment's search changed (address bar, a pasted link): start from that link
+    if (external) return onExternalChange();
     const next = read();
     if (next === value) return;
     value = next;
@@ -54,6 +66,7 @@ export function createAuthorRoute({
     const next = name ? url : withQuery(url);
     if (next.href === win.location.href) return;
     win.history.pushState({}, "", next);
+    last = win.location.href;
     // pushState fires no popstate: tell every route on the page (e.g. an open paper's details,
     // whose ?paper= is now gone) that the URL changed
     win.dispatchEvent(new Event("popstate"));
@@ -84,6 +97,7 @@ export function createAuthorRoute({
     const url = withQuery(new URL(win.location.href));
     if (url.href !== win.location.href)
       win.history.replaceState(win.history.state, "", url);
+    last = win.location.href;
   };
 
   route.stop = () => win.removeEventListener("popstate", sync);

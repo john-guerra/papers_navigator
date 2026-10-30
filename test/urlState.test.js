@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   EXPLORE_KEYS,
   createUrlSync,
@@ -283,7 +283,13 @@ describe("createUrlSync", () => {
 
   it("writes with replaceState (never pushState), keeping history.state", () => {
     const win = fakeWindow("https://x.org/?paper=abc");
-    const sync = createUrlSync({ win, encode, keys: ["q"], state: {} });
+    const sync = createUrlSync({
+      win,
+      encode,
+      keys: ["q"],
+      state: {},
+      delay: 0,
+    });
     sync.update({ q: "hello" });
     expect(win.history.pushState).not.toHaveBeenCalled();
     expect(win.history.replaceState).toHaveBeenCalledWith(
@@ -296,14 +302,26 @@ describe("createUrlSync", () => {
 
   it("skips writes that don't change the URL", () => {
     const win = fakeWindow("https://x.org/#q=a");
-    const sync = createUrlSync({ win, encode, keys: ["q"], state: { q: "a" } });
+    const sync = createUrlSync({
+      win,
+      encode,
+      keys: ["q"],
+      state: { q: "a" },
+      delay: 0,
+    });
     sync.update({ q: "a" });
     expect(win.history.replaceState).not.toHaveBeenCalled();
   });
 
   it("re-applies the page's state after Back/Forward (e.g. closing a paper)", () => {
     const win = fakeWindow("https://x.org/#q=new");
-    const sync = createUrlSync({ win, encode, keys: ["q"], state: {} });
+    const sync = createUrlSync({
+      win,
+      encode,
+      keys: ["q"],
+      state: {},
+      delay: 0,
+    });
     sync.update({ q: "new" });
     // Closing paper details goes back to an entry written before the last change
     win.location.href = "https://x.org/?paper=a#q=old";
@@ -323,6 +341,7 @@ describe("createUrlSync", () => {
       encode,
       keys: ["q"],
       state: { q: "a" },
+      delay: 0,
       onExternalChange,
     });
     win.location.href = "https://x.org/?paper=a#q=b";
@@ -339,6 +358,7 @@ describe("createUrlSync", () => {
       encode,
       keys: ["q"],
       state: { q: "a" },
+      delay: 0,
       onExternalChange,
     });
     sync.update({ q: "b" });
@@ -346,5 +366,56 @@ describe("createUrlSync", () => {
     win.fire("popstate");
     expect(onExternalChange).not.toHaveBeenCalled();
     expect(win.location.href).toBe("https://x.org/#q=b");
+  });
+
+  describe("debounced writes (Safari limits history calls)", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("writes once, 250 ms after the last change", () => {
+      const win = fakeWindow("https://x.org/");
+      const sync = createUrlSync({ win, encode, keys: ["q"], state: {} });
+      for (const q of ["a", "ab", "abc"]) sync.update({ q });
+      expect(sync.state).toEqual({ q: "abc" });
+      expect(win.history.replaceState).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(250);
+      expect(win.history.replaceState).toHaveBeenCalledOnce();
+      expect(win.location.href).toBe("https://x.org/#q=abc");
+    });
+
+    it("flush() writes a pending change now", () => {
+      const win = fakeWindow("https://x.org/");
+      const sync = createUrlSync({ win, encode, keys: ["q"], state: {} });
+      sync.update({ q: "a" });
+      sync.flush();
+      expect(win.location.href).toBe("https://x.org/#q=a");
+      vi.advanceTimersByTime(500);
+      expect(win.history.replaceState).toHaveBeenCalledOnce();
+    });
+
+    it("Back/Forward writes the pending change onto the new entry", () => {
+      const win = fakeWindow("https://x.org/?paper=a#q=old");
+      const sync = createUrlSync({
+        win,
+        encode,
+        keys: ["q"],
+        state: { q: "old" },
+      });
+      sync.update({ q: "new" });
+      win.location.href = "https://x.org/#q=old";
+      win.fire("popstate");
+      expect(win.location.href).toBe("https://x.org/#q=new");
+    });
+
+    it("survives a browser that refuses history calls", () => {
+      const win = fakeWindow("https://x.org/");
+      win.history.replaceState.mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
+      const sync = createUrlSync({ win, encode, keys: ["q"], state: {} });
+      sync.update({ q: "a" });
+      expect(() => vi.advanceTimersByTime(250)).not.toThrow();
+      expect(sync.state).toEqual({ q: "a" });
+    });
   });
 });

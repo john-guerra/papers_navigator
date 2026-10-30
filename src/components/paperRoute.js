@@ -17,6 +17,8 @@ export function createPaperRoute({
   openerSelector = (id) =>
     `[data-paper-id="${CSS.escape(id)}"] .paper-details-open`,
   resolveId = (key) => key,
+  // e.g. write a pending URL change (#92) before the paper's entry is pushed
+  beforeOpen = null,
 } = {}) {
   const route = new EventTarget();
   const { history } = win;
@@ -76,7 +78,8 @@ export function createPaperRoute({
   route.href = (key) => {
     const url = new URL(win.location.href);
     url.searchParams.set(param, key);
-    return url.pathname + url.search;
+    // The fragment too: a new tab keeps the page's view (Explore's search and filters, #92)
+    return url.pathname + url.search + url.hash;
   };
   route.open = (key) => {
     if (!depth()) {
@@ -84,6 +87,7 @@ export function createPaperRoute({
       const id = element?.closest?.("[data-paper-id]")?.dataset.paperId;
       opener = id ? { element, id } : null;
     }
+    beforeOpen?.();
     const url = new URL(win.location.href);
     url.searchParams.set(param, key);
     history.pushState(withDepth(depth() + 1), "", url);

@@ -167,7 +167,8 @@ export function withParams(href, params, keys = EXPLORE_KEYS) {
  * Keeps the URL in step with a page's state, in the fragment: a fragment never reaches the
  * server (access logs) nor other sites (Referer), so searches and filters stay in the browser.
  * `update(patch)` merges into `.state` and writes `encode(state)` with history.replaceState
- * (never pushState: no history entry per keystroke), keeping history.state (paperRoute's depth).
+ * (never pushState: no history entry per keystroke), `delay` ms after the last change (0: now;
+ * `flush()` writes a pending one), keeping history.state (paperRoute's depth).
  * The URL is read once, at load; Back/Forward belong to ?paper= (paperRoute), so after one the
  * page's state is written back onto that entry. A fragment the person changes in the address bar
  * (or a pasted link that differs only in it) doesn't reload the page: `onExternalChange` (default:
@@ -179,33 +180,54 @@ export function createUrlSync({
   keys = EXPLORE_KEYS,
   state = {},
   onExternalChange = () => win.location.reload(),
+  delay = 250,
 }) {
   const sync = { state };
   const target = () => withParams(win.location.href, encode(sync.state), keys);
   const withoutHash = (href) => href.replace(/#.*$/, "");
   // The URL as this page last left it (pushState by paperRoute fires nothing, so it may lag)
   let last = win.location.href;
+  let timer = null;
   const write = () => {
+    clearTimeout(timer);
+    timer = null;
     const next = target();
-    if (next !== win.location.href)
-      win.history.replaceState(win.history.state, "", next);
+    // Safari throws (SecurityError) after ~100 history calls in a short window: the URL then
+    // lags until the next write, the page itself is unaffected
+    try {
+      if (next !== win.location.href)
+        win.history.replaceState(win.history.state, "", next);
+    } catch {
+      // keep going
+    }
     last = win.location.href;
   };
   // Back/Forward (e.g. closing paper details) changes the query string: put our state back.
   // Only the fragment changed (address bar, a pasted link): that's a new view to start from.
   // (A fragment navigation fires popstate too, before hashchange.)
   const onPopState = () => {
+    // A pending change goes onto the entry we land on (write below), not the one we left
+    clearTimeout(timer);
+    timer = null;
     const external =
       withoutHash(win.location.href) === withoutHash(last) &&
       target() !== win.location.href;
     if (external) return onExternalChange();
     write();
   };
+  // Trailing debounce: a brush drag emits on every point it crosses
   sync.update = (patch) => {
     sync.state = { ...sync.state, ...patch };
-    write();
+    if (!delay) return write();
+    clearTimeout(timer);
+    timer = setTimeout(write, delay);
   };
+  /** Writes a pending change now (e.g. before pushing a history entry). */
+  sync.flush = () => timer != null && write();
   win.addEventListener("popstate", onPopState);
-  sync.stop = () => win.removeEventListener("popstate", onPopState);
+  sync.stop = () => {
+    clearTimeout(timer);
+    win.removeEventListener("popstate", onPopState);
+  };
   return sync;
 }
