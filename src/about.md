@@ -153,6 +153,7 @@ Every dot is a paper; similar papers sit close together.
 - **Color by** Similarity (after a search, darker = closer; the legend in the corner runs from "less similar" to "more similar"), Type, Room, Session or Topic.
 - **Topic labels** name the groups of similar papers; turn them off with the toggle under the map.
 - A ring around a dot means it is **In My Papers**.
+- After a search, a **★ Your search** diamond shows where your topic lands among the papers (with **My research**, one per abstract). It sits among the papers most similar to it, so it is approximate: a wide shaded circle around it means those papers are spread over the map. Hover it for its nearest papers and lines to them.
 - On a phone, **Hide map** tucks the map away.
 
 ### Open a paper

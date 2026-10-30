@@ -22,6 +22,7 @@ const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
+import { queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
 import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
@@ -96,6 +97,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
   <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   <div class="map-stage">
   ${mapInput}
+  <p id="query-live" class="sr-only" aria-live="polite"></p>
   <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
   ${neighboursCard}
   </div>
@@ -308,14 +310,24 @@ invalidation.then(() => topicRefresh.stop());
 ```
 
 ```js
-// Draw the map right away; scores (color/size) arrive once the model is ready.
-const scored = await (async () => {
-  if ((!researchMode && !query?.trim()) || modelStatus !== "ready") return papers.map((p) => ({ ...p, score: null }));
+// The ranking's embeddings: the search, or one per abstract in My research (long abstracts are
+// chunked); null without a ranking. They also place the "★ Your search" marker (#100).
+const rankingVectors = await (async () => {
+  if ((!researchMode && !query?.trim()) || modelStatus !== "ready") return null;
   const embed = await getEmbedder();
+  if (researchMode) return researchVectors(embed, researchAbstracts, researchVectorCache);
+  return [await embed(query)];
+})();
+```
+
+```js
+// Draw the map right away; scores (color/size) arrive once the model is ready.
+const scored = (() => {
+  if (!rankingVectors) return papers.map((p) => ({ ...p, score: null }));
   const matrix = toMatrix(embeddingsBuffer, papers.length);
-  // My research: each paper scored by its closest abstract (long abstracts are chunked)
-  if (researchMode) return rankByMaxSimilarity(await researchVectors(embed, researchAbstracts, researchVectorCache), matrix, papers);
-  return rankBySimilarity(await embed(query), matrix, papers);
+  // My research: each paper scored by its closest abstract
+  if (researchMode) return rankByMaxSimilarity(rankingVectors, matrix, papers);
+  return rankBySimilarity(rankingVectors[0], matrix, papers);
 })();
 ```
 
@@ -620,12 +632,27 @@ const mapInput = await BrushableScatterPlot(positioned, {
   brush: keptBrush,
   // Nearest neighbours (#102) among the papers on the map; settings follow the store live
   neighbours: ((shownIds) => ({ similar: (id, k) => neighbourIndex.nearest(id, k, shownIds), ...neighbourStore.value, pinned: neighbourState.pinned }))(new Set(positioned.map((p) => p.id))),
+  // Where the search / My research lands (#100), placed below with placeQuery
+  query: true,
 });
 // A run superseded while the map was being built never shows it: stop its motion and keep
 // mapState pointing at the map on screen
 if (mapRun.superseded) mapInput.stop();
 else Object.assign(mapState, { map: mapInput, shown: projectionKey, reset: mapReset });
 const map = Generators.input(mapInput);
+```
+
+```js
+// "★ Your search" / "★ My research" (#100): placed among the papers on the map (drawn, aligned
+// coordinates) by their nearest neighbours in the embedding, all in the browser
+// Faded when few similar papers are visible (best visible match under the Weak cut). Screen
+// readers hear where it lands from the aria-live line by the map (never in the URL).
+{
+  const markers = queryMarkers({ vectors: rankingVectors, matrix: toMatrix(embeddingsBuffer, papers.length), papers, shown: positioned, query: query ?? "", research: researchMode, weakCut: rankingVectors ? cutsFor(scored.map((d) => d.score)).weak : -Infinity });
+  mapInput.placeQuery(markers);
+  const live = document.getElementById("query-live");
+  if (live && live.textContent !== queryAnnouncement(markers)) live.textContent = queryAnnouncement(markers);
+}
 ```
 
 ```js
