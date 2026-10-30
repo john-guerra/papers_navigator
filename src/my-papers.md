@@ -410,7 +410,7 @@ const restoreButton = previous && !sameIds(previous, followedStore.value)
 ```js
 // Paper details (#70): the same panel and ?paper=<shortId> URL as on Explore. Related papers
 // need the embeddings, loaded only now (they show "unavailable" if that fails offline)
-const paperRoute = createPaperRoute();
+const paperRoute = createPaperRoute({ resolveId: (key) => papers.find((p) => p.shortId === key || p.id === key)?.id });
 invalidation.then(() => paperRoute.stop());
 const paperParam = Generators.input(paperRoute);
 const openPaper = (p) => paperRoute.open(p.shortId ?? p.id);

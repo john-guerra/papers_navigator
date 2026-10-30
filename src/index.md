@@ -574,7 +574,7 @@ papersList.update();
 ```js
 // Paper details (#22) and related papers (#23): ?paper=<shortId> is the source of truth
 // (shared with My Papers, #70); Close goes back past related papers and returns focus
-const paperRoute = createPaperRoute();
+const paperRoute = createPaperRoute({ resolveId: (key) => papers.find((p) => p.shortId === key || p.id === key)?.id });
 invalidation.then(() => paperRoute.stop());
 const paperParam = Generators.input(paperRoute);
 const openPaper = (key) => paperRoute.open(key);

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createPaperRoute } from "../src/components/paperRoute.js";
 
 /** A window with a synchronous fake history (jsdom's traversal is async). */
-function fakeWindow(href, state = null) {
+function fakeWindow(href, state = null, { asyncGo = false } = {}) {
   const win = new EventTarget();
   const entries = [{ url: href, state }];
   let index = 0;
@@ -28,13 +28,21 @@ function fakeWindow(href, state = null) {
       entries[index] = { url: String(url ?? entries[index].url), state: s };
     },
     go(delta) {
-      index += delta;
-      win.dispatchEvent(new Event("popstate"));
+      const traverse = () => {
+        // like browsers: going before the first entry leaves the site
+        index += delta;
+        if (index < 0) win.leftSite = true;
+        win.dispatchEvent(new Event("popstate"));
+      };
+      if (asyncGo) win.pending.push(traverse);
+      else traverse();
     },
   };
   win.document = document;
   win.setTimeout = (fn) => fn();
   win.entries = entries;
+  win.pending = [];
+  win.flush = () => win.pending.splice(0).forEach((fn) => fn());
   return win;
 }
 
@@ -129,6 +137,42 @@ describe("createPaperRoute", () => {
     document.body.innerHTML = row;
     route.close();
     expect(document.activeElement).toBe(document.querySelector("button"));
+    document.body.innerHTML = "";
+  });
+
+  it("a second Close before popstate arrives (held Esc, double click) is ignored", () => {
+    const win = fakeWindow(BASE, null, { asyncGo: true });
+    const route = createPaperRoute({ win });
+    route.open("A");
+    route.open("B");
+    route.close();
+    route.close();
+    win.flush();
+    expect(win.leftSite).toBeUndefined();
+    expect(win.location.href).toBe(BASE);
+    expect(route.value).toBeNull();
+    // and Close works again for the next panel
+    route.open("C");
+    route.close();
+    win.flush();
+    expect(win.location.href).toBe(BASE);
+  });
+
+  it("after a direct link, Close focuses that paper's row, else the main heading", () => {
+    document.body.innerHTML = `<h1>My Papers</h1><div data-paper-id="id-a"><button class="paper-details-open">Details</button></div>`;
+    const resolveId = (key) => ({ A: "id-a", Z: "id-z" })[key];
+    const route = createPaperRoute({
+      win: fakeWindow(`${BASE}?paper=A`),
+      resolveId,
+    });
+    route.close();
+    expect(document.activeElement).toBe(document.querySelector("button"));
+    const other = createPaperRoute({
+      win: fakeWindow(`${BASE}?paper=Z`),
+      resolveId,
+    });
+    other.close();
+    expect(document.activeElement).toBe(document.querySelector("h1"));
     document.body.innerHTML = "";
   });
 

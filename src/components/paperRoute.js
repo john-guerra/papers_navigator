@@ -16,6 +16,7 @@ export function createPaperRoute({
   param = "paper",
   openerSelector = (id) =>
     `[data-paper-id="${CSS.escape(id)}"] .paper-details-open`,
+  resolveId = (key) => key,
 } = {}) {
   const route = new EventTarget();
   const { history } = win;
@@ -38,21 +39,31 @@ export function createPaperRoute({
   // Close returns focus to the Details button that opened the panel: the same button if it's
   // still on the page, else (the list re-rendered meanwhile) that row's button, by paper id.
   // Focus moves once the panel is gone (history.go is async; the page re-renders after `input`).
-  let opener = null;
+  // Without an opener (a direct link): the row of the paper the stack started with, else the
+  // page's main heading, never <body>.
+  const rootKey = read();
+  let opener = rootKey != null ? { id: resolveId(rootKey) } : null;
   let focusOnClose = null;
   const restoreFocus = () => {
     const { element, id } = focusOnClose ?? {};
     focusOnClose = null;
     win.setTimeout(() => {
+      const { document } = win;
+      const heading = document.querySelector("h1");
       const target = element?.isConnected
         ? element
-        : id && win.document.querySelector(openerSelector(id));
+        : (id && document.querySelector(openerSelector(id))) || heading;
+      if (target && target === heading) heading.setAttribute("tabindex", "-1");
       target?.focus();
     }, 50);
   };
+  // history.go is async: a second Close before popstate arrives (held Esc, double click)
+  // would go back past the list, off the site
+  let closing = false;
 
   let value = read();
   const sync = () => {
+    closing = false;
     const next = read();
     if (next === value) return;
     value = next;
@@ -73,10 +84,14 @@ export function createPaperRoute({
     sync();
   };
   route.close = () => {
-    focusOnClose = opener;
+    if (closing) return;
+    focusOnClose = opener ?? { id: null };
     opener = null;
     const n = depth();
-    if (n) return history.go(-n);
+    if (n) {
+      closing = true;
+      return history.go(-n);
+    }
     // Defensive: a details URL without a counted stack (e.g. state lost)
     const url = new URL(win.location.href);
     url.searchParams.delete(param);
