@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { lazyLoader, rankBySimilarity, toMatrix } from "../src/lib/search.js";
+import {
+  lazyLoader,
+  rankBySimilarity,
+  relevanceCounts,
+  relevanceCuts,
+  toMatrix,
+} from "../src/lib/search.js";
 import { applyProjection } from "../src/lib/projections.js";
 
 describe("toMatrix", () => {
@@ -59,5 +65,31 @@ describe("lazyLoader (#70)", () => {
     expect(await load()).toBe("matrix");
     expect(await load()).toBe("matrix");
     expect(calls).toBe(2);
+  });
+});
+
+describe("Weak relevance level", () => {
+  it("adds a weak cut below good (2/3 of it) and counts it", () => {
+    const scores = [0.6, 0.5, 0.45, 0.4, 0.35, 0.31, 0.25, 0.21, 0.1];
+    const cuts = relevanceCuts(scores);
+    expect(cuts.good).toBe(0.3);
+    expect(cuts.weak).toBeCloseTo(0.2);
+    const papers = scores.map((score) => ({ score }));
+    expect(relevanceCounts(papers, cuts)).toEqual({
+      strong: 3,
+      good: 6,
+      weak: 8,
+      all: 9,
+    });
+  });
+});
+
+describe("Weak never above Good", () => {
+  it("holds when the fallback Good cut is negative", () => {
+    const cuts = relevanceCuts([
+      0.1, 0.05, 0, -0.01, -0.02, -0.03, -0.04, -0.05, -0.06, -0.07, -0.08,
+    ]);
+    expect(cuts.good).toBeLessThan(0);
+    expect(cuts.weak).toBeLessThanOrEqual(cuts.good);
   });
 });

@@ -19,7 +19,7 @@
  * @property {string} value author name, institution, or topic query
  * @property {number} [threshold] topic only: minimum similarity score to match, an absolute
  *   score fixed when the topic is saved (the level's cut then), so a re-scrape doesn't move it
- * @property {"strong" | "good"} [level] topic only: the relevance level it was saved at
+ * @property {"strong" | "good" | "weak"} [level] topic only: the relevance level it was saved at
  * @property {Record<string, number>} [matches] topic only: cached `paper id → score` of the
  *   papers at or above the threshold, so My Papers works without the language model (#24)
  * @property {string[]} [research] "My research" topic only (#27): the abstracts it is ranked
@@ -79,7 +79,7 @@ export function normalizeRule(rule, now = new Date()) {
   return normalized;
 }
 
-const LEVELS = new Set(["strong", "good"]);
+const LEVELS = new Set(["strong", "good", "weak"]);
 /**
  * Lowest threshold a research topic may have: rules also arrive from links and files, and a
  * threshold ≤ 0 would put most of the program in My Papers (cosine scores can be negative).
@@ -105,7 +105,9 @@ function topicFields(rule) {
           id.length > 0 &&
           id.length <= 64 &&
           typeof score === "number" &&
-          Number.isFinite(score),
+          Number.isFinite(score) &&
+          // a clamped threshold drops cached matches below it
+          score >= fields.threshold,
       );
     fields.matches = Object.fromEntries(entries);
   }

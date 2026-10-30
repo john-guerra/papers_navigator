@@ -200,3 +200,12 @@ describe("share hash with research topics (#24)", () => {
     ).toEqual([{ type: "topic", value: "ok", level: "good", threshold: 0.25 }]);
   });
 });
+
+describe("weak research topics in links", () => {
+  it("round-trips the weak level as w", async () => {
+    const { decodeShareWatches } = await import("../src/lib/share.js");
+    expect(decodeShareWatches("#follow=&watch=t:w0.2:viz")).toEqual([
+      { type: "topic", value: "viz", level: "weak", threshold: 0.2 },
+    ]);
+  });
+});

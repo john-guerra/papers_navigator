@@ -47,7 +47,7 @@ export function renderWatching(
   </section>`;
 }
 
-const LEVEL_NAMES = { strong: "Strong", good: "Good" };
+const LEVEL_NAMES = { strong: "Strong", good: "Good", weak: "Weak" };
 
 /** "Tue 3 · Wed 1 · 2 without a time · most in Charts (2)" (US11.2: where they fall). */
 function scheduleText({ days, untimed, topSession }) {

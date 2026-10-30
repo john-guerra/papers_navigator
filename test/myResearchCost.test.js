@@ -47,7 +47,7 @@ describe("researchCuts", () => {
   });
 
   it("handles no scores", () => {
-    expect(researchCuts([null])).toEqual({ good: 0, strong: 0 });
+    expect(researchCuts([null])).toEqual({ good: 0, strong: 0, weak: 0 });
   });
 });
 

@@ -29,19 +29,26 @@ export function rankBySimilarity(query, matrix, papers, dims = DIMS) {
  */
 export function relevanceCuts(scores) {
   const sorted = scores.filter((s) => s != null).sort((a, b) => b - a);
-  if (!sorted.length) return { good: 0, strong: 0 };
+  if (!sorted.length) return { good: 0, strong: 0, weak: 0 };
   const good =
     sorted.filter((s) => s >= 0.3).length >= 5
       ? 0.3
       : sorted[Math.min(9, sorted.length - 1)];
-  return { good, strong: good + (sorted[0] - good) / 2 };
+  // Weak: loosely related (2/3 of the Good cut, i.e. 0.20 for a normal search; never above
+  // Good, even when a fallback Good is negative)
+  return {
+    good,
+    strong: good + (sorted[0] - good) / 2,
+    weak: Math.min(good, (good * 2) / 3),
+  };
 }
 
 /** Papers at each relevance level for the given cuts. */
-export function relevanceCounts(papers, { good, strong }) {
+export function relevanceCounts(papers, { good, strong, weak }) {
   return {
     strong: papers.filter((p) => p.score >= strong).length,
     good: papers.filter((p) => p.score >= good).length,
+    weak: papers.filter((p) => p.score >= weak).length,
     all: papers.length,
   };
 }
