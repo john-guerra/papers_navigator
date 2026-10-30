@@ -82,6 +82,10 @@ export function cullLabels(
 
 const extent = (values) => [Math.min(...values), Math.max(...values)];
 
+/** A tooltip entry: a field name, or {field, title, format} for a readable label/number. */
+const tooltipField = (entry) =>
+  typeof entry === "string" ? { field: entry } : { ...entry };
+
 // Internal value for the "everything else" bucket; a real category may be called "Other"
 const OTHER = "\u0000other";
 
@@ -205,7 +209,7 @@ export function scatterSpec(
           legend: null,
         },
       }),
-      tooltip: tooltip.map((field) => ({ field })),
+      tooltip: tooltip.map(tooltipField),
     },
   };
   const rings = ringIds && {
@@ -217,7 +221,7 @@ export function scatterSpec(
       strokeWidth: 1.5,
       color: token("color-viz-followed-ring", "#241e1a"),
     },
-    encoding: { ...position, tooltip: tooltip.map((field) => ({ field })) },
+    encoding: { ...position, tooltip: tooltip.map(tooltipField) },
   };
 
   const shown =

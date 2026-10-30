@@ -372,3 +372,15 @@ describe("BrushableScatterPlot only emits on selection changes", () => {
     expect(fired).toBeGreaterThan(0);
   });
 });
+
+describe("tooltip fields with titles and formats", () => {
+  it("accepts {field, title, format} as well as plain field names", () => {
+    const spec = scatterSpec([{ id: "a", x: 0, y: 0, score: 0.5 }], {
+      tooltip: ["id", { field: "score", title: "Similarity", format: ".0%" }],
+    });
+    expect(spec.encoding.tooltip).toEqual([
+      { field: "id" },
+      { field: "score", title: "Similarity", format: ".0%" },
+    ]);
+  });
+});
