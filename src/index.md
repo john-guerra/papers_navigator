@@ -21,6 +21,9 @@ const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
 };
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
+import { createAligner } from "./lib/procrustes.js";
+import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
+import { animationControl } from "./components/animationControl.js";
 import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
 import { clusterLabels } from "./lib/clusters.js";
 import { facetStrip } from "./widgets/facetStrip.js";
@@ -90,6 +93,8 @@ ${paperDetail}
   <div class="filters-header"><h2>Map options</h2>${filtersClose}</div>
   <h3>Dimensionality reduction</h3>
   ${projectionInput}
+  <h3>Animation</h3>
+  ${animationControl(animationStore, { hasTopics })}
   <h3>Appearance</h3>
   ${themeControl()}
   <h3>Advanced</h3>
@@ -351,7 +356,20 @@ const setLive = ({ projections, clusters }) => {
   if (clusters !== liveClusters.value) liveClusters.value = clusters;
 };
 const formatProjection = (d) => (conference.projections.includes(d) ? d.toUpperCase() : d);
-const mapState = { projection: conference.projections[0], panel: null };
+// map: the map on screen (the next one animates from it, #82); shown: its projection key
+const mapState = { projection: conference.projections[0], panel: null, map: null, shown: null, reset: 0, aligner: createAligner() };
+// Map animation (#82), remembered per browser; only "Align projections" moves points by itself
+const animationStore = createAnimationSettings();
+```
+
+```js
+const alignProjections = Generators.observe((notify) => {
+  let last = animationStore.value.align;
+  notify(last);
+  const update = () => animationStore.value.align !== last && notify((last = animationStore.value.align));
+  animationStore.addEventListener("input", update);
+  return () => animationStore.removeEventListener("input", update);
+});
 ```
 
 ```js
@@ -467,13 +485,24 @@ theme; // and when Appearance changes (colors come from the tokens)
 // Live clusters (#28) are a per-paper field, so they color any projection
 // (papers in no cluster: null, so they color as Other; the tooltip says None)
 const withLiveClusters = (list) => (liveClusters ? list.map((p) => ({ ...p, liveCluster: liveClusters.byId[p.id], liveClusterName: liveClusters.byId[p.id] ?? "None" })) : list);
-const positioned = withLiveClusters(applyProjection(filtered, { ...projections, ...liveProjections }[projection]).papers);
+// Every projection aligned (Procrustes) to the default one, so switching shows real moves (#82)
+const coords = { ...projections, ...liveProjections }[projection];
+const aligned = alignProjections ? mapState.aligner.align(coords, projections[conference.projections[0]]) : coords;
+const positioned = withLiveClusters(applyProjection(filtered, aligned).papers);
+// Same projection (filters, search, colors, theme): animate entering/leaving points and keep
+// the region selection, unless the map-region chip was cleared
+const projectionKey = `${projection}:${alignProjections}`;
+const projectionChanged = mapState.shown != null && mapState.shown !== projectionKey;
+const previousMap = mapState.map;
+const keptBrush = !projectionChanged && mapReset === mapState.reset ? previousMap?.brush() : null;
 mapState.projection = projection;
 mapState.panel?.refreshCurrent();
 const hasQuery = (researchMode || Boolean(query?.trim())) && modelStatus === "ready";
 // Similarity only exists after a search; until then one neutral color
 const colorField = colorBy === "score" && !hasQuery ? null : colorBy;
 const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session", clusterLabel: "Topic", liveCluster: "Cluster (live)" };
+const mapRun = { superseded: false };
+invalidation.then(() => (mapRun.superseded = true));
 const mapInput = await BrushableScatterPlot(positioned, {
   color: colorField,
   colorType: colorBy === "score" && hasQuery ? "quantitative" : "nominal",
@@ -502,7 +531,14 @@ const mapInput = await BrushableScatterPlot(positioned, {
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,
+  from: previousMap,
+  animate: mapAnimation(animationStore.value, { projectionChanged, stageOf: hasTopics ? (d) => d.cluster : null }),
+  brush: keptBrush,
 });
+// A run superseded while the map was being built never shows it: stop its motion and keep
+// mapState pointing at the map on screen
+if (mapRun.superseded) mapInput.stop();
+else Object.assign(mapState, { map: mapInput, shown: projectionKey, reset: mapReset });
 const map = Generators.input(mapInput);
 ```
 
