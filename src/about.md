@@ -62,7 +62,7 @@ const storageTable = html`<table class="about-storage">
    3. [Use the map](#use-the-map)
    4. [Open a paper](#open-a-paper)
    5. [Add papers to My Papers](#add-papers-to-my-papers)
-   6. [Watch people, institutions and research topics](#watch-people-institutions-and-research-topics)
+   6. [Watch researchers, institutions and research topics](#watch-researchers-institutions-and-research-topics)
    7. [My research: rank the program against your abstracts](#my-research)
    8. [Options: projection, animation, appearance, advanced](#options)
 4. [Tutorial: My Papers](#my-papers)
@@ -138,10 +138,10 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 ### Filter the program
 
 - The facet buttons under the search narrow the matching papers: **Type** (main tracks by default), **Author**, **Institution**, **Keyword**, **Topic** and **Session**. Each opens a list with counts among the matching papers and a search box.
-- An active facet shows its value on the button; its ✕ clears it. **Clear all** clears every constraint.
+- An active facet shows its value on the button; its ✕ clears it. **Clear all** empties the search and the map region; in the filters it goes back to Main tracks.
 - Constraints that aren't facets (your search, a map region) appear as chips with a ✕.
 - On a phone the facets fold into one **Filters (n)** button.
-- **Share a view:** your search, relevance, filters, map region and map options are kept in the page address, so a reload brings you back to the same view. Copy the address from your browser to send someone exactly what you see. (Your abstracts from My research are never in it.)
+- **Share a view:** your search, relevance, filters, map region and map options are kept in the page address, so a reload brings you back to the same view. Copy the address from your browser to send someone exactly what you see. (Your abstracts from My research are never in it. A link with a search pauses My research on the device that opens it; the message offers **Resume**.)
 
 ### Use the map
 
@@ -157,20 +157,20 @@ Every dot is a paper; similar papers sit close together.
 
 ### Open a paper
 
-- Click a paper's title (in the list, in My Papers or on a researcher profile) or its dot on the map to open its details: abstract, authors and institutions, session, room and time, links, and **Related papers**. Each paper's details have their own address, so you can bookmark or send them.
+- Click a paper's title (in the list, in My Papers or on a researcher profile) or its dot on the map to open its details: abstract, authors and institutions, session, room and time, links, and **Related papers**. Each paper's details have their own address, so you can bookmark or send them. A copied paper title link opens just that paper, without your search and filters.
 - **Conference page ↗** opens the paper on the conference website.
 
 ### Add papers to My Papers
 
-- One paper: the ring button next to it (**Add to My Papers**; tap again to **Remove**).
+- One paper: the **Add to My Papers** button next to it (it then reads **In My Papers**; tap again to remove it).
 - Many papers: above the list, **Add N to My Papers** adds exactly the N matching papers listed (it says how many are already there).
 - Every change shows a message with **Undo**. The navbar's My Papers count shows your list size on every page.
 
-### Watch people, institutions and research topics
+### Watch researchers, institutions and research topics
 
 A *watch* is a standing rule: its papers are always in My Papers, including papers added in later program updates.
 
-- **Watch a person or institution:** open the Author or Institution facet and press **Watch** on its row (or Watch on a researcher's profile).
+- **Watch a researcher or institution** (a friend, your lab, your university): open the Author or Institution facet and press **Watch** on its row (or Watch on a researcher's profile).
 - **Watch a research topic:** after a search, press **🔍 Watch this research topic** under the relevance control. A preview shows how many papers match at Strong or Good across the whole program and which would join your list; confirm to save it.
 - Manage your watches in My Papers → Watching.
 
@@ -223,7 +223,7 @@ My Papers is your personal list and schedule. Everything happens in your browser
 
 ### Share, export and import
 
-- **Share list** (phones) opens your phone's share sheet. On a laptop, **Send to my phone** shows a QR code and **📋 Copy link**. The link carries the papers you added and your watches (people, institutions, research topics), but not your My research abstracts.
+- **Share list** (phones) opens your phone's share sheet. On a laptop, **Send to my phone** shows a QR code and **📋 Copy link**. The link carries the papers you added and your watches (researchers, institutions, research topics), but not your My research abstracts.
 - Opening a shared link offers **Merge into my list**, **Replace my list** (asks first, and can be undone) or **Ignore**.
 - **⬇️ Export JSON** saves your list, reasons and watches to a file; **⬆️ Import JSON** brings it back, on this or another device (merge or replace).
 - After a replace, **Restore previous list** brings back the list you had.

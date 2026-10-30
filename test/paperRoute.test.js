@@ -189,15 +189,13 @@ describe("createPaperRoute", () => {
 });
 
 describe("route.href", () => {
-  it("is the current page with ?paper=<key>, keeping other params and the fragment (#92)", () => {
+  it("is the current page with ?paper=<key>, keeping other params but not the fragment (#92)", () => {
     const win = fakeWindow(
       "https://x.org/viz/index.html?now=2026-11-10&paper=old#q=LLM&type=full",
     );
     const route = createPaperRoute({ win });
-    // A new tab opened from the link keeps Explore's view
-    expect(route.href("s1")).toBe(
-      "/viz/index.html?now=2026-11-10&paper=s1#q=LLM&type=full",
-    );
+    // A copied title link doesn't leak the sender's search and filters
+    expect(route.href("s1")).toBe("/viz/index.html?now=2026-11-10&paper=s1");
     route.stop();
   });
 });

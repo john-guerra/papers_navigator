@@ -3,11 +3,17 @@ import { normalizeRule } from "../lib/rules.js";
 
 /**
  * "Watch" / "Watching" toggle for a person or institution (DESIGN.md → Vocabulary: Watch =
- * a standing rule whose papers are always in My Papers). Used as the facet strip's row action.
+ * a standing rule whose papers are always in My Papers). A text button as the facet strip's
+ * row action; `variant: "secondary"` on a researcher profile (DESIGN.md → Researcher profile).
  */
-export function watchButton(rule, { rules, onWatch, onUnwatch }) {
+export function watchButton(
+  rule,
+  { rules, onWatch, onUnwatch, variant = "text" },
+) {
   const id = normalizeRule(rule)?.id;
-  const button = html`<button class="watch-toggle btn-text"></button>`;
+  const button = html`<button
+    class=${`watch-toggle ${variant === "secondary" ? "btn-secondary" : "btn-text"}`}
+  ></button>`;
   const render = () => {
     const on = rules.has(id);
     button.setAttribute("aria-pressed", String(on));

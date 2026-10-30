@@ -175,3 +175,31 @@ describe("Researchers search pasted in the address bar (#92)", () => {
     expect(onExternalChange).not.toHaveBeenCalled();
   });
 });
+
+describe("Researchers fragment hardening (#104)", () => {
+  it("doesn't take an in-page anchor (#privacy) for a new link", () => {
+    const win = fakeWindow(`${base}#q=Lee`);
+    const onExternalChange = vi.fn();
+    createAuthorRoute({ win, onExternalChange });
+    win.history.pushState(null, "", `${base}#privacy`);
+    win.dispatchEvent(new Event("popstate"));
+    expect(onExternalChange).not.toHaveBeenCalled();
+  });
+
+  it("drops unknown fragment pairs at load, keeping #q= and share keys", () => {
+    const win = fakeWindow(`${base}#q=Lee&junk=1&follow=ab`);
+    const route = createAuthorRoute({ win });
+    expect(route.query).toBe("Lee");
+    expect(win.location.href).toBe(`${base}#q=Lee&follow=ab`);
+    route.setQuery("Kim");
+    expect(win.location.href).toBe(`${base}#follow=ab&q=Kim`);
+  });
+
+  it("ignores a fragment over ~4 KB", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const win = fakeWindow(`${base}#q=${"x".repeat(5000)}`);
+    expect(createAuthorRoute({ win }).query).toBe("");
+    expect(win.location.href).toBe(base);
+    warn.mockRestore();
+  });
+});

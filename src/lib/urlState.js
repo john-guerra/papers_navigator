@@ -46,6 +46,11 @@ export const EXPLORE_KEYS = [
   "region",
 ];
 
+/** Share-link keys (share.js) a page keeps in its fragment though it doesn't own them. */
+export const SHARE_KEYS = ["follow", "watch"];
+/** Longest fragment read at load (a long share list is ~2 KB); a longer one is dropped. */
+export const MAX_HASH = 4096;
+
 const MAX_QUERY = 300;
 /** Longest facet value (real author/institution/session names are far shorter). */
 const MAX_VALUE = 200;
@@ -87,7 +92,28 @@ export function encodeExploreState(state, defaults = {}) {
   const { region } = state;
   if (projectionEncodable && region?.projection === state.projection)
     params.set("region", [...region.x, ...region.y].map(round).join(","));
-  return params;
+  return capParams(params);
+}
+
+/**
+ * Keeps a written fragment under `max` (what cleanHash accepts at load, so a reload never drops
+ * the whole view): drops the region first, then facet values from the last one, with a warning.
+ */
+function capParams(params, max = MAX_HASH) {
+  if (params.toString().length <= max) return params;
+  console.warn(
+    `The view is too long for the URL (over ${max} characters): shortening it`,
+  );
+  params.delete("region");
+  const facetKeys = Object.values(FACET_KEYS);
+  const entries = [...params];
+  let length = params.toString().length;
+  for (let i = entries.length - 1; i >= 0 && length > max; i--) {
+    if (!facetKeys.includes(entries[i][0])) continue;
+    entries.splice(i, 1);
+    length = new URLSearchParams(entries).toString().length;
+  }
+  return new URLSearchParams(entries);
 }
 
 /**
@@ -134,10 +160,15 @@ export function decodeExploreState(
   };
 }
 
+/** A plain decimal number: Number() would also take "", " 1", "0x1f" and "Infinity". */
+const NUMBER = /^-?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i;
+
 function decodeRegion(text, projection) {
   if (!text || text.length > 100) return null;
-  const v = text.split(",").map(Number);
-  if (v.length !== 4 || !v.every(Number.isFinite)) return null;
+  const parts = text.split(",");
+  if (parts.length !== 4 || !parts.every((p) => NUMBER.test(p))) return null;
+  const v = parts.map(parseFloat);
+  if (!v.every(Number.isFinite)) return null;
   const x = [Math.min(v[0], v[1]), Math.max(v[0], v[1])];
   const y = [Math.min(v[2], v[3]), Math.max(v[2], v[3])];
   if (x[0] === x[1] || y[0] === y[1]) return null;
@@ -150,17 +181,61 @@ export function hashParams(href) {
 }
 
 /**
- * `href` with `keys` in the fragment replaced by `params` (none: removed). Everything else is
- * kept: the query string (e.g. ?paper=) and other fragment pairs (e.g. #follow= share links).
+ * `href` with `keys` in the fragment replaced by `params` (none: removed). The query string
+ * (e.g. ?paper=) is always kept; other fragment pairs too, unless `keep` lists the only other
+ * keys to keep (e.g. SHARE_KEYS): then the rest (unknown pairs from a link) are dropped.
  */
-export function withParams(href, params, keys = EXPLORE_KEYS) {
+export function withParams(href, params, keys = EXPLORE_KEYS, { keep } = {}) {
   const url = new URL(href);
   const hash = new URLSearchParams(url.hash.slice(1));
   for (const key of keys) hash.delete(key);
+  if (keep)
+    for (const key of new Set(hash.keys()))
+      if (!keep.includes(key)) hash.delete(key);
   for (const [key, value] of params) hash.append(key, value);
   const text = hash.toString();
   url.hash = "";
   return url.href.replace(/#$/, "") + (text ? `#${text}` : "");
+}
+
+/**
+ * The fragment's pairs at load, cleaned up: only the page's `keys` and `keep` (share-link keys)
+ * survive, and a fragment longer than `maxLength` is dropped whole (with a console warning).
+ * Unknown pairs would otherwise ride along in every URL the page writes. When something was
+ * dropped, the URL is rewritten with replaceState (history.state kept).
+ */
+export function cleanHash({
+  win = globalThis.window,
+  keys = EXPLORE_KEYS,
+  keep = SHARE_KEYS,
+  maxLength = MAX_HASH,
+} = {}) {
+  const url = new URL(win.location.href);
+  const text = url.hash.slice(1);
+  let params = new URLSearchParams(text);
+  if (text.length > maxLength) {
+    console.warn(
+      `Ignoring a ${text.length}-character URL fragment (over ${maxLength})`,
+    );
+    params = new URLSearchParams();
+  } else {
+    const allowed = [...keys, ...keep];
+    params = new URLSearchParams(
+      [...params].filter(([key]) => allowed.includes(key)),
+    );
+  }
+  const dropped = [...params].length !== [...new URLSearchParams(text)].length;
+  if (dropped || text.length > maxLength) {
+    const next = withParams(win.location.href, params, [
+      ...new URLSearchParams(text).keys(),
+    ]);
+    try {
+      win.history.replaceState(win.history.state, "", next);
+    } catch {
+      // the page still ignores the dropped pairs
+    }
+  }
+  return params;
 }
 
 /**
@@ -172,18 +247,21 @@ export function withParams(href, params, keys = EXPLORE_KEYS) {
  * The URL is read once, at load; Back/Forward belong to ?paper= (paperRoute), so after one the
  * page's state is written back onto that entry. A fragment the person changes in the address bar
  * (or a pasted link that differs only in it) doesn't reload the page: `onExternalChange` (default:
- * reload, so the page starts from that link) runs instead.
+ * reload, so the page starts from that link) runs instead, if it has one of the page's `keys`
+ * (an in-page anchor such as #privacy is not a new view). Writes keep only `keys` and `keep`.
  */
 export function createUrlSync({
   win = globalThis.window,
   encode,
   keys = EXPLORE_KEYS,
+  keep = SHARE_KEYS,
   state = {},
   onExternalChange = () => win.location.reload(),
   delay = 250,
 }) {
   const sync = { state };
-  const target = () => withParams(win.location.href, encode(sync.state), keys);
+  const target = () =>
+    withParams(win.location.href, encode(sync.state), keys, { keep });
   const withoutHash = (href) => href.replace(/#.*$/, "");
   // The URL as this page last left it (pushState by paperRoute fires nothing, so it may lag)
   let last = win.location.href;
@@ -209,10 +287,16 @@ export function createUrlSync({
     // A pending change goes onto the entry we land on (write below), not the one we left
     clearTimeout(timer);
     timer = null;
-    const external =
-      withoutHash(win.location.href) === withoutHash(last) &&
-      target() !== win.location.href;
-    if (external) return onExternalChange();
+    const sameBase = withoutHash(win.location.href) === withoutHash(last);
+    if (
+      sameBase &&
+      !keys.some((key) => hashParams(win.location.href).has(key))
+    ) {
+      // An in-page anchor (or a fragment emptied by hand): not a view, leave it
+      last = win.location.href;
+      return;
+    }
+    if (sameBase && target() !== win.location.href) return onExternalChange();
     write();
   };
   // Trailing debounce: a brush drag emits on every point it crosses

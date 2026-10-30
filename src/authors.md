@@ -93,6 +93,7 @@ const authorView = !authorParam
         detailsHref: (p) => paperRoute.href(p.shortId ?? p.id),
         // Watch = an author rule (#5): their papers stay in My Papers, also after program updates
         watch: watchButton({ type: "author", value: author.name }, {
+          variant: "secondary",
           rules: rulesStore,
           onWatch: (rule) => {
             const saved = store.watch(rule);

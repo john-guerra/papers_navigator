@@ -83,7 +83,7 @@ export function renderPaperDetail(
   const el = html`<aside
     class="paper-detail"
     role="dialog"
-    aria-label=${`Details: ${paper.title}`}
+    aria-label=${`Paper: ${paper.title}`}
   >
     <div class="paper-detail-header">
       ${close}
@@ -96,7 +96,7 @@ export function renderPaperDetail(
     </p>
     <p class="paper-detail-where">${where}</p>
     <p class="paper-detail-links">
-      ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page</a>` : ""}
+      ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page ↗</a>` : ""}
       ${(paper.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
     </p>
     ${paper.abstract ? html`<div class="paper-detail-abstract">${paper.abstract}</div>` : ""}

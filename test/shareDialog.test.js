@@ -40,7 +40,7 @@ describe("renderShareDialog", () => {
     });
     expect(el.querySelector("canvas")).toBeNull();
     expect(el.textContent.replace(/\s+/g, " ")).toContain(
-      "too many papers for a QR code",
+      `You have ${QR_MAX_PAPERS + 1} papers in My Papers, too many for a QR code`,
     );
     expect(el.querySelector("input").value).toBe("https://x.test/#follow=a");
   });

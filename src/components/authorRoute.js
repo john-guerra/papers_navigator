@@ -1,4 +1,9 @@
-import { hashParams, withParams } from "../lib/urlState.js";
+import {
+  SHARE_KEYS,
+  cleanHash,
+  hashParams,
+  withParams,
+} from "../lib/urlState.js";
 
 /**
  * Researchers page URL state (#78): `authors.html` is the index, `authors.html?name=<name>` a
@@ -12,7 +17,8 @@ import { hashParams, withParams } from "../lib/urlState.js";
  * The index's search is `#q=` (#92), in the fragment so it never reaches the server: `.query` is
  * the search in the URL at load, `setQuery(text)` writes it with replaceState (no history entry
  * per keystroke) while the index shows. Profile URLs don't carry it; opening the index puts the
- * last search back.
+ * last search back. At load the fragment keeps only `#q=` and share-link keys (capped, #104); an
+ * in-page anchor (no `q`) is not a new search.
  */
 export function createAuthorRoute({
   win = globalThis.window,
@@ -24,26 +30,27 @@ export function createAuthorRoute({
   const read = () => new URL(win.location.href).searchParams.get(param) || null;
   let value = read();
   // Capped: a link is attacker-controllable
-  let query = (hashParams(win.location.href).get(queryParam) ?? "").slice(
-    0,
-    200,
-  );
+  let query = (
+    cleanHash({ win, keys: [queryParam] }).get(queryParam) ?? ""
+  ).slice(0, 200);
   const withQuery = (url) =>
     new URL(
       withParams(
         url.href,
         new URLSearchParams(query ? { [queryParam]: query } : {}),
         [queryParam],
+        { keep: SHARE_KEYS },
       ),
     );
   const withoutHash = (href) => href.replace(/#.*$/, "");
-  const hashQuery = () => hashParams(win.location.href).get(queryParam) ?? "";
+  const hashQuery = () => hashParams(win.location.href).get(queryParam);
   // The URL as this page last left it, to tell a pasted #q= from Back/Forward
   let last = win.location.href;
   const sync = () => {
     const external =
       withoutHash(win.location.href) === withoutHash(last) &&
       read() == null &&
+      hashQuery() != null &&
       hashQuery() !== query;
     last = win.location.href;
     // Only the fragment's search changed (address bar, a pasted link): start from that link

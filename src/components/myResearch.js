@@ -1,5 +1,28 @@
 import { html } from "htl";
 import { MAX_ABSTRACTS, splitAbstracts } from "../lib/myResearch.js";
+import { showToast } from "./toast.js";
+
+/**
+ * A link that names a search shows that search, not your "My research" ranking (#92): turns
+ * research off in `store` (the abstracts stay). True when it did, so the page can say so with
+ * researchPausedToast once its search box exists.
+ */
+export function pauseResearchForLink(store, { explicitQuery }) {
+  if (!explicitQuery || !store.value.active) return false;
+  store.set({ active: false });
+  return true;
+}
+
+/** "My research paused · Resume" (#104): Resume runs `onResume` (clear the search), then ranks by the saved abstracts. */
+export function researchPausedToast(store, { onResume, toast = showToast }) {
+  return toast("My research paused", {
+    actionLabel: "Resume",
+    onAction: () => {
+      onResume?.();
+      store.set({ active: true });
+    },
+  });
+}
 
 const abstractsWord = (n) => `${n} ${n === 1 ? "abstract" : "abstracts"}`;
 

@@ -51,6 +51,21 @@ describe("watchButton", () => {
   });
 });
 
+describe("watchButton variants (DESIGN.md → Researcher profile)", () => {
+  it("is a text button in facet rows and a secondary button on a profile", () => {
+    const rules = createRulesStore("t", memory(), null);
+    const hooks = { rules, onWatch: () => {}, onUnwatch: () => {} };
+    const row = watchButton({ type: "author", value: "Ann" }, hooks);
+    expect(row.classList.contains("btn-text")).toBe(true);
+    const profile = watchButton(
+      { type: "author", value: "Ann" },
+      { ...hooks, variant: "secondary" },
+    );
+    expect(profile.classList.contains("btn-text")).toBe(false);
+    expect(profile.classList.contains("btn-secondary")).toBe(true);
+  });
+});
+
 describe("watchButton follows rule changes made elsewhere", () => {
   it("updates when the rules store changes (another tab, Undo)", () => {
     const store = new Map();

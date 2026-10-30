@@ -78,8 +78,8 @@ export function createPaperRoute({
   route.href = (key) => {
     const url = new URL(win.location.href);
     url.searchParams.set(param, key);
-    // The fragment too: a new tab keeps the page's view (Explore's search and filters, #92)
-    return url.pathname + url.search + url.hash;
+    // Not the fragment (#92): a copied title link must not carry the sender's search and filters
+    return url.pathname + url.search;
   };
   route.open = (key) => {
     if (!depth()) {

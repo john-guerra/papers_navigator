@@ -1,7 +1,44 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { myResearch } from "../src/components/myResearch.js";
+import {
+  myResearch,
+  pauseResearchForLink,
+  researchPausedToast,
+} from "../src/components/myResearch.js";
 import { topicWatch } from "../src/components/topicWatch.js";
+
+/** A research store stand-in: `.value` and `set(partial)` like createResearchStore. */
+const fakeStore = (value) => ({
+  value,
+  set(partial) {
+    this.value = { ...this.value, ...partial };
+  },
+});
+
+describe("a link with a search pauses My research (#104)", () => {
+  it("pauses only when the link names a search and research was on", () => {
+    const store = fakeStore({ text: "abs", active: true });
+    expect(pauseResearchForLink(store, { explicitQuery: false })).toBe(false);
+    expect(store.value.active).toBe(true);
+    expect(pauseResearchForLink(store, { explicitQuery: true })).toBe(true);
+    expect(store.value).toEqual({ text: "abs", active: false });
+    expect(pauseResearchForLink(store, { explicitQuery: true })).toBe(false);
+  });
+
+  it("says so in a toast whose Resume ranks by the saved abstracts again", () => {
+    const store = fakeStore({ text: "abs", active: false });
+    const toast = vi.fn();
+    const onResume = vi.fn();
+    researchPausedToast(store, { toast, onResume });
+    expect(toast).toHaveBeenCalledWith(
+      "My research paused",
+      expect.objectContaining({ actionLabel: "Resume" }),
+    );
+    toast.mock.calls[0][1].onAction();
+    expect(onResume).toHaveBeenCalledOnce();
+    expect(store.value).toEqual({ text: "abs", active: true });
+  });
+});
 
 describe("myResearch panel", () => {
   it("counts the pasted abstracts and ranks with the text", () => {
