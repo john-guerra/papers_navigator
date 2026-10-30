@@ -23,10 +23,12 @@ export function tooltipValue(d, entries) {
  * touch (taps show the paper in the list instead).
  */
 export function attachNearestTooltip(el, { view, pointAt, entries }) {
-  let shown = null;
+  // undefined, not null: a fresh map (after a redraw) can hide a tooltip the old one left open
+  let shown;
   const show = (event, d) => {
     if (d === shown) return;
     shown = d;
+    // Vega passes its scene handler first; vega-tooltip's handler ignores it, so pass the handler
     const handler = view.tooltip();
     handler?.call(
       view,

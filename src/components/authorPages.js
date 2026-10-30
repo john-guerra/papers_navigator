@@ -112,7 +112,7 @@ const countChips = (all, label, limit = 20) => {
 /**
  * A researcher's profile (#78): name and affiliations as listed, when they present (conference
  * timezone; ⚠ for conflicts with My Papers), topics and keywords, co-authors, and their papers
- * with the My Papers toggle and Details. Actions: `watch` (an element, the Watch toggle) and
+ * with the My Papers toggle (titles open the details). Actions: `watch` (an element, the Watch toggle) and
  * "Add N to My Papers" (`onAddAll(fresh)`). `el.update()` refreshes everything that depends on
  * My Papers in place (toggles, the add button, conflicts), keeping scroll and focus.
  */

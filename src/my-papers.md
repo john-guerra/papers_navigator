@@ -320,6 +320,8 @@ display(
     {
       tz,
       authorHref: authorUrl,
+      // The title opens the paper's details; "Conference page ↗" goes to the conference site
+      details: { href: (p) => paperRoute.href(p.shortId ?? p.id), open: (p) => openPaper(p) },
       preamble: (p) =>
         html`${p.new ? html`<span class="new-badge">New</span> ` : ""}${(p.reasons ?? [p.reason]).map((r) => html`<span class="reason-chip">${r}</span> `)}· Added ${new Date(p.addedOn).toLocaleDateString()}`,
       actions: (p) => {
