@@ -8,10 +8,18 @@ const abstractsWord = (n) => `${n} ${n === 1 ? "abstract" : "abstracts"}`;
  * inline panel (no dialog) to paste one or more abstracts and rank the program against them.
  * `text` = the saved abstracts, `active` = ranking by them now, `ready` = the model is loaded,
  * `open` = panel open (kept by the page across re-renders through `onToggle`).
- * `onRank(text)`, `onForget()`.
+ * `savedTopics()` = research topics saved from abstracts (`[{id, name}]`, read on click so the
+ * panel doesn't re-render when rules change). `onRank(text)`, `onForget({topics})` with the ids
+ * of the research topics to stop watching too ([] = abstracts only).
  */
 export function myResearch(
-  { text = "", active = false, ready = true, open: startOpen = false },
+  {
+    text = "",
+    active = false,
+    ready = true,
+    open: startOpen = false,
+    savedTopics = () => [],
+  },
   { onRank, onForget, onToggle },
 ) {
   const toggle = html`<button
@@ -89,10 +97,59 @@ export function myResearch(
     onRank(textarea.value);
     setOpen(false);
   };
-  forget.onclick = () => {
+  const actions = panel.querySelector(".my-research-actions");
+  const forgetNow = (topics) => {
+    confirmBox?.remove();
+    confirmBox = null;
+    actions.hidden = false;
     textarea.value = "";
-    onForget();
+    onForget({ topics });
     sync();
+  };
+  // Saved research topics keep their own copy of the abstracts: say so, and offer to delete
+  // them too (inline confirm, DESIGN.md; the page's toast carries Undo)
+  let confirmBox = null;
+  forget.onclick = () => {
+    const topics = savedTopics();
+    if (!topics.length) return forgetNow([]);
+    const names = topics.map((t) => `“${t.name}”`).join(", ");
+    const only = html`<button
+      type="button"
+      class="btn-secondary my-research-forget-only"
+    >
+      Delete abstracts only
+    </button>`;
+    const all = html`<button
+      type="button"
+      class="btn-secondary my-research-forget-all"
+    >
+      Also stop watching ${topics.length === 1 ? "it" : "them"}
+    </button>`;
+    const back = html`<button
+      type="button"
+      class="btn-text my-research-forget-cancel"
+    >
+      Cancel
+    </button>`;
+    only.onclick = () => forgetNow([]);
+    all.onclick = () => forgetNow(topics.map((t) => t.id));
+    back.onclick = () => {
+      confirmBox.remove();
+      confirmBox = null;
+      actions.hidden = false;
+      forget.focus();
+    };
+    confirmBox = html`<div class="my-research-confirm" role="group">
+      <p>
+        Your research ${topics.length === 1 ? "topic" : "topics"} ${names}
+        ${topics.length === 1 ? "keeps its" : "keep their"} own copy of the
+        abstracts on this device.
+      </p>
+      <div class="my-research-actions">${only}${all}${back}</div>
+    </div>`;
+    actions.hidden = true;
+    actions.after(confirmBox);
+    only.focus();
   };
   if (active) toggle.classList.add("is-active");
   sync();

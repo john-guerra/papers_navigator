@@ -10,7 +10,12 @@
  * this similar to my query"; the level is kept only to describe the rule.
  */
 import { DIMS } from "./search.js";
-import { maxSimilarityMatches, researchVectors } from "./myResearch.js";
+import {
+  createVectorCache,
+  maxSimilarityMatches,
+  programFingerprint,
+  researchVectors,
+} from "./myResearch.js";
 
 const round4 = (x) => Math.round(x * 1e4) / 1e4;
 const isTopic = (rule) => rule.type === "topic";
@@ -105,6 +110,10 @@ const sameIds = (a = {}, b = {}) => {
  * evaluated (from a share link or an older import) has its first matches marked seen, like
  * watching it in Explore. Rules whose matches didn't change aren't written. Returns how many
  * rules were updated.
+ *
+ * Cost (#27): with `program` (a `programFingerprint`), a rule already evaluated against this
+ * program is skipped and evaluated rules record it, so pages only re-evaluate after a program
+ * update or a rule change. `vectorCache` keeps "My research" abstract vectors across visits.
  */
 export async function refreshTopicRules({
   rules,
@@ -114,16 +123,18 @@ export async function refreshTopicRules({
   dims = DIMS,
   now = new Date(),
   onlyUnevaluated = false,
+  program,
+  vectorCache,
 }) {
-  const targets = rules.value.rules.filter(
-    (r) => isTopic(r) && (!onlyUnevaluated || !r.evaluatedOn),
+  const targets = staleTopics(rules.value.rules, program).filter(
+    (r) => !onlyUnevaluated || !r.evaluatedOn,
   );
   const updates = [];
   for (const rule of targets) {
     // "My research" rules: best of their abstracts; search topics: their query
     const matches = rule.research
       ? maxSimilarityMatches(
-          await researchVectors(embed, rule.research),
+          await researchVectors(embed, rule.research, vectorCache),
           matrix,
           papers,
           rule.threshold,
@@ -136,12 +147,15 @@ export async function refreshTopicRules({
           rule.threshold,
           dims,
         );
-    if (rule.evaluatedOn && sameIds(matches, rule.matches)) continue;
+    const programChanged = program != null && rule.program !== program;
+    if (rule.evaluatedOn && sameIds(matches, rule.matches) && !programChanged)
+      continue;
     updates.push({
       id: rule.id,
       threshold: rule.threshold,
       matches,
       evaluatedOn: now.toISOString(),
+      ...(program != null && { program }),
       first: !rule.evaluatedOn,
     });
   }
@@ -155,6 +169,15 @@ export async function refreshTopicRules({
     .flatMap((u) => Object.keys(u.matches));
   if (seen.length) rules.markSeen(seen);
   return rules.setMatches(live);
+}
+
+/** Topic rules that need evaluating: never evaluated, or evaluated against another program. */
+export function staleTopics(ruleList, program) {
+  return ruleList.filter(
+    (r) =>
+      isTopic(r) &&
+      (!r.evaluatedOn || program == null || r.program !== program),
+  );
 }
 
 /** False when the browser asks to save data: then only cached matches are used. */
@@ -177,6 +200,8 @@ export function afterFirstPaint(task) {
  * re-evaluates every topic; afterwards, evaluates topics that arrive without matches (share
  * link, import). Reactive object: `.value` is "idle" | "save-data" | "running" | "done" |
  * "error" (emits `input` on change); `.stop()` stops listening to the rules.
+ * The embeddings load first; the model only loads if some topic is stale for this program and
+ * its vectors aren't cached (`vectorCache`, default per conference from the rules store).
  */
 export function startTopicRefresh({
   rules,
@@ -187,6 +212,9 @@ export function startTopicRefresh({
   dims = DIMS,
   schedule = afterFirstPaint,
   onRefresh,
+  vectorCache = rules.conferenceId
+    ? createVectorCache(rules.conferenceId)
+    : undefined,
 }) {
   const status = new EventTarget();
   let value = "idle";
@@ -196,10 +224,13 @@ export function startTopicRefresh({
     status.dispatchEvent(new Event("input"));
   };
   let model = null;
-  const load = () =>
-    (model ??= Promise.all([loadEmbedder(), loadMatrix()]).then(
-      ([embed, matrix]) => ({ embed, matrix }),
-    ));
+  let data = null;
+  const loadData = () =>
+    (data ??= Promise.resolve(loadMatrix()).then((matrix) => ({
+      matrix,
+      program: programFingerprint(papers, matrix),
+    })));
+  const embed = async (text) => (await (model ??= loadEmbedder()))(text);
   let queue = Promise.resolve();
   const run = (onlyUnevaluated) =>
     (queue = queue.then(async () => {
@@ -208,19 +239,24 @@ export function startTopicRefresh({
       setStatus("running");
       try {
         const t0 = performance.now();
-        const { embed, matrix } = await load();
-        const updated = await refreshTopicRules({
-          rules,
-          embed,
-          matrix,
-          papers,
-          dims,
-          onlyUnevaluated,
-        });
+        const { matrix, program } = await loadData();
+        const updated = staleTopics(rules.value.rules, program).length
+          ? await refreshTopicRules({
+              rules,
+              embed,
+              matrix,
+              papers,
+              dims,
+              onlyUnevaluated,
+              program,
+              vectorCache,
+            })
+          : 0;
         setStatus("done");
         onRefresh?.({ updated, ms: Math.round(performance.now() - t0) });
       } catch (error) {
         model = null;
+        data = null;
         setStatus("error");
         console.warn("Could not evaluate research topics", error);
       }

@@ -17,7 +17,7 @@ import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
 import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
-import { exportMyPapers, parseMyPapersFile } from "./lib/myPapersFile.js";
+import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { themeControl } from "./components/themeControl.js";
@@ -151,7 +151,7 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
 display(banner);
 ```
 
-<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton} ${importInput} ${restoreButton} ${themeControl()}</div>
+<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton} ${themeControl()}</div>
 ${newNotice}
 <div>${sharePanel}</div>
 
@@ -395,4 +395,10 @@ const restoreButton = previous && !sameIds(previous, followedStore.value)
       return button;
     })()
   : html`<span></span>`;
+```
+
+```js
+// My research topics (#27): their abstracts leave the browser only through Export, so say so
+// (its own cell: follows the rules without rebuilding the Share/Export buttons)
+const exportNoteText = exportNote(rulesState.rules) ? html` <span class="muted export-note">${exportNote(rulesState.rules)}</span>` : "";
 ```

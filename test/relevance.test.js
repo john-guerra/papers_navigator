@@ -19,13 +19,6 @@ describe("relevanceCuts", () => {
   it("handles no scores", () => {
     expect(relevanceCuts([])).toEqual({ good: 0, strong: 0 });
   });
-  it("takes another Good score for longer queries (My research: abstracts score higher)", () => {
-    const scores = [0.7, 0.6, 0.55, 0.52, 0.51, 0.5, 0.45, 0.4, 0.35, 0.31];
-    expect(relevanceCuts(scores, { good: 0.5 })).toEqual({
-      good: 0.5,
-      strong: 0.6,
-    });
-  });
 });
 
 describe("relevanceCounts", () => {

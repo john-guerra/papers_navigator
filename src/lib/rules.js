@@ -114,6 +114,9 @@ function topicFields(rule) {
     !Number.isNaN(Date.parse(rule.evaluatedOn))
   )
     fields.evaluatedOn = rule.evaluatedOn;
+  // Program fingerprint the matches were computed against (#27): skip re-evaluating it
+  if (typeof rule.program === "string" && rule.program.length <= 64)
+    fields.program = rule.program;
   return fields;
 }
 
@@ -238,6 +241,7 @@ export function createRulesStore(
 ) {
   const key = `papersNavigator:${conferenceId}:rules`;
   const store = new EventTarget();
+  store.conferenceId = conferenceId;
   const load = () => parseState(storage?.getItem(key) ?? "{}");
   let value = load();
 
@@ -273,14 +277,20 @@ export function createRulesStore(
         if (next.type === "topic") {
           // Re-saving a research topic replaces its level, threshold and (if given) matches;
           // matches cached for another threshold are dropped until it is re-evaluated
-          const { matches, evaluatedOn, ...rest } = existing;
+          const { matches, evaluatedOn, program, ...rest } = existing;
           saved = { ...rest, threshold: next.threshold, level: next.level };
           if (next.research) saved.research = next.research;
           if (next.matches) {
             saved.matches = next.matches;
             if (next.evaluatedOn) saved.evaluatedOn = next.evaluatedOn;
+            if (next.program) saved.program = next.program;
           } else if (matches && existing.threshold === next.threshold)
-            Object.assign(saved, { matches }, evaluatedOn && { evaluatedOn });
+            Object.assign(
+              saved,
+              { matches },
+              evaluatedOn && { evaluatedOn },
+              program && { program },
+            );
         }
         return {
           ...s,
@@ -308,6 +318,7 @@ export function createRulesStore(
             ...rule,
             matches: next.matches,
             evaluatedOn: next.evaluatedOn,
+            ...(next.program && { program: next.program }),
           };
         }),
       }));

@@ -36,8 +36,39 @@ describe("myResearch panel", () => {
     expect(el.querySelector("textarea").value).toBe("Saved.");
     expect(el.querySelector(".my-research-rank").disabled).toBe(true);
     el.querySelector(".my-research-forget").click();
-    expect(onForget).toHaveBeenCalled();
+    expect(onForget).toHaveBeenCalledWith({ topics: [] });
     expect(el.querySelector("textarea").value).toBe("");
+    el.remove();
+  });
+
+  it("with research topics saved from the abstracts, asks inline whether to delete them too", () => {
+    const onForget = vi.fn();
+    const el = myResearch(
+      {
+        text: "Saved.",
+        open: true,
+        savedTopics: () => [{ id: "research:mine", name: "Mine" }],
+      },
+      { onRank: vi.fn(), onForget },
+    );
+    document.body.append(el);
+    el.querySelector(".my-research-forget").click();
+    expect(onForget).not.toHaveBeenCalled();
+    const confirm = el.querySelector(".my-research-confirm");
+    expect(confirm.textContent.replace(/\s+/g, " ")).toContain(
+      "“Mine” keeps its own copy",
+    );
+    confirm.querySelector(".my-research-forget-cancel").click();
+    expect(el.querySelector(".my-research-confirm")).toBeNull();
+    expect(el.querySelector("textarea").value).toBe("Saved.");
+
+    el.querySelector(".my-research-forget").click();
+    el.querySelector(".my-research-forget-only").click();
+    expect(onForget).toHaveBeenLastCalledWith({ topics: [] });
+
+    el.querySelector(".my-research-forget").click();
+    el.querySelector(".my-research-forget-all").click();
+    expect(onForget).toHaveBeenLastCalledWith({ topics: ["research:mine"] });
     el.remove();
   });
 });

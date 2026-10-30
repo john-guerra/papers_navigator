@@ -6,6 +6,16 @@ export function exportMyPapers({ followed, rules = [], exceptions = [] }) {
 }
 
 /**
+ * Note shown by Export when the file will carry "My research" abstracts (#27): they stay out of
+ * share links, so the export is the one place they leave the browser. "" when there are none.
+ */
+export function exportNote(rules = []) {
+  return rules.some((r) => r.research?.length)
+    ? "Includes the abstracts of your research topics"
+    : "";
+}
+
+/**
  * Reads an exported My Papers file: v2 objects or the original plain list of followed papers.
  * Throws on anything else, so imports fail loudly instead of silently changing the list.
  */

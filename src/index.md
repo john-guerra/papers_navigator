@@ -8,15 +8,15 @@ import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore, matches, normalizeRule } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
 import { researchRule, startTopicRefresh, thresholdFor, topicPreview, topicRule } from "./lib/researchTopics.js";
-import { RESEARCH_GOOD_CUT, createResearchStore, rankByMaxSimilarity, researchLabel, researchVectors, splitAbstracts } from "./lib/myResearch.js";
+import { createResearchStore, createVectorCache, programFingerprint, rankByMaxSimilarity, researchCuts, researchLabel, researchVectors, splitAbstracts } from "./lib/myResearch.js";
 import { myResearch } from "./components/myResearch.js";
 import { topicWatch } from "./components/topicWatch.js";
 import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
 import { renderPaperDetail } from "./components/paperDetail.js";
 import { followToggles } from "./components/followToggles.js";
-const scoreRampDomain = (papers, options) => {
+const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
   const scores = papers.map((d) => d.score).filter((s) => s != null);
-  return scores.length ? [relevanceCuts(scores, options).good, Math.max(...scores)] : null;
+  return scores.length ? [cutsOf(scores).good, Math.max(...scores)] : null;
 };
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
@@ -54,6 +54,8 @@ const rulesState = Generators.input(rulesStore);
 // "My research" (#27): pasted abstracts, kept in this browser only
 const researchStore = createResearchStore(conference.id);
 const research = Generators.input(researchStore);
+// Abstract vectors across visits, so neither ranking nor research topics re-embed them
+const researchVectorCache = createVectorCache(conference.id);
 const typeLabels = typeNames(papers, conference.typeNames);
 // Topic clusters (#25) exist only if the pipeline computed them for this conference
 const hasTopics = papers.some((p) => p.clusterLabel);
@@ -158,6 +160,9 @@ const query = Generators.observe((notify) => {
   notify(queryInput.value);
   const onInput = () => {
     clearTimeout(timer);
+    // Clearing needs no debounce (and "Rank the program" clears it in the same tick as it
+    // starts My research, so the ranking is computed once)
+    if (!queryInput.value) return notify("");
     timer = setTimeout(() => notify(queryInput.value), 300);
   };
   queryInput.addEventListener("input", onInput);
@@ -180,20 +185,43 @@ queryInput.addEventListener("input", () => researchStore.value.active && researc
 const researchAbstracts = research.active ? splitAbstracts(research.text) : [];
 const researchMode = researchAbstracts.length > 0;
 const rankingLabel = researchMode ? researchLabel(researchAbstracts.length) : query?.trim();
-// Abstracts score higher against everything than a short query: a higher Good cut
-const cutOptions = researchMode ? { good: RESEARCH_GOOD_CUT } : undefined;
+// Abstracts score higher against every paper than a short query: cuts from the distribution
+const cutsFor = researchMode ? researchCuts : relevanceCuts;
 ```
 
 ```js
 const myResearchInput = myResearch(
-  { text: research.text, active: researchMode, ready: modelStatus === "ready", open: researchPanelState.open },
+  {
+    text: research.text,
+    active: researchMode,
+    ready: modelStatus === "ready",
+    open: researchPanelState.open,
+    savedTopics: () => rulesStore.value.rules.filter((r) => r.research).map((r) => ({ id: r.id, name: r.value })),
+  },
   {
     onToggle: (open) => (researchPanelState.open = open),
     onRank: (text) => {
       clearQuery();
       researchStore.set({ text, active: true });
     },
-    onForget: () => researchStore.forget(),
+    onForget: ({ topics }) => {
+      // Undo puts back the abstracts and any research topic stopped with them
+      const previous = researchStore.value;
+      const stopped = rulesStore.value.rules.filter((r) => topics.includes(r.id));
+      researchStore.forget();
+      if (stopped.length) {
+        store.unwatch(topics);
+        researchVectorCache.clear();
+      }
+      const what = stopped.length ? `Deleted your abstracts and stopped watching ${stopped.map((r) => `“${r.value}”`).join(", ")}` : "Deleted your abstracts from this device";
+      showToast(what, {
+        actionLabel: "Undo",
+        onAction: () => {
+          researchStore.set(previous);
+          for (const rule of stopped) rulesStore.add(rule);
+        },
+      });
+    },
   },
 );
 ```
@@ -218,6 +246,7 @@ const topicRefresh = startTopicRefresh({
   loadEmbedder: getEmbedder,
   loadMatrix: async () => toMatrix(embeddingsBuffer, papers.length),
   nav: {},
+  vectorCache: researchVectorCache,
   onRefresh: ({ updated, ms }) => console.info(`Research topics re-evaluated in ${ms} ms (${updated} updated)`),
 });
 invalidation.then(() => topicRefresh.stop());
@@ -253,7 +282,7 @@ const scored = await (async () => {
   const embed = await getEmbedder();
   const matrix = toMatrix(embeddingsBuffer, papers.length);
   // My research: each paper scored by its closest abstract (long abstracts are chunked)
-  if (researchMode) return rankByMaxSimilarity(await researchVectors(embed, researchAbstracts), matrix, papers);
+  if (researchMode) return rankByMaxSimilarity(await researchVectors(embed, researchAbstracts, researchVectorCache), matrix, papers);
   return rankBySimilarity(await embed(query), matrix, papers);
 })();
 ```
@@ -406,7 +435,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labels: showTopics ? clusterLabels(positioned) : null,
   labelSize: mapWidth < 500 ? 10 : 11,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
-  scoreDomain: hasQuery ? scoreRampDomain(scored, cutOptions) : null,
+  scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
   tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), "score"],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
@@ -435,7 +464,7 @@ if (hasQuery && peopleCount > relevanceState.people && relevanceState.level !== 
   showToast("Showing All matches for the people and institutions you picked");
 }
 relevanceState.people = peopleCount;
-const cuts = relevanceCuts(scored.map((d) => d.score), cutOptions);
+const cuts = cutsFor(scored.map((d) => d.score));
 const relevanceInput = hasQuery
   ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level })
   : null;
@@ -475,7 +504,8 @@ const topicWatchInput = hasQuery
         onSave: (level, name) => {
           const rule = researchMode ? researchRule(name, researchAbstracts, level, cuts, scored) : topicRule(query, level, cuts, scored);
           const previous = rulesState.rules.find((r) => r.id === normalizeRule(rule)?.id);
-          const saved = store.watch(rule);
+          // Evaluated against this program now: pages won't re-evaluate it until the program changes
+          const saved = store.watch({ ...rule, program: programFingerprint(papers, toMatrix(embeddingsBuffer, papers.length)) });
           const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
           showToast(`Watching research topic “${saved.value}” · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`, {
             actionLabel: "Undo",
