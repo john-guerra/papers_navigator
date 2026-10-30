@@ -11,6 +11,30 @@ export function brushFilter(data, drag, { x = "x", y = "y" } = {}) {
   );
 }
 
+/**
+ * A DESIGN.md token from the page's CSS custom properties (src/style.css), or `fallback`
+ * outside a styled page (tests, reuse elsewhere). Read when the spec is built, so the map
+ * picks up the light or dark value in effect at render time.
+ */
+function token(name, fallback) {
+  const value =
+    typeof document === "undefined"
+      ? ""
+      : getComputedStyle(document.documentElement)
+          .getPropertyValue(`--${name}`)
+          .trim();
+  return value || fallback;
+}
+
+/** DESIGN.md sequential similarity ramp, weakest to strongest match. */
+export function similarityRange() {
+  return [
+    token("color-viz-similarity-1", "#d5958c"),
+    token("color-viz-similarity-2", "#b14f45"),
+    token("color-viz-similarity-3", "#75201a"),
+  ];
+}
+
 export function scatterSpec(
   data,
   {
@@ -20,7 +44,9 @@ export function scatterSpec(
     color = null,
     colorTitle = color,
     colorType = "nominal",
-    colorScheme = colorType === "quantitative" ? "brownbluegreen" : "tableau20",
+    // Quantitative (similarity) uses DESIGN.md's ramp unless a scheme is passed.
+    // Categorical colors (viz-cat-1..3 + viz-cat-other) are left to issue #10.
+    colorScheme = colorType === "quantitative" ? null : "tableau20",
     size = null,
     sizeRange = [10, 200],
     tooltip = [id],
@@ -35,7 +61,12 @@ export function scatterSpec(
     height,
     title,
     data: { values: data },
-    mark: { type: "point", filled: true, opacity: 0.6 },
+    mark: {
+      type: "point",
+      filled: true,
+      opacity: 0.6,
+      color: token("color-viz-neutral", "#605954"),
+    },
     params: [
       { name: "drag", select: { type: "interval", encodings: ["x", "y"] } },
       { name: "click", select: { type: "point", fields: [id], on: "click" } },
@@ -48,7 +79,9 @@ export function scatterSpec(
           field: color,
           type: colorType,
           title: colorTitle,
-          scale: { scheme: colorScheme },
+          scale: colorScheme
+            ? { scheme: colorScheme }
+            : { range: similarityRange() },
           legend: { orient: "bottom", columns: colorType === "quantitative" ? undefined : 4 },
         },
       }),
@@ -62,7 +95,18 @@ export function scatterSpec(
       }),
       tooltip: tooltip.map((field) => ({ field })),
     },
-    config: { view: { stroke: null } },
+    // Transparent so the page's paper shows through (Vega defaults to white)
+    // and the title/legend take the page's ink and sans font (both themes).
+    config: {
+      background: "transparent",
+      view: { stroke: null },
+      font: token("font-sans", "sans-serif"),
+      title: { color: token("color-on-surface", "#241e1a"), fontWeight: 500 },
+      legend: {
+        titleColor: token("color-on-surface", "#241e1a"),
+        labelColor: token("color-on-surface-muted", "#605954"),
+      },
+    },
   };
 }
 

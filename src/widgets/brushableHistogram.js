@@ -15,7 +15,8 @@ export function BrushableHistogram(
     height = 120,
     margin = { top: 10, right: 15, bottom: 30, left: 15 },
     thresholds = 30,
-    fill = "steelblue",
+    // DESIGN.md similarity token (a CSS var, so it follows light/dark)
+    fill = "var(--color-viz-similarity-2, steelblue)",
   } = {},
 ) {
   const values = data.map(x).filter((v) => Number.isFinite(v));
@@ -40,7 +41,7 @@ export function BrushableHistogram(
 
   svg
     .append("g")
-    .attr("fill", fill)
+    .style("fill", fill)
     .selectAll("rect")
     .data(bins)
     .join("rect")

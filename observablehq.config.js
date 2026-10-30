@@ -40,4 +40,9 @@ export default {
   // johnguerra.co (Apache) serves my-papers.html, not /my-papers
   cleanUrls: false,
   style: "style.css",
+  // DESIGN.md fonts (replaces Framework's default Source Serif 4; Framework adds the
+  // preconnect): Newsreader 400–500 roman + italic with optical sizes, Source Sans 3 400–600.
+  globalStylesheets: [
+    "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..500;1,6..72,400..500&family=Source+Sans+3:wght@400..600&display=swap",
+  ],
 };
