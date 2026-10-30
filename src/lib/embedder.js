@@ -45,6 +45,7 @@ let embedder;
 
 /** Lazily loads Transformers.js and the model on first use. */
 export function getEmbedder() {
+  // A failed load (offline, blocked CDN) is forgotten, so the next call tries again
   embedder ??= import("@huggingface/transformers").then(
     async ({ env, pipeline }) => {
       env.backends.onnx.wasm.wasmPaths = ortWasmPaths();
@@ -58,5 +59,8 @@ export function getEmbedder() {
       };
     },
   );
+  embedder.catch(() => {
+    embedder = undefined;
+  });
   return embedder;
 }

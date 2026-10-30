@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { isSafariBelow26, ortWasmPaths } from "../src/lib/embedder.js";
 
 const urls = {
@@ -55,5 +55,25 @@ describe("ortWasmPaths (self-hosted ONNX runtime, #21)", () => {
       /onnxruntime-web.*ort-wasm-simd-threaded\.asyncify\.wasm$/,
     );
     expect(wasm).not.toMatch(/jsdelivr/);
+  });
+});
+
+describe("getEmbedder retries after a failed load (#73 review)", () => {
+  it("forgets a rejected load so the next call tries again", async () => {
+    vi.resetModules();
+    let calls = 0;
+    vi.doMock("@huggingface/transformers", () => {
+      calls++;
+      if (calls === 1) throw new Error("offline");
+      return {
+        env: { backends: { onnx: { wasm: {} } } },
+        pipeline: async () => async () => ({ data: [1] }),
+      };
+    });
+    const { getEmbedder } = await import("../src/lib/embedder.js");
+    await expect(getEmbedder()).rejects.toThrow();
+    const embed = await getEmbedder();
+    expect(await embed("x")).toEqual([1]);
+    vi.doUnmock("@huggingface/transformers");
   });
 });

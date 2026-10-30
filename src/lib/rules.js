@@ -72,6 +72,11 @@ export function normalizeRule(rule, now = new Date()) {
 }
 
 const LEVELS = new Set(["strong", "good"]);
+/**
+ * Lowest threshold a research topic may have: rules also arrive from links and files, and a
+ * threshold ≤ 0 would put most of the program in My Papers (cosine scores can be negative).
+ */
+export const MIN_TOPIC_THRESHOLD = 0.1;
 /** Cached matches cap: more than any program; bounds work on an untrusted import. */
 const MAX_MATCHES = 10000;
 
@@ -79,7 +84,9 @@ const MAX_MATCHES = 10000;
 function topicFields(rule) {
   const threshold = Number(rule.threshold);
   const fields = {
-    threshold: Number.isFinite(threshold) ? threshold : 0,
+    threshold: Number.isFinite(threshold)
+      ? Math.min(1, Math.max(MIN_TOPIC_THRESHOLD, threshold))
+      : MIN_TOPIC_THRESHOLD,
     level: LEVELS.has(rule.level) ? rule.level : "good",
   };
   if (rule.matches && typeof rule.matches === "object") {
