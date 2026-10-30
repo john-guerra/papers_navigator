@@ -107,7 +107,7 @@ describe("scatterSpec color scales", () => {
     const spec = scatterSpec(data, { color: "type" });
     expect(spec.encoding.color.type).toBe("nominal");
     expect(spec.encoding.color.scale.scheme).toBeUndefined();
-    expect(spec.encoding.color.scale.domain.at(-1)).toBe("Other");
+    expect(spec.encoding.color.legend.labelExpr).toContain("Other");
   });
 });
 
@@ -202,9 +202,13 @@ describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories"
     const { scatterSpec } = await import("../src/widgets/brushableScatterPlot.js");
     const rows = [{ type: "a" }, { type: "b" }, { type: "c" }, { type: "d" }];
     const spec = scatterSpec(rows, { color: "type", categories: ["b", "c", "a"] });
-    expect(spec.data.values.map((d) => d.__color)).toEqual(["a", "b", "c", "Other"]);
+    const other = spec.encoding.color.scale.domain.at(-1);
+    expect(spec.data.values.map((d) => d.__color)).toEqual(["a", "b", "c", other]);
     expect(spec.encoding.color.field).toBe("__color");
-    expect(spec.encoding.color.scale.domain).toEqual(["b", "c", "a", "Other"]);
+    expect(spec.encoding.color.scale.domain).toEqual(["b", "c", "a", other]);
+    // the bucket is a sentinel (a real category may be called "Other"), labelled "Other"
+    expect(other).not.toBe("Other");
+    expect(spec.encoding.color.legend.labelExpr).toContain("Other");
     expect(spec.encoding.color.scale.range).toHaveLength(4);
   });
 });

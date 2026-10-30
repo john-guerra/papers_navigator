@@ -46,7 +46,8 @@ export function topCategories(data, field, n = 3) {
     .map(([value]) => value);
 }
 
-const OTHER = "Other";
+// Internal value for the "everything else" bucket; a real category may be called "Other"
+const OTHER = "\u0000other";
 
 function categoryRange() {
   return [
@@ -137,6 +138,9 @@ export function scatterSpec(
           legend: {
             orient: "bottom",
             columns: colorType === "quantitative" ? undefined : 4,
+            ...(highlighted && {
+              labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
+            }),
           },
         },
       }),

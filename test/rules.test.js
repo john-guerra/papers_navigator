@@ -344,3 +344,34 @@ describe("createMyPapers", () => {
     );
   });
 });
+
+describe("createMyPapers remove → undo", () => {
+  function setup() {
+    const storage = memoryStorage();
+    const followed = createFollowedStore("conf", storage, null);
+    const rules = createRulesStore("conf", storage, null);
+    const myPapers = createMyPapers({ followed, rules, papers: PAPERS });
+    return { followed, rules, myPapers };
+  }
+
+  it("restores a hand-added paper with its original reason and date", () => {
+    const { followed, myPapers } = setup();
+    followed.add([{ id: "p4" }], "by hand", T1);
+    const before = structuredClone(followed.value);
+    const undo = myPapers.remove(["p4"]);
+    expect(myPapers.has("p4")).toBe(false);
+    undo();
+    expect(followed.value).toEqual(before);
+  });
+
+  it("restores a rule-matched paper by dropping the exception it created", () => {
+    const { rules, myPapers } = setup();
+    myPapers.watch(friend, T1);
+    const undo = myPapers.remove(["p1"]);
+    expect(myPapers.has("p1")).toBe(false);
+    expect(rules.value.exceptions).toContain("p1");
+    undo();
+    expect(myPapers.has("p1")).toBe(true);
+    expect(rules.value.exceptions).not.toContain("p1");
+  });
+});
