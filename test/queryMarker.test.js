@@ -223,3 +223,41 @@ describe("BrushableScatterPlot query marker (#100)", () => {
     expect(widget.queryMarkers()).toEqual([]);
   });
 });
+
+describe("query marker through a motion (#82)", () => {
+  it("compiles and renders the faded marker mid-tween and at the end", async () => {
+    const vega = await import("vega");
+    const { compile } = await import("vega-lite");
+    const { planTransition } =
+      await import("../src/widgets/scatterTransition.js");
+    const moved = data.map((d) => ({ ...d, x: d.x * 2 }));
+    const from = {
+      positions: new Map(data.map((d) => [d.id, [d.x, d.y]])),
+      rows: new Map(data.map((d) => [d.id, d])),
+      xDomain: [0, 10],
+      yDomain: [0, 10],
+      labels: [],
+    };
+    const transition = planTransition(moved, from, { duration: 400 });
+    const spec = scatterSpec(moved, {
+      width: 200,
+      height: 200,
+      query: true,
+      transition,
+    });
+    const view = new vega.View(vega.parse(compile(spec).spec), {
+      renderer: "none",
+    });
+    await view.runAsync();
+    view.change(
+      "query",
+      view.changeset().insert(queryRows([{ ...marker, faint: true }])),
+    );
+    view.signal("tm", transition.total / 2);
+    await view.runAsync();
+    view.signal("tm", transition.total);
+    await view.runAsync();
+    expect(await view.toSVG()).toContain("Your search");
+    view.finalize();
+  });
+});
