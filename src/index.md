@@ -462,7 +462,7 @@ const chipsRow = renderChips(chips, {
 const navioSummary = selected.length
   ? NavioWidget(
       selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score })),
-      { height: 300, width: 340 },
+      { height: 300 },
     )
   : html`<p class="muted">No matching papers to summarize.</p>`;
 ```
