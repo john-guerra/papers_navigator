@@ -8,6 +8,10 @@ import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore, matches } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
 import { rankBySimilarity, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
+const scoreRampDomain = (papers) => {
+  const scores = papers.map((d) => d.score).filter((s) => s != null);
+  return scores.length ? [relevanceCuts(scores).good, Math.max(...scores)] : null;
+};
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
 import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
@@ -325,6 +329,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   categories: colorField && colorField !== "score" ? topCategories(papers, colorField) : undefined,
   // Read once (not reactive); later changes go through the "mine" signal below
   ringIds: store.value.map((d) => d.id),
+  // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
+  scoreDomain: hasQuery ? scoreRampDomain(scored) : null,
   tooltip: ["title", "authorNames", "typeLabel", "sessionName", "score"],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
@@ -334,6 +340,9 @@ const map = Generators.input(mapInput);
 ```
 
 ```js
+// Points below the chosen relevance level are drawn in viz-dim, live (no redraw)
+// null = no cut ("All"): cosine scores can be negative, so 0 would dim some papers
+mapInput.view.signal("levelCut", hasQuery && relevance !== "all" ? cuts[relevance] : null).runAsync();
 // Rings follow My Papers live without redrawing the map (a redraw would drop the brush)
 mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 ```
