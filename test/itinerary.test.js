@@ -47,6 +47,32 @@ describe("renderItinerary", () => {
     expect(slots[1].textContent).not.toContain("⚠ also");
   });
 
+  it("gives each conflicting session row its own time range (#21)", () => {
+    const el = renderItinerary(
+      groupIntoSlots(
+        [
+          item("x", "early", "Room A", 10, "10:00", "11:30", "10:00"),
+          item("y", "late", "Room B", 10, "11:00", "12:15", "11:00"),
+        ],
+        TZ,
+      ),
+      { tz: TZ },
+    );
+    const slot = el.querySelector("details.slot");
+    // the slot spans both sessions
+    expect(slot.querySelector(".slot-time").textContent).toBe("10:00–12:15");
+    const times = [...slot.querySelectorAll("details.session")].map(
+      (s) => s.querySelector(":scope > summary .session-time")?.textContent,
+    );
+    expect(times).toEqual(["10:00–11:30", "11:00–12:15"]);
+  });
+
+  it("doesn't repeat the time range for a slot with one session", () => {
+    const el = renderItinerary(schedule, { tz: TZ });
+    const slots = el.querySelectorAll("details.slot");
+    expect(slots[1].querySelector(".session-time")).toBeNull();
+  });
+
   it("shows a tab per day", () => {
     const el = renderItinerary(schedule, { tz: TZ });
     expect(el.querySelector(".day-tabs").textContent).toContain("Tue Nov 10");
