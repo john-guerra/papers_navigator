@@ -23,12 +23,37 @@ describe("PapersList", () => {
     const list = PapersList(papers, { tz: "US/Eastern" });
     const items = list.querySelectorAll(".paper");
     expect(items).toHaveLength(2);
-    expect(items[0].textContent).toContain("Wed Nov 11 13:00");
+    expect(items[0].textContent).toContain("Wed Nov 11 13:00 ET");
+    // DESIGN.md → Emoji: no 🕰️ (not a marker); 📍 marks the room
+    expect(items[0].querySelector(".paper-where").textContent).not.toContain(
+      "🕰",
+    );
     expect(items[0].textContent).toContain("Ann (MIT)");
     expect(items[0].querySelector("a.title").href).toBe(
       "https://ieeevis.org/x",
     );
     expect(items[0].textContent).toContain("Preprint PDF");
+  });
+
+  it("writes the conference's zone label from the config (tzLabel)", () => {
+    const list = PapersList(papers, { tz: "US/Eastern", tzLabel: "Boston" });
+    expect(list.querySelector(".paper").textContent).toContain(
+      "Wed Nov 11 13:00 Boston",
+    );
+  });
+
+  it("names awards in words after their marker (🏆 / 🏅), never a bare emoji", () => {
+    const list = PapersList(
+      [
+        { ...papers[0], id: "x", award: "best" },
+        { ...papers[0], id: "y", award: "HONORABLE_MENTION" },
+      ],
+      { tz: "US/Eastern" },
+    );
+    const [best, honorable] = list.querySelectorAll(".paper-where");
+    expect(best.textContent).toContain("🏆 Best paper");
+    expect(honorable.textContent).toContain("🏅 Honorable mention");
+    expect(list.querySelector(".paper-title").textContent).not.toMatch(/🏆|🏅/);
   });
 
   it("renders actions and preamble for each paper", () => {
@@ -215,6 +240,19 @@ describe("PapersList title opens the app's details (John)", () => {
     expect(e.defaultPrevented).toBe(false);
     el.remove();
   });
+  it("paperScore is the similarity as a percentage, with an optional note", async () => {
+    const { paperScore } = await import("../src/widgets/papersList.js");
+    const el = paperScore({ score: 0.5432 });
+    expect(el.className).toBe("paper-score");
+    expect(el.textContent).toBe("Similarity 54%");
+    expect(el.querySelector(".sr-only").textContent).toBe("Similarity ");
+    expect(paperScore({ score: 0.5 }, "abstract 2").textContent).toContain(
+      "50% · abstract 2",
+    );
+    expect(paperScore({ score: null })).toBe("");
+    expect(paperScore({})).toBe("");
+  });
+
   it("conferenceLink points to the paper's conference page in a new tab", async () => {
     const { conferenceLink } = await import("../src/widgets/papersList.js");
     const a = conferenceLink({ url: "https://conf/p1" });

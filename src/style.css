@@ -186,7 +186,7 @@
   }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 639.98px) {
   :root {
     --gutter: var(--spacing-lg);
   }
@@ -464,13 +464,97 @@ button.unfollow {
   opacity: 1;
 }
 
+/* Selects (DESIGN.md → Components: select): a native <select> (keyboard, screen readers and
+   the platform's option list stay), drawn like a secondary button with a muted chevron. The
+   chevron is two hard-edged gradient triangles so it takes the theme's token (an SVG data URI
+   can't read CSS variables). */
 #observablehq-main select {
-  min-height: 30px;
+  appearance: none;
+  box-sizing: border-box;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 28px 0 10px;
   border: 1px solid var(--color-on-surface-muted);
   border-radius: var(--rounded-sm);
-  background-color: var(--color-background);
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-on-surface-muted) 50%),
+    linear-gradient(135deg, var(--color-on-surface-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) 50%,
+    calc(100% - 10px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
   color: var(--color-on-surface);
   font: var(--typography-label-md);
+  cursor: pointer;
+}
+
+#observablehq-main select:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+}
+
+#observablehq-main select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Checkboxes (DESIGN.md → Components: checkbox): a 16px box with a muted outline (>= 3:1),
+   oxblood with an on-primary check when checked; still a native checkbox */
+#observablehq-main input[type="checkbox"] {
+  appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  border: 1.5px solid var(--color-on-surface-muted);
+  border-radius: var(--rounded-sm);
+  background: var(--color-background);
+  vertical-align: -0.2em;
+  cursor: pointer;
+}
+
+#observablehq-main input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: var(--color-on-primary);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform: scale(0);
+  transition: transform var(--motion-duration) var(--motion-ease);
+}
+
+#observablehq-main input[type="checkbox"]:checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+#observablehq-main input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+#observablehq-main input[type="checkbox"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* A checkbox's label is part of its hit area */
+#observablehq-main label:has(> input[type="checkbox"]) {
+  cursor: pointer;
+}
+
+/* Visually hidden, still read by screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Search field: Newsreader italic on an ink underline, no box */
@@ -596,7 +680,7 @@ a.navbar-brand {
   display: none;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .navbar {
     gap: var(--spacing-sm);
   }
@@ -666,18 +750,22 @@ a.navbar-brand {
   margin: var(--spacing-sm) 0;
 }
 
-.map-controls form {
+/* Inputs (select, toggle) in a row of controls: the label hugs its control */
+:is(.map-controls, .my-papers-tools) form {
   --label-width: auto;
   width: auto;
+  max-width: 100%;
 }
 
-.map-controls form > label {
+:is(.map-controls, .my-papers-tools) form > label {
   width: auto;
+  /* Inputs pads labels for its own control heights; ours center on the styled controls */
+  padding-top: 0;
   margin-right: var(--spacing-sm);
   color: var(--color-on-surface-muted);
 }
 
-/* Explore: controls + map on the left, the list on the right; stacked below 1100px; on phones
+/* Explore: controls + map on the left, the list on the right; stacked below 1024px; on phones
    the map shows right after the controls (John wants the visualization on his phone), can be
    hidden with "Hide map", and never captures touches until "Select region" (#13) */
 .explore-layout {
@@ -718,7 +806,7 @@ a.navbar-brand {
   font: var(--typography-meta);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1023.98px) {
   .explore-layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "controls" "map" "list";
@@ -726,7 +814,7 @@ a.navbar-brand {
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .explore-layout {
     grid-template-areas: "controls" "map" "list";
   }
@@ -784,6 +872,24 @@ a.navbar-brand {
 
 .paper-title a.title:hover {
   text-decoration: underline;
+}
+
+/* "Conference page ↗": an operating link in the sans meta style, quieter than the follow
+   toggle beside it (DESIGN.md → Typography: serif to read, sans to operate) */
+.paper-title .conference-link {
+  margin-left: var(--spacing-xs);
+  color: var(--color-on-surface-muted);
+  font: var(--typography-meta);
+  white-space: nowrap;
+}
+
+/* Similarity score at the right end of the row ("54%"), tabular */
+.paper-score {
+  margin-left: var(--spacing-xs);
+  color: var(--color-on-surface-muted);
+  font: var(--typography-meta);
+  font-feature-settings: var(--typography-meta-font-feature-settings);
+  white-space: nowrap;
 }
 
 .paper-preamble,
@@ -1279,7 +1385,7 @@ details.missing > summary {
   background: radial-gradient(var(--color-primary) 0 3px, transparent 3.5px);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .follow-toggle {
     min-height: 44px;
   }
@@ -1410,7 +1516,7 @@ details.missing > summary {
   align-items: center;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .topic-watch button {
     min-height: 44px;
   }
@@ -1458,7 +1564,7 @@ details.missing > summary {
   align-items: center;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .my-research button {
     min-height: 44px;
   }
@@ -1518,14 +1624,15 @@ details.missing > summary {
   margin-top: var(--spacing-xs, 4px);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .paper-more {
     min-height: 44px;
   }
 }
 
-/* #9 — Strong / Good / All relevance control */
-.relevance-control {
+/* #9 — Strong / Good / All relevance control, and every segmented control (DESIGN.md:
+   Now / Next · Itinerary, Appearance, Motion, Speed) */
+:is(.relevance-control, .segmented-control) {
   display: inline-flex;
   margin: var(--spacing-xs, 4px) 0;
   border: 1px solid var(--color-outline);
@@ -1533,15 +1640,15 @@ details.missing > summary {
 }
 
 /* Rounded ends instead of overflow: hidden, so the focus ring isn't clipped */
-.relevance-control button:first-child {
+:is(.relevance-control, .segmented-control) button:first-child {
   border-radius: var(--rounded-sm, 4px) 0 0 var(--rounded-sm, 4px);
 }
 
-.relevance-control button:last-child {
+:is(.relevance-control, .segmented-control) button:last-child {
   border-radius: 0 var(--rounded-sm, 4px) var(--rounded-sm, 4px) 0;
 }
 
-.relevance-control button {
+:is(.relevance-control, .segmented-control) button {
   min-height: 36px;
   padding: 0 var(--spacing-md, 12px);
   border: none;
@@ -1552,21 +1659,21 @@ details.missing > summary {
   cursor: pointer;
 }
 
-.relevance-control button:last-child {
+:is(.relevance-control, .segmented-control) button:last-child {
   border-right: none;
 }
 
-.relevance-control button[aria-pressed="true"] {
+:is(.relevance-control, .segmented-control) button[aria-pressed="true"] {
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
 
-.relevance-control .count {
+:is(.relevance-control, .segmented-control) .count {
   opacity: 0.8;
 }
 
-@media (max-width: 576px) {
-  .relevance-control button {
+@media (max-width: 639.98px) {
+  :is(.relevance-control, .segmented-control) button {
     min-height: 44px;
   }
 }
@@ -1626,7 +1733,7 @@ details.missing > summary {
   font: var(--typography-body-sm);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .map-hint {
     display: block;
   }
@@ -1758,7 +1865,7 @@ details.missing > summary {
   font: var(--typography-body-sm);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .recommended-dismiss {
     min-height: 44px;
   }
@@ -1808,4 +1915,68 @@ body #vg-tooltip-element table tr td.key {
 
 body #vg-tooltip-element table tr td.value {
   color: var(--color-on-surface);
+}
+
+/* ==========================================================================
+   Touch screens (phones and tablets): every control gets a 44px hit area
+   (DESIGN.md → Accessibility), without growing the desktop layout. Negative
+   margins keep small controls' visual size where a taller box would bloat
+   their row (chip ✕, toast Undo).
+   ========================================================================== */
+
+@media (pointer: coarse) {
+  .btn-primary,
+  .add-bar-button,
+  #observablehq-main select,
+  #observablehq-main :is(.relevance-control, .segmented-control) button {
+    min-height: var(--spacing-touch);
+  }
+
+  /* Checkbox: the box stays 16px; its label row is the 44px target */
+  #observablehq-main label:has(> input[type="checkbox"]),
+  .map-controls form:has(input[type="checkbox"]) label {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+  }
+
+  .paper-title .conference-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    vertical-align: middle;
+  }
+
+  .chip button {
+    min-width: var(--spacing-touch);
+    min-height: var(--spacing-touch);
+    margin: -8px -6px -8px -4px;
+  }
+
+  .toast-action {
+    min-width: var(--spacing-touch);
+    min-height: var(--spacing-touch);
+    margin: -10px -6px;
+  }
+}
+
+/* Forced colors (Windows High Contrast): backgrounds and gradients are replaced by system
+   colors, which would erase the custom checkbox's check and the select's chevron. Give both
+   back to the platform there. */
+@media (forced-colors: active) {
+  #observablehq-main select {
+    appearance: auto;
+    padding-right: 4px;
+    background-image: none;
+  }
+
+  #observablehq-main input[type="checkbox"] {
+    appearance: auto;
+    width: 16px;
+    height: 16px;
+  }
+
+  #observablehq-main input[type="checkbox"]::before {
+    content: none;
+  }
 }

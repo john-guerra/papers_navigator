@@ -29,7 +29,7 @@ export function facetStrip(
     header = "Among matching papers",
     clearAllLabel = "Clear all",
     sheetLabel = "Filters",
-    phoneQuery = "(max-width: 576px)",
+    phoneQuery = "(max-width: 639.98px)",
   } = {},
 ) {
   injectStyle();
@@ -532,7 +532,7 @@ const CSS = `
 .fs-footer { padding: 4px 12px 0; }
 .fs-show-all { border: none; background: none; padding: 4px 0; color: var(--fs-primary); }
 .fs-show-all[hidden] { display: none; }
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .fs-sheet-toggle {
     display: inline-flex;
     align-items: center;

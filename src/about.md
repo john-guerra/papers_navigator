@@ -38,7 +38,7 @@ const storageTable = html`<table class="about-storage">
 .about-storage { font-size: 0.9em; }
 .about-storage code { white-space: nowrap; font-size: 0.85em; }
 .about-steps li + li { margin-top: 0.25em; }
-@media (max-width: 639px) {
+@media (max-width: 639.98px) {
   .about-toc ol { columns: 1; }
   .about-storage code { white-space: normal; overflow-wrap: anywhere; }
 }
@@ -132,8 +132,8 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 ### Search by meaning
 
 1. Type what you are looking for in plain words, for example ${conference.exampleQueries?.slice(0, 3).map((q) => `“${q}”`).join(", ") ?? "a topic"}. Or tap one of the example searches in the introduction under the title.
-2. Results are ranked by meaning, not keywords: a paper can match without using your exact words. The search box says "⏳ Loading the language model…" until the model is ready (the first visit downloads it).
-3. Pick how close a match must be with **Strong · Good · Weak · All**; each shows how many papers it includes. **Good** is the default.
+2. Results are ranked by meaning, not keywords: a paper can match without using your exact words. The search box says "Loading the language model…" until the model is ready (the first visit downloads it).
+3. Pick how close a match must be with **Strong · Good · Weak · All**; each shows how many papers it includes. **Good** is the default. Each paper shows its similarity on the right of its row (for example "54%").
 
 ### Filter the program
 
@@ -150,7 +150,7 @@ Every dot is a paper; similar papers sit close together.
 - **Hover** near a dot for its title, authors, type, session and topic (and similarity after a search); the tooltip follows the nearest point, so you don't have to hit the dot exactly.
 - **Click or tap** a dot to open its details.
 - **Select a region** to keep only the papers inside it: drag on the map on a laptop. On a phone the map never captures scrolling, so tap **Select region** first, then drag. The region becomes a chip ("Map region ✕").
-- **Color by** Similarity (after a search, darker = closer), Type, Room, Session or Topic.
+- **Color by** Similarity (after a search, darker = closer; the legend in the corner runs from "less similar" to "more similar"), Type, Room, Session or Topic.
 - **Topic labels** name the groups of similar papers; turn them off with the toggle under the map.
 - A ring around a dot means it is **In My Papers**.
 - On a phone, **Hide map** tucks the map away.
@@ -208,7 +208,7 @@ My Papers is your personal list and schedule. Everything happens in your browser
 
 ### Now / Next and the itinerary
 
-- **Now / Next** (the default on phones during the conference) shows what's on for you right now and what comes next, with the room in large type.
+- Switch between **Now / Next** and **Itinerary** at the top. **Now / Next** (the default on phones during the conference) shows what's on for you right now and what comes next, with the room in large type.
 - **Itinerary** lists your papers by day, time slot and room, in the conference timezone.
 - ⚠ marks a schedule conflict: two of your papers at the same time in different rooms.
 - Click a paper's title to open its details; **Remove** takes it out (with Undo).
@@ -223,9 +223,9 @@ My Papers is your personal list and schedule. Everything happens in your browser
 
 ### Share, export and import
 
-- **Share list** (phones) opens your phone's share sheet. On a laptop, **Send to my phone** shows a QR code and **📋 Copy link**. The link carries the papers you added and your watches (researchers, institutions, research topics), but not your My research abstracts.
+- **Share list** (phones) opens your phone's share sheet. On a laptop, **Send to my phone** shows a QR code and **Copy link**. The link carries the papers you added and your watches (researchers, institutions, research topics), but not your My research abstracts.
 - Opening a shared link offers **Merge into my list**, **Replace my list** (asks first, and can be undone) or **Ignore**.
-- **⬇️ Export JSON** saves your list, reasons and watches to a file; **⬆️ Import JSON** brings it back, on this or another device (merge or replace).
+- **Export JSON** saves your list, reasons and watches to a file; **Import JSON** brings it back, on this or another device (merge or replace).
 - After a replace, **Restore previous list** brings back the list you had.
 
 ### At the venue and offline

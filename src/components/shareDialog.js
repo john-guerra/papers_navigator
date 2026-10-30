@@ -27,10 +27,10 @@ export function renderShareDialog(url, { count = 0 } = {}) {
         "Could not draw a QR code for this list. Copy the link instead, or use Export JSON.";
     });
   }
-  const copy = html`<button>📋 Copy link</button>`;
+  const copy = html`<button>Copy link</button>`;
   copy.onclick = async () => {
     await navigator.clipboard.writeText(url);
-    copy.textContent = "✅ Copied";
+    copy.textContent = "Copied";
   };
   return html`<div class="share-dialog">
     <p>
@@ -136,7 +136,7 @@ export function renderShareButton({
 }) {
   const native = narrow && typeof share === "function";
   const button = html`<button>
-    ${native ? "📤 Share list" : "📱 Send to my phone"}
+    ${native ? "Share list" : "Send to my phone"}
   </button>`;
   button.onclick = () => {
     if (!native) return onFallback();

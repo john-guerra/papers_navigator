@@ -3,6 +3,7 @@
   "name": "IEEE VIS 2026",
   "year": 2026,
   "timezone": "US/Eastern",
+  "timezoneLabel": "ET",
   "days": [
     "2026-11-08",
     "2026-11-09",
