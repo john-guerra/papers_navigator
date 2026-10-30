@@ -5,8 +5,10 @@ toc: false
 
 ```js
 import { createFollowedStore } from "./lib/followed.js";
-import { createMyPapers, createRulesStore, matches } from "./lib/rules.js";
+import { createMyPapers, createRulesStore, matches, normalizeRule } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
+import { startTopicRefresh, thresholdFor, topicPreview, topicRule } from "./lib/researchTopics.js";
+import { topicWatch } from "./components/topicWatch.js";
 import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
 import { renderPaperDetail } from "./components/paperDetail.js";
 import { followToggles } from "./components/followToggles.js";
@@ -46,6 +48,7 @@ const rulesStore = createRulesStore(conference.id);
 const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
 const followed = Generators.input(store);
 invalidation.then(bindMyPapersBadge(store));
+const rulesState = Generators.input(rulesStore);
 const typeLabels = typeNames(papers, conference.typeNames);
 // Topic clusters (#25) exist only if the pipeline computed them for this conference
 const hasTopics = papers.some((p) => p.clusterLabel);
@@ -60,7 +63,7 @@ const hasTopics = papers.some((p) => p.clusterLabel);
   <div class="search-row">${queryInput}</div>
   ${facetsInput}
   ${chipsRow}
-  ${relevanceInput ?? ""}
+  ${relevanceInput ?? ""}${topicWatchInput ?? ""}
   <div class="map-controls">${mapToggle}</div>
 </section>
 <section id="explore-map" class="explore-map">
@@ -168,6 +171,20 @@ const modelStatus = Generators.observe((notify) => {
     (error) => notify(`error: ${error?.message ?? error}`),
   );
 });
+```
+
+```js
+// Research topics (#24): re-evaluate their cached matches against this program in the
+// background (Explore loads the model anyway, so Save-Data doesn't skip it here)
+const topicRefresh = startTopicRefresh({
+  rules: rulesStore,
+  papers,
+  loadEmbedder: getEmbedder,
+  loadMatrix: async () => toMatrix(embeddingsBuffer, papers.length),
+  nav: {},
+  onRefresh: ({ updated, ms }) => console.info(`Research topics re-evaluated in ${ms} ms (${updated} updated)`),
+});
+invalidation.then(() => topicRefresh.stop());
 ```
 
 ```js
@@ -308,6 +325,7 @@ const scrollToPaper = (id) => {
   setTimeout(() => row.classList.remove("flash"), 1500);
 };
 const relevanceState = { level: "good", people: 0 };
+const topicWatchState = { open: false };
 const listState = { key: null, shown: 100 };
 // The map reads its colors from CSS tokens when drawn: redraw when Appearance changes
 const theme = Generators.observe((notify) => {
@@ -390,6 +408,37 @@ if (relevanceInput) relevanceState.level = relevance;
 const inRange = relevance === "all" ? map.brushed : map.brushed.filter((d) => d.score >= cuts[relevance]);
 // The list is exactly the matching papers: query, relevance, facets and map region
 const selected = inRange;
+```
+
+```js
+// Research topics (#24): watch this search as a rule; matches are computed now and cached.
+// Its own cell: it follows My Papers and the rules without re-running the list.
+const watchedTopic = hasQuery ? rulesState.rules.find((r) => r.id === normalizeRule({ type: "topic", value: query })?.id) : null;
+const inMyPapers = new Set(followed.map((d) => d.id));
+const topicWatchInput = hasQuery
+  ? topicWatch(
+      {
+        query: query.trim(),
+        // Whole program, all types: a rule ignores facets and map region
+        previews: Object.fromEntries(["strong", "good"].map((l) => [l, topicPreview(scored, thresholdFor(cuts, l), { inMyPapers, current: watchedTopic?.matches })])),
+        current: watchedTopic,
+        level: relevance,
+        open: topicWatchState.open,
+      },
+      {
+        onToggle: (open) => (topicWatchState.open = open),
+        onSave: (level) => {
+          const previous = watchedTopic;
+          const saved = store.watch(topicRule(query, level, cuts, scored));
+          const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
+          showToast(`Watching research topic “${saved.value}” · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`, {
+            actionLabel: "Undo",
+            onAction: () => (previous ? rulesStore.add(previous) : store.unwatch([saved.id])),
+          });
+        },
+      },
+    )
+  : null;
 ```
 
 ```js

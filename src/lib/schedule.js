@@ -1,6 +1,44 @@
-import { dayKey } from "./time.js";
+import { dayKey, formatDay } from "./time.js";
 
 const time = (iso) => (iso ? new Date(iso).getTime() : NaN);
+
+/**
+ * Where a set of papers falls in the program (#24, US11.2): papers per conference day (in the
+ * conference timezone, `label` = weekday), how many have no time, and the session holding most
+ * of them (null unless it holds at least two).
+ */
+export function scheduleSummary(items, tz) {
+  const days = new Map();
+  const sessions = new Map();
+  let untimed = 0;
+  for (const item of items) {
+    const when = item.start ?? item.sessionStart;
+    if (when) {
+      const key = dayKey(when, tz);
+      days.set(key, (days.get(key) ?? 0) + 1);
+    } else untimed++;
+    if (item.sessionName) {
+      const session = sessions.get(item.sessionId ?? item.sessionName) ?? {
+        name: item.sessionName,
+        count: 0,
+      };
+      session.count++;
+      sessions.set(item.sessionId ?? item.sessionName, session);
+    }
+  }
+  const top = [...sessions.values()].sort((a, b) => b.count - a.count)[0];
+  return {
+    days: [...days]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, count]) => ({
+        key,
+        label: formatDay(key).split(" ")[0],
+        count,
+      })),
+    untimed,
+    topSession: top?.count >= 2 ? top : null,
+  };
+}
 
 function sessionGroups(items) {
   const groups = new Map();

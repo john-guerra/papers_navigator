@@ -5,6 +5,7 @@ import {
   createRulesStore,
   effectiveMyPapers,
   matches,
+  MIN_TOPIC_THRESHOLD,
   normalizeRule,
   ruleReason,
 } from "../src/lib/rules.js";
@@ -492,5 +493,21 @@ describe("applyRules (import and share links)", () => {
       before.rules.map((r) => r.id),
     );
     expect(rules.value.exceptions).toEqual(before.exceptions);
+  });
+});
+
+describe("research topic threshold floor (#73 review)", () => {
+  it("clamps an untrusted threshold so a link can't match the whole program", () => {
+    const low = normalizeRule({ type: "topic", value: "x", threshold: -1 });
+    expect(low.threshold).toBe(MIN_TOPIC_THRESHOLD);
+    expect(
+      normalizeRule({ type: "topic", value: "x", threshold: 5 }).threshold,
+    ).toBe(1);
+    expect(
+      normalizeRule({ type: "topic", value: "x", threshold: "nope" }).threshold,
+    ).toBe(MIN_TOPIC_THRESHOLD);
+    expect(
+      normalizeRule({ type: "topic", value: "x", threshold: 0.4321 }).threshold,
+    ).toBe(0.4321);
   });
 });

@@ -106,3 +106,38 @@ describe("renderWatching remove count", () => {
     el.remove();
   });
 });
+
+describe("renderWatching research topics (#24)", () => {
+  const topic = {
+    id: "topic:llm",
+    type: "topic",
+    value: "llm agents",
+    level: "strong",
+  };
+  it("shows a topic with its level, where its papers fall in the schedule, and a note", () => {
+    const el = renderWatching(
+      {
+        rules: [topic],
+        countFor: () => 4,
+        summaryFor: () => ({
+          days: [
+            { key: "2026-11-10", label: "Tue", count: 3 },
+            { key: "2026-11-11", label: "Wed", count: 1 },
+          ],
+          untimed: 0,
+          topSession: { name: "Charts", count: 2 },
+        }),
+        noteFor: (rule) => (rule.type === "topic" ? "Finding matches…" : null),
+        names: { author: [], affiliation: [] },
+      },
+      { onRemove() {}, onAdd() {} },
+    );
+    const text = el.textContent.replace(/\s+/g, " ");
+    expect(text).toContain("🔍 llm agents");
+    expect(text).toContain("Strong");
+    expect(text).toContain("4 papers");
+    expect(text).toContain("Tue 3 · Wed 1");
+    expect(text).toContain("most in Charts (2)");
+    expect(text).toContain("Finding matches…");
+  });
+});

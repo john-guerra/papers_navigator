@@ -9,7 +9,10 @@ import { applyRules, createMyPapers, createRulesStore, filterByReason, normalize
 import { facetValues } from "./lib/filters.js";
 import { renderWatching } from "./components/watching.js";
 import { showToast } from "./components/toast.js";
-import { groupIntoSlots, nowNext } from "./lib/schedule.js";
+import { groupIntoSlots, nowNext, scheduleSummary } from "./lib/schedule.js";
+import { startTopicRefresh } from "./lib/researchTopics.js";
+import { getEmbedder } from "./lib/embedder.js";
+import { toMatrix } from "./lib/search.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
@@ -23,6 +26,8 @@ import { themeControl } from "./components/themeControl.js";
 ```js
 const conference = FileAttachment("data/conference.json").json();
 const papers = FileAttachment("data/papers.json").json();
+// Read only by the background evaluation of research topics (#24), never before first paint
+const embeddingsFile = FileAttachment("data/embeddings.bin");
 ```
 
 ```js
@@ -34,6 +39,17 @@ const store = createMyPapers({ followed: followedStore, rules: rulesStore, paper
 const followed = Generators.input(store);
 const rulesState = Generators.input(rulesStore);
 invalidation.then(bindMyPapersBadge(store));
+// Research topics (#24): their cached matches show right away; after first paint the model
+// loads in the background (not with Save-Data) to re-evaluate them against this program
+const topicRefresh = startTopicRefresh({
+  rules: rulesStore,
+  papers,
+  loadEmbedder: getEmbedder,
+  loadMatrix: async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length),
+  onRefresh: ({ updated, ms }) => console.info(`Research topics re-evaluated in ${ms} ms (${updated} updated)`),
+});
+invalidation.then(() => topicRefresh.stop());
+const topicStatus = Generators.input(topicRefresh);
 // Survives re-renders: the reason filter's choice (#7)
 const reasonState = { key: "all" };
 // Debug: ?now=2026-11-10T15:14:00Z pretends it is that moment (and freezes the clock)
@@ -319,6 +335,17 @@ const watchingSection = renderWatching(
     rules: rulesState.rules,
     countFor: (id) => items.filter((d) => d.ruleIds?.includes(id)).length,
     removableFor: (id) => ruleOnlyCount(items, id),
+    // Where each rule's papers fall in the program (US11.2), in the conference timezone
+    summaryFor: (id) => scheduleSummary(items.filter((d) => d.ruleIds?.includes(id)), tz),
+    // A research topic from a share link has no cached matches until the model evaluates it
+    noteFor: (rule) =>
+      rule.type !== "topic" || rule.evaluatedOn
+        ? null
+        : topicStatus === "save-data"
+          ? "Matches not computed yet: data saver is on. Open Explore to compute them."
+          : topicStatus === "error"
+            ? "Matches not computed yet: the language model didn't load."
+            : "Finding matching papers…",
     names: {
       author: facetValues(papers, "authors").map((d) => d.value),
       affiliation: facetValues(papers, "affiliations").map((d) => d.value),

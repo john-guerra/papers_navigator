@@ -159,3 +159,44 @@ describe("share link length caps", () => {
     ]);
   });
 });
+
+describe("share hash with research topics (#24)", () => {
+  it("round-trips a topic's query, level and threshold, not its cached matches", async () => {
+    const { encodeShareHash, decodeShareWatches } =
+      await import("../src/lib/share.js");
+    const hash = encodeShareHash(
+      ["a1b2c3d4"],
+      [
+        { type: "author", value: "Ann" },
+        {
+          type: "topic",
+          value: "LLM agents, for: science & 100%",
+          level: "strong",
+          threshold: 0.4321,
+          matches: { x: 0.9 },
+        },
+      ],
+    );
+    expect(hash).toBe(
+      "#follow=a1b2c3d4&watch=a:Ann,t:s0.4321:LLM%20agents%2C%20for%3A%20science%20%26%20100%25",
+    );
+    expect(decodeShareWatches(hash)).toEqual([
+      { type: "author", value: "Ann" },
+      {
+        type: "topic",
+        value: "LLM agents, for: science & 100%",
+        level: "strong",
+        threshold: 0.4321,
+      },
+    ]);
+  });
+
+  it("drops malformed topic entries", async () => {
+    const { decodeShareWatches } = await import("../src/lib/share.js");
+    expect(
+      decodeShareWatches(
+        "#follow=&watch=t:x0.3:a,t:g:a,t:g0.3,t:g2:a,t:g0.3:,t:gNaN:a,t:g0.25:ok",
+      ),
+    ).toEqual([{ type: "topic", value: "ok", level: "good", threshold: 0.25 }]);
+  });
+});

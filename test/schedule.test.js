@@ -1,6 +1,50 @@
 import { describe, expect, it } from "vitest";
 import { dayKey, formatTime } from "../src/lib/time.js";
-import { groupIntoSlots, nowNext } from "../src/lib/schedule.js";
+import {
+  groupIntoSlots,
+  nowNext,
+  scheduleSummary,
+} from "../src/lib/schedule.js";
+
+describe("scheduleSummary (#24)", () => {
+  it("counts papers per conference day (in the conference timezone) and names the busiest session", () => {
+    const items = [
+      {
+        id: "a",
+        sessionId: "s1",
+        sessionName: "Charts",
+        start: "2026-11-11T03:30:00Z",
+      },
+      {
+        id: "b",
+        sessionId: "s1",
+        sessionName: "Charts",
+        sessionStart: "2026-11-11T15:00:00Z",
+      },
+      {
+        id: "c",
+        sessionId: "s2",
+        sessionName: "Maps",
+        start: "2026-11-12T15:00:00Z",
+      },
+      { id: "d", sessionId: "s3", sessionName: "Posters" },
+    ];
+    expect(scheduleSummary(items, "US/Eastern")).toEqual({
+      days: [
+        { key: "2026-11-10", label: "Tue", count: 1 },
+        { key: "2026-11-11", label: "Wed", count: 1 },
+        { key: "2026-11-12", label: "Thu", count: 1 },
+      ],
+      untimed: 1,
+      topSession: { name: "Charts", count: 2 },
+    });
+    expect(scheduleSummary([], "US/Eastern")).toEqual({
+      days: [],
+      untimed: 0,
+      topSession: null,
+    });
+  });
+});
 
 const TZ = "US/Eastern";
 // Nov 2026 is EST (UTC-5): 10:00 Eastern = 15:00Z
