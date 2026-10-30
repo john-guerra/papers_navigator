@@ -40,7 +40,8 @@ scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John fi
 ## Product docs
 
 - PRD (what to build, user stories with IDs): `docs/prd/2026-10-29-papers-navigator-prd.md`
-- Selection/list redesign proposal and independent review: `docs/prd/2026-10-29-selection-redesign.md`, `docs/prd/2026-10-29-review.md`
+- Visual design system + UX guidelines: `docs/DESIGN.md` (Google DESIGN.md format; being written in another session — once it exists, UI work follows it)
+- Selection/list redesign (option B chosen) and independent review: `docs/prd/2026-10-29-selection-redesign.md`, `docs/prd/2026-10-29-review.md`
 
 ## Workflow (issues, several agents in parallel)
 

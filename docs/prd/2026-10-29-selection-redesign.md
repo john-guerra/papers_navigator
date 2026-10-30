@@ -1,6 +1,6 @@
 # Proposal — How papers get into "My Papers" (UC4 + UC10 redesign)
 
-Date: 2026-10-29 · Status: **proposal, John decides** · Based on the PRD (`2026-10-29-papers-navigator-prd.md`) and the independent review (`2026-10-29-review.md`).
+Date: 2026-10-29 · Status: **decided — John chose option B on 2026-10-29** (see issue #1) · Based on the PRD (`2026-10-29-papers-navigator-prd.md`) and the independent review (`2026-10-29-review.md`).
 
 ## Problem (from the review, verified in code)
 
