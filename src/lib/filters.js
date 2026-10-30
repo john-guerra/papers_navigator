@@ -20,6 +20,11 @@ const FILTER_FACETS = {
   sessions: "sessionName",
 };
 
+/** paper → its values for a filter option name (e.g. "authors"), as applyFilters matches them. */
+export function filterAccessor(name) {
+  return ACCESSORS[FILTER_FACETS[name]];
+}
+
 export function facetValues(papers, key) {
   const counts = new Map();
   for (const paper of papers) {
