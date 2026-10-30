@@ -32,6 +32,7 @@ export function attachNeighbours(
     k = 10,
     enabled = true,
     pinned = null,
+    ignore = null,
   },
 ) {
   const positions = new Map(data.map((d) => [d[id], [d[x], d[y]]]));
@@ -143,7 +144,8 @@ export function attachNeighbours(
 
   el.addEventListener("pointermove", (event) => {
     if (event.pointerType === "touch" || event.buttons) return;
-    const d = pointAt(event.clientX, event.clientY);
+    // `ignore(event)`: the pointer is on something drawn above the papers (a query marker)
+    const d = ignore?.(event) ? null : pointAt(event.clientX, event.clientY);
     const next = d ? d[id] : null;
     if (next === state.hover) return;
     state.hover = next;

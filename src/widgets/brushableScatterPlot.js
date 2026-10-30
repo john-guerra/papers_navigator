@@ -99,10 +99,20 @@ export function cullLabels(
 
 const extent = (values) => [Math.min(...values), Math.max(...values)];
 
-/** An explicit scale domain: the extent of `field` in `data` (none without finite values). */
-function fixedDomain(data, field) {
-  const values = data.map((d) => d[field]).filter(Number.isFinite);
-  return values.length ? { domain: extent(values) } : {};
+/**
+ * Explicit scale domains: the extent of `x` and `y` over the rows with both coordinates finite
+ * (a row with only one is not drawn, so it must not widen the other axis); none without such rows.
+ */
+function fixedDomains(data, x, y) {
+  const rows = data.filter(
+    (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
+  );
+  return rows.length
+    ? [
+        { domain: extent(rows.map((d) => d[x])) },
+        { domain: extent(rows.map((d) => d[y])) },
+      ]
+    : [{}, {}];
 }
 
 /** A tooltip entry: a field name, or {field, title, format} for a readable label/number. */
@@ -168,6 +178,7 @@ export function scatterSpec(
     title,
     transition = null,
     neighbours = false,
+    query = false,
   } = {},
 ) {
   const categorical = color && colorType !== "quantitative";
@@ -226,8 +237,10 @@ export function scatterSpec(
   // the x/y scales, so data-driven domains would union all of them, and the neighbour layers'
   // dataset is usually empty (Vega then warns "Infinite extent" on each render). The other
   // layers (rings, topic labels, overlay cells) all sit inside the points' extent anyway.
-  const xScale = { ...scale, ...(tween?.xScale ?? fixedDomain(data, x)) };
-  const yScale = { ...scale, ...(tween?.yScale ?? fixedDomain(data, y)) };
+  // The query marker (#100) sits inside it too (an average of drawn positions); its halo is clipped.
+  const [xFixed, yFixed] = fixedDomains(data, x, y);
+  const xScale = { ...scale, ...(tween?.xScale ?? xFixed) };
+  const yScale = { ...scale, ...(tween?.yScale ?? yFixed) };
   const position = {
     x: { field: x, type: "quantitative", axis: null, scale: xScale },
     y: { field: y, type: "quantitative", axis: null, scale: yScale },
@@ -385,13 +398,16 @@ export function scatterSpec(
   const nn = neighbours
     ? neighbourLayers({ xScale, yScale, tween, transition })
     : null;
+  const q = query ? queryLayers({ xScale, yScale, tween, transition }) : null;
   const layers = [
     ...(shade ? [shade] : []),
     points,
+    ...(q ? q.below : []),
     ...(nn ? nn.below : []),
     ...(rings ? [rings] : []),
     ...textLayers,
     ...(nn ? nn.above : []),
+    ...(q ? q.above : []),
   ];
 
   return {
@@ -400,13 +416,19 @@ export function scatterSpec(
     height,
     title,
     data: { values },
-    ...(nn && { datasets: { [NEIGHBOURS_DATA]: [] } }),
+    ...((nn || q) && {
+      datasets: {
+        ...(nn && { [NEIGHBOURS_DATA]: [] }),
+        ...(q && { [QUERY_DATA]: [] }),
+      },
+    }),
     ...(tween && { transform: tween.transform }),
     ...(layers.length > 1
       ? {
           params: [
             ...(rings ? [{ name: "mine", value: ringIds }] : []),
             ...(nn ? [{ name: "nnIds", value: [] }] : []),
+            ...(q ? [{ name: "queryHover", value: -1 }] : []),
             levelCut,
             ...(tween?.params ?? []),
           ],
@@ -443,6 +465,152 @@ export function scatterSpec(
 
 // Named dataset of the neighbour marks (#102), replaced with view.change (no redraw)
 const NEIGHBOURS_DATA = "nn";
+// Named dataset of the query marker (#100), replaced with view.change (no redraw)
+const QUERY_DATA = "query";
+
+/**
+ * Opacity for marks that describe the final layout: as given, or mid-motion (#82) hidden and
+ * fading in over the last 15% of the motion.
+ */
+const settleFade = (tween, transition) => (opacity) =>
+  tween
+    ? {
+        expr: `${opacity} * clamp((tm - ${0.85 * transition.total}) / ${0.15 * transition.total}, 0, 1)`,
+      }
+    : opacity;
+
+/**
+ * Query marker marks (#100), all from the `query` dataset (rows from queryRows: kind "halo",
+ * "line" or "marker", `m` = marker index), never under the pointer (the widget shows their
+ * tooltip itself):
+ * - below the rings and labels: the uncertainty halo, a light primary disc with a dashed rim
+ *   whose radius is the neighbours' spread ("approximate"), and, while the pointer is on marker
+ *   `queryHover`, thin lines from it to its nearest papers;
+ * - on top of everything: a primary diamond outlined in the page background (readable on any
+ *   point color) and its label ("★ Your search") in primary on a background halo.
+ * Mid-motion they stay hidden and fade in as the motion settles, like the neighbour marks.
+ */
+function queryLayers({ xScale, yScale, tween, transition }) {
+  const fade = settleFade(tween, transition);
+  const position = {
+    x: { field: "x", type: "quantitative", axis: null, scale: xScale },
+    y: { field: "y", type: "quantitative", axis: null, scale: yScale },
+  };
+  const layer = (filter, mark, encoding = {}) => ({
+    data: { name: QUERY_DATA },
+    transform: [{ filter }],
+    mark: { interactive: false, clip: true, ...mark },
+    encoding: { tooltip: null, ...position, ...encoding },
+  });
+  const primary = token("color-primary", "#903129");
+  const background = token("color-background", "#fcf9f3");
+  const label = (mark) =>
+    layer(
+      "datum.kind === 'marker'",
+      {
+        type: "text",
+        dy: -15,
+        fontSize: 12,
+        fontWeight: 700,
+        font: token("font-sans", "sans-serif"),
+        opacity: fade(1),
+        ...mark,
+      },
+      { text: { field: "label" } },
+    );
+  return {
+    below: [
+      layer(
+        "datum.kind === 'halo'",
+        {
+          type: "point",
+          shape: "circle",
+          filled: true,
+          fill: primary,
+          fillOpacity: 0.1,
+          stroke: primary,
+          strokeOpacity: 0.55,
+          strokeWidth: 1,
+          strokeDash: [3, 3],
+          opacity: fade(1),
+        },
+        { size: { field: "size", type: "quantitative", scale: null } },
+      ),
+      layer(
+        "datum.kind === 'line' && datum.m === queryHover",
+        { type: "rule", strokeWidth: 1, color: primary, opacity: fade(0.6) },
+        { x2: { field: "x2" }, y2: { field: "y2" } },
+      ),
+    ],
+    above: [
+      layer("datum.kind === 'marker'", {
+        type: "point",
+        shape: "diamond",
+        filled: true,
+        size: 260,
+        fill: primary,
+        stroke: background,
+        strokeWidth: 2,
+        opacity: fade(1),
+      }),
+      label({
+        fill: background,
+        stroke: background,
+        strokeWidth: 4,
+        strokeJoin: "round",
+      }),
+      label({ fill: primary }),
+    ],
+  };
+}
+
+/**
+ * Rows for the `query` dataset from queryMarkers (lib/placeQuery.js): per marker its halo (the
+ * `spread` in map units times `pixelsPerUnit`, capped at `maxRadius` px, as a symbol area; left
+ * out under 10 px, where the diamond covers it), lines to its nearest papers and the marker,
+ * markers last so they are drawn on top.
+ */
+export function queryRows(
+  markers,
+  { pixelsPerUnit = 1, maxRadius = Infinity } = {},
+) {
+  const halos = [];
+  const lines = [];
+  const marks = [];
+  markers.forEach((m, i) => {
+    const radius = Math.min(m.spread * pixelsPerUnit, maxRadius);
+    if (radius >= 10)
+      halos.push({
+        kind: "halo",
+        m: i,
+        x: m.x,
+        y: m.y,
+        size: (2 * radius) ** 2,
+      });
+    for (const n of m.nearest)
+      lines.push({ kind: "line", m: i, x: m.x, y: m.y, x2: n.x, y2: n.y });
+    marks.push({ kind: "marker", m: i, x: m.x, y: m.y, label: m.label });
+  });
+  return [...halos, ...lines, ...marks];
+}
+
+/** The map tooltip of a query marker: what it is, that it is approximate, its nearest papers. */
+export function queryTooltip(marker, { nearest = 3 } = {}) {
+  // One row per paper: the tooltip clamps each value to a few lines
+  const keys = ["Nearest", "2nd nearest", "3rd nearest"];
+  return {
+    [marker.label.replace(/^★\s*/, "")]: marker.text,
+    Position: `approximate (from its ${marker.nearest.length} most similar papers)`,
+    ...Object.fromEntries(
+      marker.nearest
+        .slice(0, Math.min(nearest, keys.length))
+        .map((d, i) => [
+          keys[i],
+          `${d.title} (${Math.round(d.similarity * 100)}%)`,
+        ]),
+    ),
+  };
+}
 
 /**
  * Nearest-neighbour marks (#102), all from the `nn` dataset (rows {kind, fx, fy, nx, ny, label}:
@@ -456,12 +624,7 @@ const NEIGHBOURS_DATA = "nn";
  * motion settles.
  */
 function neighbourLayers({ xScale, yScale, tween, transition }) {
-  const fade = (opacity) =>
-    tween
-      ? {
-          expr: `${opacity} * clamp((tm - ${0.85 * transition.total}) / ${0.15 * transition.total}, 0, 1)`,
-        }
-      : opacity;
+  const fade = settleFade(tween, transition);
   const at = (xf, yf) => ({
     x: { field: xf, type: "quantitative", axis: null, scale: xScale },
     y: { field: yf, type: "quantitative", axis: null, scale: yScale },
@@ -926,10 +1089,91 @@ export async function BrushableScatterPlot(data, options = {}) {
     return best;
   };
 
+  // Query markers (#100): `el.placeQuery(markers)` (lib/placeQuery.js queryMarkers) draws them
+  // with view.change (no redraw); [] hides them. Their marks never take the pointer: the widget
+  // finds the marker near the pointer itself, for the tooltip and the lines to its neighbours.
+  let markers = [];
+  let hoveredMarker = -1;
+  target.queryMarkers = () => markers;
+  target.placeQuery = (list = []) => {
+    if (!options.query) return Promise.resolve();
+    markers = list;
+    hoveredMarker = -1;
+    // Map units → pixels at the final scales (the halo is hidden mid-motion), the geometric mean
+    // of both axes: one circle, whatever the map's aspect ratio
+    const rows = data.filter(
+      (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
+    );
+    const [x0, x1] = extent(rows.map((d) => d[x]));
+    const [y0, y1] = extent(rows.map((d) => d[y]));
+    const w = chart.view.width() - 20;
+    const h = chart.view.height() - 20;
+    const pixelsPerUnit = Math.sqrt(
+      (w / (x1 - x0 || 1)) * (h / (y1 - y0 || 1)),
+    );
+    return chart.view
+      .change(
+        QUERY_DATA,
+        chart.view
+          .changeset()
+          .remove(() => true)
+          .insert(
+            queryRows(markers, {
+              pixelsPerUnit,
+              maxRadius: 0.35 * Math.min(w, h),
+            }),
+          ),
+      )
+      .signal("queryHover", -1)
+      .runAsync();
+  };
+  /** The index of the query marker within `radius` px of a screen position, or -1. */
+  target.queryAt = (clientX, clientY, radius = 14) => {
+    if (!markers.length || (transition && tm < transition.total)) return -1;
+    const surface = chart.querySelector("canvas, svg");
+    if (!surface) return -1;
+    const rect = surface.getBoundingClientRect();
+    const [ox, oy] = chart.view.origin();
+    const sx = chart.view.scale("x");
+    const sy = chart.view.scale("y");
+    let best = -1;
+    let bestDistance = radius * radius;
+    markers.forEach((m, i) => {
+      const dx = rect.left + ox + sx(m.x) - clientX;
+      const dy = rect.top + oy + sy(m.y) - clientY;
+      if (dx * dx + dy * dy <= bestDistance) {
+        best = i;
+        bestDistance = dx * dx + dy * dy;
+      }
+    });
+    return best;
+  };
+  if (options.query) {
+    const hover = (i) => {
+      if (i === hoveredMarker) return;
+      hoveredMarker = i;
+      chart.view.signal("queryHover", i).runAsync();
+    };
+    target.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "touch" || event.buttons) return hover(-1);
+      hover(target.queryAt(event.clientX, event.clientY));
+    });
+    target.addEventListener("pointerleave", () => hover(-1));
+  }
+
   attachNearestTooltip(target, {
     view: chart.view,
     pointAt: target.pointAt,
     entries: tooltip,
+    // A query marker under the pointer comes first: it sits on top
+    markerAt: options.query
+      ? (clientX, clientY) => {
+          const i = target.queryAt(clientX, clientY);
+          return i < 0
+            ? null
+            : { datum: markers[i], value: queryTooltip(markers[i]) };
+        }
+      : null,
   });
 
   // Nearest neighbours on hover / click (#102): `neighbours` = {similar, k, enabled, pinned}
@@ -943,6 +1187,10 @@ export async function BrushableScatterPlot(data, options = {}) {
       id,
       pointAt: target.pointAt,
       rows: neighbourRows,
+      // On a query marker, its own lines show instead of a paper's neighbours (#100)
+      ignore: options.query
+        ? (event) => target.queryAt(event.clientX, event.clientY) >= 0
+        : null,
     });
 
   Object.defineProperty(target, "value", {
