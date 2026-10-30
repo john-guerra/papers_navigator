@@ -130,6 +130,20 @@ export function createFollowedStore(
     exportJSON() {
       return JSON.stringify(value, null, 2);
     },
+    /** The list saved before the last replace, or null. */
+    backup() {
+      try {
+        const saved = storage?.getItem(`${key}:backup`);
+        return saved ? parseList(saved) : null;
+      } catch {
+        return null;
+      }
+    },
+    /** Puts the backed-up list back (itself backing up the current one); returns an undo. */
+    restoreBackup() {
+      const saved = store.backup();
+      return saved ? replaceWithBackup(saved) : () => {};
+    },
     /** Merges (default) or replaces from exported JSON; replacing returns an undo. */
     importJSON(text, { replace = false } = {}) {
       const list = parseList(text);

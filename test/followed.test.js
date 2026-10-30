@@ -211,3 +211,18 @@ describe("replace keeps a backup and returns an undo", () => {
     expect(store.value.map((d) => d.id)).toEqual(["a"]);
   });
 });
+
+describe("backup restore (#52)", () => {
+  it("exposes the backup and restores it with an undo", () => {
+    const storage = memoryStorage();
+    const store = createFollowedStore("conf", storage);
+    store.add([{ id: "a" }], "mine");
+    expect(store.backup()).toBeNull();
+    store.replace([{ id: "x", reason: "r", addedOn: "2026-10-30T00:00:00Z" }]);
+    expect(store.backup().map((d) => d.id)).toEqual(["a"]);
+    const undo = store.restoreBackup();
+    expect(store.value.map((d) => d.id)).toEqual(["a"]);
+    undo();
+    expect(store.value.map((d) => d.id)).toEqual(["x"]);
+  });
+});
