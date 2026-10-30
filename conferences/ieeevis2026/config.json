@@ -20,6 +20,11 @@
     "minSamples": 3,
     "stopWords": ["visualization", "visualizations", "visualisation", "visual", "data", "research", "vis", "ieee", "2026", "tbd", "participants"]
   },
+  "shortLabels": {
+    "enabled": true,
+    "model": "google/gemma-4-e4b",
+    "baseUrl": "http://localhost:1234/v1"
+  },
   "deployDir": "papersNavigator/ieeevis2026",
   "legacyDirs": ["ieeevis2026Papers"],
   "siteUrl": "https://johnguerra.co/viz/papersNavigator/ieeevis2026/",

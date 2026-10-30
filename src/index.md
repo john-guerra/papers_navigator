@@ -559,6 +559,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
   // Readable labels and a percentage instead of raw field names and a long float
   tooltip: [
+    { field: "shortLabel", title: "Label" },
     { field: "title", title: "Title" },
     { field: "authorNames", title: "Authors" },
     { field: "typeLabel", title: "Type" },

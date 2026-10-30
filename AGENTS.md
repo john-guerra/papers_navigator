@@ -20,13 +20,14 @@ npm run build                       # CONFERENCE=<id> selects the conference (de
 .venv/bin/python -m pipeline.fetch_ieeevis --conference ieeevis2026
 .venv/bin/python -m pipeline.fetch_ieeevis --conference ieeevis2026 --refresh   # re-download paper/session pages (~8 min); prints change report
 .venv/bin/python -m pipeline.embed --conference ieeevis2026
+.venv/bin/python -m pipeline.short_labels --conference ieeevis2026 --llm lmstudio   # 1–2 word labels via local LM Studio (~50 min uncached); without --llm: cache + keyphrases
 .venv/bin/python -m pipeline.clusters --conference ieeevis2026   # recompute topic clusters only (embed runs it too)
 scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John first
 ```
 
 ## Architecture
 
-- **Offline Python pipeline** (`pipeline/`): fetcher → `conferences/<id>/data/papers.raw.json` in the normalized format (`pipeline/normalize.py` = spec §5.2 contract, flat `sessionId`/`sessionName`) → `embed.py` writes `papers.json` (+ x/y from the first projection), `embeddings.bin` (Float32 LE, row i ↔ papers[i], 384 dims) and `projections/<method>.json` (`{id: [x, y]}`). `clusters.py` (run by embed) adds HDBSCAN topic clusters on the first projection: `cluster`/`clusterLabel` per paper + `clusters.json`; params/stop words in config `clusters`. VIS fetcher falls back to session pages for workshops/challenges and decodes UTF-8 explicitly (the site sends no charset).
+- **Offline Python pipeline** (`pipeline/`): fetcher → `conferences/<id>/data/papers.raw.json` in the normalized format (`pipeline/normalize.py` = spec §5.2 contract, flat `sessionId`/`sessionName`) → `embed.py` writes `papers.json` (+ x/y from the first projection), `embeddings.bin` (Float32 LE, row i ↔ papers[i], 384 dims) and `projections/<method>.json` (`{id: [x, y]}`). `clusters.py` (run by embed) adds HDBSCAN topic clusters on the first projection: `cluster`/`clusterLabel` per paper + `clusters.json`; params/stop words in config `clusters`. `short_labels.py` adds `shortLabel`/`shortLabelSource` ("title" tool name, "llm" from localhost LM Studio cached in `pipeline/cache/short_labels/`, or "keyphrase" fallback); embed reruns it cache-only; config `shortLabels`. VIS fetcher falls back to session pages for workshops/challenges and decodes UTF-8 explicitly (the site sends no charset).
 - **Framework site** (`src/`): data loaders in `src/data/` read the pipeline outputs for `CONFERENCE`; pure logic in `src/lib/` (search, filters, projections, followed store, schedule, share, time); UI widgets in `src/widgets/` and app glue in `src/components/`. Pages: `index.md` (Explore), `my-papers.md`.
 - **Reactive widget contract** (https://reactivewidgets.org): an element whose `.value` is the selection and which emits/listens to `input`. Pages consume widgets with `view()` / `Generators.input()`. The followed store is an `EventTarget` with the same contract.
 - Times and day boundaries always use the conference timezone (`src/lib/time.js`), never the device's.
