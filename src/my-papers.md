@@ -13,7 +13,8 @@ import { groupIntoSlots, nowNext } from "./lib/schedule.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
-import { decodeShareHash, resolveShortIds, shareUrl } from "./lib/share.js";
+import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
+import { exportMyPapers, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 ```
@@ -93,7 +94,10 @@ const shared = resolveShortIds(decodeShareHash(hash), papers);
 const clearHash = () => history.replaceState(null, "", location.pathname + location.search);
 const sharedReason = () => shared.ids.map((id) => ({ id, reason: "📱 shared", addedOn: new Date().toISOString() }));
 const banner = html`<div></div>`;
-if (shared.ids.length || shared.unknown.length) {
+// Watch rules from the link (#49) are only ever added, never used to remove local ones
+const sharedWatches = decodeShareWatches(hash);
+const addSharedWatches = () => sharedWatches.forEach((rule) => rulesStore.has(normalizeRule(rule)?.id) || store.watch(rule));
+if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
   const done = () => {
     clearHash();
     banner.replaceChildren();
@@ -105,15 +109,17 @@ if (shared.ids.length || shared.unknown.length) {
     renderShareBanner(
       {
         ...shared,
+        watches: sharedWatches,
         // "already" counts all of My Papers (watched too); Replace only touches hand-added ones
         already: shared.ids.filter((id) => store.has(id)).length,
         current: mine.size,
         watched: store.value.filter((d) => !d.manual).length,
       },
       {
-        onMerge: () => (followedStore.merge(sharedReason()), done()),
+        onMerge: () => (followedStore.merge(sharedReason()), addSharedWatches(), done()),
         onReplace: () => {
           const undo = followedStore.replace(sharedReason());
+          addSharedWatches();
           done();
           showToast(`Replaced your list with ${shared.ids.length} shared papers`, { actionLabel: "Undo", onAction: undo });
         },
@@ -147,11 +153,17 @@ shareButton.onclick = () =>
   sharePanel.childElementCount
     ? sharePanel.replaceChildren()
     : sharePanel.replaceChildren(
-        renderShareDialog(shareUrl(store.value, papers), { count: store.value.length }),
+        // The link carries hand-added papers plus watch rules; the phone recomputes watched papers
+        renderShareDialog(shareUrl(followedStore.value, papers, location.href, rulesStore.value.rules), {
+          count: followedStore.value.length,
+        }),
       );
 const exportButton = html`<button>⬇️ Export JSON</button>`;
 exportButton.onclick = () => {
-  const blob = new Blob([followedStore.exportJSON()], { type: "application/json" });
+  const blob = new Blob(
+    [exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions })],
+    { type: "application/json" },
+  );
   const a = Object.assign(document.createElement("a"), {
     href: URL.createObjectURL(blob),
     download: `${conference.id}-my-papers.json`,
@@ -169,7 +181,11 @@ importInput.querySelector("input").onchange = async (event) => {
   const run = (replace) => {
     try {
       const before = followedStore.value.length;
-      const undo = followedStore.importJSON(text, { replace });
+      // v2 files carry watch rules and exceptions too (#49); rules are added, never removed
+      const file = parseMyPapersFile(text);
+      const undo = followedStore.importJSON(JSON.stringify(file.followed), { replace });
+      file.rules.forEach((rule) => rulesStore.add(rule));
+      if (file.exceptions.length) rulesStore.except(file.exceptions);
       importStatus.textContent = replace
         ? `Replaced your list with ${followedStore.value.length} papers.`
         : `Added ${followedStore.value.length - before} papers (${store.value.length} total in My Papers).`;

@@ -1,9 +1,24 @@
 const PREFIX = "#follow=";
 const VALID_ID = /^[A-Za-z0-9_-]+$/;
 
-/** "#follow=<id>.<id>…" from short ids; "" when there is nothing to share. */
-export function encodeShareHash(shortIds) {
-  return shortIds.length ? PREFIX + shortIds.join(".") : "";
+const WATCH = "&watch=";
+const WATCH_TYPES = { a: "author", i: "affiliation" };
+const WATCH_CODES = { author: "a", affiliation: "i" };
+
+/**
+ * "#follow=<id>.<id>…[&watch=a:<name>,i:<institution>]" from short ids and watch rules (names
+ * URI-encoded); "" when there is nothing to share.
+ */
+export function encodeShareHash(shortIds, rules = []) {
+  const watches = rules
+    .filter((r) => WATCH_CODES[r.type])
+    .map((r) => `${WATCH_CODES[r.type]}:${encodeURIComponent(r.value)}`);
+  if (!shortIds.length && !watches.length) return "";
+  return (
+    PREFIX +
+    shortIds.join(".") +
+    (watches.length ? WATCH + watches.join(",") : "")
+  );
 }
 
 /** Short ids from a location hash; anything malformed is dropped. */
@@ -11,8 +26,29 @@ export function decodeShareHash(hash) {
   if (!hash?.startsWith(PREFIX)) return [];
   return hash
     .slice(PREFIX.length)
+    .split("&")[0]
     .split(".")
     .filter((id) => VALID_ID.test(id));
+}
+
+/** Watch rules ({type, value}) from a share hash; malformed entries are dropped. */
+export function decodeShareWatches(hash) {
+  if (!hash?.startsWith(PREFIX) || !hash.includes(WATCH)) return [];
+  return hash
+    .slice(hash.indexOf(WATCH) + WATCH.length)
+    .split("&")[0]
+    .split(",")
+    .map((entry) => {
+      const [code, encoded] = [entry.slice(0, 1), entry.slice(2)];
+      if (entry[1] !== ":" || !WATCH_TYPES[code] || !encoded) return null;
+      try {
+        const value = decodeURIComponent(encoded).trim();
+        return value ? { type: WATCH_TYPES[code], value } : null;
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
 }
 
 /**
@@ -35,13 +71,14 @@ export function resolveShortIds(shortIds, papers) {
   return { ids, unknown };
 }
 
-/** Share URL for the current page with the followed papers in the hash. */
-export function shareUrl(followed, papers, base = location.href) {
+/** Share URL for the current page with the papers (and optional watch rules) in the hash. */
+export function shareUrl(followed, papers, base = location.href, rules = []) {
   const shortIds = new Map(papers.map((p) => [p.id, p.shortId]));
   const url = new URL(base);
   url.search = "";
   url.hash = encodeShareHash(
     followed.map((d) => shortIds.get(d.id)).filter(Boolean),
+    rules,
   );
   return url.toString();
 }

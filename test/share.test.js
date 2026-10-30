@@ -67,3 +67,33 @@ describe("resolveShortIds with older links", () => {
     });
   });
 });
+
+describe("share hash with watch rules (#49)", () => {
+  it("round-trips ids and watch rules, names with any characters", async () => {
+    const { encodeShareHash, decodeShareHash, decodeShareWatches } =
+      await import("../src/lib/share.js");
+    const hash = encodeShareHash(
+      ["abc12345", "def67890"],
+      [
+        { type: "author", value: "José Ñúñez, Jr." },
+        { type: "affiliation", value: "Northeastern University" },
+      ],
+    );
+    expect(decodeShareHash(hash)).toEqual(["abc12345", "def67890"]);
+    expect(decodeShareWatches(hash)).toEqual([
+      { type: "author", value: "José Ñúñez, Jr." },
+      { type: "affiliation", value: "Northeastern University" },
+    ]);
+  });
+  it("shares watch rules alone, and old links still decode", async () => {
+    const { encodeShareHash, decodeShareHash, decodeShareWatches } =
+      await import("../src/lib/share.js");
+    const onlyWatch = encodeShareHash([], [{ type: "author", value: "Ann" }]);
+    expect(decodeShareHash(onlyWatch)).toEqual([]);
+    expect(decodeShareWatches(onlyWatch)).toEqual([
+      { type: "author", value: "Ann" },
+    ]);
+    expect(decodeShareWatches("#follow=abc12345")).toEqual([]);
+    expect(decodeShareWatches("#follow=a&watch=x:bad,a:")).toEqual([]);
+  });
+});

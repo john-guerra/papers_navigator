@@ -1,4 +1,5 @@
 import { html } from "htl";
+import { ruleReason } from "../lib/rules.js";
 import QRCode from "qrcode";
 
 /** Above this many papers a QR code gets too dense for phones to scan (~1 KB). */
@@ -38,7 +39,7 @@ export function renderShareDialog(url, { count = 0 } = {}) {
 
 /** Banner offering to merge or replace the local list with papers from a share link. */
 export function renderShareBanner(
-  { ids, unknown, already = 0, current = 0, watched = 0 },
+  { ids, unknown, already = 0, current = 0, watched = 0, watches = [] },
   { onMerge, onReplace, onIgnore },
 ) {
   const button = (label, fn) => {
@@ -47,6 +48,16 @@ export function renderShareBanner(
     return b;
   };
   const papers = (n) => `${n} ${n === 1 ? "paper" : "papers"}`;
+  const watchText = watches.length
+    ? `${watches.length} ${watches.length === 1 ? "watch" : "watches"} (${watches.map(ruleReason).join(", ")})`
+    : "";
+  if (!ids.length && watches.length) {
+    // Only watch rules: adding them never removes anything, so no Replace
+    return html`<div class="share-banner">
+      📱 <strong>Shared with you: ${watchText}</strong>.
+      ${button("Add", onMerge)} ${button("Ignore", onIgnore)}
+    </div>`;
+  }
   if (!ids.length) {
     // Never offer Replace here: it would wipe the list with nothing
     return html`<div class="share-banner">
@@ -57,7 +68,9 @@ export function renderShareBanner(
   const banner = html`<div class="share-banner"></div>`;
   const summary = () =>
     html`📱
-      <strong>${papers(ids.length)} shared with you</strong
+      <strong
+        >${papers(ids.length)}${watchText ? ` and ${watchText}` : ""} shared
+        with you</strong
       >${unknown.length ? ` (${unknown.length} not in the program)` : ""}${already ? `; you already have ${already}` : ""}. `;
   let replaceButton;
   const showChoices = () => {

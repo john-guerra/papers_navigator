@@ -97,3 +97,27 @@ describe("renderShareBanner with watched papers", () => {
     el.remove();
   });
 });
+
+describe("renderShareBanner with watch rules (#49)", () => {
+  const watches = [{ type: "affiliation", value: "Northeastern University" }];
+  it("mentions shared watches next to the papers", () => {
+    const el = renderShareBanner(
+      { ids: ["a"], unknown: [], watches },
+      { onMerge: noop, onReplace: noop, onIgnore: noop },
+    );
+    expect(el.textContent.replace(/\s+/g, " ")).toContain(
+      "and 1 watch (🏫 Northeastern University)",
+    );
+  });
+  it("offers Add (not Dismiss or Replace) when the link only shares watches", () => {
+    const onMerge = vi.fn();
+    const el = renderShareBanner(
+      { ids: [], unknown: [], watches },
+      { onMerge, onReplace: noop, onIgnore: noop },
+    );
+    const labels = [...el.querySelectorAll("button")].map((b) => b.textContent);
+    expect(labels).toEqual(["Add", "Ignore"]);
+    el.querySelector("button").click();
+    expect(onMerge).toHaveBeenCalled();
+  });
+});
