@@ -13,6 +13,13 @@ export default {
   head: `<meta property="og:title" content="${conference.name} Papers Navigator">
 <meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
 <meta name="twitter:card" content="summary_large_image">
+<script>
+  // Apply the saved Appearance before the page draws (no flash); see src/lib/theme.js
+  try {
+    const theme = localStorage.getItem("papersNavigator:theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch (error) {}
+</script>
 <script type="module">
   // Highlight the current page in the navbar ("/index", "/index.html" and "/" are the same page)
   const page = (path) => {
