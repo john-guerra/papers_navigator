@@ -71,6 +71,7 @@ const typeLabels = typeNames(papers, conference.typeNames);
   <div class="filters-header"><h2>Map options</h2>${filtersClose}</div>
   <h3>Dimensionality reduction</h3>
   ${projectionInput}
+  <h3>Appearance</h3>
   ${themeControl()}
   ${filtersDone}
 </aside>
@@ -282,10 +283,16 @@ const relevanceState = { level: "good", people: 0 };
 const listState = { key: null, shown: 100 };
 // The map reads its colors from CSS tokens when drawn: redraw when Appearance changes
 const theme = Generators.observe((notify) => {
-  const update = (event) => notify(event?.detail ?? "");
+  // Auto follows the OS, so an OS switch also changes the colors
+  const os = matchMedia("(prefers-color-scheme: dark)");
+  const update = () => notify(`${document.documentElement.dataset.theme ?? "auto"}:${os.matches}`);
   update();
   addEventListener("themechange", update);
-  return () => removeEventListener("themechange", update);
+  os.addEventListener("change", update);
+  return () => {
+    removeEventListener("themechange", update);
+    os.removeEventListener("change", update);
+  };
 });
 // Bumped by the "Map region ✕" chip: redraws the map without its brush
 const mapReset = Mutable(0);

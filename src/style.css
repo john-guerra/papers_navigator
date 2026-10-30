@@ -1464,3 +1464,8 @@ details.missing > summary {
   color: var(--color-on-surface-muted);
   font: var(--typography-label-md);
 }
+
+/* In Map options the "Appearance" heading already names the control */
+.filters-panel .theme-label {
+  display: none;
+}

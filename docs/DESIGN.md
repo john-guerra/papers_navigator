@@ -301,7 +301,7 @@ Tokens are in the front matter. Rules:
 - **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (CLAUDE.md).
 - **Gutters:** 28px desktop, 16px phone. Spacing comes from the 4px scale in the tokens; don't invent values.
 - **Explore, desktop:** nav (56px) → controls band (search + relevance, then the facet strip) → body split **7fr map / 5fr list**, separated by a hairline. The map is sticky and fills the viewport height; the list scrolls.
-- **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **list first**; the map is behind a "Map" toggle, not above the list. The first paper must be visible without scrolling.
+- **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **map** (visible by default, "Hide map" tucks it away; decision 8) → list. The map never captures page scrolling (see Mobile & At the venue).
 - **My Papers, phone:** title + conference time → Now / Itinerary segmented control → content. A bottom tab bar (Explore · My Papers) with the badge.
 - **My Papers, desktop:** itinerary by day (tabs) with slots as rows; rules and list tools in a side column.
 - No horizontal page scroll at any width. Rows of sibling controls use flex/grid with `gap`, never margins between inline elements.
