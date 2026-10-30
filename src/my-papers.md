@@ -15,7 +15,7 @@ import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
 import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
 import { exportMyPapers, parseMyPapersFile } from "./lib/myPapersFile.js";
-import { renderShareBanner, renderShareDialog } from "./components/shareDialog.js";
+import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { themeControl } from "./components/themeControl.js";
 ```
@@ -152,16 +152,25 @@ const viewMode = Generators.input(viewInput);
 
 ```js
 const sharePanel = html`<div></div>`;
-const shareButton = html`<button>📱 Send to my phone</button>`;
-shareButton.onclick = () =>
+// The link carries hand-added papers plus watch rules; the phone recomputes watched papers
+const currentShareUrl = () => shareUrl(followedStore.value, papers, location.href, rulesStore.value.rules);
+const toggleSharePanel = () =>
   sharePanel.childElementCount
     ? sharePanel.replaceChildren()
     : sharePanel.replaceChildren(
-        // The link carries hand-added papers plus watch rules; the phone recomputes watched papers
-        renderShareDialog(shareUrl(followedStore.value, papers, location.href, rulesStore.value.rules), {
+        renderShareDialog(currentShareUrl(), {
           count: followedStore.value.length,
         }),
       );
+// Phones get the native share sheet; laptops keep the QR panel (#16)
+const shareButton = renderShareButton({
+  narrow: matchMedia("(max-width: 640px)").matches,
+  share: navigator.share?.bind(navigator),
+  url: currentShareUrl,
+  count: () => followedStore.value.length,
+  title: conference.name,
+  onFallback: toggleSharePanel,
+});
 const exportButton = html`<button>⬇️ Export JSON</button>`;
 exportButton.onclick = () => {
   const blob = new Blob(

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   QR_MAX_PAPERS,
   renderShareBanner,
+  renderShareButton,
   renderShareDialog,
 } from "../src/components/shareDialog.js";
 
@@ -133,6 +134,73 @@ describe("renderShareDialog QR limit by link length", () => {
     expect(el.textContent.replace(/\s+/g, " ")).toMatch(
       /too long for a QR code/i,
     );
+  });
+});
+
+describe("renderShareButton (#16)", () => {
+  it("uses the native share sheet on phones when available", async () => {
+    const share = vi.fn(() => Promise.resolve());
+    const onFallback = vi.fn();
+    const button = renderShareButton({
+      narrow: true,
+      share,
+      url: () => "https://x/#follow=a",
+      count: () => 3,
+      title: "VIS",
+      onFallback,
+    });
+    expect(button.textContent).toContain("Share list");
+    button.click();
+    await Promise.resolve();
+    expect(share).toHaveBeenCalledWith({
+      title: "VIS: My Papers (3)",
+      url: "https://x/#follow=a",
+    });
+    expect(onFallback).not.toHaveBeenCalled();
+  });
+  it("keeps Send to my phone (QR) on laptops or without navigator.share", () => {
+    for (const opts of [
+      { narrow: false, share: vi.fn() },
+      { narrow: true, share: undefined },
+    ]) {
+      const onFallback = vi.fn();
+      const button = renderShareButton({
+        ...opts,
+        url: () => "u",
+        count: () => 1,
+        title: "VIS",
+        onFallback,
+      });
+      expect(button.textContent).toContain("Send to my phone");
+      button.click();
+      expect(onFallback).toHaveBeenCalled();
+      if (opts.share) expect(opts.share).not.toHaveBeenCalled();
+    }
+  });
+  it("falls back to the QR panel if sharing fails (but not when the user cancels)", async () => {
+    const onFallback = vi.fn();
+    const fail = (name) => () =>
+      Promise.reject(Object.assign(new Error(name), { name }));
+    renderShareButton({
+      narrow: true,
+      share: fail("AbortError"),
+      url: () => "u",
+      count: () => 1,
+      title: "VIS",
+      onFallback,
+    }).click();
+    await new Promise((r) => setTimeout(r));
+    expect(onFallback).not.toHaveBeenCalled();
+    renderShareButton({
+      narrow: true,
+      share: fail("NotAllowedError"),
+      url: () => "u",
+      count: () => 1,
+      title: "VIS",
+      onFallback,
+    }).click();
+    await new Promise((r) => setTimeout(r));
+    expect(onFallback).toHaveBeenCalled();
   });
 });
 
