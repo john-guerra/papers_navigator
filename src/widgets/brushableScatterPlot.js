@@ -42,6 +42,15 @@ export function similarityRange() {
   ];
 }
 
+/** DESIGN.md reliability ramp (#84), most to least reliable: it darkens where the map misleads. */
+export function reliabilityRange() {
+  return [
+    token("color-viz-reliability-1", "#a3b0dc"),
+    token("color-viz-reliability-2", "#5f74bf"),
+    token("color-viz-reliability-3", "#28377a"),
+  ];
+}
+
 /** The `n` most common values of `field` (ties alphabetical) — the categories that get a hue. */
 export function topCategories(data, field, n = 3) {
   const counts = new Map();
@@ -95,6 +104,8 @@ const tooltipField = (entry) =>
 
 // Internal value for the "everything else" bucket; a real category may be called "Other"
 const OTHER = "\u0000other";
+// Distortion overlay (#84): opacity of its least reliable cells
+const OVERLAY_OPACITY = 0.35;
 
 function categoryRange() {
   return [
@@ -137,6 +148,8 @@ export function scatterSpec(
     labels = null,
     labelSize = 11,
     scoreDomain = null,
+    colorRange = null,
+    overlay = null,
     size = null,
     sizeRange = [12, 80],
     tooltip = [id],
@@ -173,7 +186,7 @@ export function scatterSpec(
           range: [...palette.slice(0, highlighted.length), palette[3]],
         }
       : {
-          range: similarityRange(),
+          range: colorRange ?? similarityRange(),
           // DESIGN.md: the ramp's light end starts at the Good cut
           ...(scoreDomain && { domain: scoreDomain, clamp: true }),
         };
@@ -324,7 +337,39 @@ export function scatterSpec(
         text({ fill: token("color-on-surface", "#241e1a") }),
       ]
     : [];
-  const layers = [points, ...(rings ? [rings] : []), ...textLayers];
+  // Distortion overlay (#84): cells {x, x2, y, y2, distortion} inside the points' extent (so
+  // the scales don't change), behind the points, never under the pointer. The cells describe
+  // the final layout, so during a tween they stay out and fade in as the motion settles.
+  const shade = overlay?.length && {
+    data: { values: overlay },
+    ...(tween && { transform: tween.overlayTransform }),
+    mark: {
+      type: "rect",
+      interactive: false,
+      clip: true,
+      fill: token("color-viz-reliability-3", "#28377a"),
+    },
+    encoding: {
+      ...position,
+      x2: { field: "x2" },
+      y2: { field: "y2" },
+      opacity: tween
+        ? tween.opacity("__so")
+        : {
+            field: "distortion",
+            type: "quantitative",
+            scale: { domain: [0, 1], range: [0, OVERLAY_OPACITY] },
+            legend: null,
+          },
+      tooltip: null,
+    },
+  };
+  const layers = [
+    ...(shade ? [shade] : []),
+    points,
+    ...(rings ? [rings] : []),
+    ...textLayers,
+  ];
 
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
@@ -430,6 +475,14 @@ function tweenParts({ duration: D, total: T, xDomain, yDomain }, { x, y }) {
       scale: null,
       legend: null,
     }),
+    // Distortion overlay (#84): absent until the last quarter of the motion, then fading in
+    overlayTransform: [
+      { filter: `tm >= ${0.75 * T}` },
+      {
+        calculate: `datum.distortion * ${OVERLAY_OPACITY} * clamp((tm - ${0.75 * T}) / ${0.25 * T}, 0, 1)`,
+        as: "__so",
+      },
+    ],
     // Labels are in the data only while visible: off-plot text would grow the chart (autosize)
     labelTransform: [
       { filter: `datum.__old ? tm < ${D / 4} : tm >= datum.__s + ${0.75 * D}` },

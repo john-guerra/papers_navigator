@@ -88,7 +88,7 @@ if (explicitQuery && researchStore.value.active) researchStore.set({ active: fal
   ${selectRegionButton}
   <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   ${mapInput}
-  <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
+  <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
 </section>
 <section class="explore-list">
   ${addBar}
@@ -357,9 +357,21 @@ const filtered = applyFilters(scored, { types, authors, affiliations, keywords, 
 // load only when its section is opened; it hands results back through these two values.
 const liveProjections = Mutable({});
 const liveClusters = Mutable(null);
-const setLive = ({ projections, clusters }) => {
+// Reliability (#84): the latest scores; liveReliability bumps only when the map's own changed
+const liveReliability = Mutable(null);
+const reliabilityState = { latest: null };
+const colorState = { value: urlStart.color }; // Color by survives its options changing (initially from the URL, #92)
+const setLive = ({ projections, clusters, reliability }) => {
   if (projections !== liveProjections.value) liveProjections.value = projections;
-  if (clusters !== liveClusters.value) liveClusters.value = clusters;
+  if (clusters !== liveClusters.value) {
+    liveClusters.value = clusters;
+    if (clusters) colorState.value = "liveCluster";
+  }
+  if (reliability !== reliabilityState.latest) {
+    const changed = mapState.panel.reliabilityChanged(reliabilityState.latest, reliability, mapState.projection);
+    reliabilityState.latest = reliability;
+    if (changed) liveReliability.value = reliability;
+  }
 };
 const formatProjection = (d) => (conference.projections.includes(d) ? d.toUpperCase() : d);
 // map: the map on screen (the next one animates from it, #82); shown: its projection key
@@ -413,10 +425,18 @@ const projection = Generators.input(projectionInput);
 ```
 
 ```js
-const colorByInput = Inputs.select(new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"], ...(hasTopics ? [["Topic", "clusterLabel"]] : []), ...(liveClusters ? [["Cluster (live)", "liveCluster"]] : [])]), {
+liveReliability; // the map's reliability (#84) changed: {id: score} for its projection, or null
+const reliabilityScores = reliabilityState.latest?.scores[projection] ?? null;
+const overlayNote = reliabilityScores && reliabilityState.latest.overlay ? html`<span class="map-legend-note"><span class="overlay-swatch" aria-hidden="true"></span> Shaded: least reliable areas</span>` : "";
+```
+
+```js
+const colorOptions = new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"], ...(hasTopics ? [["Topic", "clusterLabel"]] : []), ...(liveClusters ? [["Cluster (live)", "liveCluster"]] : []), ...(reliabilityScores ? [["Reliability", "reliability"]] : [])]);
+const colorByInput = Inputs.select(colorOptions, {
   label: "Color by",
-  value: liveClusters ? "liveCluster" : urlStart.color,
+  value: [...colorOptions.values()].includes(colorState.value) ? colorState.value : undefined,
 });
+colorByInput.addEventListener("input", () => (colorState.value = colorByInput.value));
 const colorBy = Generators.input(colorByInput);
 ```
 
@@ -498,10 +518,13 @@ theme; // and when Appearance changes (colors come from the tokens)
 // Live clusters (#28) are a per-paper field, so they color any projection
 // (papers in no cluster: null, so they color as Other; the tooltip says None)
 const withLiveClusters = (list) => (liveClusters ? list.map((p) => ({ ...p, liveCluster: liveClusters.byId[p.id], liveClusterName: liveClusters.byId[p.id] ?? "None" })) : list);
+// Reliability (#84) too, once measured for this projection
+const withReliability = (list) => (reliabilityScores ? list.map((p) => ({ ...p, reliability: reliabilityScores[p.id] })) : list);
 // Every projection aligned (Procrustes) to the default one, so switching shows real moves (#82)
 const coords = { ...projections, ...liveProjections }[projection];
 const aligned = alignProjections ? mapState.aligner.align(coords, projections[conference.projections[0]]) : coords;
-const positioned = withLiveClusters(applyProjection(filtered, aligned).papers);
+const positioned = withReliability(withLiveClusters(applyProjection(filtered, aligned).papers));
+const [mapW, mapH] = [Math.max(260, mapWidth - 20), Math.min(620, Math.max(320, mapWidth * 0.75))];
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared
 const projectionKey = `${projection}:${alignProjections}`;
@@ -543,9 +566,12 @@ const mapInput = await BrushableScatterPlot(positioned, {
     ...(hasTopics ? [{ field: "clusterLabel", title: "Topic" }] : []),
     ...(liveClusters ? [{ field: "liveClusterName", title: "Cluster (live)" }] : []),
     ...(hasQuery ? [{ field: "score", title: "Similarity", format: ".0%" }] : []),
+    ...(reliabilityScores ? [{ field: "reliability", title: "Reliability", format: ".2f" }] : []),
   ],
-  width: Math.max(260, mapWidth - 20),
-  height: Math.min(620, Math.max(320, mapWidth * 0.75)),
+  width: mapW,
+  height: mapH,
+  // Color by: Reliability and the distortion overlay (#84; the Advanced panel builds them)
+  ...mapState.panel?.reliabilityMapOptions({ reliability: reliabilityState.latest, scores: reliabilityScores, colorBy, shown: positioned, everyPaper: applyProjection(papers, aligned).papers, cacheKey: [projection, alignProjections], width: mapW, height: mapH }),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,
   from: previousMap,
   animate: mapAnimation(animationStore.value, { projectionChanged, stageOf: hasTopics ? (d) => d.cluster : null }),

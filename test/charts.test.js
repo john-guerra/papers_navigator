@@ -4,6 +4,7 @@ import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import {
   BrushableScatterPlot,
   brushFilter,
+  reliabilityRange,
   scatterSpec,
 } from "../src/widgets/brushableScatterPlot.js";
 import { BrushableHistogram } from "../src/widgets/brushableHistogram.js";
@@ -122,6 +123,108 @@ describe("scatterSpec color scales", () => {
     expect(spec.encoding.color.condition.type).toBe("nominal");
     expect(spec.encoding.color.condition.scale.scheme).toBeUndefined();
     expect(spec.encoding.color.condition.legend.labelExpr).toContain("Other");
+  });
+});
+
+describe("scatterSpec reliability (#84)", () => {
+  it("takes another sequential range, e.g. the reliability ramp", () => {
+    const range = reliabilityRange().slice().reverse();
+    const spec = scatterSpec(data, {
+      color: "score",
+      colorType: "quantitative",
+      colorRange: range,
+      scoreDomain: [0.2, 0.9],
+    });
+    expect(spec.encoding.color.condition.scale).toMatchObject({
+      range: ["#28377a", "#5f74bf", "#a3b0dc"],
+      domain: [0.2, 0.9],
+      clamp: true,
+    });
+  });
+
+  it("draws the distortion overlay behind the points, ignoring the pointer", async () => {
+    const overlay = [{ x: 0, x2: 5, y: 0, y2: 5, distortion: 0.8 }];
+    const spec = scatterSpec(data, { overlay });
+    expect(spec.layer).toHaveLength(2);
+    const [shade, points] = spec.layer;
+    expect(shade.mark).toMatchObject({ type: "rect", interactive: false });
+    expect(shade.data.values).toBe(overlay);
+    expect(shade.encoding.opacity.field).toBe("distortion");
+    expect(points.params.map((p) => p.name)).toEqual(["drag", "click"]);
+    // Still a working brushable chart
+    const widget = await BrushableScatterPlot(data, {
+      overlay,
+      renderer: "svg",
+    });
+    expect(widget.value.brushed).toHaveLength(3);
+  });
+
+  it("clips the overlay to the plot", () => {
+    const overlay = [{ x: 0, x2: 5, y: 0, y2: 5, distortion: 0.8 }];
+    expect(scatterSpec(data, { overlay }).layer[0].mark.clip).toBe(true);
+  });
+
+  it("keeps the overlay out during a tween and fades it in as it settles", async () => {
+    const overlay = [{ x: 0, x2: 5, y: 0, y2: 5, distortion: 0.8 }];
+    const before = await BrushableScatterPlot(
+      data.map((d) => ({ ...d, x: d.x * 2 })),
+      { renderer: "svg" },
+    );
+    const after = await BrushableScatterPlot(data, {
+      renderer: "svg",
+      overlay,
+      from: before,
+      animate: { duration: 400 },
+    });
+    await after.stop();
+    // In the real view: no cells mid-motion, all of them once it has settled
+    const rects = () => {
+      let n = 0;
+      const walk = (node) => {
+        if (
+          node.marktype === "rect" &&
+          node.role === "mark" &&
+          !node.name?.includes("brush")
+        )
+          n += node.items.length;
+        (node.items ?? []).forEach(walk);
+      };
+      walk(after.view.scenegraph().root);
+      return n;
+    };
+    await after.view.signal("tm", 100).runAsync();
+    expect(rects()).toBe(0);
+    await after.view.signal("tm", 400).runAsync();
+    expect(rects()).toBe(1);
+    const spec = scatterSpec(data, {
+      overlay,
+      transition: {
+        duration: 400,
+        total: 400,
+        xDomain: [
+          [0, 20],
+          [0, 10],
+        ],
+        yDomain: [
+          [0, 10],
+          [0, 10],
+        ],
+        motion: new Map(),
+        exits: [],
+        stageStart: () => 0,
+      },
+    });
+    const [shade] = spec.layer;
+    expect(shade.transform[0]).toEqual({ filter: "tm >= 300" });
+    expect(shade.transform[1].calculate).toContain("datum.distortion * 0.35");
+    expect(shade.encoding.opacity).toMatchObject({
+      field: "__so",
+      scale: null,
+    });
+  });
+
+  it("has no overlay layer without cells", () => {
+    expect(scatterSpec(data, { overlay: [] }).layer).toBeUndefined();
   });
 });
 
