@@ -1487,3 +1487,93 @@ details.missing > summary {
     color: var(--color-primary);
   }
 }
+
+/* #22/#23 — paper details panel with related papers */
+#observablehq-main:has(.paper-detail) {
+  z-index: 3;
+}
+
+.paper-detail {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  box-sizing: border-box;
+  width: 560px;
+  max-width: 100%;
+  overflow-y: auto;
+  padding: var(--spacing-md, 12px) var(--spacing-lg, 16px)
+    var(--spacing-lg, 16px);
+  background: var(--color-background);
+  border-left: 1px solid var(--color-outline);
+  box-shadow: var(--elevation-1, -4px 0 16px rgb(0 0 0 / 0.15));
+}
+
+.paper-detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spacing-sm, 8px);
+}
+
+.paper-detail-header h2 {
+  flex: 1 1 100%;
+  order: 2;
+  margin: var(--spacing-xs, 4px) 0;
+  font-family: var(--font-serif);
+}
+
+.paper-detail-header .paper-detail-close {
+  order: 1;
+  margin-left: auto;
+}
+
+.paper-detail-header .follow-toggle {
+  order: 3;
+  margin-left: 0;
+}
+
+.paper-detail-authors,
+.paper-detail-where {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.paper-detail-abstract {
+  margin: var(--spacing-md, 12px) 0;
+  line-height: 1.5;
+}
+
+.related-papers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.related-paper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--spacing-sm, 8px);
+  padding: var(--spacing-sm, 8px) 0;
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.related-open {
+  flex: 1 1 100%;
+  text-align: left;
+  font-weight: 600;
+}
+
+.related-meta {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.paper-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs, 4px);
+}
