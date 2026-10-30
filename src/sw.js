@@ -14,6 +14,9 @@
 // The pure helpers at the top are tested in test/sw.test.js (loaded with node:vm).
 
 /* global ServiceWorkerGlobalScope */
+// Bump the "v1" when the caching rules change; `npm run build` (scripts/buildSw.js)
+// appends a build id, so every deploy installs a new worker that re-precaches and
+// drops the previous deploy's cache.
 const VERSION = "v1";
 const CACHE_PREFIX = "papersNavigator-";
 const ASSET_DIRS = [
@@ -68,6 +71,15 @@ function assetRefs(html, pageUrl, scope) {
     if (strategyFor(url, scope) === "cache-first") refs.add(url);
   }
   return [...refs];
+}
+
+/**
+ * Same request, but revalidated with the server instead of read from the HTTP cache.
+ * Built from the original (not just its URL) so navigations keep redirect: "manual";
+ * the Request constructor turns mode "navigate" into "same-origin" when init is given.
+ */
+function freshRequest(request) {
+  return new Request(request, { cache: "no-cache" });
 }
 
 /** One cache per conference (scope): conferences share the origin, never each other's caches. */
@@ -146,7 +158,9 @@ if (
     const { request } = event;
     const cache = await caches.open(CACHE);
     const key = pageKey(request.url);
-    const network = fetch(request).then(async (response) => {
+    // Revalidate with the server: johnguerra.co sends HTML with a day-long max-age,
+    // so a plain fetch() could return yesterday's page from the HTTP cache.
+    const network = fetch(freshRequest(request)).then(async (response) => {
       if (response.ok && !response.redirected)
         await cache.put(key, response.clone());
       return response;

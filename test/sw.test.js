@@ -1,12 +1,20 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { describe, expect, it } from "vitest";
+import { buildId, stampVersion } from "../scripts/buildSw.js";
 
 // src/sw.js is a classic script (no exports): run it in a sandbox and read its helpers.
 const source = readFileSync(new URL("../src/sw.js", import.meta.url), "utf8");
-const sandbox = { URL };
+const sandbox = { URL, Request };
 vm.runInNewContext(source, sandbox);
-const { strategyFor, pageKey, assetRefs, cacheName, isStaleCache } = sandbox;
+const {
+  strategyFor,
+  pageKey,
+  assetRefs,
+  cacheName,
+  isStaleCache,
+  freshRequest,
+} = sandbox;
 
 const scope = "https://johnguerra.co/viz/papersNavigator/ieeevis2026/";
 const at = (path) => new URL(path, scope).href;
@@ -111,5 +119,43 @@ describe("caches", () => {
     expect(isStaleCache(`papersNavigator-v0:${scope}`, scope)).toBe(true);
     expect(isStaleCache(`papersNavigator-v0:${other}`, scope)).toBe(false);
     expect(isStaleCache("some-other-app", scope)).toBe(false);
+  });
+});
+
+describe("freshRequest", () => {
+  it("revalidates with the server instead of using the HTTP cache", () => {
+    const original = new Request(at("./my-papers.html?now=x"), {
+      redirect: "manual",
+    });
+    const fresh = freshRequest(original);
+    expect(fresh.cache).toBe("no-cache");
+    expect(fresh.url).toBe(original.url);
+    expect(fresh.method).toBe("GET");
+    expect(fresh.redirect).toBe("manual");
+  });
+});
+
+describe("build id (scripts/buildSw.js)", () => {
+  it("stamps the build id into VERSION, so each deploy gets a new cache", () => {
+    const stamped = stampVersion(source, "abc123");
+    expect(stamped).toContain('const VERSION = "v1-abc123";');
+    const built = { URL, Request };
+    vm.runInNewContext(stamped, built);
+    expect(built.cacheName(scope)).toBe(`papersNavigator-v1-abc123:${scope}`);
+    expect(built.isStaleCache(cacheName(scope), scope)).toBe(true);
+  });
+
+  it("fails loudly if sw.js has no VERSION line", () => {
+    expect(() => stampVersion("const X = 1;", "abc")).toThrow(/VERSION/);
+  });
+
+  it("hashes the built pages: stable, order-independent, changes with content", () => {
+    const a = { name: "index.html", content: "<p>a</p>" };
+    const b = { name: "my-papers.html", content: "<p>b</p>" };
+    expect(buildId([a, b])).toMatch(/^[0-9a-f]{12}$/);
+    expect(buildId([a, b])).toBe(buildId([b, a]));
+    expect(buildId([a, { ...b, content: "<p>c</p>" }])).not.toBe(
+      buildId([a, b]),
+    );
   });
 });
