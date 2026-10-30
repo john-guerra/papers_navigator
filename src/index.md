@@ -56,17 +56,13 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${facetsInput}
   ${chipsRow}
   ${relevanceInput ?? ""}
-  <div class="map-controls">${liveSearchInput}${mapToggle}</div>
+  <div class="map-controls">${mapToggle}</div>
 </section>
 <section id="explore-map" class="explore-map">
   ${selectRegionButton}
   <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   ${mapInput}
   <div class="map-controls">${colorByInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
-  <details class="navio-summary">
-    <summary>Summary of the current selection (navio)</summary>
-    ${navioSummary}
-  </details>
 </section>
 <section class="explore-list">
   ${addBar}
@@ -78,6 +74,11 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${projectionInput}
   <h3>Appearance</h3>
   ${themeControl()}
+  <h3>Advanced</h3>
+  <details class="navio-summary">
+    <summary>Summary of the matching papers (navio)</summary>
+    ${navioSummary}
+  </details>
   ${filtersDone}
 </aside>
 </div>
@@ -133,18 +134,22 @@ const exampleChips = html`${(conference.exampleQueries ?? []).map((q, i) => {
 ```
 
 ```js
-const liveSearchInput = Inputs.toggle({ label: "Live search", value: true });
-const liveSearch = Generators.input(liveSearchInput);
-```
-
-```js
 const queryPlaceholder = "Describe what you are looking for, e.g. LLM agents for scientific visualization";
-const queryInput = Inputs.text({
-  placeholder: queryPlaceholder,
-  submit: liveSearch ? false : "Search",
-  value: conference.defaultQuery ?? "",
+const queryInput = Inputs.text({ placeholder: queryPlaceholder, value: conference.defaultQuery ?? "" });
+// Search is always live (#12), debounced so typing doesn't recompute on every keystroke
+const query = Generators.observe((notify) => {
+  let timer;
+  notify(queryInput.value);
+  const onInput = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => notify(queryInput.value), 300);
+  };
+  queryInput.addEventListener("input", onInput);
+  return () => {
+    clearTimeout(timer);
+    queryInput.removeEventListener("input", onInput);
+  };
 });
-const query = Generators.input(queryInput);
 ```
 
 ```js
@@ -456,7 +461,7 @@ const chipsRow = renderChips(chips, {
 const navioSummary = selected.length
   ? NavioWidget(
       selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score })),
-      { height: 300 },
+      { height: 300, width: 340 },
     )
   : html`<p class="muted">No matching papers to summarize.</p>`;
 ```
