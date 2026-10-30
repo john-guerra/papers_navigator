@@ -2,31 +2,64 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Status
-
-Pre-scaffold. The only source of truth right now is the approved design: `docs/superpowers/specs/2026-10-23-papers-navigator-design.md`. Read it before doing anything. When the Framework app and pipeline exist, replace this section with real build/lint/test/deploy commands (do not guess them before then).
-
 ## What this is
 
-A reusable conference paper navigator (semantic search + embedding map + filters + "My Papers" schedule). One codebase, one config per conference; first target IEEE VIS 2026 (Boston, US/Eastern), with staged releases: Explore + My Papers by ~Nov 3 2026, Clusters by Nov 10 2026, Advanced panel after (design §11).
+A reusable conference paper navigator (semantic search + embedding map + filters + "My Papers" schedule). One codebase, one config per conference; first target IEEE VIS 2026 (Boston, US/Eastern). Design: `docs/superpowers/specs/2026-10-23-papers-navigator-design.md`; release stages in its §11 (Stage 1 = Explore + My Papers, Stage 2 = Clusters, Stage 3 = Advanced/live DR + ZADU).
 
-## Architecture (from the design)
+## Commands
 
-- **Observable Framework** static site (Markdown pages + `.js` modules), deployed by `rsync` to `johnguerra.co:/var/www/viz/<conference>Papers`. One conference per build.
-- **Offline Python pipeline** per conference: fetcher → normalized papers JSON (design §5.2 is the contract every fetcher must output) → MiniLM embeddings (`all-MiniLM-L6-v2`, `title + "\n" + abstract`) → UMAP → HDBScan + c-TF-IDF topic labels. Framework data loaders read these outputs. Nothing heavy runs at page load.
-- **Widgets** live in `src/widgets/` as plain ES modules following the reactive-widget contract (https://reactivewidgets.org): return an HTMLElement whose `.value` is the selection and which emits/listens to `input` events (`new Event("input", {bubbles: true})`). They must not depend on Observable runtime globals, so they work outside Framework. In pages, consume them with `view(widget)`.
-- Keep conference-specific details (timezone, dates, URLs, content types, branding) in the conference config, never in pages or widgets.
-- Schedule times are always shown in the **conference timezone**, not the device's.
+```sh
+npm run dev                         # Framework preview
+npm test                            # all Vitest tests
+npx vitest run test/schedule.test.js -t "workshop"   # one test
+npm run lint
+npm run build                       # CONFERENCE=<id> selects the conference (default ieeevis2026)
+.venv/bin/pytest pipeline           # Python tests
+.venv/bin/pytest pipeline/tests/test_fetch_ieeevis.py::test_parse_paper
+.venv/bin/python -m pipeline.fetch_ieeevis --conference ieeevis2026
+.venv/bin/python -m pipeline.embed --conference ieeevis2026
+scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John first
+```
 
-## Reference material (outside this repo / not committed)
+## Architecture
 
-- Previous implementations: `/Users/aguerra/workspace/chi2026_papers` (has its own CLAUDE.md, `scripts/compute_topic_labels.py`, `doc/observable_notebook_architecture.md`) and `/Users/aguerra/workspace/ieeevis2025_papers`.
-- Exported Observable notebooks (source of widgets to port): `notebooks/ieeevis2025-papers.tgz`, `notebooks/chi2026-papers.tgz`, `data/chi2026-mypapers.tgz`. Extract to a scratch dir; the main notebook is the file `index.js` re-exports.
-- Already-published widget packages with local repos under `/Users/aguerra/workspace/`: `navio`, `reactive-widget-npm` (`reactive-widget-helper`), `vega-selected`.
-- VIS 2026 data: scrape `https://ieeevis.org/year/2026/program/content/` (~488 items; each page has authors+affiliations, keywords, session, per-talk time, room, abstract). Cache raw HTML and rate-limit (~1 req/s). `data/ieeevis2026_papers_list.tsv` (from `ieee-vgtc/ieeevis.org` branch `vis2026`) has no abstracts; use only as a cross-check.
+- **Offline Python pipeline** (`pipeline/`): fetcher → `conferences/<id>/data/papers.raw.json` in the normalized format (`pipeline/normalize.py` = spec §5.2 contract, flat `sessionId`/`sessionName`) → `embed.py` writes `papers.json` (+ x/y from the first projection), `embeddings.bin` (Float32 LE, row i ↔ papers[i], 384 dims) and `projections/<method>.json` (`{id: [x, y]}`). VIS fetcher falls back to session pages for workshops/challenges and decodes UTF-8 explicitly (the site sends no charset).
+- **Framework site** (`src/`): data loaders in `src/data/` read the pipeline outputs for `CONFERENCE`; pure logic in `src/lib/` (search, filters, projections, followed store, schedule, share, time); UI widgets in `src/widgets/` and app glue in `src/components/`. Pages: `index.md` (Explore), `my-papers.md`.
+- **Reactive widget contract** (https://reactivewidgets.org): an element whose `.value` is the selection and which emits/listens to `input`. Pages consume widgets with `view()` / `Generators.input()`. The followed store is an `EventTarget` with the same contract.
+- Times and day boundaries always use the conference timezone (`src/lib/time.js`), never the device's.
+- Conference specifics belong in `conferences/<id>/config.json`, never in pages or widgets.
 
-## Conventions (carried over from the previous projects)
+## Gotchas
 
-- ES modules, double quotes, semicolons, 2-space indent; ESLint v9 flat config + Prettier.
-- Dated data files: `YYYY_MMmon_DD_<description>.<ext>` (e.g. `2026_04Apr_10_chi2026_umap_TitleAbstract.csv`).
-- Repo is **public**: don't commit raw conference dumps or notebook exports (`.gitignore` excludes `*.tgz`; `data/` is currently untracked on purpose).
+- John's npm widgets (`multi-auto-select`, `navio`, `vega-selected`) have a UMD `main`/`browser` field; import their ES builds explicitly (`…/dist/*.es(m).js`).
+- `htl` is pinned to 0.3.1 (1.0.0's exports break Framework's resolver). The empty root `tsconfig.json` exists because vega 6 packages extend `../../tsconfig.json`.
+- Inputs (`@observablehq/inputs`) only emit `input` once attached to the document — append widgets to `document.body` in jsdom tests.
+- Framework caches data-loader output in `src/.observablehq/cache/` and only re-runs a loader when the loader file changes. After re-running the pipeline or editing `config.json`, `rm -rf src/.observablehq/cache/data` or the site serves stale data.
+- Vega-Lite interval brushes: drive them in tests with `view.signal("drag_x", …)`/`drag_y`, not `drag`.
+
+## Product docs
+
+- PRD (what to build, user stories with IDs): `docs/prd/2026-10-29-papers-navigator-prd.md`
+- Visual design system + UX guidelines: `docs/DESIGN.md` (Google DESIGN.md format; being written in another session — once it exists, UI work follows it)
+- Selection/list redesign (option B chosen) and independent review: `docs/prd/2026-10-29-selection-redesign.md`, `docs/prd/2026-10-29-review.md`
+
+## Workflow (issues, several agents in parallel)
+
+- Work is tracked as GitHub issues in `john-guerra/papers_navigator`; each references PRD story IDs and has acceptance criteria. Milestones = release stages; labels `area:*`, `P0`–`P2`.
+- Only pick issues labelled `agent-ready`. `needs-decision` means John hasn't decided yet — don't implement it.
+- Claim an issue before starting: assign it / comment that you're on it, and add `in-progress`. One agent per issue.
+- One issue = one branch `issue-<number>-<slug>` in its own git worktree (Claude Code: `EnterWorktree`; otherwise `git worktree add ../papersNavigator-<number> -b issue-<number>-<slug>`). Run `npm install` in the worktree.
+- Base branch: `main` once Stage 1 is merged; until then `stage1-explore-mypapers`.
+- TDD; before opening a PR run `npm test`, `.venv/bin/pytest pipeline`, `npm run lint`, `npm run build`, and check UI changes in Chrome at 1600×1000 and 400×860. PR body says `Closes #<n>` (template in `.github/`).
+- Avoid parallel edits to the same hot files: `src/index.md` and `src/style.css` are shared by most UI issues — keep changes there small and move logic into `src/lib/`, `src/components/`, `src/widgets/`. Regenerating `conferences/*/data/` (binary, large diffs) is its own issue; never in a feature PR.
+- Comments/PRs written on GitHub on John's behalf start with "Claude (<model-and-version>) in behalf of John".
+
+## Reference material (not committed)
+
+- Previous implementations: `/Users/aguerra/workspace/chi2026_papers`, `/Users/aguerra/workspace/ieeevis2025_papers`.
+- Exported Observable notebooks: `notebooks/*.tgz`, `data/chi2026-mypapers.tgz`.
+
+## Conventions
+
+- ES modules, double quotes, semicolons, 2-space indent; ESLint flat config + Prettier.
+- Repo is **public**: don't commit `pipeline/cache/`, `*.tgz`, `data/`, or `papers.raw.json`.
