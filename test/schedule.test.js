@@ -129,11 +129,16 @@ describe("nowNext", () => {
     ]);
   });
 
-  it("returns null after the day's last followed session", () => {
-    expect(nowNext(days, new Date(at(10, "20:00")), TZ)).toBeNull();
+  // #14: after the day's last session it's "nothing (more) today", not a silent null
+  it("says nothing more today after the day's last followed session", () => {
+    expect(nowNext(days, new Date(at(10, "20:00")), TZ).status).toBe(
+      "nothing-today",
+    );
   });
 
-  it("returns null outside conference days", () => {
-    expect(nowNext(days, new Date("2026-11-20T15:00:00Z"), TZ)).toBeNull();
+  it("says the conference is over after its last day", () => {
+    expect(nowNext(days, new Date("2026-11-20T15:00:00Z"), TZ).status).toBe(
+      "over",
+    );
   });
 });

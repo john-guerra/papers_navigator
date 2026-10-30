@@ -76,7 +76,7 @@ const fullSchedule = reasonChoice.key === "all" ? schedule : groupIntoSlots(item
 ```
 
 ```js
-const current = nowNext(fullSchedule.days, now, tz);
+const current = nowNext(fullSchedule.days, now, tz, { conferenceDays: conference.days });
 ```
 
 <h1>My Papers <small>(${items.length})</small></h1>
@@ -142,7 +142,7 @@ ${newNotice}
 // Created once (no dependency on the followed list) so following/unfollowing keeps the choice
 const isSmall = window.matchMedia("(max-width: 640px)").matches;
 const initialDays = groupIntoSlots(resolveFollowed(store.value, papers).items, tz).days;
-const liveAtLoad = nowNext(initialDays, nowParam ? new Date(nowParam) : new Date(), tz);
+const liveAtLoad = nowNext(initialDays, nowParam ? new Date(nowParam) : new Date(), tz, { conferenceDays: conference.days });
 const viewInput = Inputs.radio(["Now / Next", "Itinerary"], {
   value: isSmall && liveAtLoad ? "Now / Next" : "Itinerary",
 });
@@ -231,7 +231,8 @@ if (viewMode === "Now / Next") {
       : html`<p class="muted">The conference is not in session right now. Here is your itinerary.</p>`,
   );
 }
-if (viewMode === "Itinerary" || !current) {
+// "over" shows the itinerary under its message for reference
+if (viewMode === "Itinerary" || !current || current.status === "over") {
   display(renderItinerary(schedule, { tz, onUnfollow: unfollow, now, state: itineraryState }));
 }
 ```
