@@ -56,6 +56,7 @@ const typeLabels = typeNames(papers, conference.typeNames);
 </section>
 <section id="explore-map" class="explore-map">
   ${selectRegionButton}
+  <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   ${mapInput}
   <div class="map-controls">${colorByInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
   <details class="navio-summary">
@@ -279,6 +280,13 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // Survive re-runs: the paper last scrolled to, and how far the list is expanded
 const lastScrolled = { id: null };
+const scrollToPaper = (id) => {
+  const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
+  if (!row?.isConnected) return;
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+  row.classList.add("flash");
+  setTimeout(() => row.classList.remove("flash"), 1500);
+};
 const relevanceState = { level: "good", people: 0 };
 const listState = { key: null, shown: 100 };
 // The map reads its colors from CSS tokens when drawn: redraw when Appearance changes
@@ -413,13 +421,23 @@ const chipsRow = renderChips(chips, {
   const changed = id !== lastScrolled.id;
   lastScrolled.id = id;
   if (changed && id)
-    requestAnimationFrame(() => {
-      const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
-      if (!row?.isConnected) return;
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
-      row.classList.add("flash");
-      setTimeout(() => row.classList.remove("flash"), 1500);
-    });
+    requestAnimationFrame(() => scrollToPaper(id));
+}
+```
+
+```js
+// Phones: the chart ignores touches (so the page scrolls), but a tap on a point still shows its
+// paper: find the nearest point to the tap and scroll the list to it
+{
+  const phone = matchMedia("(max-width: 576px)");
+  const onTap = (event) => {
+    if (!phone.matches || layout.classList.contains("select-mode")) return;
+    const paper = mapInput.pointAt(event.clientX, event.clientY);
+    if (paper) scrollToPaper(paper.id);
+  };
+  const area = document.getElementById("explore-map");
+  area.addEventListener("click", onTap);
+  invalidation.then(() => area.removeEventListener("click", onTap));
 }
 ```
 

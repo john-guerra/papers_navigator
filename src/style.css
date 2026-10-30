@@ -1469,3 +1469,21 @@ details.missing > summary {
 .filters-panel .theme-label {
   display: none;
 }
+
+/* Phone map hint (Select region + tap to see a paper) */
+.map-hint {
+  display: none;
+  margin: var(--spacing-xs, 4px) 0;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+@media (max-width: 576px) {
+  .map-hint {
+    display: block;
+  }
+
+  .select-mode .map-hint {
+    color: var(--color-primary);
+  }
+}

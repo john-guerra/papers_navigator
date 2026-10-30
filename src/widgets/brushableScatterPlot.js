@@ -230,6 +230,31 @@ export async function BrushableScatterPlot(data, options = {}) {
     target.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
+  /**
+   * The point nearest to a screen position (e.g. a tap), or null if none is within `radius`
+   * pixels. Lets pages react to taps while the chart itself ignores touches (phones).
+   */
+  target.pointAt = (clientX, clientY, radius = 24) => {
+    const surface = chart.querySelector("canvas, svg");
+    if (!surface) return null;
+    const rect = surface.getBoundingClientRect();
+    const [ox, oy] = chart.view.origin();
+    const sx = chart.view.scale("x");
+    const sy = chart.view.scale("y");
+    let best = null;
+    let bestDistance = radius * radius;
+    for (const d of data) {
+      const dx = rect.left + ox + sx(d[x]) - clientX;
+      const dy = rect.top + oy + sy(d[y]) - clientY;
+      const distance = dx * dx + dy * dy;
+      if (distance <= bestDistance) {
+        best = d;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  };
+
   Object.defineProperty(target, "value", {
     get: () => value,
     set: (v) => {
