@@ -5,7 +5,7 @@ toc: false
 
 ```js
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
-import { createMyPapers, createRulesStore, filterByReason, reasonOptions } from "./lib/rules.js";
+import { createMyPapers, createRulesStore, filterByReason, normalizeRule, pickReason, reasonOptions, ruleOnlyCount } from "./lib/rules.js";
 import { facetValues } from "./lib/filters.js";
 import { renderWatching } from "./components/watching.js";
 import { showToast } from "./components/toast.js";
@@ -55,10 +55,12 @@ const { items, missing } = resolveFollowed(followed, papers);
 // Reason filter (#7, US5.5): the itinerary and the list show papers kept for one reason
 const reasonKeys = new Set(["all", "manual", ...rulesState.rules.map((r) => r.id)]);
 if (!reasonKeys.has(reasonState.key)) reasonState.key = "all";
-const reasonInput = Inputs.select(reasonOptions(items, rulesState.rules), {
+// One options array: Inputs.select matches the value by identity
+const reasonChoices = reasonOptions(items, rulesState.rules);
+const reasonInput = Inputs.select(reasonChoices, {
   label: "Show",
   format: (d) => d.label,
-  value: reasonOptions(items, rulesState.rules).find((d) => d.key === reasonState.key),
+  value: pickReason(reasonChoices, reasonState.key),
 });
 const reasonChoice = Generators.input(reasonInput);
 ```
@@ -67,10 +69,12 @@ const reasonChoice = Generators.input(reasonInput);
 reasonState.key = reasonChoice.key;
 const shownItems = filterByReason(items, reasonChoice.key);
 const schedule = groupIntoSlots(shownItems, tz);
+// Now / Next answers "where do I go" for all of My Papers, whatever the filter
+const fullSchedule = reasonChoice.key === "all" ? schedule : groupIntoSlots(items, tz);
 ```
 
 ```js
-const current = nowNext(schedule.days, now, tz);
+const current = nowNext(fullSchedule.days, now, tz);
 ```
 
 <h1>My Papers <small>(${items.length})</small></h1>
@@ -185,7 +189,7 @@ if (viewMode === "Itinerary" || !current) {
 }
 ```
 
-${missing.length ? html`<details class="missing" open><summary>⚠️ ${missing.length} followed papers are no longer in the program</summary><ul>${missing.map((m) => html`<li><code>${m.id}</code> — ${m.reason} <button onclick=${() => store.remove([m.id])}>Remove</button></li>`)}</ul></details>` : ""}
+${missing.length ? html`<details class="missing" open><summary>⚠️ ${missing.length} of your papers are no longer in the program</summary><ul>${missing.map((m) => html`<li><code>${m.id}</code> — ${m.reason} <button onclick=${() => store.remove([m.id])}>Remove</button></li>`)}</ul></details>` : ""}
 
 ${watchingSection}
 
@@ -224,7 +228,7 @@ display(
       preamble: (p) =>
         html`${p.new ? html`<span class="new-badge">New</span> ` : ""}${(p.reasons ?? [p.reason]).map((r) => html`<span class="reason-chip">${r}</span> `)}· Added ${new Date(p.addedOn).toLocaleDateString()}`,
       actions: (p) => {
-        const button = html`<button class="follow-toggle" aria-pressed="true" title="In My Papers — remove"><span class="ring" aria-hidden="true"></span>Remove</button>`;
+        const button = html`<button class="follow-toggle" title="Remove from My Papers" aria-label="Remove from My Papers"><span class="ring" aria-hidden="true"></span>Remove</button>`;
         button.onclick = () => unfollow(p.id);
         return button;
       },
@@ -251,6 +255,7 @@ const watchingSection = renderWatching(
   {
     rules: rulesState.rules,
     countFor: (id) => items.filter((d) => d.ruleIds?.includes(id)).length,
+    removableFor: (id) => ruleOnlyCount(items, id),
     names: {
       author: facetValues(papers, "authors").map((d) => d.value),
       affiliation: facetValues(papers, "affiliations").map((d) => d.value),
@@ -258,16 +263,26 @@ const watchingSection = renderWatching(
   },
   {
     onAdd: (rule) => {
+      if (rulesStore.has(normalizeRule(rule)?.id)) return showToast(`Already watching ${rule.value}`);
       const saved = store.watch(rule);
       const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
-      showToast(`Watching ${rule.value} · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`, {
-        actionLabel: "Undo",
-        onAction: () => store.unwatch([saved.id]),
-      });
+      const message = n
+        ? `Watching ${rule.value} · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`
+        : `Watching ${rule.value} · no papers match yet (check the spelling; new ones will appear if the program changes)`;
+      showToast(message, { actionLabel: "Undo", onAction: () => store.unwatch([saved.id]) });
     },
     onRemove: (id, { keepPapers }) => {
+      // Undo puts the same rule back; with keepPapers it also drops the copies kept by hand
+      const rule = rulesStore.value.rules.find((r) => r.id === id);
+      const kept = keepPapers ? store.value.filter((d) => !d.manual && d.ruleIds.includes(id)).map((d) => d.id) : [];
       store.unwatch([id], { keepPapers });
-      showToast(keepPapers ? "Stopped watching; its papers stay in My Papers" : "Stopped watching and removed its papers");
+      showToast(keepPapers ? "Stopped watching; its papers stay in My Papers" : "Stopped watching and removed its papers", {
+        actionLabel: "Undo",
+        onAction: () => {
+          if (kept.length) followedStore.remove(kept);
+          if (rule) rulesStore.add(rule);
+        },
+      });
     },
   },
 );

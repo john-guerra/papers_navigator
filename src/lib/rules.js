@@ -359,3 +359,15 @@ export function filterByReason(items, key) {
   if (key === "manual") return items.filter((d) => d.manual);
   return items.filter((d) => d.ruleIds?.includes(key));
 }
+
+/** The option for `key` from `options` itself (Inputs.select matches its value by identity). */
+export function pickReason(options, key) {
+  return options.find((d) => d.key === key) ?? options[0];
+}
+
+/** Papers that would leave My Papers if this rule went: matched only by it, not added by hand. */
+export function ruleOnlyCount(items, ruleId) {
+  return items.filter(
+    (d) => !d.manual && d.ruleIds?.length === 1 && d.ruleIds[0] === ruleId,
+  ).length;
+}

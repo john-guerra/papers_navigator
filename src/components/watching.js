@@ -11,11 +11,11 @@ let datalistIds = 0;
  * a friend or an institution by name (autocompleted from the program).
  */
 export function renderWatching(
-  { rules, countFor, names },
+  { rules, countFor, removableFor = countFor, names },
   { onRemove, onAdd },
 ) {
   const list = html`<ul class="watching-list">
-    ${rules.map((rule) => ruleRow(rule, countFor(rule.id), onRemove))}
+    ${rules.map((rule) => ruleRow(rule, countFor(rule.id), removableFor(rule.id), onRemove))}
   </ul>`;
   return html`<section class="watching">
     <h2>Watching</h2>
@@ -31,7 +31,7 @@ export function renderWatching(
   </section>`;
 }
 
-function ruleRow(rule, count, onRemove) {
+function ruleRow(rule, count, removable, onRemove) {
   const row = html`<li class="watching-rule" data-rule=${rule.id}>
     <span class="watching-name">${ruleReason(rule)}</span>
     <span class="watching-count">${papersWord(count)}</span>
@@ -44,6 +44,7 @@ function ruleRow(rule, count, onRemove) {
     </button>`;
     stop.onclick = showChoice;
     actions.replaceChildren(stop);
+    return stop;
   };
   // Inline choice instead of a native confirm (DESIGN.md → Inline confirm)
   const showChoice = () => {
@@ -51,12 +52,12 @@ function ruleRow(rule, count, onRemove) {
       Keep its ${papersWord(count)}
     </button>`;
     const remove = html`<button class="btn-secondary remove-papers">
-      Remove its ${papersWord(count)} too
+      Remove its ${papersWord(removable)} too
     </button>`;
     const cancel = html`<button class="btn-text cancel">Cancel</button>`;
     keep.onclick = () => onRemove(rule.id, { keepPapers: true });
     remove.onclick = () => onRemove(rule.id, { keepPapers: false });
-    cancel.onclick = showStop;
+    cancel.onclick = () => showStop().focus();
     actions.replaceChildren(keep, remove, cancel);
     keep.focus?.();
   };
@@ -66,7 +67,7 @@ function ruleRow(rule, count, onRemove) {
 
 function addForm(names, onAdd) {
   const listId = `watch-names-${++datalistIds}`;
-  const type = html`<select aria-label="Watch a">
+  const type = html`<select aria-label="Watch a friend or an institution">
     ${Object.entries(TYPE_LABELS).map(([value, label]) => html`<option value=${value}>${label}</option>`)}
   </select>`;
   const input = html`<input

@@ -79,6 +79,30 @@ describe("renderWatching", () => {
       { rules: [], countFor: () => 0, names: { author: [], affiliation: [] } },
       { onRemove() {}, onAdd() {} },
     );
-    expect(el.textContent.replace(/\s+/g, " ")).toContain("always keep their papers in My Papers");
+    expect(el.textContent.replace(/\s+/g, " ")).toContain(
+      "always keep their papers in My Papers",
+    );
+  });
+});
+
+describe("renderWatching remove count", () => {
+  it("says how many papers would actually leave, and keeps focus on the row", () => {
+    const el = renderWatching(
+      {
+        rules: [{ id: "author:ann", type: "author", value: "Ann" }],
+        countFor: () => 3,
+        removableFor: () => 1,
+        names: { author: [], affiliation: [] },
+      },
+      { onRemove() {}, onAdd() {} },
+    );
+    document.body.append(el);
+    el.querySelector(".stop-watching").click();
+    expect(el.querySelector(".remove-papers").textContent.trim()).toBe(
+      "Remove its 1 paper too",
+    );
+    el.querySelector(".cancel").click();
+    expect(document.activeElement).toBe(el.querySelector(".stop-watching"));
+    el.remove();
   });
 });

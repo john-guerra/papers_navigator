@@ -439,3 +439,27 @@ describe("reason filter", () => {
     expect(filterByReason(items, "author:ann").map((d) => d.id)).toEqual(["3"]);
   });
 });
+
+describe("pickReason", () => {
+  it("returns the option object from the same array (Inputs.select matches by identity)", async () => {
+    const { reasonOptions, pickReason } = await import("../src/lib/rules.js");
+    const options = reasonOptions(
+      [{ id: "1", manual: false, ruleIds: ["author:ann"] }],
+      [{ id: "author:ann", type: "author", value: "Ann" }],
+    );
+    expect(pickReason(options, "author:ann")).toBe(options[2]);
+    expect(pickReason(options, "gone")).toBe(options[0]);
+  });
+});
+
+describe("ruleOnlyCount", () => {
+  it("counts papers that leave My Papers if the rule goes (not hand-added, no other rule)", async () => {
+    const { ruleOnlyCount } = await import("../src/lib/rules.js");
+    const items = [
+      { id: "1", manual: false, ruleIds: ["a"] },
+      { id: "2", manual: true, ruleIds: ["a"] },
+      { id: "3", manual: false, ruleIds: ["a", "b"] },
+    ];
+    expect(ruleOnlyCount(items, "a")).toBe(1);
+  });
+});
