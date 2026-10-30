@@ -140,3 +140,15 @@ describe("renderAddBar disabled hint", () => {
     expect(el.textContent).toContain("Search or filter to add in bulk");
   });
 });
+
+describe("showToast focusAction (#52)", () => {
+  it("can move focus to its action (e.g. Undo right after a replace)", () => {
+    showToast("Replaced", {
+      actionLabel: "Undo",
+      onAction: () => {},
+      focusAction: true,
+    });
+    expect(document.activeElement?.textContent).toBe("Undo");
+    document.querySelector(".toast-action").click();
+  });
+});

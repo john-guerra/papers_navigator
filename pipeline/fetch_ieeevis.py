@@ -9,7 +9,9 @@ After each run, prints what changed vs the previous papers.raw.json.
 import argparse
 import hashlib
 import json
+import os
 import re
+import tempfile
 import time
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -156,23 +158,63 @@ def assign_short_ids(ids: list[str], min_len: int = 8) -> dict[str, str]:
     return {i: i[:length] for i in ids}
 
 
+def write_atomic(path: Path, text: str) -> None:
+    """Write via a temp file in the same directory + os.replace, so an interrupted run
+    (Ctrl-C during --refresh) never leaves a truncated file behind."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def _is_pdf_url(url: str | None) -> bool:
+    return bool(url) and urlparse(url).path.lower().endswith(".pdf")
+
+
+def _refuse_pdf_response(url: str, response) -> None:
+    """Called on a streamed response before its body is read (redirects already followed)."""
+    content_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+    if content_type == "application/pdf" or _is_pdf_url(getattr(response, "url", None)):
+        raise ValueError(f"refusing to download a PDF: {url} → {response.url} ({content_type})")
+
+
 def fetch_cached(url: str, cache_dir: Path, min_interval: float = 1.0, refresh: bool = False) -> str:
     global _last_request
-    if urlparse(url).path.lower().endswith(".pdf"):
+    if _is_pdf_url(url):
         raise ValueError(f"refusing to download a PDF: {url}")
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / (hashlib.sha256(url.encode()).hexdigest()[:24] + ".html")
     if path.exists() and not refresh:
-        return repair_mojibake(path.read_text())
+        return repair_mojibake(path.read_text(encoding="utf-8"))
     wait = min_interval - (time.monotonic() - _last_request)
     if wait > 0:
         time.sleep(wait)
-    response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
+    # stream=True: only headers are read until .content, so a PDF is refused before its body
+    response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30, stream=True)
     _last_request = time.monotonic()
-    response.raise_for_status()
-    text = decode_body(response.content)
-    path.write_text(text)
+    try:
+        response.raise_for_status()
+        _refuse_pdf_response(url, response)
+        text = decode_body(response.content)
+    finally:
+        response.close()
+    write_atomic(path, text)
     return text
+
+
+def _read_previous(path: Path) -> list[dict] | None:
+    """The previous papers.raw.json, or None if missing or unreadable (e.g. truncated)."""
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        print(f"⚠️  previous {path.name} is not valid JSON ({error}); comparing against nothing.")
+        return None
 
 
 def run(conference_id: str, refresh_listing: bool = True, refresh: bool = False) -> dict:
@@ -205,9 +247,9 @@ def run(conference_id: str, refresh_listing: bool = True, refresh: bool = False)
             print(f"{n}/{len(listing)}")
 
     out = ROOT / "conferences" / conference_id / "data" / "papers.raw.json"
-    previous = json.loads(out.read_text()) if out.exists() else None
+    previous = _read_previous(out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(records, ensure_ascii=False, indent=1))
+    write_atomic(out, json.dumps(records, ensure_ascii=False, indent=1))
     print(f"wrote {len(records)} papers to {out}")
     # Printed only: conferences/<id>/data/ is committed, so no changes.json is written there.
     changes = diff_papers(previous, records)

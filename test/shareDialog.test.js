@@ -149,7 +149,7 @@ describe("renderShareButton (#16)", () => {
       title: "VIS",
       onFallback,
     });
-    expect(button.textContent).toContain("Share my list");
+    expect(button.textContent).toContain("Share list");
     button.click();
     await Promise.resolve();
     expect(share).toHaveBeenCalledWith({
@@ -201,5 +201,22 @@ describe("renderShareButton (#16)", () => {
     }).click();
     await new Promise((r) => setTimeout(r));
     expect(onFallback).toHaveBeenCalled();
+  });
+});
+
+describe("renderShareBanner lazy counts (#52)", () => {
+  it("reads current/watched when Replace is clicked, not when the banner is built", () => {
+    let current = 3;
+    const el = renderShareBanner(
+      { ids: ["a"], unknown: [], current: () => current, watched: () => 0 },
+      { onMerge: noop, onReplace: noop, onIgnore: noop },
+    );
+    current = 9;
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Replace")
+      .click();
+    expect(el.textContent.replace(/\s+/g, " ")).toContain(
+      "Replace your 9 papers",
+    );
   });
 });

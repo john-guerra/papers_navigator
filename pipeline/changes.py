@@ -4,8 +4,15 @@
 WATCHED_FIELDS = ["sessionId", "sessionName", "room", "start", "end", "sessionStart", "sessionEnd"]
 
 
+UNTITLED = "(untitled)"
+
+
 def _summary(paper: dict) -> dict:
     return {"id": paper["id"], "title": paper.get("title")}
+
+
+def _label(paper: dict) -> str:
+    return f"{paper['id']} {paper['title'] or UNTITLED}"
 
 
 def diff_papers(old: list[dict] | None, new: list[dict]) -> dict:
@@ -48,10 +55,10 @@ def format_changes(changes: dict) -> str:
         return "No changes vs the previous papers.raw.json."
     counts = f"{len(added)} added, {len(removed)} removed, {len(changed)} changed"
     lines = [f"Changes vs the previous papers.raw.json: {counts}"]
-    lines += [f"  + {p['id']} {p['title']}" for p in added]
-    lines += [f"  - {p['id']} {p['title']}" for p in removed]
+    lines += [f"  + {_label(p)}" for p in added]
+    lines += [f"  - {_label(p)}" for p in removed]
     for p in changed:
-        lines.append(f"  ~ {p['id']} {p['title']}")
+        lines.append(f"  ~ {_label(p)}")
         lines += [f"      {key}: {old} → {new}" for key, (old, new) in p["fields"].items()]
         lines += [f"      + link {link['label']}: {link['url']}" for link in p["linksAdded"]]
         lines += [f"      - link {link['label']}: {link['url']}" for link in p["linksRemoved"]]

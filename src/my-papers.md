@@ -114,8 +114,9 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
         watches: sharedWatches,
         // "already" counts all of My Papers (watched too); Replace only touches hand-added ones
         already: shared.ids.filter((id) => store.has(id)).length,
-        current: mine.size,
-        watched: store.value.filter((d) => !d.manual).length,
+        // read when Replace is clicked, so they reflect any change since the link opened
+        current: () => followedStore.value.length,
+        watched: () => store.value.filter((d) => !d.manual).length,
       },
       {
         onMerge: () => (followedStore.merge(sharedReason()), addSharedWatches(), done()),
@@ -124,7 +125,7 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
           const { undo: undoRules } = addSharedWatches();
           const undo = () => (undoList(), undoRules());
           done();
-          showToast(`Replaced your list with ${shared.ids.length} shared papers`, { actionLabel: "Undo", onAction: undo });
+          showToast(`Replaced your list with ${shared.ids.length} shared papers`, { actionLabel: "Undo", onAction: undo, focusAction: true });
         },
         onIgnore: done,
       },
@@ -134,7 +135,7 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
 display(banner);
 ```
 
-<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton} ${importInput} ${themeControl()}</div>
+<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton} ${importInput} ${restoreButton} ${themeControl()}</div>
 ${newNotice}
 <div>${sharePanel}</div>
 
@@ -190,35 +191,40 @@ importInput.querySelector("input").onchange = async (event) => {
   event.target.value = "";
   if (!file) return;
   const text = await file.text();
+  // Read the file first: a bad file shows its error before any choice, and the choices can
+  // say what the file holds (#52)
+  let parsed;
+  try {
+    parsed = parseMyPapersFile(text);
+  } catch (error) {
+    importStatus.textContent = `“${file.name}” can't be imported: ${error.message}`;
+    return;
+  }
+  const watchesOf = (n) => (n ? ` and ${n} ${n === 1 ? "watch" : "watches"}` : "");
   const run = (replace) => {
-    try {
-      const before = followedStore.value.length;
-      // v2 files carry watch rules and exceptions too (#49): rules are added, never removed; the
-      // file's exceptions apply only on Replace (on Merge they could hide papers you have here)
-      const file = parseMyPapersFile(text);
-      const undoList = followedStore.importJSON(JSON.stringify(file.followed), { replace });
-      const rulesResult = applyRules(store, rulesStore, file.rules, replace ? file.exceptions : []);
-      const undo = () => (undoList(), rulesResult.undo());
-      const watchesText = rulesResult.added ? ` and ${rulesResult.added} ${rulesResult.added === 1 ? "watch" : "watches"}` : "";
-      importStatus.textContent = replace
-        ? `Replaced your list with ${followedStore.value.length} papers${watchesText}.`
-        : `Added ${followedStore.value.length - before} papers${watchesText} (${store.value.length} total in My Papers).`;
-      if (replace) showToast("Replaced your list from the file", { actionLabel: "Undo", onAction: undo });
-    } catch (error) {
-      importStatus.textContent = error.message;
-    }
+    const before = followedStore.value.length;
+    // Rules are added, never removed; the file's exceptions apply only on Replace (on Merge they
+    // could hide papers you have here) (#49)
+    const undoList = followedStore.importJSON(JSON.stringify(parsed.followed), { replace });
+    const rulesResult = applyRules(store, rulesStore, parsed.rules, replace ? parsed.exceptions : []);
+    const undo = () => (undoList(), rulesResult.undo());
+    importStatus.textContent = replace
+      ? `Replaced your list with ${followedStore.value.length} papers${watchesOf(rulesResult.added)}.`
+      : `Added ${followedStore.value.length - before} papers${watchesOf(rulesResult.added)} (${store.value.length} total in My Papers).`;
+    if (replace) showToast("Replaced your list from the file", { actionLabel: "Undo", onAction: undo, focusAction: true });
   };
   const merge = html`<button>Merge into my list</button>`;
   const replace = html`<button>Replace my list</button>`;
-  const choices = () => importStatus.replaceChildren(`Import “${file.name}”: `, merge, " ", replace);
+  const contents = `${parsed.followed.length} papers${watchesOf(parsed.rules.length)}`;
+  const choices = () => importStatus.replaceChildren(`Import “${file.name}” (${contents}): `, merge, " ", replace);
   merge.onclick = () => run(false);
   // Inline confirm before replacing (no native dialog)
   replace.onclick = () => {
     const yes = html`<button>Yes, replace</button>`;
     const cancel = html`<button>Cancel</button>`;
     yes.onclick = () => run(true);
-    cancel.onclick = choices;
-    importStatus.replaceChildren(`Replace your ${followedStore.value.length} papers with the ones in “${file.name}”? `, yes, " ", cancel);
+    cancel.onclick = () => (choices(), replace.focus());
+    importStatus.replaceChildren(`Replace your ${followedStore.value.length} papers with the ${parsed.followed.length} in “${file.name}”? `, yes, " ", cancel);
     yes.focus();
   };
   choices();
@@ -236,7 +242,7 @@ const unfollow = (id) => {
 if (viewMode === "Now / Next") {
   display(
     current
-      ? renderNowNext(current, { tz })
+      ? renderNowNext(current, { tz, empty: !items.length })
       : html`<p class="muted">The conference is not in session right now. Here is your itinerary.</p>`,
   );
 }
@@ -343,4 +349,23 @@ const watchingSection = renderWatching(
     },
   },
 );
+```
+
+```js
+// After a Replace, the previous list stays in a backup: offer to bring it back once the Undo
+// toast is gone (#52)
+followed;
+const previous = followedStore.backup();
+const sameIds = (a, b) => a.length === b.length && a.every((d, i) => d.id === b[i].id);
+// Nothing to offer when the backup is the list you already have
+const restoreButton = previous && !sameIds(previous, followedStore.value)
+  ? (() => {
+      const button = html`<button class="btn-text">Restore previous list (${previous.length})</button>`;
+      button.onclick = () => {
+        const undo = followedStore.restoreBackup();
+        showToast(`Restored your previous list of ${previous.length} papers`, { actionLabel: "Undo", onAction: undo, focusAction: true });
+      };
+      return button;
+    })()
+  : html`<span></span>`;
 ```

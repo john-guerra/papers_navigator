@@ -44,7 +44,14 @@ export function renderShareDialog(url, { count = 0 } = {}) {
 
 /** Banner offering to merge or replace the local list with papers from a share link. */
 export function renderShareBanner(
-  { ids, unknown, already = 0, current = 0, watched = 0, watches = [] },
+  {
+    ids,
+    unknown,
+    already = 0,
+    current: currentCount = 0,
+    watched: watchedCount = 0,
+    watches = [],
+  },
   { onMerge, onReplace, onIgnore },
 ) {
   const button = (label, fn) => {
@@ -91,7 +98,11 @@ export function renderShareBanner(
   };
   // Inline confirm (DESIGN.md): say what will be lost before replacing. Replace only touches
   // papers added by hand; papers kept by watch rules stay.
+  // Counts may be functions so they're read when Replace is clicked (the list may have changed)
+  const read = (v) => (typeof v === "function" ? v() : v);
   const showConfirm = () => {
+    const current = read(currentCount);
+    const watched = read(watchedCount);
     const yes = button("Yes, replace", onReplace);
     const what = watched ? `${papers(current)} added by hand` : papers(current);
     banner.replaceChildren(
@@ -111,7 +122,7 @@ export function renderShareBanner(
 }
 
 /**
- * "Share my list" with the native share sheet on phones (#16); elsewhere, or without
+ * "Share list" (DESIGN.md) with the native share sheet on phones (#16); elsewhere, or without
  * navigator.share, "Send to my phone", which opens the QR panel (`onFallback`). A failed share
  * also falls back to the panel; cancelling the sheet does nothing.
  */
@@ -125,15 +136,23 @@ export function renderShareButton({
 }) {
   const native = narrow && typeof share === "function";
   const button = html`<button>
-    ${native ? "📤 Share my list" : "📱 Send to my phone"}
+    ${native ? "📤 Share list" : "📱 Send to my phone"}
   </button>`;
   button.onclick = () => {
     if (!native) return onFallback();
-    share({ title: `${title}: My Papers (${count()})`, url: url() }).catch(
-      (error) => {
-        if (error?.name !== "AbortError") onFallback();
-      },
-    );
+    // Called synchronously (keeps the click's user activation); a sync throw also falls back
+    let sharing;
+    try {
+      sharing = share({
+        title: `${title}: My Papers (${count()})`,
+        url: url(),
+      });
+    } catch {
+      return onFallback();
+    }
+    sharing.catch((error) => {
+      if (error?.name !== "AbortError") onFallback();
+    });
   };
   return button;
 }

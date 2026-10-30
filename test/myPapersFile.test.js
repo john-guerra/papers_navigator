@@ -35,3 +35,14 @@ describe("My Papers file", () => {
     expect(() => parseMyPapersFile("not json")).toThrow();
   });
 });
+
+describe("parseMyPapersFile validates entries (#65 review)", () => {
+  it("rejects a list whose entries aren't papers", () => {
+    expect(() => parseMyPapersFile("[{}]")).toThrow();
+    expect(() =>
+      parseMyPapersFile(
+        JSON.stringify({ version: 2, followed: [{ nope: 1 }] }),
+      ),
+    ).toThrow();
+  });
+});
