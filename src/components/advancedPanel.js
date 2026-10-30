@@ -4,6 +4,12 @@ import {
   createQualityCache,
   createQualityRunner,
 } from "../lib/drQuality.js";
+import {
+  reliabilityChanged,
+  reliabilityLabel,
+  scoresById,
+} from "../lib/reliability.js";
+import { reliabilityMapOptions } from "./reliabilityMap.js";
 import { DR_METHODS, computeProjection, toProjection } from "../lib/liveDr.js";
 import {
   clusterLabelsByKeyword,
@@ -30,8 +36,12 @@ const STYLE = `
 .advanced-dr-panel .advanced-table { overflow-x: auto; }
 .advanced-dr-panel th:first-child, .advanced-dr-panel td:first-child { text-align: left; }
 .advanced-dr-panel tr.is-current td:first-child { font-weight: 600; }
+.advanced-dr-panel .advanced-subhead { margin-top: var(--spacing-md, 12px); }
+.advanced-dr-panel label.advanced-check { flex-direction: row; align-items: center; gap: var(--spacing-xs, 4px); margin-bottom: var(--spacing-sm, 8px); color: var(--color-on-surface); font: var(--typography-body-sm); }
+.advanced-dr-panel input[type="checkbox"] { min-height: 0; width: 16px; height: 16px; accent-color: var(--color-primary); }
 @media (max-width: 576px) {
-  .advanced-dr-panel input, .advanced-dr-panel select, .advanced-dr-panel button { min-height: var(--spacing-touch, 44px); }
+  .advanced-dr-panel input, .advanced-dr-panel select, .advanced-dr-panel button, .advanced-dr-panel label.advanced-check { min-height: var(--spacing-touch, 44px); }
+  .advanced-dr-panel input[type="checkbox"] { min-height: 0; }
 }
 `;
 
@@ -59,7 +69,9 @@ function distinct(labels) {
  * The Advanced panel's live tools (issue #28, US2.4), a reactive widget:
  * `.value = {projections, clusters}` where `projections` = `{name: {id: [x, y]}}` computed here
  * (one per method, newest last) and `clusters` = `{byId: {id: label | null}, on, count, noise}`
- * or null; it emits `input` when either changes.
+ * or null; it emits `input` when either changes. `reliability` (#84) = `{metric, k, label,
+ * overlay, scores: {name: {id: score}}}` for the projections measured so far (null before
+ * any); each projection's `scores` object stays the same until its scores change.
  * - `projections`: the precomputed ones (`{method: {id: [x, y]}}`), listed in the quality table;
  * - `embeddings`: Float32Array, row i ↔ papers[i], `dims` per row;
  * - `currentProjection()`: name of the projection on the map (re-clustering uses it);
@@ -78,6 +90,7 @@ export function advancedPanel({
   const live = {};
   let liveSnapshot = {};
   let clusters = null;
+  let reliability = null;
   const all = () => ({ ...projections, ...live });
 
   const style = document.createElement("style");
@@ -86,7 +99,7 @@ export function advancedPanel({
   const emit = () => root.dispatchEvent(new Event("input", { bubbles: true }));
   Object.defineProperty(root, "value", {
     // Same objects until they change, so the page can compare by identity
-    get: () => ({ projections: liveSnapshot, clusters }),
+    get: () => ({ projections: liveSnapshot, clusters, reliability }),
   });
 
   // --- Compute a projection (Druid) -------------------------------------------------------
@@ -283,6 +296,7 @@ export function advancedPanel({
       return;
     }
     renderTable();
+    updateReliability(); // a new k: only what's cached for it until computed
     metricsStatus.textContent = "Computing…";
     runner ??= createQualityRunner({ embeddings, dims });
     let where = "worker";
@@ -312,11 +326,51 @@ export function advancedPanel({
       if (run !== pending) return;
       renderTable();
       root.dispatchEvent(new Event("quality"));
+      updateReliability();
     }
     metricsStatus.textContent = `Computed in ${((performance.now() - start) / 1000).toFixed(1)} s (${where === "worker" ? "background worker" : "main thread"}) against the ${dims}-dimensional embeddings (Euclidean). Steadiness and cohesiveness sample ${p.iterations} random walks (seed ${seed}); other seeds vary by about ±0.01.`;
   }
   kMetric.input.addEventListener("change", refreshMetrics);
   iterationsField.input.addEventListener("change", refreshMetrics);
+
+  // --- Reliability on the map (#84) -------------------------------------------------------
+  const reliabilitySelect = html`<select>
+    ${QUALITY_METRICS.map((m) => html`<option value=${m.id}>${m.label}</option>`)}
+  </select>`;
+  const overlayToggle = html`<input type="checkbox" />`;
+  const byIdOf = new WeakMap(); // cached result → {id: score}, so identity tracks changes
+  function updateReliability() {
+    const p = params();
+    const metric = reliabilitySelect.value;
+    const scores = {};
+    for (const name of Object.keys(all())) {
+      const result = cache.get(name, metric, p);
+      if (!result) continue;
+      if (!byIdOf.has(result))
+        byIdOf.set(result, scoresById(papers, result.localScores));
+      scores[name] = byIdOf.get(result);
+    }
+    const next = {
+      metric,
+      k: p.k,
+      label: reliabilityLabel(metric, p.k),
+      overlay: overlayToggle.checked,
+      scores,
+    };
+    const prev = reliability;
+    const same =
+      prev &&
+      prev.metric === next.metric &&
+      prev.k === next.k &&
+      prev.overlay === next.overlay &&
+      Object.keys(prev.scores).length === Object.keys(scores).length &&
+      Object.entries(scores).every(([name, s]) => prev.scores[name] === s);
+    if (same || (!prev && !Object.keys(scores).length && !next.overlay)) return;
+    reliability = next;
+    emit();
+  }
+  reliabilitySelect.onchange = updateReliability;
+  overlayToggle.onchange = updateReliability;
 
   root.append(
     html`<section>
@@ -385,6 +439,18 @@ export function advancedPanel({
           </table>
         </div>
         ${metricsStatus}
+        <h4 class="advanced-subhead">Reliability on the map</h4>
+        <p class="advanced-note">
+          Once measured, “Reliability” joins Color by: each paper's score for
+          this metric at this k (darker = its map neighborhood is less
+          faithful). The overlay shades the areas whose papers score lowest.
+        </p>
+        <div class="advanced-fields">
+          <label>Metric${reliabilitySelect}</label>
+        </div>
+        <label class="advanced-check"
+          >${overlayToggle} Distortion overlay</label
+        >
         <p class="advanced-note">
           Steadiness and cohesiveness by
           <a
@@ -410,6 +476,9 @@ export function advancedPanel({
    * `{score, localScores, k}` (localScores row i ↔ papers[i]), or undefined until computed.
    * The panel dispatches a "quality" event whenever more results are ready.
    */
+  // For the page's map (#84): served from here so Explore's first load doesn't carry them
+  root.reliabilityChanged = reliabilityChanged;
+  root.reliabilityMapOptions = reliabilityMapOptions;
   root.localScores = (name, metric = "trustworthiness") => {
     const p = params();
     const result = cache.get(name, metric, p);
