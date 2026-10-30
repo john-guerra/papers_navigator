@@ -620,8 +620,7 @@ a.navbar-brand {
   align-items: center;
 }
 
-.map-controls,
-.follow-actions {
+.map-controls {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-lg);
@@ -638,13 +637,6 @@ a.navbar-brand {
   width: auto;
   margin-right: var(--spacing-sm);
   color: var(--color-on-surface-muted);
-}
-
-.add-to-followed {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  align-items: center;
 }
 
 .explore-layout {
@@ -1215,4 +1207,10 @@ details.missing > summary {
 .paper.flash {
   background: var(--color-primary-container);
   transition: background 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paper.flash {
+    transition: none;
+  }
 }

@@ -13,7 +13,7 @@ import { facetStrip } from "./widgets/facetStrip.js";
 import { BrushableScatterPlot } from "./widgets/brushableScatterPlot.js";
 import { BrushableHistogram } from "./widgets/brushableHistogram.js";
 import { PapersList } from "./widgets/papersList.js";
-import { planAdd, selectionReason } from "./lib/selection.js";
+import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
@@ -57,7 +57,6 @@ const typeLabels = typeNames(papers, conference.typeNames);
 <section class="explore-list">
   ${whereToGoSection}
   ${addBar}
-  ${maxPapersInput}
   ${papersList}
 </section>
 <aside id="filters-panel" class="filters-panel" aria-label="Map options">
@@ -222,6 +221,8 @@ const sizeBy = Generators.input(sizeByInput);
 
 ```js
 const mapWidth = Generators.width(document.getElementById("explore-map"));
+// Survives re-runs of the click-to-scroll cell
+const lastScrolled = { id: null };
 // Bumped by the "Map region ✕" chip: redraws the map without its brush
 const mapReset = Mutable(0);
 const resetMap = () => ++mapReset.value;
@@ -260,11 +261,6 @@ const scoreRange = scoreRangeInput ? Generators.input(scoreRangeInput) : null;
 ```
 
 ```js
-const maxPapersInput = Inputs.range([10, 500], { label: "Max papers to list", step: 10, value: 100 });
-const maxPapers = Generators.input(maxPapersInput);
-```
-
-```js
 const inRange = scoreRange
   ? map.brushed.filter((d) => d.score >= scoreRange[0] && d.score <= scoreRange[1])
   : map.brushed;
@@ -286,11 +282,14 @@ const addReason = selectionReason({
   typeLabel: (t) => typeLabels.get(t) ?? t,
   region: regionActive,
 });
+// With nothing narrowing the list, one click would add the whole program: ask to narrow first
+const narrowed =
+  hasQuery || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || !sameSet(types, defaultTypes);
 const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))), {
+  disabledHint: narrowed ? null : "Search, filter or select a map region to add papers in bulk",
   onAdd: (fresh) => {
-    store.add(fresh, addReason);
-    const ids = fresh.map((p) => p.id);
-    showToast(`Added ${ids.length} to My Papers`, { actionLabel: "Undo", onAction: () => store.remove(ids) });
+    const undo = addWithUndo(store, fresh, addReason);
+    showToast(`Added ${fresh.length} to My Papers`, { actionLabel: "Undo", onAction: undo });
   },
 });
 const clearQuery = () => {
@@ -314,10 +313,13 @@ const chipsRow = renderChips(chips, {
 ```
 
 ```js
-// Clicking a point on the map scrolls the list to that paper (no hidden "clicked" mode)
+// Clicking a point on the map scrolls the list to that paper (no hidden "clicked" mode).
+// Vega keeps the click selected, so only scroll when the clicked paper changes.
 {
-  const id = map.clicked[0]?.id;
-  const row = id && document.querySelector(`.explore-list [data-paper-id="${CSS.escape(id)}"]`);
+  const id = map.clicked[0]?.id ?? null;
+  const changed = id !== lastScrolled.id;
+  lastScrolled.id = id;
+  const row = changed && id && document.querySelector(`.explore-list [data-paper-id="${CSS.escape(id)}"]`);
   if (row) {
     row.scrollIntoView({ behavior: "smooth", block: "center" });
     row.classList.add("flash");
@@ -351,7 +353,6 @@ const navioSummary = NavioWidget(
 const ordered = hasQuery ? selected : [...selected].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
 const papersList = PapersList(ordered, {
   tz,
-  max: maxPapers,
   header: "",
   preamble: (p) => (p.score != null ? `🔍 ${(p.score * 100).toFixed(1)}%` : ""),
   actions: (p) => {
@@ -363,7 +364,10 @@ const papersList = PapersList(ordered, {
       if (entry) {
         store.remove([p.id]);
         showToast("Removed from My Papers", { actionLabel: "Undo", onAction: () => store.merge([entry]) });
-      } else store.add([p], hasQuery ? `★ ${query}` : "★ Added by hand");
+      } else {
+        const undo = addWithUndo(store, [p], hasQuery ? `★ ${query}` : "★ Added by hand");
+        showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
+      }
     };
     return toggle;
   },

@@ -58,3 +58,22 @@ describe("PapersList row ids", () => {
     expect(el.querySelector('[data-paper-id="p1"]')).not.toBeNull();
   });
 });
+
+describe("PapersList show more", () => {
+  it("lists the first batch and a Show more button that reveals the next batch in place", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const papers = Array.from({ length: 5 }, (_, i) => ({
+      id: `p${i}`,
+      title: `T${i}`,
+    }));
+    const el = PapersList(papers, { tz: "US/Eastern", max: 2 });
+    expect(el.querySelectorAll(".paper")).toHaveLength(2);
+    const more = el.querySelector(".papers-more button");
+    expect(more.textContent).toContain("Show 2 more");
+    more.click();
+    expect(el.querySelectorAll(".paper")).toHaveLength(4);
+    el.querySelector(".papers-more button").click();
+    expect(el.querySelectorAll(".paper")).toHaveLength(5);
+    expect(el.querySelector(".papers-more")).toBeNull();
+  });
+});

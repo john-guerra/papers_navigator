@@ -112,3 +112,31 @@ describe("renderChips", () => {
     expect(renderChips([], {}).children).toHaveLength(0);
   });
 });
+
+describe("addWithUndo", () => {
+  it("adds only the fresh papers and its undo removes exactly those", async () => {
+    const { addWithUndo } = await import("../src/lib/selection.js");
+    const calls = [];
+    const store = {
+      add: (list, reason) => calls.push(["add", list.map((p) => p.id), reason]),
+      remove: (ids) => calls.push(["remove", ids]),
+    };
+    const undo = addWithUndo(store, [{ id: "a" }, { id: "c" }], "🔍 q");
+    undo();
+    expect(calls).toEqual([
+      ["add", ["a", "c"], "🔍 q"],
+      ["remove", ["a", "c"]],
+    ]);
+  });
+});
+
+describe("renderAddBar disabled hint", () => {
+  it("explains why bulk add is off when nothing narrows the list", () => {
+    const el = renderAddBar(
+      { total: 283, fresh: [{ id: "a" }], already: 0 },
+      { onAdd: () => {}, disabledHint: "Search or filter to add in bulk" },
+    );
+    expect(el.querySelector("button").disabled).toBe(true);
+    expect(el.textContent).toContain("Search or filter to add in bulk");
+  });
+});

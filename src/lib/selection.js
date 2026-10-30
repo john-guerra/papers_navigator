@@ -38,3 +38,10 @@ export function selectionReason({
       .join(" · ") || "All matching papers"
   );
 }
+
+/** Adds `fresh` with `reason`; the returned undo removes exactly those papers (and no others). */
+export function addWithUndo(store, fresh, reason) {
+  const ids = fresh.map((p) => p.id);
+  store.add(fresh, reason);
+  return () => store.remove(ids);
+}

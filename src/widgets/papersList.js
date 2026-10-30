@@ -48,13 +48,31 @@ function renderPaper(p, { tz, actions, preamble }) {
  */
 export function PapersList(
   papers,
-  { tz, actions, preamble, header, max = 200 } = {},
+  { tz, actions, preamble, header, max = 100 } = {},
 ) {
-  const shown = papers.slice(0, max);
-  const rest = papers.length - shown.length;
-  return html`<div class="papers-list">
+  const list = html`<div class="papers-list">
     ${header ? html`<h3>${header}</h3>` : ""}
-    ${shown.map((p) => renderPaper(p, { tz, actions, preamble }))}
-    ${rest > 0 ? html`<p class="papers-more">…and ${rest} more. Narrow the selection to see them.</p>` : ""}
   </div>`;
+  let shown = 0;
+  // Every paper is reachable: the first `max`, then "Show n more" appends the next batch in place
+  const showMore = () => {
+    list.querySelector(".papers-more")?.remove();
+    const batch = papers.slice(shown, shown + max);
+    list.append(...batch.map((p) => renderPaper(p, { tz, actions, preamble })));
+    shown += batch.length;
+    const rest = papers.length - shown;
+    if (rest > 0) {
+      const button = html`<button class="btn-text">
+        Show ${Math.min(rest, max)} more
+      </button>`;
+      button.onclick = showMore;
+      list.append(
+        html`<p class="papers-more">
+          ${button} <span>(${rest} not shown yet)</span>
+        </p>`,
+      );
+    }
+  };
+  showMore();
+  return list;
 }

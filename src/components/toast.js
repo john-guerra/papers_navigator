@@ -16,7 +16,7 @@ export function showToast(
     document.body.append(region);
   }
   current?.dismiss();
-  const toast = html`<div class="toast" role="status">
+  const toast = html`<div class="toast">
     <span>${message}</span>
   </div>`;
   const dismiss = () => {
