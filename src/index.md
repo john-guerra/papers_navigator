@@ -406,10 +406,13 @@ const chipsRow = renderChips(chips, {
 ```
 
 ```js
-const navioSummary = NavioWidget(
-  selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score })),
-  { height: 300 },
-);
+// navio throws on an empty dataset (e.g. Strong with 0 matches)
+const navioSummary = selected.length
+  ? NavioWidget(
+      selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score })),
+      { height: 300 },
+    )
+  : html`<p class="muted">No matching papers to summarize.</p>`;
 ```
 
 ```js
