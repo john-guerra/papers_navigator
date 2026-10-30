@@ -196,7 +196,8 @@ Your abstracts stay on this device: they are saved in this browser only and neve
   - *Animate filter changes*: dots also glide when search, relevance or filters change; a selected map region is kept across those changes.
   - *Motion*: **All at once**, or **By topic** (one topic after another). *Speed*: Slow, Normal or Fast.
 - **Appearance:** Auto (follows your device), Light or Dark. Every page uses your choice.
-- **Advanced:** live projections, clusters and quality, all computed in your browser:
+- **Advanced:** nearest neighbours, and live projections, clusters and quality, all computed in your browser:
+  - *Nearest neighbours on hover* (on by default) and how many (10 or 15): pointing at a paper on the map draws lines to its most similar papers (by meaning, not by map position), each labelled with its similarity. A dashed line means that neighbour is far away on the map (the projection split them); a dotted ring marks a paper that is close on the map but not among the most similar. Click or tap a paper to pin its neighbours: a list under the map gives each one's similarity and rank by map distance. Esc, ✕ or a click on empty space unpins.
   - *Compute a projection* with DruidJS on the 384-dimensional embeddings; it joins the projection list.
   - *Re-cluster the map* with HDBSCAN or k-means; adds "Cluster (live)" to Color by.
   - *Projection quality*: trustworthiness and continuity of each projection (1 = perfect).

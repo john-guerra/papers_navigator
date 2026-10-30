@@ -1613,6 +1613,72 @@ details.missing > summary {
   font: var(--typography-label-md);
 }
 
+/* #102 — nearest neighbours: help line in Options, pinned card under the map */
+.neighbours-help {
+  max-width: 34ch;
+  margin: 0;
+  font: var(--typography-body-sm);
+}
+
+.neighbours-panel {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-outline);
+}
+
+.neighbours-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.neighbours-header h3 {
+  margin: 0;
+  font: var(--typography-label-md);
+  color: var(--color-on-surface-muted);
+}
+
+.neighbours-header h3 .neighbours-title {
+  font: var(--typography-title-paper);
+}
+
+.neighbours-close {
+  min-width: var(--spacing-touch);
+  min-height: var(--spacing-touch);
+}
+
+.neighbours-summary,
+.neighbours-meta {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-meta);
+  font-feature-settings: var(--typography-meta-font-feature-settings);
+}
+
+.neighbours-summary {
+  margin: var(--spacing-xs) 0;
+}
+
+.neighbours-list {
+  margin: 0;
+  padding-left: 1.5em;
+  font: var(--typography-body-sm);
+}
+
+.neighbours-list li {
+  padding: 2px 0;
+}
+
+.neighbours-title {
+  color: var(--color-on-surface);
+  font-family: var(--font-serif);
+}
+
+.neighbours-meta {
+  margin-left: var(--spacing-xs);
+  white-space: nowrap;
+}
+
 /* In Map options the "Appearance" heading already names the control */
 .filters-panel .theme-label {
   display: none;

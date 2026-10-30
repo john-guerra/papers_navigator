@@ -39,6 +39,10 @@ export const STORAGE_ITEMS = [
     what: "Your map animation choices (Options → Animation)",
   },
   {
+    key: "papersNavigator:neighbours",
+    what: "Your nearest neighbours choices (Options → Advanced)",
+  },
+  {
     key: "papersNavigator:theme",
     what: "Your Appearance choice (Auto, Light or Dark)",
   },

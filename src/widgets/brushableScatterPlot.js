@@ -1,6 +1,7 @@
 // The npm "main" is a UMD bundle; import the ES build explicitly.
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import { attachNearestTooltip } from "./nearestTooltip.js";
+import { attachNeighbours } from "./mapNeighbours.js";
 import {
   domainAt,
   easeExpr,
@@ -157,6 +158,7 @@ export function scatterSpec(
     height = 500,
     title,
     transition = null,
+    neighbours = false,
   } = {},
 ) {
   const categorical = color && colorType !== "quantitative";
@@ -195,6 +197,12 @@ export function scatterSpec(
     and: [
       { param: "drag", empty: true },
       "levelCut == null || datum.score >= levelCut",
+      // Nearest neighbours shown (#102): only the paper and its neighbours keep their color
+      ...(neighbours
+        ? [
+            `length(nnIds) == 0 || indexof(nnIds, datum[${JSON.stringify(id)}]) >= 0`,
+          ]
+        : []),
     ],
   };
   // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
@@ -364,11 +372,14 @@ export function scatterSpec(
       tooltip: null,
     },
   };
+  const nn = neighbours ? neighbourLayers({ scale, tween, transition }) : null;
   const layers = [
     ...(shade ? [shade] : []),
     points,
+    ...(nn ? nn.below : []),
     ...(rings ? [rings] : []),
     ...textLayers,
+    ...(nn ? nn.above : []),
   ];
 
   return {
@@ -377,11 +388,13 @@ export function scatterSpec(
     height,
     title,
     data: { values },
+    ...(nn && { datasets: { [NEIGHBOURS_DATA]: [] } }),
     ...(tween && { transform: tween.transform }),
     ...(layers.length > 1
       ? {
           params: [
             ...(rings ? [{ name: "mine", value: ringIds }] : []),
+            ...(nn ? [{ name: "nnIds", value: [] }] : []),
             levelCut,
             ...(tween?.params ?? []),
           ],
@@ -404,6 +417,143 @@ export function scatterSpec(
       },
     },
   };
+}
+
+// Named dataset of the neighbour marks (#102), replaced with view.change (no redraw)
+const NEIGHBOURS_DATA = "nn";
+
+/**
+ * Nearest-neighbour marks (#102), all from the `nn` dataset (rows {kind, fx, fy, nx, ny, label}:
+ * the focus paper at fx/fy, the other paper at nx/ny) and never under the pointer:
+ * - lines from the paper to each true neighbour, ink; dashed for a **missing** neighbour (far on
+ *   the map), so the difference never rests on color alone;
+ * - a thick ink ring on the paper, a dotted muted ring on each **false** neighbour (close on the
+ *   map, not similar);
+ * - each neighbour's similarity as a small label on a background halo.
+ * Mid-motion (#82) the rows describe the final layout, so they stay hidden and fade in as the
+ * motion settles.
+ */
+function neighbourLayers({ scale, tween, transition }) {
+  const fade = (opacity) =>
+    tween
+      ? {
+          expr: `${opacity} * clamp((tm - ${0.85 * transition.total}) / ${0.15 * transition.total}, 0, 1)`,
+        }
+      : opacity;
+  const at = (xf, yf) => ({
+    x: {
+      field: xf,
+      type: "quantitative",
+      axis: null,
+      scale: { ...scale, ...tween?.xScale },
+    },
+    y: {
+      field: yf,
+      type: "quantitative",
+      axis: null,
+      scale: { ...scale, ...tween?.yScale },
+    },
+  });
+  const layer = (kinds, mark, encoding) => ({
+    data: { name: NEIGHBOURS_DATA },
+    transform: [{ filter: { field: "kind", oneOf: kinds } }],
+    mark: { interactive: false, clip: true, ...mark },
+    encoding: { tooltip: null, ...encoding },
+  });
+  const ink = token("color-on-surface", "#241e1a");
+  const muted = token("color-on-surface-muted", "#605954");
+  const background = token("color-background", "#fcf9f3");
+  const label = (mark) =>
+    layer(
+      ["preserved", "missing"],
+      {
+        type: "text",
+        dy: -9,
+        fontSize: 10,
+        font: token("font-sans", "sans-serif"),
+        opacity: fade(1),
+        ...mark,
+      },
+      { ...at("nx", "ny"), text: { field: "label" } },
+    );
+  return {
+    below: [
+      layer(
+        ["preserved", "missing"],
+        { type: "rule", strokeWidth: 1, color: ink, opacity: fade(0.55) },
+        {
+          ...at("fx", "fy"),
+          x2: { field: "nx" },
+          y2: { field: "ny" },
+          strokeDash: {
+            condition: { test: "datum.kind === 'missing'", value: [4, 3] },
+            value: [1, 0],
+          },
+        },
+      ),
+      layer(
+        ["false"],
+        {
+          type: "point",
+          filled: false,
+          size: 170,
+          strokeWidth: 1.25,
+          strokeDash: [2, 2],
+          color: muted,
+          opacity: fade(1),
+        },
+        at("nx", "ny"),
+      ),
+      layer(
+        ["focus"],
+        {
+          type: "point",
+          filled: false,
+          size: 220,
+          strokeWidth: 2.5,
+          color: ink,
+          opacity: fade(1),
+        },
+        at("nx", "ny"),
+      ),
+    ],
+    above: [
+      label({
+        fill: background,
+        stroke: background,
+        strokeWidth: 3,
+        strokeJoin: "round",
+      }),
+      label({ fill: muted }),
+    ],
+  };
+}
+
+/**
+ * Rows for the `nn` dataset from a classification (lib/neighbours.js classifyNeighbours):
+ * `position(id)` is where a paper is drawn.
+ */
+export function neighbourRows(
+  focus,
+  { neighbours, falseNeighbours },
+  position,
+) {
+  const [fx, fy] = position(focus);
+  const row = (kind, id, label = null) => {
+    const [nx, ny] = position(id);
+    return { kind, fx, fy, nx, ny, label };
+  };
+  return [
+    row("focus", focus),
+    ...neighbours.map((d) =>
+      row(
+        d.missing ? "missing" : "preserved",
+        d.id,
+        `${Math.round(d.similarity * 100)}%`,
+      ),
+    ),
+    ...falseNeighbours.map((id) => row("false", id)),
+  ];
 }
 
 /** Topic labels that fit (cullLabels) at the scales `data` gets, or `labels` as given. */
@@ -735,6 +885,19 @@ export async function BrushableScatterPlot(data, options = {}) {
     pointAt: target.pointAt,
     entries: tooltip,
   });
+
+  // Nearest neighbours on hover / click (#102): `neighbours` = {similar, k, enabled, pinned}
+  if (options.neighbours)
+    attachNeighbours(target, {
+      ...options.neighbours,
+      view: chart.view,
+      data,
+      x,
+      y,
+      id,
+      pointAt: target.pointAt,
+      rows: neighbourRows,
+    });
 
   Object.defineProperty(target, "value", {
     get: () => value,
