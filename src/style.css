@@ -1384,7 +1384,15 @@ details.missing > summary {
   margin: var(--spacing-xs, 4px) 0;
   border: 1px solid var(--color-outline);
   border-radius: var(--rounded-sm, 4px);
-  overflow: hidden;
+}
+
+/* Rounded ends instead of overflow: hidden, so the focus ring isn't clipped */
+.relevance-control button:first-child {
+  border-radius: var(--rounded-sm, 4px) 0 0 var(--rounded-sm, 4px);
+}
+
+.relevance-control button:last-child {
+  border-radius: 0 var(--rounded-sm, 4px) var(--rounded-sm, 4px) 0;
 }
 
 .relevance-control button {

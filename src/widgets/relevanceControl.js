@@ -9,33 +9,34 @@ const LEVELS = [
 /**
  * Segmented "Strong n · Good n · All n" control (DESIGN.md → Relevance control).
  * Reactive widget: `.value` is "strong" | "good" | "all"; emits `input` when the user picks a
- * level, and re-renders when `.value` is set and `input` is dispatched.
+ * level, and updates when `.value` is set and `input` is dispatched. Buttons are built once and
+ * only their pressed state changes, so keyboard focus stays put.
  */
 export function relevanceControl(
   counts,
   { value = "good", label = "Relevance" } = {},
 ) {
+  const buttons = LEVELS.map(([key, name]) => {
+    const button = html`<button type="button" data-level=${key}>
+      ${name} <span class="count">${counts[key]}</span>
+    </button>`;
+    button.onclick = () => {
+      value = key;
+      sync();
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    return button;
+  });
   const el = html`<div
     class="relevance-control"
     role="group"
     aria-label=${label}
-  ></div>`;
-  const render = () =>
-    el.replaceChildren(
-      ...LEVELS.map(([key, name]) => {
-        const button = html`<button
-          type="button"
-          aria-pressed=${String(key === value)}
-        >
-          ${name} <span class="count">${counts[key]}</span>
-        </button>`;
-        button.onclick = () => {
-          value = key;
-          render();
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-        };
-        return button;
-      }),
+  >
+    ${buttons}
+  </div>`;
+  const sync = () =>
+    buttons.forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.dataset.level === value)),
     );
   Object.defineProperty(el, "value", {
     get: () => value,
@@ -44,8 +45,8 @@ export function relevanceControl(
     },
   });
   el.addEventListener("input", (event) => {
-    if (event.target === el) render();
+    if (event.target === el) sync();
   });
-  render();
+  sync();
   return el;
 }

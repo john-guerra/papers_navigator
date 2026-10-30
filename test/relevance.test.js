@@ -60,3 +60,39 @@ describe("relevanceControl", () => {
     el.remove();
   });
 });
+
+describe("relevanceCuts edge cases", () => {
+  it("keeps papers tied at the cut, handles few papers and equal scores", () => {
+    expect(relevanceCuts([0.3, 0.3, 0.3, 0.3, 0.3, 0.1])).toEqual({
+      good: 0.3,
+      strong: 0.3,
+    });
+    expect(relevanceCuts([0.2, 0.1, 0.05])).toEqual({
+      good: 0.05,
+      strong: 0.125,
+    });
+    expect(relevanceCuts([0.2, 0.2, 0.2])).toEqual({ good: 0.2, strong: 0.2 });
+    expect(
+      relevanceCounts(
+        [0.3, 0.3, 0.1].map((score) => ({ score })),
+        { good: 0.3, strong: 0.3 },
+      ),
+    ).toEqual({ strong: 2, good: 2, all: 3 });
+  });
+});
+
+describe("relevanceControl keeps focus", () => {
+  it("updates the pressed state in place, so the clicked button keeps focus", () => {
+    const el = relevanceControl(
+      { strong: 1, good: 2, all: 3 },
+      { value: "good" },
+    );
+    document.body.append(el);
+    const strong = el.querySelector("button");
+    strong.focus();
+    strong.click();
+    expect(document.activeElement).toBe(strong);
+    expect(strong.getAttribute("aria-pressed")).toBe("true");
+    el.remove();
+  });
+});

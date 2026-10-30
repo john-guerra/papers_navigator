@@ -314,15 +314,17 @@ mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 
 ```js
 // Relevance (#9): Strong / Good / All with counts, one threshold for list, Add and map region.
+// Cuts come from the search results alone (not facets or map region), so "Good" means the same
+// thing whatever you filter; counts are of the papers in view.
 // Adding a person or institution during a search switches to All, so all their papers show
 // (decided in #1); the choice survives re-renders.
 const peopleCount = authors.length + affiliations.length;
 if (hasQuery && peopleCount > relevanceState.people && relevanceState.level !== "all") {
   relevanceState.level = "all";
-  showToast("Showing All matches: every paper by the people and institutions you picked");
+  showToast("Showing All matches for the people and institutions you picked");
 }
 relevanceState.people = peopleCount;
-const cuts = relevanceCuts(map.brushed.map((d) => d.score));
+const cuts = relevanceCuts(scored.map((d) => d.score));
 const relevanceInput = hasQuery
   ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level })
   : null;
