@@ -2,7 +2,13 @@ import { html } from "htl";
 import { dayKey, formatDay, formatTime } from "../lib/time.js";
 
 function renderItem(p, { tz, onUnfollow }) {
-  const unfollow = html`<button class="unfollow" title="Unfollow">✕</button>`;
+  const unfollow = html`<button
+    class="unfollow"
+    title="Remove from My Papers"
+    aria-label="Remove from My Papers"
+  >
+    ✕
+  </button>`;
   unfollow.onclick = () => onUnfollow?.(p.id);
   return html`<li class="itinerary-item">
     <span class="time">${p.start ? formatTime(p.start, tz) : "—"}</span>

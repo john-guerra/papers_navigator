@@ -132,7 +132,16 @@ export function resolveFollowed(followed, papers) {
   for (const entry of followed) {
     const paper = byId.get(entry.id);
     if (paper)
-      items.push({ ...paper, reason: entry.reason, addedOn: entry.addedOn });
+      items.push({
+        ...paper,
+        reason: entry.reason,
+        addedOn: entry.addedOn,
+        // My Papers entries (rules.js) also carry why and how the paper is there
+        ...(entry.reasons && { reasons: entry.reasons }),
+        ...(entry.ruleIds && { ruleIds: entry.ruleIds }),
+        ...("manual" in entry && { manual: entry.manual }),
+        ...("new" in entry && { new: entry.new }),
+      });
     else missing.push(entry);
   }
   return { items, missing };

@@ -1261,3 +1261,70 @@ details.missing > summary {
   background: var(--color-primary-container);
   color: var(--color-on-primary-container);
 }
+
+/* #7 — Watching section, reason chips, "New" marker */
+.watching {
+  margin: var(--spacing-lg, 16px) 0;
+}
+
+.watching-list {
+  margin: 0 0 var(--spacing-sm, 8px);
+  padding: 0;
+  list-style: none;
+}
+
+.watching-rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs, 4px) var(--spacing-md, 12px);
+  padding: var(--spacing-xs, 4px) 0;
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.watching-count {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.watching-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs, 4px);
+  margin-left: auto;
+}
+
+.watching-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm, 8px);
+  align-items: center;
+}
+
+.watching-add input {
+  min-width: 14rem;
+}
+
+.reason-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-full, 999px);
+  font: var(--typography-label-md);
+}
+
+.new-badge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--rounded-full, 999px);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  font: var(--typography-label-md);
+  font-weight: 600;
+}
+
+.new-notice {
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  border-radius: var(--rounded-sm, 4px);
+  background: var(--color-surface-sunken);
+}
