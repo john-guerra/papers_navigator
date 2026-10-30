@@ -30,7 +30,7 @@ const ASSET_DIRS = [
   "_observablehq",
   "_duckdb",
 ];
-const PRECACHE_PAGES = ["./", "./my-papers.html"];
+const PRECACHE_PAGES = ["./", "./my-papers.html", "./authors.html"];
 const NETWORK_TIMEOUT_MS = 4000;
 
 /** "cache-first" | "network-first" | "none" (let the browser handle it). */

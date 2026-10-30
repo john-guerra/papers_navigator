@@ -1,5 +1,6 @@
 import { html } from "htl";
 import { ruleReason } from "../lib/rules.js";
+import { authorUrl } from "../lib/authors.js";
 
 const papersWord = (n) => `${n} ${n === 1 ? "paper" : "papers"}`;
 const TYPE_LABELS = { author: "Friend", affiliation: "Institution" };
@@ -57,11 +58,23 @@ function scheduleText({ days, untimed, topSession }) {
   return parts.join(" · ");
 }
 
+/** The rule's reason; a friend's name links to their researcher profile (#78). */
+function watchingName(rule) {
+  if (rule.type !== "author") return ruleReason(rule);
+  const reason = ruleReason(rule);
+  const name = String(rule.value).trim();
+  return html`${reason.slice(0, reason.length - name.length)}<a
+      class="author-link"
+      href=${authorUrl(name)}
+      >${name}</a
+    >`;
+}
+
 function ruleRow(rule, count, removable, onRemove, { summary, note }) {
   const level = LEVEL_NAMES[rule.level];
   const where = summary && count ? scheduleText(summary) : "";
   const row = html`<li class="watching-rule" data-rule=${rule.id}>
-    <span class="watching-name">${ruleReason(rule)}</span>
+    <span class="watching-name">${watchingName(rule)}</span>
     ${rule.type === "topic" && level ? html`<span class="watching-level">${level}</span>` : ""}
     <span class="watching-count">${papersWord(count)}</span>
     <span class="watching-actions"></span>

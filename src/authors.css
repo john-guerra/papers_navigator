@@ -1,0 +1,192 @@
+/* Researchers page (#78): index and profiles. Tokens from style.css (DESIGN.md). */
+
+.author-page {
+  max-width: 960px;
+}
+
+.author-page :is(ul, h1, h2, .author-count, .author-days, .author-next) {
+  max-width: none;
+}
+
+.author-page .author-search {
+  width: 100%;
+  max-width: 32rem;
+  min-height: var(--spacing-touch, 44px);
+  padding: 0 2px;
+  border: none;
+  border-bottom: 1px solid var(--color-on-surface);
+  background: transparent;
+  color: var(--color-on-surface);
+  font: italic var(--typography-search);
+}
+
+.author-count {
+  margin: var(--spacing-sm, 8px) 0;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.author-index,
+.author-coauthors,
+.author-chips {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.author-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) 2fr auto;
+  align-items: baseline;
+  gap: var(--spacing-md, 12px);
+  padding: var(--spacing-sm, 8px) 0;
+  border-bottom: 1px solid var(--color-outline);
+}
+
+/* 44px targets at every width: the index is a list of links you scan and tap */
+.author-name {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--spacing-touch, 44px);
+  font: var(--typography-title-paper);
+}
+
+.author-affiliations,
+.author-papers {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.author-papers {
+  font: var(--typography-meta);
+  font-feature-settings: var(--typography-meta-font-feature-settings);
+  white-space: nowrap;
+}
+
+.author-back {
+  margin: 0 0 var(--spacing-sm, 8px);
+  font: var(--typography-label-md);
+}
+
+.author-affiliation-list {
+  margin: 0;
+  font: var(--typography-body-md);
+}
+
+.author-homonym {
+  margin: var(--spacing-xs, 4px) 0 0;
+  font: var(--typography-body-sm);
+}
+
+.author-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  margin: var(--spacing-lg, 16px) 0;
+}
+
+/* The Watch toggle as a secondary button here (in facet rows it's a text button) */
+.author-actions .watch-toggle,
+.author-actions .btn-primary {
+  min-height: var(--spacing-touch, 44px);
+}
+
+.author-actions .watch-toggle {
+  padding: 0 var(--spacing-md, 12px);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-sm, 3px);
+}
+
+.author-actions .watch-toggle[aria-pressed="true"] {
+  border-color: var(--color-on-primary-container);
+}
+
+.author-profile h2 {
+  margin-top: var(--spacing-xl, 24px);
+  font: var(--typography-headline);
+}
+
+.author-profile h3.label-caps {
+  margin: var(--spacing-md, 12px) 0 var(--spacing-xs, 4px);
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-caps);
+  letter-spacing: var(--typography-label-caps-letter-spacing);
+  text-transform: uppercase;
+}
+
+.author-days,
+.author-next {
+  margin: var(--spacing-xs, 4px) 0;
+}
+
+.author-next .label-caps {
+  color: var(--color-primary);
+  font: var(--typography-label-caps);
+  letter-spacing: var(--typography-label-caps-letter-spacing);
+  text-transform: uppercase;
+}
+
+.author-next-open {
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.conflict-note {
+  display: inline-block;
+  margin-left: var(--spacing-xs, 4px);
+  padding: 0 6px;
+  border-radius: var(--rounded-sm, 3px);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  font: var(--typography-body-sm);
+}
+
+.conflict-note:empty,
+.paper-preamble:has(> .conflict-note:empty) {
+  display: none;
+}
+
+.author-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+}
+
+.author-chips .chip {
+  padding: 0 10px;
+}
+
+.author-coauthors {
+  columns: 3 14rem;
+  column-gap: var(--spacing-xl, 24px);
+}
+
+.author-coauthors li {
+  padding: 2px 0;
+  break-inside: avoid;
+}
+
+@media (max-width: 576px) {
+  .author-row {
+    grid-template-columns: 1fr auto;
+    gap: 0 var(--spacing-sm, 8px);
+  }
+
+  .author-affiliations {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .author-coauthors a,
+  .author-back a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch, 44px);
+  }
+
+  .author-coauthors {
+    columns: 1;
+  }
+}

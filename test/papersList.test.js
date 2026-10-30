@@ -49,6 +49,19 @@ describe("PapersList", () => {
     expect(list.textContent).toContain("reason b");
   });
 
+  it("links author names with authorHref, keeping affiliations as text (#78)", () => {
+    const plain = PapersList(papers, { tz: "US/Eastern" });
+    expect(plain.querySelector(".paper-authors a")).toBeNull();
+    const list = PapersList(papers, {
+      tz: "US/Eastern",
+      authorHref: (name) => `./authors.html?name=${name}`,
+    });
+    const link = list.querySelector(".paper-authors a.author-link");
+    expect(link.getAttribute("href")).toBe("./authors.html?name=Ann");
+    expect(link.textContent).toBe("Ann");
+    expect(list.querySelector(".paper-authors").textContent).toBe("Ann (MIT)");
+  });
+
   it("caps the number of rendered papers", () => {
     const list = PapersList(papers, { tz: "US/Eastern", max: 1 });
     expect(list.querySelectorAll(".paper")).toHaveLength(1);
@@ -149,6 +162,17 @@ describe("PapersList More toggle", () => {
     expect(more.getAttribute("aria-expanded")).toBe("true");
     more.click();
     expect(row.classList.contains("expanded")).toBe(false);
+  });
+  it("offers More for a long author list without an abstract", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const authors = Array.from({ length: 12 }, (_, i) => ({
+      name: `Author Number ${i}`,
+      affiliation: "Some University",
+    }));
+    const el = PapersList([{ id: "p", title: "T", authors }], {
+      tz: "US/Eastern",
+    });
+    expect(el.querySelector(".paper-more")).not.toBeNull();
   });
   it("has no More toggle when there is nothing to expand", async () => {
     const { PapersList } = await import("../src/widgets/papersList.js");

@@ -71,6 +71,10 @@ describe("renderPaperDetail", () => {
     expect(
       el.querySelector('a[href="https://example.org/a.pdf"]'),
     ).not.toBeNull();
+    // author names link to their researcher profiles (#78)
+    expect(
+      el.querySelector(".paper-detail-authors a").getAttribute("href"),
+    ).toBe("./authors.html?name=Ann");
     el.remove();
   });
   it("lists related papers that open their own details, and toggles My Papers", () => {

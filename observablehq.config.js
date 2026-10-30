@@ -9,6 +9,7 @@ export default {
   pages: [
     { name: "Explore", path: "/" },
     { name: "My Papers", path: "/my-papers" },
+    { name: "Researchers", path: "/authors" },
   ],
   head: `<meta property="og:title" content="${conference.name} Papers Navigator">
 <meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
@@ -43,6 +44,7 @@ export default {
   <div id="navbar-links" class="navbar-links">
     <a href="./">Explore</a>
     <a href="./my-papers">My Papers <span class="badge-my-papers" hidden></span></a>
+    <a href="./authors">Researchers</a>
   </div>
   <button class="navbar-options" aria-controls="filters-panel" aria-expanded="false" hidden>⚙ Options</button>
 </nav>`,

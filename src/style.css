@@ -1708,3 +1708,15 @@ details.missing > summary {
 .recommended-paper .follow-toggle {
   margin-left: 0;
 }
+
+/* #78 — author names link to their researcher profile (authors.html?name=…) */
+.author-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--color-outline);
+  text-underline-offset: 2px;
+}
+
+.author-link:hover {
+  text-decoration-color: currentColor;
+}

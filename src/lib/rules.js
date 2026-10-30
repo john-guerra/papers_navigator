@@ -46,8 +46,8 @@ const SEPARATOR = " · ";
 const TYPES = new Set(["author", "affiliation", "topic"]);
 const MARKERS = { author: "👥 Friend: ", affiliation: "🏫 ", topic: "🔍 " };
 
-/** Case-, accent- and whitespace-insensitive key for names and institutions. */
-const normalizeText = (s) =>
+/** Case-, accent- and whitespace-insensitive key for names and institutions (also researcher identity, #78). */
+export const normalizeText = (s) =>
   String(s ?? "")
     .normalize("NFKD")
     .replace(/\p{M}/gu, "")

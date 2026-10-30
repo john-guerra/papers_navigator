@@ -1,5 +1,6 @@
 import { html } from "htl";
-import { paperWhen } from "../widgets/papersList.js";
+import { authorsLine, paperWhen } from "../widgets/papersList.js";
+import { authorUrl } from "../lib/authors.js";
 import { followToggles } from "./followToggles.js";
 
 const AWARDS = {
@@ -15,7 +16,15 @@ const AWARDS = {
  */
 export function renderPaperDetail(
   paper,
-  { tz, related = [], inMyPapers, onToggle, onOpen, onClose },
+  {
+    tz,
+    related = [],
+    inMyPapers,
+    onToggle,
+    onOpen,
+    onClose,
+    authorHref = authorUrl,
+  },
 ) {
   const { toggle, update } = followToggles({ inMyPapers, onToggle });
   const close = html`<button
@@ -25,9 +34,6 @@ export function renderPaperDetail(
     Close ✕
   </button>`;
   close.onclick = onClose;
-  const authors = (paper.authors ?? [])
-    .map((a) => (a.affiliation ? `${a.name} (${a.affiliation})` : a.name))
-    .join(", ");
   const where = [
     paper.typeLabel ?? paper.type,
     paper.sessionName,
@@ -85,7 +91,9 @@ export function renderPaperDetail(
       ${toggle(paper)}
     </div>
     ${paper.award && AWARDS[paper.award] ? html`<p class="paper-detail-award">${AWARDS[paper.award]}</p>` : ""}
-    <p class="paper-detail-authors">${authors}</p>
+    <p class="paper-detail-authors">
+      ${authorsLine(paper.authors, authorHref)}
+    </p>
     <p class="paper-detail-where">${where}</p>
     <p class="paper-detail-links">
       ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page</a>` : ""}
