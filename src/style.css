@@ -640,7 +640,8 @@ a.navbar-brand {
 }
 
 /* Explore: controls + map on the left, the list on the right; stacked below 1100px; on phones
-   the list comes right after the controls and the map hides behind "Show map" (#13) */
+   the map shows right after the controls (John wants the visualization on his phone), can be
+   hidden with "Hide map", and never captures touches until "Select region" (#13) */
 .explore-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
@@ -689,15 +690,11 @@ a.navbar-brand {
 
 @media (max-width: 576px) {
   .explore-layout {
-    grid-template-areas: "controls" "list" "map";
+    grid-template-areas: "controls" "map" "list";
   }
 
-  .explore-map {
+  .explore-layout.hide-map .explore-map {
     display: none;
-  }
-
-  .explore-layout.show-map .explore-map {
-    display: block;
   }
 
   .map-toggle,

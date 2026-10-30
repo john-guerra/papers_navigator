@@ -247,13 +247,14 @@ const colorBy = Generators.input(colorByInput);
 ```
 
 ```js
-// Phones (DESIGN.md → Mobile): list first, the map behind a toggle; the map never hijacks
-// scrolling — "Select region" turns brushing on for one selection, then off again.
-const mapToggle = html`<button class="btn-secondary map-toggle" aria-controls="explore-map" aria-expanded="false">Show map</button>`;
+// Phones: the map shows after search and filters (John wants the visualization on his phone);
+// "Hide map" tucks it away. It never hijacks scrolling: "Select region" turns brushing on for
+// one selection, then off again.
+const mapToggle = html`<button class="btn-secondary map-toggle" aria-controls="explore-map" aria-expanded="true">Hide map</button>`;
 mapToggle.onclick = () => {
-  const shown = layout.classList.toggle("show-map");
-  mapToggle.textContent = shown ? "Hide map" : "Show map";
-  mapToggle.setAttribute("aria-expanded", String(shown));
+  const hidden = layout.classList.toggle("hide-map");
+  mapToggle.textContent = hidden ? "Show map" : "Hide map";
+  mapToggle.setAttribute("aria-expanded", String(!hidden));
 };
 const selectRegionButton = html`<button class="btn-secondary select-region" aria-pressed="false">Select region</button>`;
 const setSelectMode = (on) => {
