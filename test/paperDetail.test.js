@@ -58,6 +58,17 @@ describe("renderPaperDetail", () => {
     document.body.append(el);
     return { el, ...handlers };
   };
+  it("shows the short label (#99) as a subtitle, and nothing without one", () => {
+    const labelled = renderPaperDetail(
+      { ...paper, shortLabel: "DR Explainability" },
+      { tz: "US/Eastern", inMyPapers: () => false },
+    );
+    expect(labelled.querySelector(".paper-detail-label").textContent).toBe(
+      "DR Explainability",
+    );
+    const { el } = setup();
+    expect(el.querySelector(".paper-detail-label")).toBeNull();
+  });
   it("shows the paper's details, escaped, with its links", () => {
     const { el } = setup();
     const text = el.textContent.replace(/\s+/g, " ");

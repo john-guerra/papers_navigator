@@ -84,6 +84,7 @@ export function renderPaperDetail(
       <h2>${paper.title}</h2>
       ${toggle(paper)}
     </div>
+    ${paper.shortLabel ? html`<p class="paper-detail-where paper-detail-label">${paper.shortLabel}</p>` : ""}
     ${paper.award && AWARDS[paper.award] ? html`<p class="paper-detail-award">${AWARDS[paper.award]}</p>` : ""}
     <p class="paper-detail-authors">
       ${authorsLine(paper.authors, authorHref)}

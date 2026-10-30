@@ -206,3 +206,23 @@ def test_unify_keywords_prefers_consistent_casing_across_hyphens():
     # "Time-series Classification" capitalizes after a space but not after the hyphen.
     out = _unify(["Time-series Classification"], ["Time Series Classification"])
     assert out == [["Time Series Classification"]] * 2
+
+
+def test_run_adds_short_labels_when_configured(tmp_path, monkeypatch):
+    from pipeline import short_labels
+
+    cache = tmp_path / "cache"
+    monkeypatch.setattr(embed, "add_short_labels", lambda *a, **k: short_labels.add_short_labels(*a, **k, cache_root=cache))
+    papers = [{**PAPERS[0], "title": "FADEx: Explaining DR"}, PAPERS[1], PAPERS[2]]
+    conf = make_conference(tmp_path, papers, ["a"], shortLabels={"enabled": True})
+    embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": lambda m: np.zeros((len(m), 2))})
+    out = json.loads((conf / "data" / "papers.json").read_text())
+    assert out[0]["shortLabel"] == "FADEx" and out[0]["shortLabelSource"] == "title"
+    assert all(p["shortLabel"] for p in out)
+    assert (conf / "data" / "shortLabels.json").exists()
+
+
+def test_run_skips_short_labels_unless_configured(tmp_path):
+    conf = make_conference(tmp_path, PAPERS, ["a"])
+    embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": lambda m: np.zeros((len(m), 2))})
+    assert "shortLabel" not in json.loads((conf / "data" / "papers.json").read_text())[0]

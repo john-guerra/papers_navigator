@@ -1,0 +1,4004 @@
+{
+ "model": "google/gemma-4-e4b",
+ "promptVersions": {
+  "v2": "47d6837584f1",
+  "v3": "c4288368760e"
+ },
+ "refined": {
+  "v2": 309,
+  "v3": 20
+ },
+ "counts": {
+  "title": 154,
+  "llm": 329,
+  "keyphrase": 5
+ },
+ "missingLlm": 0,
+ "labels": {
+  "3121c4fc-2fc3-4c4c-a716-fc64018061ec": {
+   "label": "Agent modalities",
+   "source": "llm",
+   "llm": {
+    "v2": "Agent Modalities"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b816841407852325"
+  },
+  "159dc0ce-c998-40fb-bbbb-9e7a4dba6be4": {
+   "label": "Hypergraph architecture",
+   "source": "llm",
+   "llm": {
+    "v2": "Hypergraph Architecture"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5d0b5235dabfad4c"
+  },
+  "a571a375-5902-4418-9769-433d1c2d8640": {
+   "label": "QueerTravel",
+   "source": "title"
+  },
+  "a6c83291-4e39-4455-b85a-62f4f2469531": {
+   "label": "ConformaLens",
+   "source": "title"
+  },
+  "c3b0f170-f640-4dc4-96dd-eb08d484e7bc": {
+   "label": "AgroScan",
+   "source": "title"
+  },
+  "32a613ea-6e87-4c43-8ec0-d0407cb7d43e": {
+   "label": "Joint evaluation",
+   "source": "llm",
+   "llm": {
+    "v2": "Joint Evaluation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "27945213535bbeba"
+  },
+  "58a422eb-27bb-4040-b2af-9ae443bfb671": {
+   "label": "RTL visualization",
+   "source": "llm",
+   "llm": {
+    "v2": "RTL Visualization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "642b2ec209777419"
+  },
+  "86790e92-515a-4c3c-a1bd-6f3c00d65e6b": {
+   "label": "DebrisTracer",
+   "source": "title"
+  },
+  "f63e50aa-6a53-44de-b227-128a6b576efa": {
+   "label": "EvidenceLens",
+   "source": "title"
+  },
+  "0ba8821b-a917-4cf6-9f63-34c62fd9fd7b": {
+   "label": "Image-based vision",
+   "source": "llm",
+   "llm": {
+    "v2": "Image-based vision",
+    "v3": "Vision models"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "11729951041d9e70"
+  },
+  "6084d40e-4212-4ef1-bfa4-65ed352d77f1": {
+   "label": "Multi-agent anomaly",
+   "source": "llm",
+   "llm": {
+    "v2": "Multi-Agent Tracing",
+    "v3": "Multi-Agent Anomaly"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "15d41a56fe7a2ec8"
+  },
+  "d26baffc-e5d2-4cb3-b0b3-a6fd50176194": {
+   "label": "BackdoorScope",
+   "source": "title"
+  },
+  "3661c8e9-081a-45ee-8fce-55c215da2972": {
+   "label": "Attention dynamics",
+   "source": "llm",
+   "llm": {
+    "v2": "Attention Dynamics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7152f261c33f24d5"
+  },
+  "69941d17-6ecd-42ca-95a8-a42f4188f867": {
+   "label": "Critical reflection",
+   "source": "llm",
+   "llm": {
+    "v2": "Critical Reflection"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9c805e41062458d4"
+  },
+  "e06525b9-3949-47fc-a72d-eef76ba9b127": {
+   "label": "Agent harness",
+   "source": "llm",
+   "llm": {
+    "v2": "Agentic Design",
+    "v3": "Agent Harness"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "283f32f381552612"
+  },
+  "9b62da24-47f1-401d-89de-f8ee64d8cd4d": {
+   "label": "Infographics conceptualization",
+   "source": "llm",
+   "llm": {
+    "v2": "Infographics conceptualization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "12e671a629491d79"
+  },
+  "53d27f47-9dfd-448f-b49a-5deed0bd2a23": {
+   "label": "Visual methodologies",
+   "source": "llm",
+   "llm": {
+    "v2": "Visual Methodologies"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "cddd684d397e1edc"
+  },
+  "4227aadb-ebe2-41a1-a007-ff4b5eb708c5": {
+   "label": "ProVega",
+   "source": "title"
+  },
+  "0bbd3d73-f7c9-4ab1-b9f6-0ab7da7427ea": {
+   "label": "Virtual dissection",
+   "source": "llm",
+   "llm": {
+    "v2": "Virtual Dissection"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0a3ab0ed17b07264"
+  },
+  "cf9309ba-9d62-4e94-85a9-938160db9d95": {
+   "label": "Organelles",
+   "source": "title"
+  },
+  "af29da22-4f32-4fb2-8e69-36da06bfa407": {
+   "label": "Multi-dimensional channels",
+   "source": "llm",
+   "llm": {
+    "v2": "Multi-dimensional Channels"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a0d4622adcd43401"
+  },
+  "c4a1f3d7-0777-4fca-bc1f-2d66adc8cdf6": {
+   "label": "Multidimensional fidelity",
+   "source": "llm",
+   "llm": {
+    "v2": "Multidimensional Fidelity"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "65ad6aa3ea622c4c"
+  },
+  "a22a6fd9-b6f5-4f73-8ac3-71ad2eb59307": {
+   "label": "Home-first anchoring",
+   "source": "llm",
+   "llm": {
+    "v2": "Home-first Anchoring"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "53a34e7d4dcfe30b"
+  },
+  "cd2f6fc7-5ed6-4ba5-9383-d2c48e359c96": {
+   "label": "Projection uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Projection Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9bb67a365ee66c96"
+  },
+  "304a07ef-c1c2-4358-a305-70ea973e1af4": {
+   "label": "Agent attribution",
+   "source": "llm",
+   "llm": {
+    "v2": "Agent Attribution"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9582e09efee8eb69"
+  },
+  "4135f421-bf29-443d-8a31-50fe9b985a8b": {
+   "label": "Vibrotactile tooltips",
+   "source": "llm",
+   "llm": {
+    "v2": "Vibrotactile Tooltips"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b3e59add921ae3c1"
+  },
+  "c039675a-d643-4e7c-90be-bcfa91997353": {
+   "label": "Lagrangian thermal",
+   "source": "llm",
+   "llm": {
+    "v2": "Lagrangian Thermal"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8cfe50ce38bf216f"
+  },
+  "f2a44c09-df6f-455e-b1c7-b4aae5b62287": {
+   "label": "Framing effect",
+   "source": "llm",
+   "llm": {
+    "v2": "Framing Effect"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "eff24d1ea4b3f415"
+  },
+  "30857463-e9a7-4247-8919-eb4e18235894": {
+   "label": "AgentPulse",
+   "source": "title"
+  },
+  "4b625403-cc25-40b3-a99c-0ea0c75d1843": {
+   "label": "CATVis",
+   "source": "title"
+  },
+  "3b9c6999-3420-49c7-a24f-92a1edc21f2a": {
+   "label": "Neural replication",
+   "source": "llm",
+   "llm": {
+    "v2": "Neural Replication"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b67e71dd5a730bca"
+  },
+  "999293ca-3366-4953-8aaa-a7d59a0159ad": {
+   "label": "Ishihara test",
+   "source": "llm",
+   "llm": {
+    "v2": "Noise Signal",
+    "v3": "Ishihara test"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e08a4752396665d7"
+  },
+  "7118d034-93db-49b8-8723-a8d087597400": {
+   "label": "Indoor publics",
+   "source": "llm",
+   "llm": {
+    "v2": "Indoor Publics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d68ec984612e545d"
+  },
+  "356c3a54-6bb8-45fc-b7d2-7dedb5a8830c": {
+   "label": "Swipytics",
+   "source": "title"
+  },
+  "7cbf7d07-d8ff-4cd4-8c4c-b453b39c9fe9": {
+   "label": "TrustStream",
+   "source": "title"
+  },
+  "f3ac2981-e781-41fb-aa4e-7e454a4f5085": {
+   "label": "Breach Reconstruction",
+   "source": "llm",
+   "llm": {
+    "v2": "Breach Reconstruction"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b2df0eeda97b6789"
+  },
+  "dfc39bb5-6aa1-44e6-85ff-70cf3797f0af": {
+   "label": "VisPuzzle",
+   "source": "title"
+  },
+  "f060970e-9b01-4053-aafb-b0eb67201cc7": {
+   "label": "Snailpocalypse",
+   "source": "title"
+  },
+  "bae7f64d-a577-4ed1-9e8b-7977e5580c8b": {
+   "label": "SpheriColor",
+   "source": "title"
+  },
+  "f75a89fb-5fe4-4315-9397-8805ed3aaa2f": {
+   "label": "Ripples",
+   "source": "title"
+  },
+  "c8fb95ef-c5d1-4cc8-b725-3cf389c01f9f": {
+   "label": "Barycenter uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Barycenter Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "79f30d8c471e8116"
+  },
+  "6e1e9b45-dc32-403f-8b04-6891c2db6be4": {
+   "label": "Atlas explanation",
+   "source": "llm",
+   "llm": {
+    "v2": "Atlas Explanation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2272dda18e9d0bc5"
+  },
+  "d74e56cd-18fd-481d-80f6-9671e221e248": {
+   "label": "ResonaVis",
+   "source": "title"
+  },
+  "4c7e7219-cd6f-497a-96a3-436beecb4de2": {
+   "label": "Tactile dialogue",
+   "source": "llm",
+   "llm": {
+    "v2": "Tactile Dialogue"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "34a2b576e6a65e99"
+  },
+  "456f6cbb-9f66-435c-9aa3-d23b1fa0c036": {
+   "label": "PaintEcho",
+   "source": "title"
+  },
+  "a8777160-c00d-47a4-b792-db46d20571f0": {
+   "label": "Grounding typology",
+   "source": "llm",
+   "llm": {
+    "v2": "Grounding Typology"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "316730190ae03ef3"
+  },
+  "987aba85-7dbc-44f9-b386-7ef8be76c9ad": {
+   "label": "Educational review",
+   "source": "llm",
+   "llm": {
+    "v2": "Learning Review",
+    "v3": "Educational Review"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "44468fd5a709e944"
+  },
+  "0adadcf5-4359-4419-8d5c-094c8c04d0b6": {
+   "label": "VLM interpretability",
+   "source": "llm",
+   "llm": {
+    "v2": "VLM Interpretability"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "11744945127517e4"
+  },
+  "4f7622cb-19d3-4dbc-ae17-b4b79e9e674a": {
+   "label": "Spatiotemporal trajectory",
+   "source": "llm",
+   "llm": {
+    "v2": "Spatiotemporal Trajectory"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2a8fd5c31d943f9d"
+  },
+  "9d5f914d-2a6e-4a8f-92cb-6d6c71a23fc6": {
+   "label": "Agent forensics",
+   "source": "llm",
+   "llm": {
+    "v2": "Agent Forensics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "79ef183f648a20a0"
+  },
+  "9a41d6a6-9624-4627-b014-72ac4adfe6aa": {
+   "label": "Hand-drawing",
+   "source": "llm",
+   "llm": {
+    "v2": "Hand-drawing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dae8f08a8d776f91"
+  },
+  "dc4946ec-2007-4e7b-889a-8f4f7a0de5e4": {
+   "label": "SIGMA",
+   "source": "title"
+  },
+  "db9a9c07-dd2a-410a-afa2-bcc1487e3331": {
+   "label": "CausalChat",
+   "source": "title"
+  },
+  "0efdaaa1-8a9b-41cf-8b21-2caca4df44f0": {
+   "label": "GNN101",
+   "source": "title"
+  },
+  "434b3433-7fd1-4ee0-b9ee-75df6aaebe10": {
+   "label": "Data-aware metrics",
+   "source": "llm",
+   "llm": {
+    "v2": "Data-aware metrics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6b6f5fd0fe8a747b"
+  },
+  "79cb97a3-5270-4261-8a6e-1125fef7ffa6": {
+   "label": "Co-intelligence tracing",
+   "source": "llm",
+   "llm": {
+    "v2": "Co-intelligence tracing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b9a0f56b59840633"
+  },
+  "afffd7e2-7c14-4417-86b7-f14b3d14109f": {
+   "label": "TuneScape",
+   "source": "title"
+  },
+  "da67f039-42de-4964-b86a-34c969685d94": {
+   "label": "Decoding operators",
+   "source": "llm",
+   "llm": {
+    "v2": "Decoding Operators"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "eedbd229a8d6d3d9"
+  },
+  "76f73356-1ac1-4155-8f09-5dbfc1467fa6": {
+   "label": "Decoupled encoding",
+   "source": "llm",
+   "llm": {
+    "v2": "Decoupled encoding"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "468f0875f8cdc3fb"
+  },
+  "fb76ede2-705c-4004-9f7c-d9410483c600": {
+   "label": "reVISit-XR",
+   "source": "title"
+  },
+  "585ff881-ec66-4953-b4fd-350255cadbeb": {
+   "label": "ManyFold",
+   "source": "title"
+  },
+  "4c5c5441-b01e-4dff-a02e-91e3aa598bf3": {
+   "label": "NEXO",
+   "source": "title"
+  },
+  "0ac40e2b-2220-4ee1-9e3b-cee9e82c1b9a": {
+   "label": "TailVis",
+   "source": "title"
+  },
+  "13a07995-c3b1-4d3f-8f11-c07cabecf2e7": {
+   "label": "Prototype steering",
+   "source": "llm",
+   "llm": {
+    "v2": "Prototype Steering"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5bb544370c8a8c8a"
+  },
+  "6e111351-3fd2-47f4-b865-8169bcfa6d53": {
+   "label": "EvoInsight",
+   "source": "title"
+  },
+  "428bb71e-39a6-43e9-979c-822469d452ec": {
+   "label": "Stochastic tracing",
+   "source": "llm",
+   "llm": {
+    "v2": "Stochastic Tracing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f8ab699c6c7b9f45"
+  },
+  "0d467880-3885-4ae4-8b19-6eeeda9936c8": {
+   "label": "Counterbalance",
+   "source": "title"
+  },
+  "7054a665-8773-4ec6-8f55-9afe7b526870": {
+   "label": "Structural Inconsistency",
+   "source": "llm",
+   "llm": {
+    "v2": "Structural Inconsistency"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "67f8024363c48ffd"
+  },
+  "aa47fae8-ce68-4b1f-8d14-5e2b704cdb7a": {
+   "label": "Concentric ring",
+   "source": "llm",
+   "llm": {
+    "v2": "Concentric Ring"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "10126c47a86d54c9"
+  },
+  "2d0351b9-ea2b-4cce-ab01-2b9efef6ff1c": {
+   "label": "Hoeffding bounds",
+   "source": "llm",
+   "llm": {
+    "v2": "Hoeffding Bounds"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4a979e3f65d46d4c"
+  },
+  "cba2e4e6-ceab-407f-ac4d-1704c6cf3b07": {
+   "label": "RTD co-design",
+   "source": "llm",
+   "llm": {
+    "v2": "RTD Co-Design"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b16b9d8f960d703c"
+  },
+  "e5a69168-a065-4315-b4da-e852dca76670": {
+   "label": "Immersive self",
+   "source": "llm",
+   "llm": {
+    "v2": "Immersive Self"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "de6e35dd39125f8c"
+  },
+  "e47a1a82-f7a2-4255-b82e-fd123e156e86": {
+   "label": "CAPED framework",
+   "source": "llm",
+   "llm": {
+    "v2": "CAPED Framework"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1288f27451a3346b"
+  },
+  "271df69a-ce73-4d46-bfa0-e1520dd5a6ca": {
+   "label": "VisCanvas",
+   "source": "title"
+  },
+  "a8182e98-c28a-420d-8a0b-f7fa70515cbd": {
+   "label": "Entanglement epistemology",
+   "source": "llm",
+   "llm": {
+    "v2": "Entanglement Epistemology"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "acbfc3ecabf48d7e"
+  },
+  "cb370e89-ba34-439c-ad58-1cde9931962b": {
+   "label": "Community revision",
+   "source": "llm",
+   "llm": {
+    "v2": "Community Revision"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "bbd334c0e750f125"
+  },
+  "9ee9b7b6-5374-47b2-9225-f74c35a616ed": {
+   "label": "HopViz",
+   "source": "title"
+  },
+  "c45a69db-818a-49bb-b2e2-0e0d65e1e948": {
+   "label": "Market uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Market Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9df61c8ac07fc4ef"
+  },
+  "fccd1fb3-b07c-4368-bfa5-fff74c65baf3": {
+   "label": "GEMS",
+   "source": "title"
+  },
+  "586f32ad-55d0-45a2-b181-34a8d432dceb": {
+   "label": "ViSAXS",
+   "source": "title"
+  },
+  "4d0898fd-252b-43eb-b4bd-365101ffaa28": {
+   "label": "Chart2SVG",
+   "source": "title"
+  },
+  "9e4af3b5-5f6d-4b27-ba09-7ea919068da0": {
+   "label": "LoCoMapper",
+   "source": "title"
+  },
+  "ea14fff3-7fc5-4f87-8832-590d0adde4ab": {
+   "label": "VeriLLMed",
+   "source": "title"
+  },
+  "98386f1b-de25-4b0f-adbb-0a20dda9c360": {
+   "label": "MolExplain",
+   "source": "title"
+  },
+  "97ae9dc5-b01d-4eac-aeae-8edab7180a4d": {
+   "label": "Residual consensus",
+   "source": "llm",
+   "llm": {
+    "v2": "Residual Consensus"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7e03743b110bf90a"
+  },
+  "6834207e-76b6-4b79-bd18-5008a37edc20": {
+   "label": "Non-Linnaean taxonomy",
+   "source": "llm",
+   "llm": {
+    "v2": "Non-Linnaean Taxonomy"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c2f0c689bc3e6af3"
+  },
+  "7cc8fecb-e6b8-49fa-8402-c6a0cee35c29": {
+   "label": "MV-Bench",
+   "source": "title"
+  },
+  "635ad27e-9561-4480-b4e3-0b68660f5c69": {
+   "label": "Implicit MSC",
+   "source": "llm",
+   "llm": {
+    "v2": "Implicit MSC"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5a144b725bf343a4"
+  },
+  "c0a9e4ca-2e9d-4f43-8a9f-e45521a67db7": {
+   "label": "LLM metadata",
+   "source": "llm",
+   "llm": {
+    "v2": "LLM Metadata"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "82b9f0bb090a5861"
+  },
+  "022df5af-8f4b-463d-92e4-466dea29fcfa": {
+   "label": "Practice effect",
+   "source": "llm",
+   "llm": {
+    "v2": "Practice Effect",
+    "v3": "Practice Effect"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c9a9fb823fdea31c"
+  },
+  "b8ab7734-32e0-40a9-8f7e-65f7c7358186": {
+   "label": "Attribution challenge",
+   "source": "llm",
+   "llm": {
+    "v2": "Attribution Challenge"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "39d48a9c5ebaa210"
+  },
+  "1049a412-95eb-45ef-9f67-49e486afeab9": {
+   "label": "Eye movement",
+   "source": "llm",
+   "llm": {
+    "v2": "Eye Movement"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "da8d1d142c42915b"
+  },
+  "809cfe24-baaf-4a34-b9e7-5309c9db9d0b": {
+   "label": "Art-science installation",
+   "source": "llm",
+   "llm": {
+    "v2": "Art-Science Installation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "103112a8e514a4ab"
+  },
+  "b2aeebf9-1776-4315-a3da-98151aaba25c": {
+   "label": "Design-algorithm separation",
+   "source": "llm",
+   "llm": {
+    "v2": "Design Algorithm",
+    "v3": "Design-Algorithm Separation"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c922f31a0c830022"
+  },
+  "f5f69616-10f0-4009-8f0e-c49e4e4b393a": {
+   "label": "SAE interpretability",
+   "source": "llm",
+   "llm": {
+    "v2": "SAE Interpretability"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e2f95b562eaa8411"
+  },
+  "06b575e8-cd09-4d81-be06-98541f58adab": {
+   "label": "Lived uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Lived Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "166a14ce5e82ed6d"
+  },
+  "ff4c6858-1c25-4046-9318-185a3b665a3e": {
+   "label": "SOCAS",
+   "source": "title"
+  },
+  "551fd8ce-f82d-47f4-9a37-ceacd8ab42a9": {
+   "label": "UNIPO",
+   "source": "title"
+  },
+  "3e882a43-49fc-40e2-9b81-b1de23651e6e": {
+   "label": "Slavery archive",
+   "source": "llm",
+   "llm": {
+    "v2": "Slavery Archive"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "27de20b4ba662279"
+  },
+  "e9ad25d7-77cb-4e9f-b05b-5b4714f9d352": {
+   "label": "SciVisAgentBench",
+   "source": "title"
+  },
+  "0386cdf5-185f-438d-8db2-0c8042fde95e": {
+   "label": "AttentionRadViz",
+   "source": "title"
+  },
+  "1b2a6eb3-d04d-4329-8342-26e384de3fc6": {
+   "label": "LLM-driven risk",
+   "source": "llm",
+   "llm": {
+    "v2": "LLM-Driven Risk"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "aa4435d249955980"
+  },
+  "dfd9a2af-714a-4af3-8a61-214f2aa2a627": {
+   "label": "Atlas design",
+   "source": "llm",
+   "llm": {
+    "v2": "Atlas Design"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "feab4ccb715756a0"
+  },
+  "197df565-60f0-44e2-9362-dde1b77a7e49": {
+   "label": "EventColumn",
+   "source": "title"
+  },
+  "f12b4246-7cb9-4b14-a5a8-0236d5defbe3": {
+   "label": "Age engagement",
+   "source": "llm",
+   "llm": {
+    "v2": "Age Engagement"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8be01d39e5f9ab43"
+  },
+  "87e9069f-c5dd-411a-9cbf-5730077c7a18": {
+   "label": "jk-Plots",
+   "source": "llm",
+   "llm": {
+    "v2": "jk-Plots"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "26791bb940d3e631"
+  },
+  "cbacb3ea-cae0-474d-b4cc-151720f4e332": {
+   "label": "Sycamore",
+   "source": "title"
+  },
+  "0a06b598-78f9-451e-922e-c36b51bd143b": {
+   "label": "DVD",
+   "source": "title"
+  },
+  "b55f4b1f-8573-4520-bac8-860e40cc1b01": {
+   "label": "Estimation operationalization",
+   "source": "llm",
+   "llm": {
+    "v2": "Estimation operationalization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "da495f76481ef886"
+  },
+  "697bbf3e-0027-400e-aed4-9e2cf08a1047": {
+   "label": "Divided attention",
+   "source": "llm",
+   "llm": {
+    "v2": "Divided Attention"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8be825142a6f016e"
+  },
+  "3e680427-8df4-497b-9390-561e1f008621": {
+   "label": "mCCDF regression",
+   "source": "llm",
+   "llm": {
+    "v2": "mCCDF Regression"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "bb1daac85c4c276e"
+  },
+  "a92fa1d5-295e-4211-afc3-43642cd6027e": {
+   "label": "Visual rhetoric",
+   "source": "llm",
+   "llm": {
+    "v2": "Visual Rhetoric"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "cb9568db6e3f938e"
+  },
+  "a05fb226-2845-4ebd-8c59-db311c020859": {
+   "label": "MammoWeave",
+   "source": "title"
+  },
+  "eb3ab12e-1782-4e31-85fe-793857470518": {
+   "label": "Mixed uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Mixed Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "de15c1e96ac4541f"
+  },
+  "7b2a69b5-53b1-40a4-9223-319141872362": {
+   "label": "lpviz",
+   "source": "title"
+  },
+  "3f3f22ad-0b6c-4ca0-abb6-42c6851590b2": {
+   "label": "Research-practice gap",
+   "source": "llm",
+   "llm": {
+    "v2": "Research-Practice Gap"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "12d97a9beb2d328b"
+  },
+  "9110775b-e2b6-421e-976d-155dd11d5d24": {
+   "label": "EMINDS",
+   "source": "title"
+  },
+  "e7d91507-4f31-4b79-a38c-b0a039fb4802": {
+   "label": "Failure design",
+   "source": "llm",
+   "llm": {
+    "v2": "Failure Design"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7dd21228c786d659"
+  },
+  "71b69274-fe9f-480c-b4ab-2908932c32f3": {
+   "label": "SigTime",
+   "source": "title"
+  },
+  "2c3eb483-64c5-4f5a-bb90-be07bd3233de": {
+   "label": "Distributional reconstruction",
+   "source": "llm",
+   "llm": {
+    "v2": "Distributional Reconstruction"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "515d1ca8571d9909"
+  },
+  "16f98620-a8e4-46d1-a8af-5a470dfffbae": {
+   "label": "Metacognitive interventions",
+   "source": "llm",
+   "llm": {
+    "v2": "Metacognitive Interventions"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0971bbd80d16826d"
+  },
+  "549c9841-6144-4872-a0f5-097a23ca3f79": {
+   "label": "VACP",
+   "source": "title"
+  },
+  "1f55f16c-f6ea-43ba-ad12-c95022cee20e": {
+   "label": "DAVA",
+   "source": "title"
+  },
+  "9f640fab-6c7f-4b2b-8f6b-6aa52214573c": {
+   "label": "Provenance intervention",
+   "source": "llm",
+   "llm": {
+    "v2": "Provenance Intervention"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "26db4995ddaa02a4"
+  },
+  "cc28a827-65b6-4fec-842b-37bc80a243fd": {
+   "label": "Variational mechanics",
+   "source": "llm",
+   "llm": {
+    "v2": "Variational Mechanics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f18fda15459dcfa5"
+  },
+  "24837f70-152c-4c1d-abb5-3ee94845c441": {
+   "label": "Single-image reconstruction",
+   "source": "llm",
+   "llm": {
+    "v2": "Single-Image Reconstruction"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7dd66d43a852a5b3"
+  },
+  "141f2dac-fd90-4d48-b89a-f4b480666524": {
+   "label": "Spatial attention",
+   "source": "llm",
+   "llm": {
+    "v2": "Spatial Attention"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8871025dab1ca8e6"
+  },
+  "29176933-b0cb-47ed-b7c6-268d0c1ff2d1": {
+   "label": "Acknowledgment mismatch",
+   "source": "llm",
+   "llm": {
+    "v2": "Acknowledgment Mismatch"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "26830cada243d022"
+  },
+  "0606a963-13b4-4f4c-94f0-53182376d05c": {
+   "label": "Choreographic genome",
+   "source": "llm",
+   "llm": {
+    "v2": "Byte Dance",
+    "v3": "Choreographic Genome"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "eb8502a31f7494d8"
+  },
+  "cbef2daf-adc8-45c8-8274-3557a4354e47": {
+   "label": "Process mining",
+   "source": "llm",
+   "llm": {
+    "v2": "Process Mining"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c872dc782cf690ac"
+  },
+  "e4f29558-a3f1-4f8a-a808-c6890e673fd6": {
+   "label": "Projection search",
+   "source": "llm",
+   "llm": {
+    "v2": "Projection Search"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "84b9dd5fb6dded67"
+  },
+  "1aead21c-3b40-451e-80ba-932f7cf67b9a": {
+   "label": "Super-Gaussian",
+   "source": "title"
+  },
+  "144404aa-9c3e-4302-bbb5-3c40d36ad8a5": {
+   "label": "Void exploration",
+   "source": "llm",
+   "llm": {
+    "v2": "Void Exploration"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2446bb96ab0d7d06"
+  },
+  "d6a30ef1-d13c-4c92-9f0e-2eefeb435fc7": {
+   "label": "CanvasObs",
+   "source": "title"
+  },
+  "19b2cce8-fee7-4e35-a94b-2fea70432286": {
+   "label": "CounterCrime",
+   "source": "title"
+  },
+  "2fccb4af-0548-48f9-9356-66437a9e4be4": {
+   "label": "Concept inventory",
+   "source": "llm",
+   "llm": {
+    "v2": "Concept Inventory"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2c0031bd26f2e720"
+  },
+  "9044e003-36ee-4c64-a932-2ee823d1a19c": {
+   "label": "LLM agents",
+   "source": "llm",
+   "llm": {
+    "v2": "Agentic System",
+    "v3": "LLM Agents"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "484d7f14f300df90"
+  },
+  "69344590-122a-4a1e-8973-3fd76a207374": {
+   "label": "Model consistency",
+   "source": "llm",
+   "llm": {
+    "v2": "Model Consistency"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f1761d955bcbfcaa"
+  },
+  "0ba63dda-21bd-46bd-b051-0f264a53d0f5": {
+   "label": "VAE ensembles",
+   "source": "llm",
+   "llm": {
+    "v2": "VAE Ensembles"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "93f098db765fe7bd"
+  },
+  "c62f99c9-3397-4d46-a1ce-b61fbd526c38": {
+   "label": "Pinyin compression",
+   "source": "llm",
+   "llm": {
+    "v2": "Pinyin compression"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d36b638c53e1481f"
+  },
+  "ef18ee6e-f372-4cb2-a57b-6dfc58a569f0": {
+   "label": "MAPLE",
+   "source": "title"
+  },
+  "04999c9d-80ae-4160-8d9f-db07ce46dbf7": {
+   "label": "Rotation minimization",
+   "source": "llm",
+   "llm": {
+    "v2": "Rotation Minimization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "3007bd8984d1036a"
+  },
+  "316668b2-14fd-4565-9da0-1a84582da067": {
+   "label": "Libra+",
+   "source": "title"
+  },
+  "e3c6e201-9387-4b45-9046-e4d6834316b6": {
+   "label": "UMATO",
+   "source": "title"
+  },
+  "a0df5944-57ac-4677-bde7-e17cfbe83098": {
+   "label": "Cognitive friction",
+   "source": "llm",
+   "llm": {
+    "v2": "Cognitive friction"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7e0af50ebb61a4a7"
+  },
+  "1157e036-1435-49ab-a7c7-d965c14ed38c": {
+   "label": "Channel-centric DP",
+   "source": "llm",
+   "llm": {
+    "v2": "Channel-Centric DP"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9433e6947f00eab9"
+  },
+  "d560af0d-38cb-4385-b495-03cd9896bd32": {
+   "label": "LLM perception",
+   "source": "llm",
+   "llm": {
+    "v2": "LLM Perception"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "567b14921e28813a"
+  },
+  "55468113-2b87-4aee-b5e5-15176242d1b3": {
+   "label": "Distortion-aware brushing",
+   "source": "llm",
+   "llm": {
+    "v2": "Distortion-aware brushing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1e0da37debc530f2"
+  },
+  "735d1607-6743-4f0e-8b86-1a793d35d531": {
+   "label": "PoseForge",
+   "source": "title"
+  },
+  "4e12b506-655d-4b02-bdb5-26192fe73771": {
+   "label": "Agent accountability",
+   "source": "llm",
+   "llm": {
+    "v2": "Agent Accountability"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "fe825a7986df7610"
+  },
+  "9e28b281-690c-4acf-9310-5452f422ad46": {
+   "label": "Perceptual quality",
+   "source": "llm",
+   "llm": {
+    "v2": "Perceptual Quality"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e82aeda5b9baddc1"
+  },
+  "56f42275-c01f-4d71-ba53-321afb82e483": {
+   "label": "Agentic validation",
+   "source": "llm",
+   "llm": {
+    "v2": "Agentic Validation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9d18fe2e0b1e1c32"
+  },
+  "d6a5afa9-ebe5-4a5f-93b3-2683ca0b91f9": {
+   "label": "Cognitive affordances",
+   "source": "llm",
+   "llm": {
+    "v2": "Cognitive Affordances"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8a03f9f24b590261"
+  },
+  "cd3e1f47-b1e3-4301-afd8-d751122dc5d6": {
+   "label": "Perceptual scaling",
+   "source": "llm",
+   "llm": {
+    "v2": "Perceptual Scaling"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8922163f08a5d48b"
+  },
+  "16c68e1b-cc59-45cd-9a6a-87540375a990": {
+   "label": "Importance Mask",
+   "source": "llm",
+   "llm": {
+    "v2": "Importance Mask"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "620157270c75f2fb"
+  },
+  "545097fd-70c6-467a-bc21-59e96232056e": {
+   "label": "LeakAnalysis",
+   "source": "llm",
+   "llm": {
+    "v2": "Leak Analysis"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5d479b696c7d0ac1"
+  },
+  "ad4526bc-5e12-482c-896a-5907cbd02a9b": {
+   "label": "CUBE-ism",
+   "source": "title"
+  },
+  "0a514256-b027-4ae6-9168-e82cfc239f0a": {
+   "label": "Softerware",
+   "source": "llm",
+   "llm": {
+    "v2": "Softerware"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "29a48c19ee6cf569"
+  },
+  "b1bebeaa-4ed2-40da-90a7-d99091454936": {
+   "label": "PROVA-GT",
+   "source": "title"
+  },
+  "ba7e94f7-b8b7-478c-ae5e-12e01f39b378": {
+   "label": "LLM DSLs",
+   "source": "llm",
+   "llm": {
+    "v2": "LLM DSLs"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b93521127c0b4b93"
+  },
+  "965d64a1-c26d-4b94-99d5-5cbaf2dc67ed": {
+   "label": "Human-LLM alignment",
+   "source": "llm",
+   "llm": {
+    "v2": "Human-LLM Alignment"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9fce89500c7355e3"
+  },
+  "6449f7f9-ce96-4404-99ea-fab40c6060d3": {
+   "label": "AgentAudit",
+   "source": "title"
+  },
+  "d28fc52f-d0cc-4563-8c44-ee48d55835c2": {
+   "label": "Feature interaction",
+   "source": "llm",
+   "llm": {
+    "v2": "Feature Interaction"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a8a936751c42bd96"
+  },
+  "852cd6d6-aa58-47b7-8d4e-c8d1b098d0ef": {
+   "label": "Complaint propagation",
+   "source": "llm",
+   "llm": {
+    "v2": "Complaint Propagation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1a3a911ad22f2b8f"
+  },
+  "a097f6a7-34fd-41c5-8f9e-42edbdf8efa0": {
+   "label": "Loom",
+   "source": "title"
+  },
+  "50bd5f44-29e0-42ab-b482-4212cb7ebf05": {
+   "label": "Topological Autoencoders++",
+   "source": "title"
+  },
+  "1675d947-75e0-4bd5-bbd4-2d4edf8fdafb": {
+   "label": "TimeAperture",
+   "source": "title"
+  },
+  "86ba53d8-5bbe-4f11-b727-d641f04ddcba": {
+   "label": "PolarWeather",
+   "source": "title"
+  },
+  "4113af1f-56fd-47d0-9156-779d826d1b56": {
+   "label": "Agent provenance",
+   "source": "llm",
+   "llm": {
+    "v2": "Agent Provenance"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e990a61d998d73e2"
+  },
+  "8f097b32-b19a-4015-852e-65c2b68adc89": {
+   "label": "DR misuse",
+   "source": "llm",
+   "llm": {
+    "v2": "DR Misuse"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b3425d559b080ef7"
+  },
+  "67640841-62f3-49eb-a141-3fac8ef0d961": {
+   "label": "HeedVision",
+   "source": "title"
+  },
+  "217ac970-fb8c-43ea-8694-5b02068ec441": {
+   "label": "Narrative affect",
+   "source": "llm",
+   "llm": {
+    "v2": "Narrative Affect"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e4b9e2d6af08dd30"
+  },
+  "03441556-901b-48bd-89b4-32f40182a3b0": {
+   "label": "Confirmation bias",
+   "source": "llm",
+   "llm": {
+    "v2": "Confirmation Bias"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "087140b96fea3342"
+  },
+  "ea931e49-ad3e-42d9-9ead-505dcc2a2e6e": {
+   "label": "Trend materialization",
+   "source": "llm",
+   "llm": {
+    "v2": "Trend Materialization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f622bcbf5d140e47"
+  },
+  "ecb8db60-ecd9-4a2d-9e72-467b0ed2aafe": {
+   "label": "Fluid agency",
+   "source": "llm",
+   "llm": {
+    "v2": "Fluid Agency"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "eb175650eb99219a"
+  },
+  "b2c84df5-4ec6-4498-91c6-0f47d355a18e": {
+   "label": "Hindsight",
+   "source": "title"
+  },
+  "a4cadc02-cdf0-40eb-87de-e78157c605da": {
+   "label": "Virtue ethics",
+   "source": "llm",
+   "llm": {
+    "v2": "Virtue Ethics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "48b8f3478d04e834"
+  },
+  "98ee845e-b67d-4737-a233-672595231b61": {
+   "label": "EnsembleNGP",
+   "source": "title"
+  },
+  "239e6c2e-5d71-4d36-bfc0-e09e50f6cb86": {
+   "label": "Causal traversal",
+   "source": "llm",
+   "llm": {
+    "v2": "Causal Traversal"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0c6c6f08f2d8a29e"
+  },
+  "342a0064-2b0c-4971-af35-a37a9465c6f5": {
+   "label": "Exact TIMTs",
+   "source": "llm",
+   "llm": {
+    "v2": "Exact TIMTs"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "394d27fe09c7715e"
+  },
+  "5b421cfa-020e-4a69-bfdd-5323b13b2763": {
+   "label": "Generative distribution",
+   "source": "llm",
+   "llm": {
+    "v2": "Generative Distribution"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "57222cebc59e19f0"
+  },
+  "06e7bff6-6f32-4395-9103-86c90b1012b3": {
+   "label": "Robust barycenters",
+   "source": "llm",
+   "llm": {
+    "v2": "Robust Barycenters"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0bd59ef61dbff027"
+  },
+  "ce71864c-5765-433c-b6dc-01fdc4633309": {
+   "label": "Vineyard dynamics",
+   "source": "llm",
+   "llm": {
+    "v2": "Vineyard Dynamics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b62687fa5adbb841"
+  },
+  "31deeab4-68ee-4e45-8a05-72be2af1c58b": {
+   "label": "UnitoPia",
+   "source": "title"
+  },
+  "b8f2b531-9664-4ffe-bad9-a642e5788a31": {
+   "label": "Public exposure",
+   "source": "llm",
+   "llm": {
+    "v2": "Public Exposure"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a1efb2472c01d7aa"
+  },
+  "e3d8ae84-4e8f-41a7-bf16-93320b574e81": {
+   "label": "Causal priors",
+   "source": "llm",
+   "llm": {
+    "v2": "Causal Priors"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8ae730801f914925"
+  },
+  "47c1a9c5-88ae-47ff-8cc6-c2d4fcac5d78": {
+   "label": "Autonomous decision-making",
+   "source": "keyphrase",
+   "llm": {
+    "v2": null,
+    "v3": null
+   },
+   "promptVersion": null,
+   "model": "google/gemma-4-e4b",
+   "inputHash": "abdc7d158825e87f"
+  },
+  "60e03041-e09d-4941-a102-60a788bd983e": {
+   "label": "Compendia",
+   "source": "title"
+  },
+  "8d171ccd-25d9-4ffb-840f-be65252cd2d5": {
+   "label": "LiverPlan",
+   "source": "title"
+  },
+  "81ec2825-8f07-4e5a-9f17-f5acb3eb88c7": {
+   "label": "Reeb tracking",
+   "source": "llm",
+   "llm": {
+    "v2": "Reeb Tracking"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "fab8d874b61f635c"
+  },
+  "970670bd-c59e-461d-9bf6-77a5b66531ef": {
+   "label": "ChannelExplorer",
+   "source": "title"
+  },
+  "d11a5dec-393e-460d-8f61-16e578417dd4": {
+   "label": "Grand Challenges",
+   "source": "llm",
+   "llm": {
+    "v2": null,
+    "v3": "Grand Challenges"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "ac7b6076f02aaa11"
+  },
+  "155591eb-2645-48a9-b4fb-06d03ae92cd9": {
+   "label": "Task taxonomy",
+   "source": "llm",
+   "llm": {
+    "v2": null,
+    "v3": "Task Taxonomy"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6568aff881779070"
+  },
+  "9b5bc41f-c90f-40f6-81d2-9266713c4766": {
+   "label": "Causal tracing",
+   "source": "llm",
+   "llm": {
+    "v2": "Causal Tracing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "aa88c5f6e4c2cd16"
+  },
+  "1057cc86-867a-44fb-a9e8-628ca96d9ace": {
+   "label": "Categorical framework",
+   "source": "llm",
+   "llm": {
+    "v2": "Categorical Framework"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2c039a4731f98ebd"
+  },
+  "bed0311b-3908-4429-aac8-ac10afeef3f7": {
+   "label": "Intent mapping",
+   "source": "llm",
+   "llm": {
+    "v2": "Intent Mapping"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4fe0da117f8cf193"
+  },
+  "0e51e8fc-5777-4ade-8973-3d462b16eaef": {
+   "label": "Prescriptive terminology",
+   "source": "llm",
+   "llm": {
+    "v2": "Prescriptive Terminology"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "03ecdd46e3bb3e65"
+  },
+  "9329e7cd-046e-4940-b4ca-a146d3416b6b": {
+   "label": "Quantum visualization",
+   "source": "llm",
+   "llm": {
+    "v2": "Quantum visualization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1883e774840c7b7c"
+  },
+  "62421728-055a-4927-baea-f23461e62611": {
+   "label": "Knowledge theory",
+   "source": "llm",
+   "llm": {
+    "v2": "Knowledge Theory"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0fcc3d6d016383e7"
+  },
+  "08615141-6d6d-4dba-a592-3447c9a3828b": {
+   "label": "MLLM perception",
+   "source": "llm",
+   "llm": {
+    "v2": "MLLM Perception"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d8898f99376c6f97"
+  },
+  "f74472e5-0d07-4f42-a34b-7388f6abafda": {
+   "label": "Ethics audit",
+   "source": "llm",
+   "llm": {
+    "v2": "Ethics Audit"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5011ed2d1eb1437e"
+  },
+  "b641c4cf-7c52-4fa3-87e4-a39bda381238": {
+   "label": "Sequence supervision",
+   "source": "llm",
+   "llm": {
+    "v2": "Sequence Supervision"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "25f636c95a4204a0"
+  },
+  "cb3190ce-412a-4ea4-8e3c-5ebe5c567cc8": {
+   "label": "Multi-density tracking",
+   "source": "llm",
+   "llm": {
+    "v2": "Multi-density tracking"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4ffb1ffe59b69ae2"
+  },
+  "5bbec6d3-5cc7-4993-b167-efaf475023cc": {
+   "label": "Visibility optimization",
+   "source": "keyphrase",
+   "llm": {
+    "v2": null,
+    "v3": null
+   },
+   "promptVersion": null,
+   "model": "google/gemma-4-e4b",
+   "inputHash": "da1932f5e196668e"
+  },
+  "de0e6c96-491a-4418-9a6e-98ed7e5ef89a": {
+   "label": "PLUTO",
+   "source": "title"
+  },
+  "a6a811db-f906-4dea-bae8-5a160321102e": {
+   "label": "Externalized interpretation",
+   "source": "llm",
+   "llm": {
+    "v2": "Externalized Interpretation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "cf6c1ff0c756c9bf"
+  },
+  "28b9040e-0558-4ec6-bf0b-243e48d5bb9c": {
+   "label": "GeoAuthor",
+   "source": "title"
+  },
+  "82c37f72-0337-4864-b2b1-c940fdeb0adf": {
+   "label": "NeuroBreak",
+   "source": "title"
+  },
+  "21ee6bec-2c63-47b4-8dda-a022082f78f8": {
+   "label": "AI acceptability",
+   "source": "llm",
+   "llm": {
+    "v2": "AI Acceptability"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6577e4ac4b17e456"
+  },
+  "b612c1b2-9a02-40cc-826e-2f6ef698210b": {
+   "label": "MSC preservation",
+   "source": "llm",
+   "llm": {
+    "v2": "MSC Preservation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d80f7f857978cb70"
+  },
+  "d697329b-dc45-4961-9324-596c581bf0df": {
+   "label": "LAMDA",
+   "source": "title"
+  },
+  "78746a3e-ff6b-44da-aa28-fa0ac8e8344e": {
+   "label": "MAGIC",
+   "source": "title"
+  },
+  "de28f2f5-7c5c-4222-84d3-1c0173bd6140": {
+   "label": "DeepConnect",
+   "source": "title"
+  },
+  "76345e5a-758c-4237-b9c5-f6f3264b2fb1": {
+   "label": "VIVA",
+   "source": "title"
+  },
+  "88ac885c-eced-46ef-80ce-ca8a1dacad1a": {
+   "label": "Image distribution",
+   "source": "llm",
+   "llm": {
+    "v2": "Image Distribution"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dd8ce3578f33652e"
+  },
+  "0da918cc-b7cf-4548-9f45-8c6686419bc8": {
+   "label": "Ambient AR",
+   "source": "llm",
+   "llm": {
+    "v2": "Ambient AR"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4198431ecad5af8f"
+  },
+  "4cdcbd42-2f36-406a-b61c-be0f1bdfc642": {
+   "label": "LayoutAgent",
+   "source": "title"
+  },
+  "9ee5993b-1fb5-45f5-9969-77a5d942929f": {
+   "label": "Annotation survey",
+   "source": "llm",
+   "llm": {
+    "v2": "Annotation Survey"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f2dba5226924ae3e"
+  },
+  "5fc4e944-4246-40bf-b4c1-493439be10e3": {
+   "label": "WCAG compliance",
+   "source": "llm",
+   "llm": {
+    "v2": "WCAG Compliance"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "418e57ad915b4231"
+  },
+  "a825b085-6a9e-432e-91f8-ee58e7924ef6": {
+   "label": "Reading patterns",
+   "source": "llm",
+   "llm": {
+    "v2": "Reading Patterns"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a7f77453b7415adf"
+  },
+  "b3a59fd9-3cce-49bc-97b6-ddacb1417020": {
+   "label": "SMG-Vis",
+   "source": "title"
+  },
+  "1da6f750-8fe6-4cf4-8ccb-6b0b0fd097f7": {
+   "label": "VIGMA",
+   "source": "title"
+  },
+  "4c49547a-1481-4787-8d8b-237d8a47a0b6": {
+   "label": "Mixed-ability collaboration",
+   "source": "llm",
+   "llm": {
+    "v2": "Mixed-ability collaboration"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f82daf7eb2f8a89e"
+  },
+  "176aad79-43e8-44b3-82ef-f3ddd069b9d9": {
+   "label": "Atlas visualization",
+   "source": "llm",
+   "llm": {
+    "v2": null,
+    "v3": "Atlas Visualization"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "193ba67c0ae26779"
+  },
+  "b8c8dedf-10f5-4585-b608-9398d21661e1": {
+   "label": "ECoNGS",
+   "source": "title"
+  },
+  "08759e28-378f-4618-851e-b7592f2ae3ea": {
+   "label": "GeoNarrative",
+   "source": "title"
+  },
+  "2bcdada9-cab1-4021-af76-754f85502b73": {
+   "label": "Treadstone",
+   "source": "title"
+  },
+  "bb3809e0-3b6a-4c3c-b028-c343a2bb1e42": {
+   "label": "dtour",
+   "source": "title"
+  },
+  "3403a29d-cd9f-45e8-b358-ad929c884292": {
+   "label": "Virtual instancing",
+   "source": "llm",
+   "llm": {
+    "v2": "Virtual Instancing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "ee619e4edecbca8e"
+  },
+  "2c4d573b-8fc4-4ce5-8581-afe0f07d5d14": {
+   "label": "Visual stenography",
+   "source": "llm",
+   "llm": {
+    "v2": "Visual Stenography"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "df4fe527b4a98226"
+  },
+  "2f66162b-1d63-40c8-90fb-6459462806b9": {
+   "label": "DARE",
+   "source": "title"
+  },
+  "6cb12e76-8402-4718-ad79-13dd73da4cd3": {
+   "label": "MuCHEx",
+   "source": "title"
+  },
+  "55205346-3cdf-43c0-b32e-6d501901a1ad": {
+   "label": "Multi-point projection",
+   "source": "llm",
+   "llm": {
+    "v2": "Multi-point Projection"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d8a990d7d8ad94c0"
+  },
+  "0b8437e7-f177-499d-883d-b21947053ded": {
+   "label": "Reasoning cost",
+   "source": "llm",
+   "llm": {
+    "v2": "Reasoning Cost"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "85d204cef21be2ca"
+  },
+  "d8023d9f-4d7e-4873-97c1-de94c9fabc92": {
+   "label": "Delegation boundaries",
+   "source": "llm",
+   "llm": {
+    "v2": "Delegation Boundaries"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "30466aad562ec428"
+  },
+  "c5937409-e9dc-44c7-ae35-f47ad22e9095": {
+   "label": "FRP relevance",
+   "source": "llm",
+   "llm": {
+    "v2": "FRP Relevance"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5724c296b4de8eb7"
+  },
+  "4160c9da-b65b-4590-9b2a-2013af24955e": {
+   "label": "Authorship dynamics",
+   "source": "llm",
+   "llm": {
+    "v2": "Authorship dynamics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c05c0dd207d2f193"
+  },
+  "19d83046-dc12-42ba-9381-b7610d4a8fd8": {
+   "label": "Incentive effect",
+   "source": "llm",
+   "llm": {
+    "v2": "Incentive Effect"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "3814bd647398ee5c"
+  },
+  "d8c424e4-a5ae-43d1-8bb0-8889d7b93af7": {
+   "label": "Default adherence",
+   "source": "llm",
+   "llm": {
+    "v2": "Default Adherence"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2c8db52909564065"
+  },
+  "56a631e3-6757-408c-b35a-34e3ff21d58d": {
+   "label": "Model literacy",
+   "source": "llm",
+   "llm": {
+    "v2": "Model Literacy"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8f4b347cd53f3ddb"
+  },
+  "7a0795ca-8660-45ad-82a3-7e579ab0d9f2": {
+   "label": "Geranium",
+   "source": "title"
+  },
+  "1d329408-3c54-4ac3-b543-87e86f1c55c2": {
+   "label": "VCI taxonomy",
+   "source": "llm",
+   "llm": {
+    "v2": "VCI Taxonomy"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a797dbdfca9ffc72"
+  },
+  "1b1c6da1-4002-41c6-bee9-2d1496e1848a": {
+   "label": "Temporal arrangement",
+   "source": "llm",
+   "llm": {
+    "v2": "Temporal Arrangement"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b7a82dc9b2761fcb"
+  },
+  "f4f09232-9851-4162-97f8-d152dd8bf583": {
+   "label": "Disassembly layout",
+   "source": "llm",
+   "llm": {
+    "v2": "Disassembly Layout"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "49766f0cee2c829a"
+  },
+  "af85211e-c27b-4890-a1f9-d8699db6d17a": {
+   "label": "Health corpus",
+   "source": "llm",
+   "llm": {
+    "v2": "Health Corpus"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8d99169eb6e141bb"
+  },
+  "de762216-da09-4b32-8c29-d909c2c6338a": {
+   "label": "Neural field",
+   "source": "llm",
+   "llm": {
+    "v2": null,
+    "v3": "Neural Field"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b5f305cccf93c60a"
+  },
+  "c210e259-46fe-4b26-9872-b0f3a2c92962": {
+   "label": "RuleScope",
+   "source": "title"
+  },
+  "42872564-f7de-45ac-b4c1-46db3d5bcb01": {
+   "label": "Cognitive skin",
+   "source": "llm",
+   "llm": {
+    "v2": "Cognitive Skin",
+    "v3": "Cognitive Skin"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5ecac5205b7f48c2"
+  },
+  "c7892374-35ff-4bcc-adbb-18d28fa2191c": {
+   "label": "EM auditing",
+   "source": "llm",
+   "llm": {
+    "v2": "EM Auditing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "243047fc8e9aeb61"
+  },
+  "6da18ef8-f72a-4b99-ba2f-beae6ed386a3": {
+   "label": "Framing emotion",
+   "source": "llm",
+   "llm": {
+    "v2": "Framing Emotion"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "52cebbe2f974f237"
+  },
+  "de7ebe7f-0b21-4276-88b9-42c88c97d8c3": {
+   "label": "LLM grounding",
+   "source": "llm",
+   "llm": {
+    "v2": "LLM Grounding"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1f869eac2c35ce64"
+  },
+  "5c0710ed-11f2-4d19-8eb3-f99cddfc494a": {
+   "label": "Reviewing practices",
+   "source": "llm",
+   "llm": {
+    "v2": "Reviewing Practices"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "020dd48b9940b6e3"
+  },
+  "729acd33-e386-47c3-96f9-ed8efe84c8e7": {
+   "label": "Design autocomplete",
+   "source": "llm",
+   "llm": {
+    "v2": "Design Autocomplete"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c96a0d86390d4edc"
+  },
+  "e1a26f82-ec8f-492b-b5c5-c71d5dfd983e": {
+   "label": "MLLM perception",
+   "source": "llm",
+   "llm": {
+    "v2": "MLLM Perception"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7a688faa5772752e"
+  },
+  "f997ffa4-b6e7-471d-8080-e0765e3553f2": {
+   "label": "Data debugging",
+   "source": "llm",
+   "llm": {
+    "v2": "Data Debugging"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0ca6885c639ba4ff"
+  },
+  "d2a118bd-fa82-4ede-83b2-052bf7d7d26e": {
+   "label": "Visualization badges",
+   "source": "llm",
+   "llm": {
+    "v2": "Visualization Badges"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1d7fd356dd4d618f"
+  },
+  "abfb5c85-9b5b-4248-9a25-3251a0c17f09": {
+   "label": "DataMagic",
+   "source": "title"
+  },
+  "1059b754-5460-4c9f-850f-70ebd0c48575": {
+   "label": "Verification archetypes",
+   "source": "llm",
+   "llm": {
+    "v2": "Verification Archetypes"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1908b4f78a171505"
+  },
+  "f91bba9a-fc9c-4e3e-8924-e579b4fb76a3": {
+   "label": "Terra projection",
+   "source": "llm",
+   "llm": {
+    "v2": "Terra Projection"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "47b2136ac47dba52"
+  },
+  "91a12009-0da1-4e53-82d1-0232f0bdfc36": {
+   "label": "Epistemic provenance",
+   "source": "llm",
+   "llm": {
+    "v2": "Epistemic Provenance"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "226886f8d5d2c842"
+  },
+  "89efdabc-3034-40aa-9b87-07e2dcb14fd0": {
+   "label": "GraphPolaris",
+   "source": "title"
+  },
+  "959aca01-8276-4c3c-b586-2b335ac90584": {
+   "label": "Summary Verification",
+   "source": "llm",
+   "llm": {
+    "v2": "Summary verification"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6bc1be56d09e48e2"
+  },
+  "d7a44b5a-3ff5-416a-9a92-2cb3a411dbf8": {
+   "label": "Voice mapping",
+   "source": "llm",
+   "llm": {
+    "v2": "Voice Mapping"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2db4b73c328c5a21"
+  },
+  "6fe80763-3704-4c6e-b742-c659b20bfe4d": {
+   "label": "Tactile LLM",
+   "source": "llm",
+   "llm": {
+    "v2": "Tactile LLM"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a84c96a16576124f"
+  },
+  "85e0ee6f-f18c-417a-8d07-f94e45f917ea": {
+   "label": "Interaction auditing",
+   "source": "llm",
+   "llm": {
+    "v2": "Interaction Auditing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a2d0f4fbca35b607"
+  },
+  "07aa6392-7fba-4c71-98e6-6ffb18cc605a": {
+   "label": "Modality primacy",
+   "source": "llm",
+   "llm": {
+    "v2": "Modality Primacy"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5022e917020b6174"
+  },
+  "ece53f3e-93ca-45b7-982a-bfdfc1932dac": {
+   "label": "Surface substance",
+   "source": "llm",
+   "llm": {
+    "v2": "Surface Substance",
+    "v3": "Surface Substance"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5c382d65e368d92c"
+  },
+  "76c8a38e-3006-426c-93bc-ca16e700eaab": {
+   "label": "Aging participants",
+   "source": "llm",
+   "llm": {
+    "v2": "Aging Participants"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "797c7ec9b97597a4"
+  },
+  "ccec9d32-74e8-4077-ab06-417b45c0e7cb": {
+   "label": "Instructional scaffolding",
+   "source": "llm",
+   "llm": {
+    "v2": "Instructional Scaffolding"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "3ae3312685be1312"
+  },
+  "b216737e-005f-458a-b867-82f6ea398eec": {
+   "label": "Socio-technical guides",
+   "source": "llm",
+   "llm": {
+    "v2": "Socio-technical Guides"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b8281e8bbdee4ce4"
+  },
+  "093d4233-1d05-4e30-a3dc-71e7d42e8046": {
+   "label": "HealthTale",
+   "source": "title"
+  },
+  "8506daba-2788-4b26-ad34-c40f5d43b9e4": {
+   "label": "Viewer profiles",
+   "source": "llm",
+   "llm": {
+    "v2": "Viewer Profiles"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "53f9f89899470f20"
+  },
+  "ba639a7d-96b0-4012-b2c6-1ac189f33c2c": {
+   "label": "EVOLVE",
+   "source": "title"
+  },
+  "dbd4c10b-0b0c-41f6-b9d0-92118401f532": {
+   "label": "ForestVis",
+   "source": "title"
+  },
+  "a95143c4-bc04-4be3-8b97-d7ea7160ca1f": {
+   "label": "Constructive visualization",
+   "source": "llm",
+   "llm": {
+    "v2": "Learning Experience",
+    "v3": "Constructive Visualization"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b20189327b6315ed"
+  },
+  "26d75a15-8497-4741-81d8-01c525ac8953": {
+   "label": "CatPAL",
+   "source": "title"
+  },
+  "3e3f079d-267e-44a9-ba13-09eb33a68a81": {
+   "label": "Feature overcompression",
+   "source": "llm",
+   "llm": {
+    "v2": "Feature Overcompression"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d11aed6a63e3e88c"
+  },
+  "a4d3f021-7271-4055-838e-5f62fb228e78": {
+   "label": "Sound choreography",
+   "source": "llm",
+   "llm": {
+    "v2": "Sound Choreography"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c3b317387c2ad960"
+  },
+  "aaa3825d-1adc-4cc0-8232-f6cef5e64b98": {
+   "label": "Lossless-INR",
+   "source": "title"
+  },
+  "c86ca868-547d-469d-bd6f-ece2542a6a28": {
+   "label": "BPE Explainer",
+   "source": "llm",
+   "llm": {
+    "v2": "BPE Explainer"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2fa86244c7890bf8"
+  },
+  "1d36c3c7-0a4b-4dcf-9c9c-1d9017d8d173": {
+   "label": "VEIL",
+   "source": "title"
+  },
+  "8dcf2282-8729-4918-bffd-126bb6130cfb": {
+   "label": "4D saliency",
+   "source": "llm",
+   "llm": {
+    "v2": "4D Saliency"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8058ce61e0af7165"
+  },
+  "b0f509c7-33eb-4c67-a0cb-a41d7982b2c9": {
+   "label": "KeySI",
+   "source": "title"
+  },
+  "93d1b5fc-c611-4259-8c6d-9667a9e653d9": {
+   "label": "Activity tracing",
+   "source": "llm",
+   "llm": {
+    "v2": "Activity Tracing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a6e15609baea07ab"
+  },
+  "d25becc9-8129-44f9-a342-db6388e3052b": {
+   "label": "MoEXViz",
+   "source": "title"
+  },
+  "3691eb28-02b1-4100-8d12-d7f4a4e9c76e": {
+   "label": "Cognitive accessibility",
+   "source": "llm",
+   "llm": {
+    "v2": "Cognitive accessibility"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1e68406f31bc6c6e"
+  },
+  "0076bb10-860f-4796-be1a-4476861d91e3": {
+   "label": "Optical uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Optical Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dc959155b67a3ca1"
+  },
+  "3a43e7eb-06bc-4d5a-820b-4b4113e137b9": {
+   "label": "TokenTour",
+   "source": "title"
+  },
+  "83299754-fd80-4210-a4d5-ce9bc9c528ee": {
+   "label": "ZipLine",
+   "source": "title"
+  },
+  "7173c8c7-17e3-40fb-83b5-77a46c7ea452": {
+   "label": "Affective design",
+   "source": "llm",
+   "llm": {
+    "v2": "Affective Design"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c0c4162018fd5bb9"
+  },
+  "66518e46-c3cb-447e-b9a3-c8062a930f42": {
+   "label": "Tactile art",
+   "source": "llm",
+   "llm": {
+    "v2": "Tactile art"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2f9b78b24d5201e1"
+  },
+  "503cb4b2-96b4-4aee-90f3-48f062fb1de6": {
+   "label": "Reproducibility containerization",
+   "source": "llm",
+   "llm": {
+    "v2": "Reproducibility Containerization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7aaa92511eda7124"
+  },
+  "85d948eb-c342-40c5-a15d-677a35e28db9": {
+   "label": "Rectified flow",
+   "source": "llm",
+   "llm": {
+    "v2": "Rectified Flow"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "27cf67f95adf9217"
+  },
+  "635e70eb-d710-409a-99a8-842537403b6e": {
+   "label": "weighted MFV",
+   "source": "llm",
+   "llm": {
+    "v2": "Weighted MFV"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a61b1f793fb62c1b"
+  },
+  "43b165f0-40b2-45d5-a160-d0c9321c5974": {
+   "label": "arxAIv",
+   "source": "title"
+  },
+  "08f010fa-4324-4735-9bed-faa191f15e96": {
+   "label": "Geovisual accessibility",
+   "source": "llm",
+   "llm": {
+    "v2": "Geovisual Accessibility"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dfc760393041dfff"
+  },
+  "2588596f-3398-4787-9669-f29d02e7e90a": {
+   "label": "SIVA",
+   "source": "title"
+  },
+  "423211f7-d550-4567-a8bb-31f7452e33f7": {
+   "label": "Library accessibility",
+   "source": "llm",
+   "llm": {
+    "v2": "Library Accessibility"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1b29e937a161d7be"
+  },
+  "cf1d6a77-c00e-47d6-80d6-4c75a0999495": {
+   "label": "Perception alignment",
+   "source": "llm",
+   "llm": {
+    "v2": "Perception Alignment"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b2ff424a5b2f3a2d"
+  },
+  "ef649821-38c9-4cb5-9496-fd8edabdeaf6": {
+   "label": "Collaboration networks",
+   "source": "keyphrase",
+   "llm": {
+    "v2": null,
+    "v3": null
+   },
+   "promptVersion": null,
+   "model": "google/gemma-4-e4b",
+   "inputHash": "817ebaaef54ed1a7"
+  },
+  "7913abd3-5ee1-4ce5-9875-ae4cfa80de20": {
+   "label": "Datalog education",
+   "source": "llm",
+   "llm": {
+    "v2": "Datalog Education"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8b662e43479e9495"
+  },
+  "c71ca4ef-c30e-43a9-904c-c267e338c072": {
+   "label": "Materialized uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Materialized Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a8adecef480c6284"
+  },
+  "df4047c2-fb36-40bb-b522-1d213c6b1d84": {
+   "label": "Trust inventory",
+   "source": "llm",
+   "llm": {
+    "v2": "Trust Inventory"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "ed4404bf625015e3"
+  },
+  "fe53cc04-e52d-4991-9239-be50064b3bcd": {
+   "label": "CellPrism",
+   "source": "title"
+  },
+  "9ad8ef97-6273-4b70-be63-fb26a61e2d19": {
+   "label": "Skeleton",
+   "source": "title"
+  },
+  "4bd19ff1-151d-4e04-81c5-2af40d10f66e": {
+   "label": "Model steering",
+   "source": "llm",
+   "llm": {
+    "v2": "Model Steering"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0f72e556b971651e"
+  },
+  "a87d1ed4-8053-4d87-a30c-84d8c57f6599": {
+   "label": "ESVR",
+   "source": "title"
+  },
+  "b9254cb4-8d90-46ad-906a-3c78974bd525": {
+   "label": "Jacobi uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Jacobi Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0d2335a07a2c6222"
+  },
+  "57666a76-d0fa-46cd-8914-0fad28dae84f": {
+   "label": "Rendering quantum",
+   "source": "keyphrase",
+   "llm": {
+    "v2": null,
+    "v3": "Design Space"
+   },
+   "promptVersion": null,
+   "model": "google/gemma-4-e4b",
+   "inputHash": "ca942fb91686b2d6"
+  },
+  "c52d606c-875e-48da-8b4f-a3d8c6d877bc": {
+   "label": "Geographic bias",
+   "source": "llm",
+   "llm": {
+    "v2": "Geographic Bias"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e04a64c86510c7df"
+  },
+  "b845a710-9e97-42fe-8216-42a5b2da2e77": {
+   "label": "Stimuli pipeline",
+   "source": "llm",
+   "llm": {
+    "v2": "Stimuli Pipeline"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7e6ad0f12c233bd4"
+  },
+  "e46cc0eb-7271-4fe8-9022-287ab66c94d3": {
+   "label": "HiLSVA",
+   "source": "title"
+  },
+  "69408304-b234-4643-b1cd-bf0c0c43e8a6": {
+   "label": "Color Repair",
+   "source": "llm",
+   "llm": {
+    "v2": "Color Repair"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "81d27cf22aba11cf"
+  },
+  "bc86b630-438f-4642-8072-92a48999fb30": {
+   "label": "INR rendering",
+   "source": "llm",
+   "llm": {
+    "v2": "INR Rendering"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "077db69031663fc4"
+  },
+  "52fa494d-74ea-4ab1-84b8-efa6f4760e9d": {
+   "label": "EXaCTz",
+   "source": "title"
+  },
+  "479c61bc-456a-4fe9-84a1-4d1303d5961e": {
+   "label": "BLIMMP-Explorer",
+   "source": "title"
+  },
+  "74603add-599a-4fcb-8da9-036f7f00a71c": {
+   "label": "ProgressiVis",
+   "source": "title"
+  },
+  "1b804d0d-569b-41ed-83cb-a02943da6617": {
+   "label": "Flint",
+   "source": "title"
+  },
+  "d82062ab-8849-4f51-926d-e69a549a4939": {
+   "label": "Chart bias",
+   "source": "llm",
+   "llm": {
+    "v2": "Chart Bias"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "03eefbec0cd5dfef"
+  },
+  "a1dc740e-4342-4030-bead-71f59349b0a2": {
+   "label": "VQ-ANR",
+   "source": "title"
+  },
+  "3506dbae-1d83-4720-8584-1d03af38d64d": {
+   "label": "ChartFI",
+   "source": "title"
+  },
+  "9293532d-c6c1-4b4e-8ccd-9d59a19f9575": {
+   "label": "NCDL Explainer",
+   "source": "title"
+  },
+  "798092b1-271f-48b3-849e-223143dc4d92": {
+   "label": "SNAP-tFDP",
+   "source": "title"
+  },
+  "7b5ad0c7-2aed-497b-a433-6888dd8c6d8d": {
+   "label": "SalusChart",
+   "source": "title"
+  },
+  "eae12c6d-365f-4ee2-b0e1-5e6d318e7ee2": {
+   "label": "Neural features",
+   "source": "llm",
+   "llm": {
+    "v2": "Neural Features"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "edc553d18d67e214"
+  },
+  "bf13141f-bac2-45b9-ad25-ffc727f6139c": {
+   "label": "Region-aware Wasserstein",
+   "source": "llm",
+   "llm": {
+    "v2": "Region-Aware Wasserstein"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c2932565bedff19f"
+  },
+  "866923f1-8770-4bdb-bd4b-0a51f875e9da": {
+   "label": "Inference scaling",
+   "source": "llm",
+   "llm": {
+    "v2": "Inference Scaling"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dcb5b404cce11e0e"
+  },
+  "e7900e8e-ef7d-4795-a1f4-43ff0db5df9c": {
+   "label": "In-situ monitoring",
+   "source": "llm",
+   "llm": {
+    "v2": "In-Situ Monitoring"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "96c3d1a94b75d5b4"
+  },
+  "ecb09c76-759f-44a3-966e-ebf53b429a3e": {
+   "label": "Stalactite plots",
+   "source": "llm",
+   "llm": {
+    "v2": "Stalactite Plots"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "80042a8a00652af3"
+  },
+  "d024fb5f-cab9-4e0e-86d4-45375881bd54": {
+   "label": "Vortex extraction",
+   "source": "llm",
+   "llm": {
+    "v2": "Vortex Extraction"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "bb1c97ea9ea33e1f"
+  },
+  "b8530aea-6124-41c8-8747-5d2bd1f53c73": {
+   "label": "AI confidence",
+   "source": "llm",
+   "llm": {
+    "v2": "AI Confidence"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "fbce51e50503c2b3"
+  },
+  "9a2079cc-ca5e-4e6b-94ee-41eb3d53e410": {
+   "label": "VizPilot",
+   "source": "title"
+  },
+  "fb92730e-2e91-4cfc-b4b8-d8493c82528d": {
+   "label": "Multiresolution OT",
+   "source": "llm",
+   "llm": {
+    "v2": "Multiresolution OT"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6ac6d9e129beb290"
+  },
+  "c3dc23f1-70a2-4bf1-97a1-692374fc78cf": {
+   "label": "Streaming density",
+   "source": "llm",
+   "llm": {
+    "v2": "Streaming Density"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2c59e8aff9399045"
+  },
+  "726ccad9-097c-4012-b261-0ecfb543aa12": {
+   "label": "Homology preservation",
+   "source": "llm",
+   "llm": {
+    "v2": "Homology Preservation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5eb857d45559821f"
+  },
+  "29cb7d48-7761-4e05-9d68-eb12bd7c675f": {
+   "label": "Multi-persona design",
+   "source": "llm",
+   "llm": {
+    "v2": "Multi-persona design"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "529ccbb9c5f115cd"
+  },
+  "28b70fbd-dfba-418a-9463-01275311bd4c": {
+   "label": "Gap Index",
+   "source": "llm",
+   "llm": {
+    "v2": "Gap Index"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "80d8bd239f436f7f"
+  },
+  "90b1677a-2c2c-4b7f-8140-6acfe55723f7": {
+   "label": "SocialFiVis",
+   "source": "title"
+  },
+  "81989c19-650b-4c3d-886d-aac754a48e67": {
+   "label": "Sparse autoencoders",
+   "source": "llm",
+   "llm": {
+    "v2": "Foundation Models",
+    "v3": "Sparse Autoencoders"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b7313cb472b91331"
+  },
+  "745debe9-8a21-4f5c-9d92-fcef456704ff": {
+   "label": "IVML economics",
+   "source": "llm",
+   "llm": {
+    "v2": "IVML Economics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "ef6b55bb7d72a276"
+  },
+  "4257ce94-06ee-4dc0-801f-5be4f9468ac3": {
+   "label": "Stable cross-impacts",
+   "source": "llm",
+   "llm": {
+    "v2": "Stable Cross-Impacts"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "93b98ec33122db29"
+  },
+  "9c23ef68-2716-429b-bb39-d2ab0f9e45aa": {
+   "label": "LM distribution",
+   "source": "llm",
+   "llm": {
+    "v2": "LM Distribution"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4567c50d894caa8a"
+  },
+  "87f30936-8d4f-464d-8776-5bd66e9ea4c5": {
+   "label": "FZ-VIS",
+   "source": "title"
+  },
+  "a4f7037a-3d98-4820-8b91-63060c3a6ed3": {
+   "label": "Metric scaling",
+   "source": "llm",
+   "llm": {
+    "v2": "Metric Scaling"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "293458e65c406760"
+  },
+  "5c209e3b-de62-4ec1-b77b-c1faa777435f": {
+   "label": "Lottery ticket",
+   "source": "llm",
+   "llm": {
+    "v2": "NN Optimization",
+    "v3": "Lottery Ticket"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "85e4fdf6c6c9c9b6"
+  },
+  "553f0db4-ef15-45ec-9275-e8766088d0f4": {
+   "label": "Mastery Learning",
+   "source": "llm",
+   "llm": {
+    "v2": "Mastery Learning"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "25ae3edd0f67fdb5"
+  },
+  "4165def2-ecec-4ae6-94c5-48dba256e42c": {
+   "label": "FADEx",
+   "source": "title"
+  },
+  "7539c695-a2b7-4a9c-8820-20ac77eeb3d1": {
+   "label": "Active Inference",
+   "source": "llm",
+   "llm": {
+    "v2": "Active Inference"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0b27534dad5815ff"
+  },
+  "628e293b-264e-4d69-9452-70ccea9ddf91": {
+   "label": "Qualitative assessment",
+   "source": "llm",
+   "llm": {
+    "v2": "Qualitative Assessment"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dcf66064e650b2c3"
+  },
+  "2e4f4f7a-39c9-4329-8ff5-272291de742b": {
+   "label": "Feedback granularity",
+   "source": "llm",
+   "llm": {
+    "v2": "Feedback Granularity"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "9f6e2d4784351042"
+  },
+  "63c8e98a-ba85-426b-8a2f-21944f97e3f7": {
+   "label": "Ocular Harpsichord",
+   "source": "llm",
+   "llm": {
+    "v2": null,
+    "v3": "Ocular Harpsichord"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "cc41576717be2bac"
+  },
+  "7fdbcd5a-2f3f-4b87-a35f-2bd7af532b1c": {
+   "label": "Embedding exploration",
+   "source": "llm",
+   "llm": {
+    "v2": "Embedding Exploration"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "3d909d438198a985"
+  },
+  "1d9ef0b0-8336-43c4-babd-9c6c58d8e605": {
+   "label": "Meta-Acervos",
+   "source": "title"
+  },
+  "48c0f5c3-766b-4236-8bd3-00b3b6d031c5": {
+   "label": "Network manifolds",
+   "source": "llm",
+   "llm": {
+    "v2": "Network Manifolds"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f6aa3c83e370e35c"
+  },
+  "0ebd2e47-f3be-4a80-80ae-626053c2239b": {
+   "label": "Graph recovery",
+   "source": "llm",
+   "llm": {
+    "v2": "Graph Recovery"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "085e0d8ba21f7680"
+  },
+  "dc28744d-9d79-4806-a095-c973fced597c": {
+   "label": "Performative sensing",
+   "source": "llm",
+   "llm": {
+    "v2": "Performative Sensing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d590bf71c9dc82fd"
+  },
+  "7039e344-7754-4db7-bd10-c608d9f5eff1": {
+   "label": "FeatureZ",
+   "source": "title"
+  },
+  "64b0b904-c8af-470d-a520-26622f866a91": {
+   "label": "Juicy feedback",
+   "source": "llm",
+   "llm": {
+    "v2": "Juicy Feedback"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a41d33c45946b29d"
+  },
+  "0cce57ac-2c37-424a-8ea7-4b60b630781d": {
+   "label": "GeoXplain",
+   "source": "title"
+  },
+  "2e57c30e-a101-40bb-8d3c-ed6590e2b9d6": {
+   "label": "Slit-scan",
+   "source": "llm",
+   "llm": {
+    "v2": "Time Installation",
+    "v3": "Slit-scan"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e76a4629cf4e6388"
+  },
+  "bff4980c-ea87-46f9-afdb-dfed1a404e80": {
+   "label": "Sequential flow",
+   "source": "llm",
+   "llm": {
+    "v2": "Sequential Flow"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b10d5ea42ab7c7f2"
+  },
+  "fdf33e8e-d225-42b3-8464-daa3f2db08ac": {
+   "label": "Sound cartography",
+   "source": "llm",
+   "llm": {
+    "v2": "Sound Cartography"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "402def55cdc2a061"
+  },
+  "4be7eaa1-dd50-4f19-b89c-be47107fd815": {
+   "label": "Crossing guidance",
+   "source": "llm",
+   "llm": {
+    "v2": "Crossing Guidance"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b8729325116d1aa6"
+  },
+  "4ed6edff-5a89-4cf0-8bc2-28c8f9c9b9cf": {
+   "label": "Performance embodiment",
+   "source": "llm",
+   "llm": {
+    "v2": "Performance Embodiment"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7f5425306f78d9c5"
+  },
+  "9b3806c1-ebea-46b0-9e00-d8e5acdb48e9": {
+   "label": "Carbon budgeting",
+   "source": "llm",
+   "llm": {
+    "v2": "Carbon Budgeting"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "031404bfff2edc0e"
+  },
+  "8b5190f8-a26a-4b8c-b631-7616b886678b": {
+   "label": "Hybrid grids",
+   "source": "llm",
+   "llm": {
+    "v2": "Hybrid Grids"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c9631defe6a8ec08"
+  },
+  "8acf969b-ece9-4114-b495-850da266b9c0": {
+   "label": "HCAI framework",
+   "source": "llm",
+   "llm": {
+    "v2": "HCAI Framework"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d63afdf8a89bd799"
+  },
+  "2d0bb969-f675-40a6-84fd-741e9d4235a2": {
+   "label": "Abstraction imagery",
+   "source": "llm",
+   "llm": {
+    "v2": "Abstraction Imagery"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "810b4a4df751fdc4"
+  },
+  "e0cb3b68-ab70-40e3-b164-72e23e7a93dc": {
+   "label": "Opacity JNDs",
+   "source": "llm",
+   "llm": {
+    "v2": "Opacity JNDs"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b3f739d837f5710d"
+  },
+  "58db5cd2-45bd-4212-9f0c-52c233d5d992": {
+   "label": "Sheaf theory",
+   "source": "llm",
+   "llm": {
+    "v2": "Sheaf theory"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4c273ba95853011f"
+  },
+  "69575943-732d-41dd-9e25-9cd353e328fe": {
+   "label": "Lexara-RF",
+   "source": "title"
+  },
+  "ed8b9b5e-93d9-432e-a4d4-0e8a5ccd0bbb": {
+   "label": "Vis4GS",
+   "source": "title"
+  },
+  "778f45da-6754-4220-b111-63b06e6ca189": {
+   "label": "Tactile string",
+   "source": "llm",
+   "llm": {
+    "v2": "Tactile String"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c980b686411e7fa8"
+  },
+  "3eeffd12-7730-4a4b-83ec-e761431ae00a": {
+   "label": "Schema analysis",
+   "source": "llm",
+   "llm": {
+    "v2": "Schema Analysis"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b9ea49741cbdcabf"
+  },
+  "46e0ac40-ebab-4d1b-ac4f-44bcd8c1dcc5": {
+   "label": "Streami",
+   "source": "title"
+  },
+  "165ac99f-d970-4208-bc64-a397a9932db7": {
+   "label": "Agent-driven interpretation",
+   "source": "llm",
+   "llm": {
+    "v2": "Agent-driven interpretation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1502e32ff34bc0de"
+  },
+  "21b3bdeb-7be3-4204-86c4-d115058201b6": {
+   "label": "Attention saliency",
+   "source": "llm",
+   "llm": {
+    "v2": "Attention Saliency"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d47edb6081de6791"
+  },
+  "133bbc0f-0c12-43c9-9f58-6d5c7e0b1272": {
+   "label": "Dual modality",
+   "source": "llm",
+   "llm": {
+    "v2": "Dual Modality"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f92120bc4cf55a37"
+  },
+  "5fa7b025-959a-4a71-8ee6-c42440ffa626": {
+   "label": "Color practice",
+   "source": "llm",
+   "llm": {
+    "v2": "Color Practice"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "275f7cd96293b68f"
+  },
+  "dc3ef459-514b-4b2f-a435-3cc92ac1acee": {
+   "label": "Parameter mapping",
+   "source": "llm",
+   "llm": {
+    "v2": "Parameter Mapping"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "de93ff12973863b6"
+  },
+  "946e02cf-207f-432a-8299-5c984f67d3b0": {
+   "label": "Color aggregation",
+   "source": "llm",
+   "llm": {
+    "v2": "Color Aggregation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "cd255735d44b0fcf"
+  },
+  "527c5853-70cd-44ba-a01e-e6ed3a8d2e70": {
+   "label": "Text diffusion",
+   "source": "llm",
+   "llm": {
+    "v2": "Text Diffusion"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f1b01c819c487c64"
+  },
+  "a7e86848-d33b-46c8-b0de-a526e2a5b03a": {
+   "label": "Explanation bias",
+   "source": "llm",
+   "llm": {
+    "v2": "Explanation Bias"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "020adc8b3a01b71a"
+  },
+  "55105ddb-b366-48d4-8c5f-fd85dd5e2372": {
+   "label": "Chart boundaries",
+   "source": "llm",
+   "llm": {
+    "v2": "Chart boundaries"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "373d46d1a4423c82"
+  },
+  "44c1e7d0-f974-4b19-ae37-d9d253af78b2": {
+   "label": "LatentFlow",
+   "source": "title"
+  },
+  "52c54090-e507-4f73-bd94-cb5a56bca529": {
+   "label": "mlx-vis",
+   "source": "title"
+  },
+  "532a3945-02ab-4527-8d13-f06176201f5e": {
+   "label": "FA-INR",
+   "source": "title"
+  },
+  "1e639256-3bd0-4a10-81f7-b100924343bf": {
+   "label": "Attraction profiles",
+   "source": "llm",
+   "llm": {
+    "v2": "Attraction Profiles"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "a96d35edee360a46"
+  },
+  "fb4d5965-d1a1-467b-9f13-0ac596b78eab": {
+   "label": "Bundling taxonomy",
+   "source": "llm",
+   "llm": {
+    "v2": "Bundling Taxonomy"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6cb585c2b272b929"
+  },
+  "81230f00-2972-4679-88e5-3f601f909c7f": {
+   "label": "Uncertainty Morse",
+   "source": "llm",
+   "llm": {
+    "v2": "Uncertainty Morse"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "188c4df7048e89ff"
+  },
+  "3ab25979-d321-4ba3-a7ed-0bf5072c3599": {
+   "label": "GeneaLink",
+   "source": "title"
+  },
+  "fafcd6ce-cad5-4932-8004-e974e8bf7d7f": {
+   "label": "FOX",
+   "source": "title"
+  },
+  "91831526-5b25-44b6-81b5-a944195f6c06": {
+   "label": "Guided causality",
+   "source": "llm",
+   "llm": {
+    "v2": "Guided Causality"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0a78dd66a1a9525a"
+  },
+  "7831bd76-aca0-421d-805d-41e8b88f8ca6": {
+   "label": "Bias indicators",
+   "source": "llm",
+   "llm": {
+    "v2": "Bias Indicators"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d510518172531a96"
+  },
+  "e9a0e659-b2ea-4e2d-8a5e-8180edfcf7df": {
+   "label": "Claim support",
+   "source": "llm",
+   "llm": {
+    "v2": "Claim Support"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "90e1c239c7e888e3"
+  },
+  "2cb3dd50-06e1-459e-bdb1-e97ec0924e65": {
+   "label": "Civic physicalization",
+   "source": "llm",
+   "llm": {
+    "v2": "Civic Physicalization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "af1af4931ef4cb08"
+  },
+  "2a60efa5-c5a7-476e-90e2-a0939a2521fa": {
+   "label": "Topological partitioning",
+   "source": "llm",
+   "llm": {
+    "v2": "Topological Partitioning"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "314e382cda00ffde"
+  },
+  "680c7c1a-5646-4098-99af-ce25bbb5d70b": {
+   "label": "Inkling",
+   "source": "title"
+  },
+  "cb0109f8-666c-4a88-91c4-ae0ed75f02ac": {
+   "label": "Verify-First",
+   "source": "title"
+  },
+  "00c8ee2f-2e71-4050-b830-8ae73bda1861": {
+   "label": "Answer modality",
+   "source": "llm",
+   "llm": {
+    "v2": "Answer Modality"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d6c72c2e0ad71b13"
+  },
+  "5059d998-4c90-4407-ac3b-6371f72d36fc": {
+   "label": "ProvTales",
+   "source": "title"
+  },
+  "1e92c702-6584-42fc-80d4-84397c93b201": {
+   "label": "Literacy conceptualization",
+   "source": "llm",
+   "llm": {
+    "v2": "Literacy conceptualization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1dae49355fdb257d"
+  },
+  "8edbc65f-ef26-416d-8acd-a1e916226d22": {
+   "label": "Scalable critique",
+   "source": "llm",
+   "llm": {
+    "v2": "Scalable Critique"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "27a4eebf64f368bf"
+  },
+  "e1c4d1f0-46ce-4802-8277-1b00a52cb553": {
+   "label": "CôôrdVis-MD",
+   "source": "title"
+  },
+  "08c3a570-643f-4118-9fa1-a36c51c42390": {
+   "label": "Knowledge probing",
+   "source": "llm",
+   "llm": {
+    "v2": "Knowledge Probing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2d3c30feb37e36eb"
+  },
+  "abb39d59-bbbf-431b-955c-1aacd3caa2ee": {
+   "label": "Elastic metric",
+   "source": "llm",
+   "llm": {
+    "v2": "Elastic Metric"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "264a3379d7369b40"
+  },
+  "0b4b9296-7fc6-4305-a6d2-63997a82f487": {
+   "label": "Research paradigm",
+   "source": "llm",
+   "llm": {
+    "v2": "Research Paradigm"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4440809be949767a"
+  },
+  "8db48002-87ef-4959-9cb0-aa88b257cfd2": {
+   "label": "Assessment validity",
+   "source": "llm",
+   "llm": {
+    "v2": "Assessment Validity"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2e099971322f6323"
+  },
+  "466929ee-dcce-4a22-b6e2-e832fc14cf19": {
+   "label": "EmbargoLens",
+   "source": "title"
+  },
+  "c4bcb610-c386-4ad2-9520-3b7f7b02be4f": {
+   "label": "Mapper dynamics",
+   "source": "llm",
+   "llm": {
+    "v2": "Mapper Dynamics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d103781a7d0fd912"
+  },
+  "171af66b-0910-4b43-baae-6e8856740355": {
+   "label": "DiffGraph",
+   "source": "title"
+  },
+  "b771efa5-4e01-4639-9451-2545e36c7c6c": {
+   "label": "Causal reconstruction",
+   "source": "llm",
+   "llm": {
+    "v2": "Causal Reconstruction"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e0ce39ac5c4e71ea"
+  },
+  "62b58e0d-6add-4a66-95a1-ec09738075e9": {
+   "label": "Situated action",
+   "source": "llm",
+   "llm": {
+    "v2": "Situated Action"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "30bf8749792e1163"
+  },
+  "579c3a5a-21e4-47ea-9ea1-48bf3fbf5e99": {
+   "label": "UrbanTrace",
+   "source": "title"
+  },
+  "210639d8-d1a7-4e33-b61d-b1b74e17e6f1": {
+   "label": "Affective sonification",
+   "source": "llm",
+   "llm": {
+    "v2": "Affective Sonification"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "ad40b5f57c53f997"
+  },
+  "952ecf8c-f312-4506-a058-330cfcad8605": {
+   "label": "Coordinated agents",
+   "source": "llm",
+   "llm": {
+    "v2": "Coordinated Agents"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0a250084527819c6"
+  },
+  "b6e13c05-5baa-4a8f-9469-c4005e4f56f7": {
+   "label": "Uncertainty action",
+   "source": "llm",
+   "llm": {
+    "v2": "Uncertainty Action"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "108e37572f6d2893"
+  },
+  "bd7978f5-be05-4add-b315-99630af2bfe7": {
+   "label": "Chain tracing",
+   "source": "llm",
+   "llm": {
+    "v2": "Chain Tracing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dbd339d1614b8e3c"
+  },
+  "a8fedcb5-e1fe-4762-ba26-e9c2e4311527": {
+   "label": "Adversarial worm",
+   "source": "llm",
+   "llm": {
+    "v2": "Adversarial Worm"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "96724d9d15faaba5"
+  },
+  "b154613e-2621-49b8-8760-432490798e7b": {
+   "label": "Decision rules",
+   "source": "llm",
+   "llm": {
+    "v2": "Model Interpretation",
+    "v3": "Decision Rules"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2c86dad17b56fa0a"
+  },
+  "2fec6e17-16af-448f-825c-461c4e5a6e03": {
+   "label": "Embodied presence",
+   "source": "llm",
+   "llm": {
+    "v2": "Embodied Presence"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e811f9b93bc51d54"
+  },
+  "9739cc68-eb2a-423f-9c7f-acbd20a36d46": {
+   "label": "MLLM decomposition",
+   "source": "llm",
+   "llm": {
+    "v2": "MLLM Decomposition"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2c595158fb6f8af2"
+  },
+  "aede009e-85e8-4949-966c-bb1e01a96921": {
+   "label": "Motion storytelling",
+   "source": "llm",
+   "llm": {
+    "v2": "Motion Storytelling"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "cb08a33d13e1c5c9"
+  },
+  "1e260844-778a-4988-991e-99f88db4310a": {
+   "label": "LeakAnalysis",
+   "source": "title"
+  },
+  "a4966795-7e54-4ecc-a980-56c64eeeb264": {
+   "label": "Embargo breach",
+   "source": "llm",
+   "llm": {
+    "v2": "Embargo Breach"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dc1fad769976a350"
+  },
+  "83720ff0-c6fe-4ea6-a9b8-a6d62665ceb3": {
+   "label": "MLLM literacy",
+   "source": "llm",
+   "llm": {
+    "v2": "MLLM Literacy"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "bde231578f597b1e"
+  },
+  "6b6323ec-1f76-45c2-b8a9-69f85506e198": {
+   "label": "INR classification",
+   "source": "llm",
+   "llm": {
+    "v2": "INR Classification"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6d567543841bf437"
+  },
+  "e9f10987-725f-4cdb-83f6-4ca51d10c1b5": {
+   "label": "Conformational ensembles",
+   "source": "llm",
+   "llm": {
+    "v2": "Conformational Ensembles"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "dfd87a84e9b423c7"
+  },
+  "77d0a5e0-f867-496f-a66c-fd9f2cc1656c": {
+   "label": "AmpliFY",
+   "source": "title"
+  },
+  "2b02ffdf-9fab-470a-a7bf-079753721348": {
+   "label": "StateWeaver",
+   "source": "title"
+  },
+  "cf4a9fbc-e0bc-43f1-9be0-3c64bfc3e2dc": {
+   "label": "Intent traces",
+   "source": "llm",
+   "llm": {
+    "v2": "Intent Traces"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1a16aa9b40281585"
+  },
+  "317012f7-e173-42df-801f-4915668724b2": {
+   "label": "Tracking load",
+   "source": "llm",
+   "llm": {
+    "v2": "Tracking Load"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "f26d42745895302b"
+  },
+  "5748f9b7-7e8c-46a8-9b9a-1ee5b082b29e": {
+   "label": "DescribeMap",
+   "source": "title"
+  },
+  "5d795877-b944-464c-a71a-58fd9494a929": {
+   "label": "MLLM affect",
+   "source": "llm",
+   "llm": {
+    "v2": "MLLM Affect"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "65a3b38ac6b669c6"
+  },
+  "4afcbbb0-a3ce-484f-8f11-a36fe40b28f6": {
+   "label": "GPUMAP",
+   "source": "title"
+  },
+  "6e4c4674-f9ac-4159-b81d-5ca45f93ef76": {
+   "label": "Lived experience",
+   "source": "llm",
+   "llm": {
+    "v2": "Lived Experience"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "6118a2c856c475cb"
+  },
+  "00205855-c5de-45db-a9b9-62325f46def6": {
+   "label": "Dynamic RectEuler",
+   "source": "llm",
+   "llm": {
+    "v2": "Dynamic RectEuler"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "fa781466371c02c1"
+  },
+  "e5a3709c-d866-49ad-b00d-b47d652b39d3": {
+   "label": "Agentic authoring",
+   "source": "llm",
+   "llm": {
+    "v2": "Agentic Authoring"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e959ece33bb712e6"
+  },
+  "78d6ee8d-c56d-4a9d-aedc-502c11fbf65f": {
+   "label": "VP-RAFIAH",
+   "source": "llm",
+   "llm": {
+    "v2": null,
+    "v3": "VP-RAFIAH"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c7335beecef5ce3e"
+  },
+  "cbeb038a-c83f-4079-8e1e-5c530e14441f": {
+   "label": "Code tracing",
+   "source": "llm",
+   "llm": {
+    "v2": "Code Tracing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "c89967c457d8721b"
+  },
+  "94278ee1-e4fe-4c07-96ed-a0ac206c127f": {
+   "label": "Uncertainty search",
+   "source": "llm",
+   "llm": {
+    "v2": "Uncertainty Search"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5fa65b736dc138e0"
+  },
+  "e0b7f0d6-0d59-4e2c-bc39-2985dec7bda2": {
+   "label": "Embedding judgment",
+   "source": "llm",
+   "llm": {
+    "v2": "Embedding Judgment"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "14cba6e1206ce78a"
+  },
+  "762a3b29-787b-4b36-a69e-85fa6ea88e80": {
+   "label": "scRNA-seq benchmarking",
+   "source": "llm",
+   "llm": {
+    "v2": "scRNA-seq Benchmarking"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d4f7ad548065e233"
+  },
+  "37cc085c-b0bb-4e20-bb2d-d84c9710d7ac": {
+   "label": "Glyph assembly",
+   "source": "llm",
+   "llm": {
+    "v2": "Glyph Assembly"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d2b8a9407f0f2102"
+  },
+  "18154acd-4458-49f3-b860-63363846c1a9": {
+   "label": "Project AINA",
+   "source": "title"
+  },
+  "c7042551-436d-44f1-827d-c2b6ed2cef8a": {
+   "label": "Pluot",
+   "source": "title"
+  },
+  "cacd6d1c-af2b-44a7-b379-08030260ac08": {
+   "label": "Human-AI co-design",
+   "source": "llm",
+   "llm": {
+    "v2": "Human-AI Co-design"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0dc95dd7f03b5997"
+  },
+  "0e70c97b-38d9-41eb-9e6e-53600b70cd7e": {
+   "label": "Peak-a-boo",
+   "source": "title"
+  },
+  "17e87823-92dc-4117-b33c-eb36989d9e7c": {
+   "label": "Agency calibration",
+   "source": "llm",
+   "llm": {
+    "v2": "Agency Calibration"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "1877b246001b9c87"
+  },
+  "44033b8a-ff9b-4cb8-93f4-9d8e9f8e4e81": {
+   "label": "Phoneme emotion",
+   "source": "llm",
+   "llm": {
+    "v2": "Phoneme Emotion"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "e0ce2508ad0efd19"
+  },
+  "dc36215e-0b0f-41dc-822c-9168daa346c3": {
+   "label": "MEanings",
+   "source": "title"
+  },
+  "a2d0decb-aa88-49ea-9037-70e1737604e6": {
+   "label": "Cross-lingual attribution",
+   "source": "llm",
+   "llm": {
+    "v2": "Cross-Lingual Attribution"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5d2f458de3627335"
+  },
+  "5e255df5-50ca-4f67-829c-6bcd37bcee05": {
+   "label": "Institute dynamics",
+   "source": "llm",
+   "llm": {
+    "v2": "Institute Dynamics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "40a3643fb9de8667"
+  },
+  "6c06a2aa-e1a1-4d48-a8df-6a88809b0140": {
+   "label": "Fragment alignment",
+   "source": "llm",
+   "llm": {
+    "v2": "Fragment Alignment"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "3aa0a6c0bb1b0a60"
+  },
+  "399abc79-7da4-461f-9517-e8b32ecb0549": {
+   "label": "VizSync",
+   "source": "title"
+  },
+  "f21af8ac-3e6e-4c58-b76d-cf5c415ddd66": {
+   "label": "Visual adjudication",
+   "source": "llm",
+   "llm": {
+    "v2": "Visual Adjudication"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4a0713116c4f7a32"
+  },
+  "1df80fd9-f410-4676-953f-a9026903d197": {
+   "label": "Task-aware scaling",
+   "source": "llm",
+   "llm": {
+    "v2": "Task-Aware Scaling"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "271a279e8ac3c05c"
+  },
+  "fdc77f2e-cc1b-47f1-8e2a-b53d8c51703e": {
+   "label": "Education standards",
+   "source": "llm",
+   "llm": {
+    "v2": "Education Standards"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7d83fe26ab34f77e"
+  },
+  "4ea87996-0ea5-4992-ba1f-80f0d1ca8946": {
+   "label": "Activity feedback",
+   "source": "llm",
+   "llm": {
+    "v2": "Practice Review",
+    "v3": "Activity Feedback"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b107d0e21426f819"
+  },
+  "24a06b89-3d3c-4f51-95d6-37498f194155": {
+   "label": "Motion primitives",
+   "source": "llm",
+   "llm": {
+    "v2": "Motion Primitives"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "09eaa57e28d442c0"
+  },
+  "c847152a-48af-4d22-9689-a8cb2557f0fa": {
+   "label": "ProGram",
+   "source": "title"
+  },
+  "bd07a620-b774-4d2c-af34-b5b5c3d3a78e": {
+   "label": "PlotWise",
+   "source": "title"
+  },
+  "a28ea580-ff24-43c3-b009-56a3f2993f0f": {
+   "label": "Palette tooling",
+   "source": "llm",
+   "llm": {
+    "v2": "Palette Tooling"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2b22e8224a6fc87f"
+  },
+  "367cd0e0-4444-430e-b542-191a4aea1a86": {
+   "label": "Collection provenance",
+   "source": "llm",
+   "llm": {
+    "v2": "Collection Provenance"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "469e3481cde86590"
+  },
+  "37175365-7d7d-4de9-9987-50b55fa1678b": {
+   "label": "Philosophical drift",
+   "source": "llm",
+   "llm": {
+    "v2": "Philosophical Drift"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "862f312ca8297a12"
+  },
+  "eaae285e-15de-4fcc-bde2-74a227733284": {
+   "label": "Communicative motive",
+   "source": "llm",
+   "llm": {
+    "v2": "Communicative Motive"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "98d8641bb83cc69e"
+  },
+  "8127253b-f39f-4e5f-adba-7ec4143a664d": {
+   "label": "JITVis",
+   "source": "title"
+  },
+  "ad1b3abd-4337-4925-991b-1cc3b82297ab": {
+   "label": "Echo",
+   "source": "title"
+  },
+  "1cf44ff2-a778-4aa1-9840-da4fa5ea9b06": {
+   "label": "Belief space",
+   "source": "llm",
+   "llm": {
+    "v2": "Belief Space"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "fa64720026b5edd9"
+  },
+  "456f97ee-502c-45ae-b483-4cf01592a3b5": {
+   "label": "Zebra maps",
+   "source": "llm",
+   "llm": {
+    "v2": "Zebra Maps"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "ca6b9f44ab6e984f"
+  },
+  "2126f0b7-65d0-4fa2-a7dd-cd601472096d": {
+   "label": "Embodied geospatial",
+   "source": "llm",
+   "llm": {
+    "v2": "Embodied Geospatial"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "13c5f44e1866d2b5"
+  },
+  "e530df1a-0c28-4a1b-96b0-1a65ce14cc62": {
+   "label": "Tangible models",
+   "source": "llm",
+   "llm": {
+    "v2": "Tangible Models"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "869fd08e135fc5af"
+  },
+  "24a1dc24-dd00-44f6-95f7-b673d19a0157": {
+   "label": "Railroad layout",
+   "source": "llm",
+   "llm": {
+    "v2": "Railroad Layout"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "357cb04697947ae5"
+  },
+  "55c8a0af-96a9-40b2-9e7f-55e6ba96719b": {
+   "label": "Epidemic forecasting",
+   "source": "llm",
+   "llm": {
+    "v2": "Epidemic forecasting"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "89b5c4c31e3c070b"
+  },
+  "bfea3686-5d38-475b-b02a-bf5eba051d64": {
+   "label": "Waffle estimation",
+   "source": "llm",
+   "llm": {
+    "v2": "Waffle Estimation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "5fe368870b7d0416"
+  },
+  "e9f35553-b4f0-41bd-9e7e-bb4f4bdf3c30": {
+   "label": "Silence visualization",
+   "source": "llm",
+   "llm": {
+    "v2": "Silence Visualization"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "d2a6d1ae7a67403b"
+  },
+  "4af3ae20-da16-4903-a4f2-18e198b8ce85": {
+   "label": "Segmentation evaluation",
+   "source": "llm",
+   "llm": {
+    "v2": "Segmentation Evaluation"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "8511bbd309090c47"
+  },
+  "7e82d73e-8762-4950-830a-18c981e96620": {
+   "label": "Chemical dynamics",
+   "source": "llm",
+   "llm": {
+    "v2": "Chemical Dynamics"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "27e1c870917529ed"
+  },
+  "e3032a86-27f1-4067-bee5-6c63d389ab48": {
+   "label": "Semantic divergence",
+   "source": "llm",
+   "llm": {
+    "v2": "Semantic Divergence"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7b1eb0275ce1878d"
+  },
+  "1240b033-4f0c-4d69-85cc-767099b8290e": {
+   "label": "Affective characters",
+   "source": "llm",
+   "llm": {
+    "v2": "Affective Characters"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "4bed9e8d877fa43e"
+  },
+  "22479a86-57b9-449c-a50c-5bf0927ace05": {
+   "label": "Title framing",
+   "source": "llm",
+   "llm": {
+    "v2": "Title framing"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "2b63b2e90a879700"
+  },
+  "ebeb8417-22dc-4d6f-9075-e8db649ea097": {
+   "label": "PyProgressive",
+   "source": "title"
+  },
+  "0769d1bb-807c-4401-b5d6-aa023c980924": {
+   "label": "Assessment gap",
+   "source": "llm",
+   "llm": {
+    "v2": "Assessment Gap"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "0cd17aa96097489e"
+  },
+  "577fb153-1f55-4b9a-9ea1-0f6f018cbe61": {
+   "label": "VideoMaster",
+   "source": "title"
+  },
+  "307dc57b-40e8-44e6-840a-4636e92682ff": {
+   "label": "RRNL DSL",
+   "source": "llm",
+   "llm": {
+    "v2": "RRNL DSL"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "63389cf5e3f61e35"
+  },
+  "e32a30ec-fd29-4b3c-ad99-9a1b5f9b096d": {
+   "label": "Canine journeys",
+   "source": "llm",
+   "llm": {
+    "v2": "Canine journeys"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "de04a1f47b354930"
+  },
+  "dfc5c5f5-bc20-42b5-a93e-f46c12fe3d06": {
+   "label": "Novice XAI",
+   "source": "llm",
+   "llm": {
+    "v2": "Novice Interaction",
+    "v3": "Novice XAI"
+   },
+   "promptVersion": "v3",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "512dbdb80e6e3d19"
+  },
+  "eeb1a91c-5761-4ea7-8b0b-55e185123f87": {
+   "label": "Generative image",
+   "source": "keyphrase",
+   "llm": {
+    "v2": null,
+    "v3": "Design Space"
+   },
+   "promptVersion": null,
+   "model": "google/gemma-4-e4b",
+   "inputHash": "7e3b396e9d5346ce"
+  }
+ }
+}

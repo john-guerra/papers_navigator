@@ -593,6 +593,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   legendLabels: ["less similar", "more similar"],
   // Readable labels and a percentage instead of raw field names and a long float
   tooltip: [
+    { field: "shortLabel", title: "Label" },
     { field: "title", title: "Title" },
     { field: "authorNames", title: "Authors" },
     { field: "typeLabel", title: "Type" },
