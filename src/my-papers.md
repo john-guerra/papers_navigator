@@ -347,7 +347,9 @@ const watchingSection = renderWatching(
 // toast is gone (#52)
 followed;
 const previous = followedStore.backup();
-const restoreButton = previous
+const sameIds = (a, b) => a.length === b.length && a.every((d, i) => d.id === b[i].id);
+// Nothing to offer when the backup is the list you already have
+const restoreButton = previous && !sameIds(previous, followedStore.value)
   ? (() => {
       const button = html`<button class="btn-text">Restore previous list (${previous.length})</button>`;
       button.onclick = () => {

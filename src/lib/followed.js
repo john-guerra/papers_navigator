@@ -1,6 +1,6 @@
 const SEPARATOR = " · ";
 
-const isEntry = (d) => d && typeof d.id === "string" && d.id.length > 0;
+export const isEntry = (d) => d && typeof d.id === "string" && d.id.length > 0;
 
 function joinReasons(a, b) {
   const parts = [a, b]
@@ -90,14 +90,25 @@ export function createFollowedStore(
   Object.defineProperty(store, "value", { get: () => value });
   const replaceWithBackup = (list) => {
     const previous = load();
+    let previousBackup = null;
     try {
+      previousBackup = storage?.getItem(`${key}:backup`) ?? null;
       storage?.setItem(`${key}:backup`, JSON.stringify(previous));
     } catch (error) {
       console.warn("Could not back up My Papers", error);
     }
     set(list);
-    // Undo restores this exact list (an edit made in another tab within the toast's 10 s is lost)
-    return () => set(previous);
+    // Undo restores this exact list and the backup it replaced (an edit made in another tab
+    // within the toast's 10 s is lost)
+    return () => {
+      set(previous);
+      try {
+        if (previousBackup == null) storage?.removeItem?.(`${key}:backup`);
+        else storage?.setItem(`${key}:backup`, previousBackup);
+      } catch (error) {
+        console.warn("Could not restore the My Papers backup", error);
+      }
+    };
   };
 
   Object.assign(store, {
