@@ -1,6 +1,9 @@
 """Scrape the IEEE VIS program site into the normalized papers format.
 
-Usage: python -m pipeline.fetch_ieeevis --conference ieeevis2026
+Usage: python -m pipeline.fetch_ieeevis --conference ieeevis2026 [--refresh]
+
+The listing is always re-downloaded; paper/session pages come from the cache unless --refresh.
+After each run, prints what changed vs the previous papers.raw.json.
 """
 
 import argparse
@@ -9,11 +12,12 @@ import json
 import re
 import time
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
+from pipeline.changes import diff_papers, format_changes
 from pipeline.normalize import normalize_record
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -154,6 +158,8 @@ def assign_short_ids(ids: list[str], min_len: int = 8) -> dict[str, str]:
 
 def fetch_cached(url: str, cache_dir: Path, min_interval: float = 1.0, refresh: bool = False) -> str:
     global _last_request
+    if urlparse(url).path.lower().endswith(".pdf"):
+        raise ValueError(f"refusing to download a PDF: {url}")
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / (hashlib.sha256(url.encode()).hexdigest()[:24] + ".html")
     if path.exists() and not refresh:
@@ -169,19 +175,28 @@ def fetch_cached(url: str, cache_dir: Path, min_interval: float = 1.0, refresh: 
     return text
 
 
-def run(conference_id: str, refresh_listing: bool = True) -> Path:
+def run(conference_id: str, refresh_listing: bool = True, refresh: bool = False) -> dict:
+    """Scrape into papers.raw.json; `refresh` re-downloads paper/session pages (each URL once).
+    Returns the `diff_papers` change report vs the previous papers.raw.json (also printed)."""
     config = json.loads((ROOT / "conferences" / conference_id / "config.json").read_text())
     cache_dir = ROOT / "pipeline" / "cache" / conference_id
     listing_html = fetch_cached(config["listingUrl"], cache_dir, refresh=refresh_listing)
+    refreshed: set[str] = set()
+
+    def fetch_page(url):
+        page_refresh = refresh and url not in refreshed
+        refreshed.add(url)
+        return fetch_cached(url, cache_dir, refresh=page_refresh)
+
     listing = parse_listing(listing_html)
     short_ids = assign_short_ids([item["id"] for item in listing])
 
     records = []
     for n, item in enumerate(listing, 1):
-        page = parse_paper(fetch_cached(item["url"], cache_dir))
+        page = parse_paper(fetch_page(item["url"]))
         if not page["sessionId"] and item["sessionKey"]:
             session_url = f"{config['baseUrl']}/program/session/{item['sessionKey']}/"
-            session = parse_session(fetch_cached(session_url, cache_dir))
+            session = parse_session(fetch_page(session_url))
             page = {**page, **{k: v for k, v in session.items() if v}, "sessionId": item["sessionKey"]}
         if not page["abstract"]:
             print(f"⚠️  no abstract: {item['id']} {page['title']}")
@@ -190,14 +205,24 @@ def run(conference_id: str, refresh_listing: bool = True) -> Path:
             print(f"{n}/{len(listing)}")
 
     out = ROOT / "conferences" / conference_id / "data" / "papers.raw.json"
+    previous = json.loads(out.read_text()) if out.exists() else None
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(records, ensure_ascii=False, indent=1))
     print(f"wrote {len(records)} papers to {out}")
-    return out
+    # Printed only: conferences/<id>/data/ is committed, so no changes.json is written there.
+    changes = diff_papers(previous, records)
+    if previous is None:
+        print("No previous papers.raw.json to compare.")
+    else:
+        print(format_changes(changes))
+    return changes
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--conference", default="ieeevis2026")
+    parser.add_argument(
+        "--refresh", action="store_true", help="re-download cached paper/session pages (≤1 req/s)"
+    )
     args = parser.parse_args()
-    run(args.conference)
+    run(args.conference, refresh=args.refresh)

@@ -17,6 +17,7 @@ npm run build                       # CONFERENCE=<id> selects the conference (de
 .venv/bin/pytest pipeline           # Python tests
 .venv/bin/pytest pipeline/tests/test_fetch_ieeevis.py::test_parse_paper
 .venv/bin/python -m pipeline.fetch_ieeevis --conference ieeevis2026
+.venv/bin/python -m pipeline.fetch_ieeevis --conference ieeevis2026 --refresh   # re-download paper/session pages (~8 min); prints change report
 .venv/bin/python -m pipeline.embed --conference ieeevis2026
 scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John first
 ```
