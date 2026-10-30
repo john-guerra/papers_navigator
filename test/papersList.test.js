@@ -180,3 +180,47 @@ describe("PapersList More toggle", () => {
     expect(el.querySelector(".paper-more")).toBeNull();
   });
 });
+
+describe("PapersList title opens the app's details (John)", () => {
+  it("links the title to the details view and calls onTitle on a plain click", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const opened = [];
+    const el = PapersList(
+      [{ id: "p1", shortId: "s1", title: "T", url: "https://conf/p1" }],
+      {
+        tz: "US/Eastern",
+        details: {
+          href: (p) => `?paper=${p.shortId}`,
+          open: (p) => opened.push(p.id),
+        },
+      },
+    );
+    document.body.append(el);
+    const title = el.querySelector("a.title");
+    expect(title.getAttribute("href")).toBe("?paper=s1");
+    expect(title.hasAttribute("target")).toBe(false);
+    expect(title.classList.contains("paper-details-open")).toBe(true);
+    title.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+    expect(opened).toEqual(["p1"]);
+    // cmd/ctrl-click keeps the browser's open-in-new-tab
+    const e = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      metaKey: true,
+    });
+    title.dispatchEvent(e);
+    expect(opened).toEqual(["p1"]);
+    expect(e.defaultPrevented).toBe(false);
+    el.remove();
+  });
+  it("conferenceLink points to the paper's conference page in a new tab", async () => {
+    const { conferenceLink } = await import("../src/widgets/papersList.js");
+    const a = conferenceLink({ url: "https://conf/p1" });
+    expect(a.getAttribute("href")).toBe("https://conf/p1");
+    expect(a.getAttribute("target")).toBe("_blank");
+    expect(a.textContent).toContain("Conference page");
+    expect(conferenceLink({})).toBe("");
+  });
+});

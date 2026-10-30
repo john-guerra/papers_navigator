@@ -20,7 +20,7 @@ import { createPaperRoute } from "./components/paperRoute.js";
 import { paperPanel } from "./components/paperPanel.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
-import { PapersList } from "./widgets/papersList.js";
+import { PapersList, conferenceLink } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
 import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
 import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
@@ -275,7 +275,7 @@ if (viewMode === "Now / Next") {
 }
 // "over" shows the itinerary under its message for reference
 if (viewMode === "Itinerary" || !current || current.status === "over") {
-  display(renderItinerary(schedule, { tz, onUnfollow: unfollow, onDetails: (p) => openPaper(p), now, state: itineraryState }));
+  display(renderItinerary(schedule, { tz, onUnfollow: unfollow, onDetails: (p) => openPaper(p), detailsHref: (p) => paperRoute.href(p.shortId ?? p.id), now, state: itineraryState }));
 }
 ```
 
@@ -320,14 +320,14 @@ display(
     {
       tz,
       authorHref: authorUrl,
+      // The title opens the paper's details; "Conference page ↗" goes to the conference site
+      details: { href: (p) => paperRoute.href(p.shortId ?? p.id), open: (p) => openPaper(p) },
       preamble: (p) =>
         html`${p.new ? html`<span class="new-badge">New</span> ` : ""}${(p.reasons ?? [p.reason]).map((r) => html`<span class="reason-chip">${r}</span> `)}· Added ${new Date(p.addedOn).toLocaleDateString()}`,
       actions: (p) => {
         const button = html`<button class="follow-toggle" title="Remove from My Papers" aria-label="Remove from My Papers"><span class="ring" aria-hidden="true"></span>Remove</button>`;
         button.onclick = () => unfollow(p.id);
-        const details = html`<button class="btn-text paper-details-open">Details</button>`;
-        details.onclick = () => openPaper(p);
-        return html`<span class="paper-actions">${button}${details}</span>`;
+        return html`<span class="paper-actions">${button}${conferenceLink(p)}</span>`;
       },
     },
   ),

@@ -24,20 +24,54 @@ export function authorsLine(authors = [], authorHref) {
   );
 }
 
-function renderPaper(p, { tz, actions, preamble, authorHref }) {
+/** "Conference page ↗": the paper on the conference website, in a new tab ("" without a URL). */
+export function conferenceLink(p) {
+  return p.url
+    ? html`<a
+        class="conference-link"
+        href=${p.url}
+        target="_blank"
+        rel="noopener"
+        >Conference page ↗</a
+      >`
+    : "";
+}
+
+/**
+ * The title: with `details` ({href(p), open(p)}) it opens the paper's details in the app (a real
+ * link, so cmd/ctrl/middle-click still opens a new tab); otherwise the conference page.
+ */
+function titleLink(p, details) {
+  if (!details)
+    return html`<a class="title" href=${p.url} target="_blank" rel="noopener"
+      >${p.title}</a
+    >`;
+  const a = html`<a class="title paper-details-open" href=${details.href(p)}
+    >${p.title}</a
+  >`;
+  a.onclick = (event) => {
+    if (
+      event.button ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    event.preventDefault();
+    details.open(p);
+  };
+  return a;
+}
+
+function renderPaper(p, { tz, actions, preamble, authorHref, details }) {
   const where = [p.typeLabel ?? p.type, p.sessionName, p.room && `📍${p.room}`]
     .filter(Boolean)
     .join(" · ");
   const when = paperWhen(p, tz);
   const row = html`<div class="paper" data-paper-id=${p.id}>
     <div class="paper-title">
-      ${AWARD_EMOJI[p.award] ?? ""}<a
-        class="title"
-        href=${p.url}
-        target="_blank"
-        rel="noopener"
-        >${p.title}</a
-      >
+      ${AWARD_EMOJI[p.award] ?? ""}${titleLink(p, details)}
       ${actions ? actions(p) : ""}
     </div>
     ${preamble ? html`<div class="paper-preamble">${preamble(p)}</div>` : ""}
@@ -76,6 +110,7 @@ export function PapersList(
     actions,
     preamble,
     authorHref,
+    details,
     header,
     max = 100,
     shown: initial = max,
@@ -93,7 +128,7 @@ export function PapersList(
     const batch = papers.slice(shown, shown + count);
     list.append(
       ...batch.map((p) =>
-        renderPaper(p, { tz, actions, preamble, authorHref }),
+        renderPaper(p, { tz, actions, preamble, authorHref, details }),
       ),
     );
     shown += batch.length;
