@@ -57,4 +57,12 @@ describe("animationControl", () => {
     expect(el.textContent).not.toContain("By topic");
     el.remove();
   });
+
+  it("dispose stops following the store (no listener left per re-render)", () => {
+    const { store, el } = setup();
+    el.dispose();
+    store.set({ speed: "fast" });
+    expect(pressed(el)).toEqual(["By topic", "Normal"]);
+    el.remove();
+  });
 });

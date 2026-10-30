@@ -24,6 +24,8 @@ import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
+import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
+import { neighboursControl, neighboursPanel } from "./components/neighbours.js";
 import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
 import { clusterLabels } from "./lib/clusters.js";
 import { facetStrip } from "./widgets/facetStrip.js";
@@ -94,6 +96,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
   <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   ${mapInput}
   <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
+  ${neighboursCard}
 </section>
 <section class="explore-list">
   ${addBar}
@@ -105,10 +108,11 @@ ${paperDetail}
   <h3>Dimensionality reduction</h3>
   ${projectionInput}
   <h3>Animation</h3>
-  ${animationControl(animationStore, { hasTopics })}
+  ${animationInput}
   <h3>Appearance</h3>
   ${themeControl()}
   <h3>Advanced</h3>
+  ${neighboursInput}
   ${advancedDr}
   <details class="navio-summary">
     <summary>Summary of the matching papers (navio)</summary>
@@ -146,7 +150,13 @@ const closeOnOutsideClick = (event) => {
 document.addEventListener("click", closeOnOutsideClick);
 invalidation.then(() => document.removeEventListener("click", closeOnOutsideClick));
 // An open paper details panel takes Esc first
-const closeOnEscape = (event) => event.key === "Escape" && !document.querySelector(".paper-detail") && setFiltersOpen(false);
+// Esc closes the topmost layer only: preventDefault tells later handlers (the map's neighbour
+// pin, #102) that this Esc was used
+const closeOnEscape = (event) => {
+  if (event.key !== "Escape" || document.querySelector(".paper-detail") || !layout.classList.contains("filters-open")) return;
+  setFiltersOpen(false);
+  event.preventDefault();
+};
 document.addEventListener("keydown", closeOnEscape);
 invalidation.then(() => document.removeEventListener("keydown", closeOnEscape));
 let savedOpen = null;
@@ -388,6 +398,21 @@ const formatProjection = (d) => (conference.projections.includes(d) ? d.toUpperC
 const mapState = { projection: conference.projections[0], panel: null, map: null, shown: null, reset: 0, aligner: createAligner() };
 // Map animation (#82), remembered per browser; only "Align projections" moves points by itself
 const animationStore = createAnimationSettings();
+// Nearest neighbours (#102): settings per device; the pin survives redraws (not in the URL:
+// it's a passing look, and ?paper= already shares a paper)
+const neighbourStore = createNeighbourSettings();
+const neighbourIndex = createNeighbourIndex(toMatrix(embeddingsBuffer, papers.length), papers.map((p) => p.id), { dims: embeddingsBuffer.byteLength / 4 / papers.length });
+const neighbourState = { pinned: null };
+```
+
+```js
+// Options controls bound to their stores; built once, unbound when the cell is invalidated
+const animationInput = animationControl(animationStore, { hasTopics });
+const neighboursInput = neighboursControl(neighbourStore);
+invalidation.then(() => {
+  animationInput.dispose();
+  neighboursInput.dispose();
+});
 ```
 
 ```js
@@ -489,8 +514,6 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // Desktop: the map is sticky, so it fits the viewport height too (null on stacked layouts)
 const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
-// Survive re-runs: the paper last scrolled to, and how far the list is expanded
-const lastScrolled = { id: null };
 const scrollToPaper = (id) => {
   const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
   if (!row?.isConnected) return;
@@ -590,12 +613,57 @@ const mapInput = await BrushableScatterPlot(positioned, {
   from: previousMap,
   animate: mapAnimation(animationStore.value, { projectionChanged, stageOf: hasTopics ? (d) => d.cluster : null }),
   brush: keptBrush,
+  // Nearest neighbours (#102) among the papers on the map; settings follow the store live
+  neighbours: ((shownIds) => ({ similar: (id, k) => neighbourIndex.nearest(id, k, shownIds), ...neighbourStore.value, pinned: neighbourState.pinned }))(new Set(positioned.map((p) => p.id))),
 });
 // A run superseded while the map was being built never shows it: stop its motion and keep
 // mapState pointing at the map on screen
 if (mapRun.superseded) mapInput.stop();
 else Object.assign(mapState, { map: mapInput, shown: projectionKey, reset: mapReset });
 const map = Generators.input(mapInput);
+```
+
+```js
+// Nearest neighbours (#102): the card under the map lists the pinned paper's neighbours
+const neighboursCard = neighboursPanel({
+  paperOf: (id) => papers.find((p) => p.id === id),
+  href: (p) => paperRoute.href(p.shortId ?? p.id),
+  onOpen: (p) => openPaper(p.shortId ?? p.id),
+  onClose: () => mapState.map?.unpinNeighbours(),
+});
+```
+
+```js
+// Wire the map on screen to the card, the settings, Esc and keyboard focus on paper rows.
+// A click (or phone tap) on a point pins its neighbours and scrolls the list to that same paper:
+// one source (the nearest point), so the card and the list never disagree in dense areas. A
+// click also re-renders the list, so wait a frame and use the list that is actually on the page.
+{
+  const sync = (event) => {
+    neighbourState.pinned = mapInput.neighbours.pinned;
+    neighboursCard.show(mapInput.neighbours);
+    if (event?.detail.action === "pin") requestAnimationFrame(() => scrollToPaper(event.detail.pinned));
+  };
+  sync();
+  mapInput.addEventListener("neighbours", sync);
+  const onSettings = () => mapInput.neighbourSettings(neighbourStore.value);
+  neighbourStore.addEventListener("input", onSettings);
+  // Esc unpins, unless an open details panel or the Options drawer takes it first
+  const onKey = (event) => shouldUnpinOnEscape(event, { detailOpen: Boolean(document.querySelector(".paper-detail")) }) && mapInput.unpinNeighbours();
+  document.addEventListener("keydown", onKey);
+  // Keyboard (and focus) on a paper row previews its neighbours
+  const list = document.querySelector(".explore-list");
+  const onFocus = (event) => neighbourStore.value.enabled && event.target.matches?.(":focus-visible") && mapInput.previewNeighbours(event.target.closest?.("[data-paper-id]")?.dataset.paperId ?? null);
+  const onBlur = (event) => !list.contains(event.relatedTarget) && mapInput.previewNeighbours(null);
+  list?.addEventListener("focusin", onFocus);
+  list?.addEventListener("focusout", onBlur);
+  invalidation.then(() => {
+    neighbourStore.removeEventListener("input", onSettings);
+    document.removeEventListener("keydown", onKey);
+    list?.removeEventListener("focusin", onFocus);
+    list?.removeEventListener("focusout", onBlur);
+  });
+}
 ```
 
 ```js
@@ -736,21 +804,9 @@ const chipsRow = renderChips(chips, {
 ```
 
 ```js
-// Clicking a point on the map scrolls the list to that paper (no hidden "clicked" mode).
-// Vega keeps the click selected, so only scroll when the clicked paper changes. A click also
-// re-renders the list, so wait a frame and use the list that is actually on the page.
-{
-  const id = map.clicked[0]?.id ?? null;
-  const changed = id !== lastScrolled.id;
-  lastScrolled.id = id;
-  if (changed && id)
-    requestAnimationFrame(() => scrollToPaper(id));
-}
-```
-
-```js
 // Phones: the chart ignores touches (so the page scrolls), but a tap on a point still shows its
-// paper: find the nearest point to the tap and scroll the list to it
+// paper: find the nearest point to the tap, pin its neighbours (#102) and scroll the list to it;
+// a tap on empty map space unpins
 {
   const phone = matchMedia(PHONE_QUERY);
   const onTap = (event) => {
@@ -758,7 +814,12 @@ const chipsRow = renderChips(chips, {
     // Taps on controls in the map area (Select region, Hide map, Color by) aren't point taps
     if (event.target.closest("button, select, input, label, a")) return;
     const paper = mapInput.pointAt(event.clientX, event.clientY);
-    if (paper) scrollToPaper(paper.id);
+    if (paper) mapInput.pinNeighbours(paper.id);
+    else {
+      // The chart takes no pointer events here, so the tap's target is the section: test the area
+      const r = mapInput.getBoundingClientRect();
+      if (event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom) mapInput.unpinNeighbours();
+    }
   };
   const area = document.getElementById("explore-map");
   area.addEventListener("click", onTap);
