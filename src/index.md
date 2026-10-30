@@ -5,6 +5,8 @@ toc: false
 
 ```js
 import { createFollowedStore } from "./lib/followed.js";
+import { createMyPapers, createRulesStore, matches } from "./lib/rules.js";
+import { watchButton } from "./components/watchButton.js";
 import { defaultScoreRange, rankBySimilarity, toMatrix } from "./lib/search.js";
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
@@ -32,7 +34,10 @@ const embeddingsBuffer = FileAttachment("data/embeddings.bin").arrayBuffer();
 
 ```js
 const tz = conference.timezone;
-const store = createFollowedStore(conference.id);
+// My Papers = papers added by hand ∪ papers of watched people/institutions − exceptions (#5)
+const followedStore = createFollowedStore(conference.id);
+const rulesStore = createRulesStore(conference.id);
+const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
 const followed = Generators.input(store);
 invalidation.then(bindMyPapersBadge(store));
 const typeLabels = typeNames(papers, conference.typeNames);
@@ -194,7 +199,29 @@ const facetsInput = facetStrip(papers, {
     facet("sessions", "Session"),
   ],
   value: { types: defaultTypes },
-  rowAction: null, // Watch arrives in #6
+  // Watch a person or institution: a standing rule whose papers are always in My Papers (#6)
+  rowAction: (facetId, value) => {
+    const type = { authors: "author", affiliations: "affiliation" }[facetId];
+    if (!type) return null;
+    return watchButton({ type, value }, {
+      rules: rulesStore,
+      onWatch: (rule) => {
+        const saved = store.watch(rule);
+        // Papers this rule now keeps in My Papers (all types; not ones you removed by hand)
+        const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
+        showToast(`Watching ${value} · ${n} ${n === 1 ? "paper" : "papers"} (all types) now in My Papers`, {
+          actionLabel: "Undo",
+          onAction: () => store.unwatch([saved.id]),
+        });
+      },
+      onUnwatch: (id) => {
+        // Undo puts the same rule back (date, seen/new state and exceptions untouched)
+        const rule = rulesStore.value.rules.find((r) => r.id === id);
+        store.unwatch([id]);
+        showToast(`Stopped watching ${value}`, { actionLabel: "Undo", onAction: () => rule && rulesStore.add(rule) });
+      },
+    });
+  },
 });
 const facetSelection = Generators.input(facetsInput);
 ```
@@ -382,8 +409,8 @@ const papersList = PapersList(ordered, {
       <span class="ring" aria-hidden="true"></span>${entry ? "In My Papers" : "Add to My Papers"}</button>`;
     toggle.onclick = () => {
       if (entry) {
-        store.remove([p.id]);
-        showToast("Removed from My Papers", { actionLabel: "Undo", onAction: () => store.merge([entry]) });
+        const undo = store.remove([p.id]);
+        showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
       } else {
         const undo = addWithUndo(store, [p], hasQuery ? `★ ${query}` : "★ Added by hand");
         showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });

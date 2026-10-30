@@ -36,11 +36,21 @@ export function facetStrip(
   let state = normalize(value, facets);
   let openId = null;
 
-  const sheetToggle = html`<button type="button" class="fs-sheet-toggle" aria-expanded="false"></button>`;
-  const sheetDone = html`<button type="button" class="fs-sheet-done">Done</button>`;
-  const clearAll = html`<button type="button" class="fs-clear-all">${clearAllLabel}</button>`;
+  const sheetToggle = html`<button
+    type="button"
+    class="fs-sheet-toggle"
+    aria-expanded="false"
+  ></button>`;
+  const sheetDone = html`<button type="button" class="fs-sheet-done">
+    Done
+  </button>`;
+  const clearAll = html`<button type="button" class="fs-clear-all">
+    ${clearAllLabel}
+  </button>`;
   const strip = html`<div class="fs-strip">
-    <div class="fs-sheet-header"><span class="fs-sheet-title">${sheetLabel}</span>${sheetDone}</div>
+    <div class="fs-sheet-header">
+      <span class="fs-sheet-title">${sheetLabel}</span>${sheetDone}
+    </div>
   </div>`;
   const root = html`<div class="facet-strip">${sheetToggle}${strip}</div>`;
   const views = facets.map((facet, i) => facetView(facet, i));
@@ -51,13 +61,40 @@ export function facetStrip(
     const format = facet.format ?? String;
     const listId = `${uid}-${facet.id}-list`;
     const el = html`<div class="fs-facet" data-facet="${facet.id}"></div>`;
-    const button = html`<button type="button" class="fs-button" aria-haspopup="listbox" aria-expanded="false" aria-controls="${listId}"></button>`;
-    const clear = html`<button type="button" class="fs-clear" aria-label="${`Clear ${facet.label}`}">✕</button>`;
+    const button = html`<button
+      type="button"
+      class="fs-button"
+      aria-haspopup="listbox"
+      aria-expanded="false"
+      aria-controls="${listId}"
+    ></button>`;
+    const clear = html`<button
+      type="button"
+      class="fs-clear"
+      aria-label="${`Clear ${facet.label}`}"
+    >
+      ✕
+    </button>`;
     const search =
       facet.search === false
         ? null
-        : html`<input type="search" class="fs-search" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="${listId}" placeholder="${`Search ${facet.label.toLowerCase()}`}" aria-label="${`Search ${facet.label}`}">`;
-    const list = html`<ul class="fs-list" id="${listId}" role="listbox" aria-multiselectable="true" aria-label="${facet.label}"></ul>`;
+        : html`<input
+            type="search"
+            class="fs-search"
+            role="combobox"
+            aria-expanded="true"
+            aria-autocomplete="list"
+            aria-controls="${listId}"
+            placeholder="${`Search ${facet.label.toLowerCase()}`}"
+            aria-label="${`Search ${facet.label}`}"
+          />`;
+    const list = html`<ul
+      class="fs-list"
+      id="${listId}"
+      role="listbox"
+      aria-multiselectable="true"
+      aria-label="${facet.label}"
+    ></ul>`;
     const showAll = html`<button type="button" class="fs-show-all"></button>`;
     const popover = html`<div class="fs-popover" hidden>
       ${search ?? ""}
@@ -81,7 +118,8 @@ export function facetStrip(
         const values = state[facet.id];
         el.classList.toggle("active", values.length > 0);
         const text = values.length
-          ? (facet.summary?.(values) ?? `${format(values[0])}${values.length > 1 ? ` +${values.length - 1}` : ""}`)
+          ? (facet.summary?.(values) ??
+            `${format(values[0])}${values.length > 1 ? ` +${values.length - 1}` : ""}`)
           : null;
         button.replaceChildren(
           html`<span class="fs-label">${facet.label}${text ? ": " : ""}</span>`,
@@ -96,7 +134,11 @@ export function facetStrip(
         const selected = new Set(state[facet.id]);
         const query = fold(search?.value ?? "");
         const all = counts(index)
-          .map(({ value, count }) => ({ value, count, label: String(format(value)) }))
+          .map(({ value, count }) => ({
+            value,
+            count,
+            label: String(format(value)),
+          }))
           .filter((d) => d.count > 0 || selected.has(d.value))
           .filter((d) => !query || fold(d.label).includes(query))
           .sort(comparator(facet.sort));
@@ -106,10 +148,18 @@ export function facetStrip(
         list.replaceChildren(
           ...options.map((d, i) => {
             const on = selected.has(d.value);
-            const row = html`<li role="option" id="${`${listId}-${i}`}" class="fs-row" aria-selected="${String(on)}" data-label="${d.label}">
+            const row = html`<li
+              role="option"
+              id="${`${listId}-${i}`}"
+              class="fs-row"
+              aria-selected="${String(on)}"
+              data-label="${d.label}"
+            >
               <span class="fs-check" aria-hidden="true"></span>
               <span class="fs-name">${d.label}</span>
-              <span class="fs-scent" aria-hidden="true"><span style="${`width:${(100 * d.count) / top}%`}"></span></span>
+              <span class="fs-scent" aria-hidden="true"
+                ><span style="${`width:${(100 * d.count) / top}%`}"></span
+              ></span>
               <span class="fs-count">${d.count}</span>
             </li>`;
             row.classList.toggle("fs-active", i === active);
@@ -126,9 +176,11 @@ export function facetStrip(
             return row;
           }),
         );
-        if (!options.length) list.append(html`<li class="fs-empty">No matches</li>`);
+        if (!options.length)
+          list.append(html`<li class="fs-empty">No matches</li>`);
         const target = focusTarget();
-        if (active >= 0) target.setAttribute("aria-activedescendant", `${listId}-${active}`);
+        if (active >= 0)
+          target.setAttribute("aria-activedescendant", `${listId}-${active}`);
         else target.removeAttribute("aria-activedescendant");
         list.children[active]?.scrollIntoView?.({ block: "nearest" });
         showAll.hidden = showingAll || all.length <= options.length;
@@ -142,7 +194,9 @@ export function facetStrip(
         button.setAttribute("aria-expanded", "true");
         el.classList.add("open");
         view.renderList();
-        const room = (root.ownerDocument.defaultView?.innerWidth ?? 0) - el.getBoundingClientRect().left;
+        const room =
+          (root.ownerDocument.defaultView?.innerWidth ?? 0) -
+          el.getBoundingClientRect().left;
         popover.classList.toggle("fs-align-right", room > 0 && room < 340);
         focusTarget().focus();
       },
@@ -154,7 +208,8 @@ export function facetStrip(
     };
 
     button.onclick = () => {
-      if (isPhone() && !root.classList.contains("fs-sheet-open")) setSheet(true);
+      if (isPhone() && !root.classList.contains("fs-sheet-open"))
+        setSheet(true);
       setOpen(openId === facet.id ? null : facet.id);
     };
     clear.onclick = () => {
@@ -172,6 +227,8 @@ export function facetStrip(
       view.renderList();
     });
     popover.addEventListener("keydown", (event) => {
+      // Keys on a row action (e.g. Watch) belong to that button
+      if (event.target.closest?.(".fs-row-action")) return;
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         const step = event.key === "ArrowDown" ? 1 : -1;
@@ -203,7 +260,10 @@ export function facetStrip(
 
   function toggle(id, v) {
     const values = state[id];
-    state = { ...state, [id]: values.includes(v) ? values.filter((d) => d !== v) : [...values, v] };
+    state = {
+      ...state,
+      [id]: values.includes(v) ? values.filter((d) => d !== v) : [...values, v],
+    };
     changed();
   }
 
@@ -233,7 +293,8 @@ export function facetStrip(
   }
 
   function onOutsideClick(event) {
-    if (!root.isConnected) return root.ownerDocument.removeEventListener("click", onOutsideClick);
+    if (!root.isConnected)
+      return root.ownerDocument.removeEventListener("click", onOutsideClick);
     if (event.composedPath().includes(root)) return;
     setOpen(null);
   }
@@ -245,10 +306,13 @@ export function facetStrip(
   }
 
   function isPhone() {
-    return root.ownerDocument.defaultView?.matchMedia?.(phoneQuery).matches ?? false;
+    return (
+      root.ownerDocument.defaultView?.matchMedia?.(phoneQuery).matches ?? false
+    );
   }
 
-  sheetToggle.onclick = () => setSheet(!root.classList.contains("fs-sheet-open"));
+  sheetToggle.onclick = () =>
+    setSheet(!root.classList.contains("fs-sheet-open"));
   sheetDone.onclick = () => setSheet(false);
   clearAll.onclick = () => {
     state = normalize({}, facets);
@@ -281,7 +345,11 @@ export function facetFilter(data, facets, value = {}) {
   const active = facets
     .filter((f) => value[f.id]?.length)
     .map((f) => [f.accessor, new Set(value[f.id])]);
-  return data.filter((d) => active.every(([accessor, set]) => valuesOf(accessor(d)).some((v) => set.has(v))));
+  return data.filter((d) =>
+    active.every(([accessor, set]) =>
+      valuesOf(accessor(d)).some((v) => set.has(v)),
+    ),
+  );
 }
 
 let instances = 0;
@@ -292,7 +360,9 @@ function valuesOf(v) {
 }
 
 function normalize(value, facets) {
-  return Object.fromEntries(facets.map((f) => [f.id, [...(value?.[f.id] ?? [])]]));
+  return Object.fromEntries(
+    facets.map((f) => [f.id, [...(value?.[f.id] ?? [])]]),
+  );
 }
 
 /** Lowercase without accents, for in-facet search. */
@@ -302,7 +372,8 @@ function fold(text) {
 
 function comparator(sort = "count") {
   if (typeof sort === "function") return sort;
-  const byLabel = (a, b) => a.label.localeCompare(b.label) || ascending(a.label, b.label);
+  const byLabel = (a, b) =>
+    a.label.localeCompare(b.label) || ascending(a.label, b.label);
   if (sort === "alpha") return byLabel;
   return (a, b) => descending(a.count, b.count) || byLabel(a, b);
 }
@@ -310,7 +381,8 @@ function comparator(sort = "count") {
 const STYLE_ID = "facet-strip-style";
 
 function injectStyle() {
-  if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
+  if (typeof document === "undefined" || document.getElementById(STYLE_ID))
+    return;
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = CSS;

@@ -5,10 +5,13 @@ export function bindMyPapersBadge(store, root = document) {
     for (const badge of root.querySelectorAll(".badge-my-papers")) {
       badge.textContent = String(n);
       badge.hidden = n === 0;
-      badge.setAttribute(
-        "aria-label",
-        `${n} ${n === 1 ? "paper" : "papers"} in My Papers`,
-      );
+      // aria-label is ignored on a <span>; label the link so screen readers hear the count
+      badge
+        .closest("a")
+        ?.setAttribute(
+          "aria-label",
+          `My Papers, ${n} ${n === 1 ? "paper" : "papers"}`,
+        );
     }
   };
   update();

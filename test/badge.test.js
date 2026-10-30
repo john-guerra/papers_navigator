@@ -16,6 +16,7 @@ describe("bindMyPapersBadge", () => {
     value = [];
     store.dispatchEvent(new Event("input"));
     expect(badge.hidden).toBe(true);
-    expect(badge.getAttribute("aria-label")).toBe("0 papers in My Papers");
+    // aria-label on a <span> is ignored by screen readers: label the link instead
+    expect(document.querySelector("a").getAttribute("aria-label")).toBe("My Papers, 0 papers");
   });
 });

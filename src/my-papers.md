@@ -5,6 +5,7 @@ toc: false
 
 ```js
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
+import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { groupIntoSlots, nowNext } from "./lib/schedule.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
@@ -21,7 +22,10 @@ const papers = FileAttachment("data/papers.json").json();
 
 ```js
 const tz = conference.timezone;
-const store = createFollowedStore(conference.id);
+// My Papers = papers added by hand ∪ papers of watched people/institutions − exceptions (#5)
+const followedStore = createFollowedStore(conference.id);
+const rulesStore = createRulesStore(conference.id);
+const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
 const followed = Generators.input(store);
 invalidation.then(bindMyPapersBadge(store));
 // Debug: ?now=2026-11-10T15:14:00Z pretends it is that moment (and freezes the clock)
@@ -72,8 +76,8 @@ if (shared.ids.length || shared.unknown.length) {
   };
   banner.append(
     renderShareBanner(shared, {
-      onMerge: () => (store.merge(sharedReason()), done()),
-      onReplace: () => (store.replace(sharedReason()), done()),
+      onMerge: () => (followedStore.merge(sharedReason()), done()),
+      onReplace: () => (followedStore.replace(sharedReason()), done()),
       onIgnore: done,
     }),
   );
@@ -106,7 +110,7 @@ shareButton.onclick = () =>
       );
 const exportButton = html`<button>⬇️ Export JSON</button>`;
 exportButton.onclick = () => {
-  const blob = new Blob([store.exportJSON()], { type: "application/json" });
+  const blob = new Blob([followedStore.exportJSON()], { type: "application/json" });
   const a = Object.assign(document.createElement("a"), {
     href: URL.createObjectURL(blob),
     download: `${conference.id}-my-papers.json`,
@@ -123,11 +127,11 @@ importInput.querySelector("input").onchange = async (event) => {
   const text = await file.text();
   const run = (replace) => {
     try {
-      const before = store.value.length;
-      store.importJSON(text, { replace });
+      const before = followedStore.value.length;
+      followedStore.importJSON(text, { replace });
       importStatus.textContent = replace
-        ? `Replaced your list with ${store.value.length} papers.`
-        : `Added ${store.value.length - before} papers (${store.value.length} total).`;
+        ? `Replaced your list with ${followedStore.value.length} papers.`
+        : `Added ${followedStore.value.length - before} papers (${store.value.length} total in My Papers).`;
     } catch (error) {
       importStatus.textContent = error.message;
     }

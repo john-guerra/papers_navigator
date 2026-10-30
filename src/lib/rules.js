@@ -286,12 +286,22 @@ export function createMyPapers({ followed, rules, papers, scoresFor }) {
         rules.unexcept(ids);
       followed.add(list, reason, now);
     },
-    /** Removes by hand; papers a rule matches become exceptions so they stay out. */
+    /**
+     * Removes by hand; papers a rule matches become exceptions so they stay out.
+     * Returns an undo that restores exactly what was there (manual entries and exceptions).
+     */
     remove(ids) {
       const matched = matchedIds(rules.value.rules);
-      const caught = ids.filter((id) => matched.has(id));
-      if (caught.length) rules.except(caught);
+      const removed = followed.value.filter((d) => ids.includes(d.id));
+      const newExceptions = ids.filter(
+        (id) => matched.has(id) && !rules.value.exceptions.includes(id),
+      );
+      if (newExceptions.length) rules.except(newExceptions);
       followed.remove(ids);
+      return () => {
+        if (newExceptions.length) rules.unexcept(newExceptions);
+        if (removed.length) followed.merge(removed);
+      };
     },
     has(id) {
       return value.some((d) => d.id === id);

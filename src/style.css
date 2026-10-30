@@ -1247,3 +1247,17 @@ details.missing > summary {
   border-radius: 50%;
   box-sizing: border-box;
 }
+
+/* #6 — Watch toggle in the facet popovers */
+.watch-toggle {
+  min-height: 0;
+  padding: 0 6px;
+  color: var(--color-primary);
+  font: var(--typography-label-md);
+}
+
+.watch-toggle[aria-pressed="true"] {
+  border-radius: var(--rounded-full, 999px);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
