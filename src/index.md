@@ -7,14 +7,16 @@ toc: false
 import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore, matches, normalizeRule } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
-import { startTopicRefresh, thresholdFor, topicPreview, topicRule } from "./lib/researchTopics.js";
+import { researchRule, startTopicRefresh, thresholdFor, topicPreview, topicRule } from "./lib/researchTopics.js";
+import { RESEARCH_GOOD_CUT, createResearchStore, rankByMaxSimilarity, researchLabel, researchVectors, splitAbstracts } from "./lib/myResearch.js";
+import { myResearch } from "./components/myResearch.js";
 import { topicWatch } from "./components/topicWatch.js";
 import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
 import { renderPaperDetail } from "./components/paperDetail.js";
 import { followToggles } from "./components/followToggles.js";
-const scoreRampDomain = (papers) => {
+const scoreRampDomain = (papers, options) => {
   const scores = papers.map((d) => d.score).filter((s) => s != null);
-  return scores.length ? [relevanceCuts(scores).good, Math.max(...scores)] : null;
+  return scores.length ? [relevanceCuts(scores, options).good, Math.max(...scores)] : null;
 };
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
@@ -49,6 +51,9 @@ const store = createMyPapers({ followed: followedStore, rules: rulesStore, paper
 const followed = Generators.input(store);
 invalidation.then(bindMyPapersBadge(store));
 const rulesState = Generators.input(rulesStore);
+// "My research" (#27): pasted abstracts, kept in this browser only
+const researchStore = createResearchStore(conference.id);
+const research = Generators.input(researchStore);
 const typeLabels = typeNames(papers, conference.typeNames);
 // Topic clusters (#25) exist only if the pipeline computed them for this conference
 const hasTopics = papers.some((p) => p.clusterLabel);
@@ -60,7 +65,7 @@ const hasTopics = papers.some((p) => p.clusterLabel);
 
 <div id="explore" class="explore-layout">
 <section class="explore-controls">
-  <div class="search-row">${queryInput}</div>
+  <div class="search-row">${queryInput}${myResearchInput}</div>
   ${facetsInput}
   ${chipsRow}
   ${relevanceInput ?? ""}${topicWatchInput ?? ""}
@@ -145,7 +150,8 @@ const exampleChips = html`${(conference.exampleQueries ?? []).map((q, i) => {
 
 ```js
 const queryPlaceholder = "Describe what you are looking for, e.g. LLM agents for scientific visualization";
-const queryInput = Inputs.text({ placeholder: queryPlaceholder, value: conference.defaultQuery ?? "" });
+// Ranking by My research (#27) when the page left off: no default search in the box
+const queryInput = Inputs.text({ placeholder: queryPlaceholder, value: researchStore.value.active ? "" : (conference.defaultQuery ?? "") });
 // Search is always live (#12), debounced so typing doesn't recompute on every keystroke
 const query = Generators.observe((notify) => {
   let timer;
@@ -160,6 +166,36 @@ const query = Generators.observe((notify) => {
     queryInput.removeEventListener("input", onInput);
   };
 });
+const clearQuery = () => {
+  queryInput.querySelector("input").value = "";
+  queryInput.value = "";
+  queryInput.dispatchEvent(new Event("input", { bubbles: true }));
+};
+// Typing a search leaves "My research": one ranking at a time, the last one asked for
+queryInput.addEventListener("input", () => researchStore.value.active && researchStore.set({ active: false }));
+```
+
+```js
+// "My research" (#27): rank the program against your own abstracts instead of a search
+const researchAbstracts = research.active ? splitAbstracts(research.text) : [];
+const researchMode = researchAbstracts.length > 0;
+const rankingLabel = researchMode ? researchLabel(researchAbstracts.length) : query?.trim();
+// Abstracts score higher against everything than a short query: a higher Good cut
+const cutOptions = researchMode ? { good: RESEARCH_GOOD_CUT } : undefined;
+```
+
+```js
+const myResearchInput = myResearch(
+  { text: research.text, active: researchMode, ready: modelStatus === "ready", open: researchPanelState.open },
+  {
+    onToggle: (open) => (researchPanelState.open = open),
+    onRank: (text) => {
+      clearQuery();
+      researchStore.set({ text, active: true });
+    },
+    onForget: () => researchStore.forget(),
+  },
+);
 ```
 
 ```js
@@ -213,9 +249,11 @@ invalidation.then(() => topicRefresh.stop());
 ```js
 // Draw the map right away; scores (color/size) arrive once the model is ready.
 const scored = await (async () => {
-  if (!query?.trim() || modelStatus !== "ready") return papers.map((p) => ({ ...p, score: null }));
+  if ((!researchMode && !query?.trim()) || modelStatus !== "ready") return papers.map((p) => ({ ...p, score: null }));
   const embed = await getEmbedder();
   const matrix = toMatrix(embeddingsBuffer, papers.length);
+  // My research: each paper scored by its closest abstract (long abstracts are chunked)
+  if (researchMode) return rankByMaxSimilarity(await researchVectors(embed, researchAbstracts), matrix, papers);
   return rankBySimilarity(await embed(query), matrix, papers);
 })();
 ```
@@ -326,6 +364,7 @@ const scrollToPaper = (id) => {
 };
 const relevanceState = { level: "good", people: 0 };
 const topicWatchState = { open: false };
+const researchPanelState = { open: false };
 const listState = { key: null, shown: 100 };
 // The map reads its colors from CSS tokens when drawn: redraw when Appearance changes
 const theme = Generators.observe((notify) => {
@@ -349,7 +388,7 @@ const resetMap = () => ++mapReset.value;
 mapReset; // redraw (clearing the brush) when the map-region chip is cleared
 theme; // and when Appearance changes (colors come from the tokens)
 const positioned = applyProjection(filtered, projections[projection]).papers;
-const hasQuery = Boolean(query?.trim()) && modelStatus === "ready";
+const hasQuery = (researchMode || Boolean(query?.trim())) && modelStatus === "ready";
 // Similarity only exists after a search; until then one neutral color
 const colorField = colorBy === "score" && !hasQuery ? null : colorBy;
 const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session", clusterLabel: "Topic" };
@@ -367,11 +406,11 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labels: showTopics ? clusterLabels(positioned) : null,
   labelSize: mapWidth < 500 ? 10 : 11,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
-  scoreDomain: hasQuery ? scoreRampDomain(scored) : null,
+  scoreDomain: hasQuery ? scoreRampDomain(scored, cutOptions) : null,
   tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), "score"],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
-  title: `${positioned.length} papers${hasQuery ? ` by similarity to “${query}”` : ""}`,
+  title: `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,
 });
 const map = Generators.input(mapInput);
 ```
@@ -396,7 +435,7 @@ if (hasQuery && peopleCount > relevanceState.people && relevanceState.level !== 
   showToast("Showing All matches for the people and institutions you picked");
 }
 relevanceState.people = peopleCount;
-const cuts = relevanceCuts(scored.map((d) => d.score));
+const cuts = relevanceCuts(scored.map((d) => d.score), cutOptions);
 const relevanceInput = hasQuery
   ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level })
   : null;
@@ -413,12 +452,18 @@ const selected = inRange;
 ```js
 // Research topics (#24): watch this search as a rule; matches are computed now and cached.
 // Its own cell: it follows My Papers and the rules without re-running the list.
-const watchedTopic = hasQuery ? rulesState.rules.find((r) => r.id === normalizeRule({ type: "topic", value: query })?.id) : null;
+// My research: the rule saved from these same abstracts, whatever its name
+const watchedTopic = !hasQuery
+  ? null
+  : researchMode
+    ? rulesState.rules.find((r) => r.research && sameSet(r.research, researchAbstracts))
+    : rulesState.rules.find((r) => r.id === normalizeRule({ type: "topic", value: query })?.id);
 const inMyPapers = new Set(followed.map((d) => d.id));
 const topicWatchInput = hasQuery
   ? topicWatch(
       {
-        query: query.trim(),
+        query: rankingLabel,
+        research: researchMode ? { name: "My research" } : null,
         // Whole program, all types: a rule ignores facets and map region
         previews: Object.fromEntries(["strong", "good"].map((l) => [l, topicPreview(scored, thresholdFor(cuts, l), { inMyPapers, current: watchedTopic?.matches })])),
         current: watchedTopic,
@@ -427,9 +472,10 @@ const topicWatchInput = hasQuery
       },
       {
         onToggle: (open) => (topicWatchState.open = open),
-        onSave: (level) => {
-          const previous = watchedTopic;
-          const saved = store.watch(topicRule(query, level, cuts, scored));
+        onSave: (level, name) => {
+          const rule = researchMode ? researchRule(name, researchAbstracts, level, cuts, scored) : topicRule(query, level, cuts, scored);
+          const previous = rulesState.rules.find((r) => r.id === normalizeRule(rule)?.id);
+          const saved = store.watch(rule);
           const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
           showToast(`Watching research topic “${saved.value}” · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`, {
             actionLabel: "Undo",
@@ -445,7 +491,7 @@ const topicWatchInput = hasQuery
 // Three ways into My Papers (DESIGN.md): this is "Add N", bound to exactly the listed papers
 const regionActive = map.brushed.length < positioned.length;
 const addReason = selectionReason({
-  query: hasQuery ? query : null,
+  query: hasQuery ? rankingLabel : null,
   authors,
   affiliations,
   keywords,
@@ -466,15 +512,13 @@ const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))
     showToast(`Added ${fresh.length} to My Papers`, { actionLabel: "Undo", onAction: undo });
   },
 });
-const clearQuery = () => {
-  queryInput.querySelector("input").value = "";
-  queryInput.value = "";
-  queryInput.dispatchEvent(new Event("input", { bubbles: true }));
-};
+const levelName = { strong: "Strong", good: "Good", all: "All" }[relevance];
+const leaveResearch = () => researchStore.value.active && researchStore.set({ active: false });
 const chips = [
-  hasQuery && {
+  hasQuery && researchMode && { label: rankingLabel, value: `${levelName} matches`, onClear: leaveResearch },
+  hasQuery && !researchMode && {
     label: "Search",
-    value: `${query} · ${{ strong: "Strong", good: "Good", all: "All" }[relevance]} matches`,
+    value: `${query} · ${levelName} matches`,
     onClear: clearQuery,
   },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
@@ -484,6 +528,7 @@ const chipsRow = renderChips(chips, {
     chips.length > 1
       ? () => {
           clearQuery();
+          leaveResearch();
           resetMap();
         }
       : null,
@@ -544,7 +589,7 @@ const listToggles = followToggles({
       const undo = store.remove([p.id]);
       showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
     } else {
-      const undo = addWithUndo(store, [p], hasQuery ? `★ ${query}` : "★ Added by hand");
+      const undo = addWithUndo(store, [p], hasQuery ? `★ ${rankingLabel}` : "★ Added by hand");
       showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
     }
   },
@@ -555,7 +600,9 @@ const papersList = PapersList(ordered, {
   onShow: (n) => (listState.shown = n),
   tz,
   header: "",
-  preamble: (p) => (p.score != null ? `🔍 ${(p.score * 100).toFixed(1)}%` : ""),
+  // My research with several abstracts: which one the paper is closest to
+  preamble: (p) =>
+    p.score == null ? "" : `🔍 ${(p.score * 100).toFixed(1)}%${researchAbstracts.length > 1 ? ` · abstract ${p.abstractIndex + 1}` : ""}`,
   actions: (p) => {
     const details = html`<button class="btn-text paper-details-open">Details</button>`;
     details.onclick = () => openPaper(p.shortId ?? p.id);

@@ -25,14 +25,15 @@ export function rankBySimilarity(query, matrix, papers, dims = DIMS) {
 /**
  * Cut points for the Strong / Good / All relevance control (DESIGN.md → Relevance control).
  * Good: 0.30 when at least 5 papers clear it, else the 10th best score (short queries score
- * low). Strong: halfway from Good to the best score.
+ * low). Strong: halfway from Good to the best score. `good` overrides 0.30 for longer queries
+ * ("My research" abstracts, #27, score higher against everything: RESEARCH_GOOD_CUT).
  */
-export function relevanceCuts(scores) {
+export function relevanceCuts(scores, { good: base = 0.3 } = {}) {
   const sorted = scores.filter((s) => s != null).sort((a, b) => b - a);
   if (!sorted.length) return { good: 0, strong: 0 };
   const good =
-    sorted.filter((s) => s >= 0.3).length >= 5
-      ? 0.3
+    sorted.filter((s) => s >= base).length >= 5
+      ? base
       : sorted[Math.min(9, sorted.length - 1)];
   return { good, strong: good + (sorted[0] - good) / 2 };
 }

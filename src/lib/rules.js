@@ -22,6 +22,8 @@
  * @property {"strong" | "good"} [level] topic only: the relevance level it was saved at
  * @property {Record<string, number>} [matches] topic only: cached `paper id → score` of the
  *   papers at or above the threshold, so My Papers works without the language model (#24)
+ * @property {string[]} [research] "My research" topic only (#27): the abstracts it is ranked
+ *   against (`value` is then just its name). Kept on this device and in exports, never in links
  * @property {string} [evaluatedOn] topic only: ISO date `matches` were computed; missing for a
  *   rule that arrived without them (share link), which matches nothing until evaluated
  * @property {string} addedOn ISO date
@@ -37,6 +39,8 @@
  * @property {string[]} ruleIds rules matching this paper (exceptions excluded)
  * @property {boolean} new rule-only paper not yet seen
  */
+
+import { cleanAbstracts } from "./myResearch.js";
 
 const SEPARATOR = " · ";
 const TYPES = new Set(["author", "affiliation", "topic"]);
@@ -61,13 +65,17 @@ export function normalizeRule(rule, now = new Date()) {
   const type = rule?.type;
   const value = String(rule?.value ?? "").trim();
   if (!TYPES.has(type) || !value) return null;
+  // "My research" (#27): a research topic ranked against your abstracts; `value` is its name.
+  // Its own id prefix, so it never replaces a search topic with the same words.
+  const research = type === "topic" ? cleanAbstracts(rule.research) : [];
   const normalized = {
-    id: `${type}:${normalizeText(value)}`,
+    id: `${research.length ? "research" : type}:${normalizeText(value)}`,
     type,
     value,
     addedOn: isoOr(rule.addedOn, now),
   };
   if (type === "topic") Object.assign(normalized, topicFields(rule));
+  if (research.length) normalized.research = research;
   return normalized;
 }
 
@@ -267,6 +275,7 @@ export function createRulesStore(
           // matches cached for another threshold are dropped until it is re-evaluated
           const { matches, evaluatedOn, ...rest } = existing;
           saved = { ...rest, threshold: next.threshold, level: next.level };
+          if (next.research) saved.research = next.research;
           if (next.matches) {
             saved.matches = next.matches;
             if (next.evaluatedOn) saved.evaluatedOn = next.evaluatedOn;

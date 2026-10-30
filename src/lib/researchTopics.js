@@ -10,6 +10,7 @@
  * this similar to my query"; the level is kept only to describe the rule.
  */
 import { DIMS } from "./search.js";
+import { maxSimilarityMatches, researchVectors } from "./myResearch.js";
 
 const round4 = (x) => Math.round(x * 1e4) / 1e4;
 const isTopic = (rule) => rule.type === "topic";
@@ -49,6 +50,16 @@ export function topicRule(query, level, cuts, scored, now = new Date()) {
     matches,
     evaluatedOn: now.toISOString(),
   };
+}
+
+/**
+ * A "My research" topic rule (#27): like `topicRule`, but `value` is a short name (what the
+ * reason and share UI show) and the abstracts it was ranked against travel on the rule, so
+ * background re-evaluation embeds the abstracts, not the name.
+ */
+export function researchRule(name, abstracts, level, cuts, scored, now) {
+  const { type, value, ...rest } = topicRule(name, level, cuts, scored, now);
+  return { type, value, research: [...abstracts], ...rest };
 }
 
 /**
@@ -109,8 +120,22 @@ export async function refreshTopicRules({
   );
   const updates = [];
   for (const rule of targets) {
-    const vector = await embed(rule.value);
-    const matches = topicMatches(vector, matrix, papers, rule.threshold, dims);
+    // "My research" rules: best of their abstracts; search topics: their query
+    const matches = rule.research
+      ? maxSimilarityMatches(
+          await researchVectors(embed, rule.research),
+          matrix,
+          papers,
+          rule.threshold,
+          dims,
+        )
+      : topicMatches(
+          await embed(rule.value),
+          matrix,
+          papers,
+          rule.threshold,
+          dims,
+        );
     if (rule.evaluatedOn && sameIds(matches, rule.matches)) continue;
     updates.push({
       id: rule.id,

@@ -33,7 +33,11 @@ function encodeWatch(rule) {
  * threshold, not its cached matches (the receiving page re-evaluates it, #24).
  */
 export function encodeShareHash(shortIds, rules = []) {
-  const watches = rules.filter((r) => WATCH_CODES[r.type]).map(encodeWatch);
+  // "My research" topics (#27) stay on this device: their abstracts are private and too long
+  // for a link, and their name alone can't be re-evaluated
+  const watches = rules
+    .filter((r) => WATCH_CODES[r.type] && !r.research)
+    .map(encodeWatch);
   if (!shortIds.length && !watches.length) return "";
   return (
     PREFIX +
