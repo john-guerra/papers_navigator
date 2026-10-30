@@ -18,6 +18,8 @@ export function renderPaperDetail(
     onOpen,
     onClose,
     authorHref = authorUrl,
+    // (related papers) => the neighbourhood mini-map (#101) with .highlight(id), or null
+    miniMap = null,
   },
 ) {
   const { toggle, update } = followToggles({ inMyPapers, onToggle });
@@ -36,25 +38,50 @@ export function renderPaperDetail(
   ]
     .filter(Boolean)
     .join(" · ");
-  const relatedList = (papers) =>
-    papers.length
-      ? html`<h3>Related papers</h3>
-          <ul class="related-papers">
-            ${papers.map((p) => {
-              const open = html`<button class="btn-text related-open">
-                ${p.title}
-              </button>`;
-              open.onclick = () => onOpen(p.id);
-              return html`<li class="related-paper">
-                ${open}
-                <span class="related-meta"
-                  >${[p.room && `📍 ${p.room}`, paperWhen(p, tz, tzLabel), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
-                >
-                ${toggle(p)}
-              </li>`;
-            })}
-          </ul>`
-      : "";
+  // The mini-map (#101), once the related papers are known
+  let mini = null;
+  let disposed = false;
+  const highlight = (id) => mini?.highlight(id);
+  const relatedList = (papers) => {
+    if (!papers.length) return "";
+    mini = !disposed && miniMap ? miniMap(papers) : null;
+    const list = html`<ul class="related-papers">
+      ${papers.map((p) => {
+        const open = html`<button class="btn-text related-open">
+          ${p.title}
+        </button>`;
+        open.onclick = () => onOpen(p.id);
+        const row = html`<li class="related-paper" data-paper-id=${p.id}>
+          ${open}
+          <span class="related-meta"
+            >${[p.room && `📍 ${p.room}`, paperWhen(p, tz, tzLabel), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
+          >
+          ${toggle(p)}
+        </li>`;
+        // Hover or keyboard focus on a row shows that paper on the mini-map (#101)
+        row.addEventListener("pointerenter", () => highlight(p.id));
+        row.addEventListener("pointerleave", () => highlight(null));
+        row.addEventListener("focusin", () => highlight(p.id));
+        row.addEventListener("focusout", (event) => {
+          if (!row.contains(event.relatedTarget)) highlight(null);
+        });
+        return row;
+      })}
+    </ul>`;
+    return html`<h3>Related papers</h3>
+      ${
+        mini
+          ? html`${mini}
+              <p class="mini-map-note muted">
+                Map distances can mislead: a 2D map distorts. Compare with each
+                paper's similarity, or see
+                <a href="about.html#map-reliability">how reliable the map is</a
+                >.
+              </p>`
+          : ""
+      }
+      ${list}`;
+  };
   // `related` may be a Promise (My Papers loads the embeddings only when needed, #70)
   const relatedSection = html`<section class="related-section"></section>`;
   if (typeof related?.then === "function") {
@@ -99,5 +126,11 @@ export function renderPaperDetail(
   </aside>`;
   // Refresh the My Papers toggles in place (keeps the panel's scroll and focus)
   el.update = update;
+  // Show a paper on the mini-map from elsewhere (My Papers' recommended rows), null to reset
+  el.highlight = highlight;
+  el.dispose = () => {
+    disposed = true;
+    mini?.dispose?.();
+  };
   return el;
 }

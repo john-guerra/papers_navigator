@@ -475,6 +475,23 @@ invalidation.then(paperDetail.dispose);
 ```
 
 ```js
+// ✨ Recommended rows: hover or keyboard focus shows that paper on the open details' mini-map (#101)
+const recommendedRowId = (target) => target?.closest?.(".recommended-paper")?.dataset.paperId ?? null;
+const showRecommended = (event) => paperDetail.highlight(recommendedRowId(event.target));
+const leaveRecommended = (event) => paperDetail.highlight(recommendedRowId(event.relatedTarget));
+recommendedSection.addEventListener("pointerover", showRecommended);
+recommendedSection.addEventListener("pointerleave", leaveRecommended);
+recommendedSection.addEventListener("focusin", showRecommended);
+recommendedSection.addEventListener("focusout", leaveRecommended);
+invalidation.then(() => {
+  recommendedSection.removeEventListener("pointerover", showRecommended);
+  recommendedSection.removeEventListener("pointerleave", leaveRecommended);
+  recommendedSection.removeEventListener("focusin", showRecommended);
+  recommendedSection.removeEventListener("focusout", leaveRecommended);
+});
+```
+
+```js
 followed;
 paperDetail.update?.();
 ```

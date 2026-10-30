@@ -160,6 +160,11 @@ Every dot is a paper; similar papers sit close together.
 
 - Click a paper's title (in the list, in My Papers or on a researcher profile) or its dot on the map to open its details: abstract, authors and institutions, session, room and time, links, and **Related papers**. Each paper's details have their own address, so you can bookmark or send them. A copied paper title link opens just that paper, without your search and filters.
 - **Conference page ↗** opens the paper on the conference website.
+- **Map neighbourhood:** above Related papers, a small map zoomed in around the paper (the ringed dot in the accent color). Its related papers are the darker dots. Point at a related paper (or move to it with the keyboard) to draw a line to it; if it's far away on the map, the small map zooms out to show it. Click a dot to open that paper. On Explore it uses the map's current projection; on My Papers and Researchers, the default one.
+
+### Map reliability
+
+The map squeezes 384 dimensions of meaning into two, so distances on it can mislead: two papers can be very similar yet far apart on the map, or close on the map without being similar. Trust the **similarity** percentage over the map distance. To see where the map misleads, open **⚙ Options → Advanced** on Explore: *Nearest neighbours on hover* dashes the lines to similar papers the map put far away, and *Projection quality* scores each projection; once measured, **Color by: Reliability** and the shaded overlay show the least reliable areas.
 
 ### Add papers to My Papers
 
