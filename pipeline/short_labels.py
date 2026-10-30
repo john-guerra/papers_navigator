@@ -197,9 +197,21 @@ class LMStudioClient:
         return response.json()["choices"][0]["message"].get("content") or ""
 
 
+def _safe_name(value) -> str:
+    """A single path component: letters, digits, `.`, `-`, `_` only; never empty, `.` or `..`.
+    Paper ids come from scraped pages, so they're untrusted."""
+    name = re.sub(r"[^\w.-]+", "_", str(value))
+    if name.strip(".") == "":
+        raise ValueError(f"unsafe cache name: {value!r}")
+    return name
+
+
 def _cache_file(cache_root, model, conference, paper_id) -> Path:
-    safe_model = re.sub(r"[^\w.-]+", "_", model)
-    return Path(cache_root) / safe_model / prompt_hash(conference) / f"{paper_id}.json"
+    root = Path(cache_root).resolve()
+    path = (root / _safe_name(model) / prompt_hash(conference) / f"{_safe_name(paper_id)}.json").resolve()
+    if not path.is_relative_to(root):
+        raise ValueError(f"cache path escapes {root}: {path}")
+    return path
 
 
 def llm_label(paper, client, cache_root, conference="the IEEE VIS conference", model=None):

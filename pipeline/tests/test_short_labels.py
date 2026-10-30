@@ -247,3 +247,21 @@ def test_run_does_nothing_when_disabled(tmp_path):
     before = (conf / "data" / "papers.json").read_bytes()
     assert sl.run("testconf", root=tmp_path, encoder=hash_encoder, cache_root=tmp_path / "cache", dims=64) is None
     assert (conf / "data" / "papers.json").read_bytes() == before
+
+
+# --- cache paths (paper ids are scraped, so untrusted) -------------------------------------
+
+
+@pytest.mark.parametrize("bad_id", ["../../etc/x", "/etc/passwd", "a/../../b"])
+def test_cache_writes_stay_inside_the_cache_root(tmp_path, bad_id):
+    root = tmp_path / "cache"
+    assert sl.llm_label({**PAPER, "id": bad_id}, FakeClient(["DR Explainability"]), root) == "DR Explainability"
+    written = [p for p in tmp_path.rglob("*") if p.is_file()]
+    assert len(written) == 1 and written[0].resolve().is_relative_to(root.resolve())
+    assert "/" not in written[0].name
+
+
+@pytest.mark.parametrize("model, paper_id", [("m", ".."), ("m", "."), ("..", "p1"), ("m", "")])
+def test_cache_path_rejects_dot_names(tmp_path, model, paper_id):
+    with pytest.raises(ValueError):
+        sl._cache_file(tmp_path, model, "c", paper_id)
