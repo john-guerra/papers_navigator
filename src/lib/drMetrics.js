@@ -93,3 +93,42 @@ export function qualityMetrics(highRanks, points, k) {
     continuity: continuity(highRanks, lowRanks, k),
   };
 }
+
+/**
+ * Per-point trustworthiness and continuity (#83), for showing where the map can be trusted:
+ * point i's share of the penalty, normalized like the global score so that
+ *   local_i = 1 − 2 / (k·(2n − 3k − 1)) · Σ_{j ∈ U_k(i)} (r_high(i, j) − k)
+ * and the global score is the mean of the local ones (ZADU's localScores definition, with
+ * sklearn's 1-based ranks). Self-contained, because its source also runs in the worker.
+ * Returns `{trustworthiness: {score, localScores}, continuity: {score, localScores}}`.
+ */
+export function localTrustworthinessContinuity(highRanks, lowRanks, k) {
+  const n = Math.round(Math.sqrt(highRanks.length));
+  if (!(Number.isInteger(k) && k >= 1 && k < n / 2))
+    throw new RangeError(
+      `k must be an integer in [1, n/2) (n = ${n}), got ${k}`,
+    );
+  const scale = 2 / (k * (2 * n - 3 * k - 1));
+  const measure = (reference, found) => {
+    const localScores = new Float64Array(n);
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      const base = i * n;
+      let sum = 0;
+      for (let j = 0; j < n; j++) {
+        const rf = found[base + j];
+        if (rf >= 1 && rf <= k) {
+          const rr = reference[base + j];
+          if (rr > k) sum += rr - k;
+        }
+      }
+      localScores[i] = 1 - scale * sum;
+      total += localScores[i];
+    }
+    return { score: total / n, localScores };
+  };
+  return {
+    trustworthiness: measure(highRanks, lowRanks),
+    continuity: measure(lowRanks, highRanks),
+  };
+}

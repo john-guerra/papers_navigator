@@ -1,5 +1,9 @@
 import { html } from "htl";
-import { neighborRanks, qualityMetrics } from "../lib/drMetrics.js";
+import {
+  QUALITY_METRICS,
+  createQualityCache,
+  createQualityRunner,
+} from "../lib/drQuality.js";
 import { DR_METHODS, computeProjection, toProjection } from "../lib/liveDr.js";
 import {
   clusterLabelsByKeyword,
@@ -21,7 +25,9 @@ const STYLE = `
 .advanced-dr-panel progress { width: 100%; accent-color: var(--color-primary); }
 .advanced-dr-panel [role="status"] { margin: var(--spacing-xs, 4px) 0 0; font: var(--typography-body-sm); }
 .advanced-dr-panel table { width: 100%; border-collapse: collapse; font: var(--typography-body-sm); font-variant-numeric: tabular-nums; }
-.advanced-dr-panel th, .advanced-dr-panel td { padding: 4px 6px; border-bottom: 1px solid var(--color-outline); text-align: right; }
+.advanced-dr-panel th, .advanced-dr-panel td { padding: 4px 4px; border-bottom: 1px solid var(--color-outline); text-align: right; }
+.advanced-dr-panel th { font-weight: 500; vertical-align: bottom; hyphens: manual; }
+.advanced-dr-panel .advanced-table { overflow-x: auto; }
 .advanced-dr-panel th:first-child, .advanced-dr-panel td:first-child { text-align: left; }
 .advanced-dr-panel tr.is-current td:first-child { font-weight: 600; }
 @media (max-width: 576px) {
@@ -149,8 +155,7 @@ export function advancedPanel({
       delete live[name]; // newest last
       live[name] = toProjection(papers, result.coords);
       liveSnapshot = { ...live };
-      for (const key of results.keys())
-        if (key.startsWith(`${name}|`)) results.delete(key);
+      cache.forget(name);
       computeStatus.textContent = `${name} computed in ${(result.ms / 1000).toFixed(1)} s (${result.where}) and shown on the map.`;
       emit();
       refreshMetrics();
@@ -225,7 +230,7 @@ export function advancedPanel({
     emit();
   };
 
-  // --- Quality metrics --------------------------------------------------------------------
+  // --- Quality metrics (#28, #83) ------------------------------------------------------
   const kMetric = numberField({
     label: "Neighbors (k)",
     value: 10,
@@ -233,55 +238,85 @@ export function advancedPanel({
     max: 100,
     step: 1,
   });
+  const iterationsField = numberField({
+    label: "S&C iterations",
+    value: 150,
+    min: 10,
+    max: 1000,
+    step: 10,
+  });
   const tbody = html`<tbody></tbody>`;
   const metricsStatus = html`<p class="advanced-note" aria-live="polite"></p>`;
-  let highRanks = null;
-  const results = new Map(); // `${name}|${k}` → {trustworthiness, continuity}
+  const cache = createQualityCache();
+  let runner = null;
+  const params = () => ({
+    k: Number(kMetric.input.value),
+    iterations: Number(iterationsField.input.value),
+    seed,
+  });
   let pending = 0;
   const renderTable = () => {
-    const k = Number(kMetric.input.value);
     const current = currentProjection();
     tbody.replaceChildren(
-      ...Object.keys(all()).map((name) => {
-        const m = results.get(`${name}|${k}`);
-        return html`<tr class=${name === current ? "is-current" : ""}>
-          <td>${format(name)}</td>
-          <td>${fmt(m?.trustworthiness)}</td>
-          <td>${fmt(m?.continuity)}</td>
-        </tr>`;
-      }),
+      ...Object.keys(all()).map(
+        (name) =>
+          html`<tr class=${name === current ? "is-current" : ""}>
+            <td>${format(name)}</td>
+            ${QUALITY_METRICS.map(
+              (m) =>
+                html`<td>${fmt(cache.get(name, m.id, params())?.score)}</td>`,
+            )}
+          </tr>`,
+      ),
     );
   };
   async function refreshMetrics() {
     const run = ++pending;
-    const k = Number(kMetric.input.value);
+    const p = params();
     const max = Math.floor((papers.length - 1) / 2);
-    if (!(Number.isInteger(k) && k >= 1 && k <= max)) {
+    if (!(Number.isInteger(p.k) && p.k >= 1 && p.k <= max)) {
       metricsStatus.textContent = `k must be a whole number from 1 to ${max}.`;
+      return;
+    }
+    if (!(Number.isInteger(p.iterations) && p.iterations >= 1)) {
+      metricsStatus.textContent = "Iterations must be a whole number from 1.";
       return;
     }
     renderTable();
     metricsStatus.textContent = "Computing…";
-    await new Promise((resolve) => setTimeout(resolve, 30)); // let "Computing…" paint
+    runner ??= createQualityRunner({ embeddings, dims });
+    let where = "worker";
     const start = performance.now();
-    highRanks ??= neighborRanks(embeddings, { dims });
     for (const [name, projection] of Object.entries(all())) {
       if (run !== pending) return;
-      if (results.has(`${name}|${k}`)) continue;
-      results.set(
-        `${name}|${k}`,
-        qualityMetrics(
-          highRanks,
-          papers.map((p) => projection[p.id] ?? [0, 0]),
-          k,
+      const metrics = [
+        ...new Set(
+          QUALITY_METRICS.filter((m) => !cache.has(name, m.id, p)).map(
+            (m) => m.group,
+          ),
         ),
+      ];
+      if (!metrics.length) continue;
+      const points = new Float64Array(
+        papers.flatMap((paper) => projection[paper.id] ?? [0, 0]),
       );
+      try {
+        const result = await runner.measure({ ...p, points, metrics });
+        where = result.where;
+        cache.set(name, result.results, p);
+      } catch (error) {
+        if (run === pending)
+          metricsStatus.textContent = `Couldn't compute the quality of ${format(name)}: ${error.message}`;
+        return;
+      }
+      if (run !== pending) return;
       renderTable();
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      root.dispatchEvent(new Event("quality"));
     }
-    metricsStatus.textContent = `Computed in ${Math.round(performance.now() - start)} ms against the ${dims}-dimensional embeddings (Euclidean).`;
+    metricsStatus.textContent = `Computed in ${((performance.now() - start) / 1000).toFixed(1)} s (${where === "worker" ? "background worker" : "main thread"}) against the ${dims}-dimensional embeddings (Euclidean). Steadiness and cohesiveness sample ${p.iterations} random walks (seed ${seed}); other seeds vary by about ±0.01.`;
   }
   kMetric.input.addEventListener("change", refreshMetrics);
+  iterationsField.input.addEventListener("change", refreshMetrics);
 
   root.append(
     html`<section>
@@ -331,24 +366,55 @@ export function advancedPanel({
         <p class="advanced-note">
           Trustworthiness: are a paper's k nearest neighbors on the map also
           near in the embeddings? Continuity: do its true neighbors stay near on
-          the map? 1 = perfect.
+          the map? Steadiness: are groups on the map real groups (no false
+          groups)? Cohesiveness: do real groups stay together (no missing
+          groups)? 1 = perfect.
         </p>
-        <div class="advanced-fields">${kMetric.label}</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Projection</th>
-              <th>Trustworthiness</th>
-              <th>Continuity</th>
-            </tr>
-          </thead>
-          ${tbody}
-        </table>
+        <div class="advanced-fields">
+          ${kMetric.label}${iterationsField.label}
+        </div>
+        <div class="advanced-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Projection</th>
+                ${QUALITY_METRICS.map((m) => html`<th title=${m.label}>${m.header}</th>`)}
+              </tr>
+            </thead>
+            ${tbody}
+          </table>
+        </div>
         ${metricsStatus}
+        <p class="advanced-note">
+          Steadiness and cohesiveness by
+          <a
+            href="https://github.com/jonathantarun/zadu-js"
+            target="_blank"
+            rel="noopener"
+            >zadu-js</a
+          >
+          (Jonathan Tarun Rajasekaran, MIT;
+          <a
+            href="https://github.com/jonathantarun/zadu-js/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener"
+            >license</a
+          >), a port of ZADU (Jeon et al.).
+        </p>
       </section>`,
   );
 
   root.refreshCurrent = renderTable; // the page calls this when the map's projection changes
+  /**
+   * Per-point quality of a projection (#83) at the panel's current k (and S&C settings):
+   * `{score, localScores, k}` (localScores row i ↔ papers[i]), or undefined until computed.
+   * The panel dispatches a "quality" event whenever more results are ready.
+   */
+  root.localScores = (name, metric = "trustworthiness") => {
+    const p = params();
+    const result = cache.get(name, metric, p);
+    return result && { ...result, k: p.k };
+  };
   refreshMetrics();
   return root;
 }
