@@ -298,7 +298,7 @@
    "source": "title"
   },
   "f3ac2981-e781-41fb-aa4e-7e454a4f5085": {
-   "label": "Breach reconstruction",
+   "label": "Breach Reconstruction",
    "source": "llm",
    "llm": {
     "v2": "Breach Reconstruction"
@@ -655,7 +655,7 @@
    "inputHash": "7e03743b110bf90a"
   },
   "6834207e-76b6-4b79-bd18-5008a37edc20": {
-   "label": "Non-linnaean taxonomy",
+   "label": "Non-Linnaean taxonomy",
    "source": "llm",
    "llm": {
     "v2": "Non-Linnaean Taxonomy"
@@ -821,7 +821,7 @@
    "inputHash": "8be01d39e5f9ab43"
   },
   "87e9069f-c5dd-411a-9cbf-5730077c7a18": {
-   "label": "Jk-plots",
+   "label": "jk-Plots",
    "source": "llm",
    "llm": {
     "v2": "jk-Plots"
@@ -1223,7 +1223,7 @@
    "inputHash": "8922163f08a5d48b"
   },
   "16c68e1b-cc59-45cd-9a6a-87540375a990": {
-   "label": "Importance mask",
+   "label": "Importance Mask",
    "source": "llm",
    "llm": {
     "v2": "Importance Mask"
@@ -1510,7 +1510,7 @@
    "source": "title"
   },
   "d11a5dec-393e-460d-8f61-16e578417dd4": {
-   "label": "Grand challenges",
+   "label": "Grand Challenges",
    "source": "llm",
    "llm": {
     "v2": null,
@@ -2096,7 +2096,7 @@
    "source": "title"
   },
   "959aca01-8276-4c3c-b586-2b335ac90584": {
-   "label": "Summary verification",
+   "label": "Summary Verification",
    "source": "llm",
    "llm": {
     "v2": "Summary verification"
@@ -2358,7 +2358,7 @@
    "inputHash": "27cf67f95adf9217"
   },
   "635e70eb-d710-409a-99a8-842537403b6e": {
-   "label": "Weighted MFV",
+   "label": "weighted MFV",
    "source": "llm",
    "llm": {
     "v2": "Weighted MFV"
@@ -2514,7 +2514,7 @@
    "source": "title"
   },
   "69408304-b234-4643-b1cd-bf0c0c43e8a6": {
-   "label": "Color repair",
+   "label": "Color Repair",
    "source": "llm",
    "llm": {
     "v2": "Color Repair"
@@ -2774,7 +2774,7 @@
    "inputHash": "85e4fdf6c6c9c9b6"
   },
   "553f0db4-ef15-45ec-9275-e8766088d0f4": {
-   "label": "Mastery learning",
+   "label": "Mastery Learning",
    "source": "llm",
    "llm": {
     "v2": "Mastery Learning"
@@ -2788,7 +2788,7 @@
    "source": "title"
   },
   "7539c695-a2b7-4a9c-8820-20ac77eeb3d1": {
-   "label": "Active inference",
+   "label": "Active Inference",
    "source": "llm",
    "llm": {
     "v2": "Active Inference"

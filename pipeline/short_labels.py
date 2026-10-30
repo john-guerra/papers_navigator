@@ -410,13 +410,46 @@ def _keeps_case(part: str, forms) -> bool:
     return form[:1].isupper() and form.lower() == part.lower()
 
 
-def sentence_case(label: str, forms) -> str:
+def _verbatim(label: str, paper) -> str | None:
+    """The paper's own spelling of `label` when it uses a deliberate one: an abstract occurrence
+    with a capital outside a sentence start ("non-Linnaean"), or a title occurrence with a
+    lowercase-initial part ("jk-Plots"; a plain Title Case title says nothing about casing)."""
+    if not paper:
+        return None
+    pattern = re.compile(r"(?<![\w-])" + re.escape(label) + r"(?![\w-])", re.I)
+    abstract = paper.get("abstract") or ""
+    for match in pattern.finditer(abstract):
+        before = abstract[: match.start()].rstrip()
+        if before and before[-1] not in ".!?:" and any(c.isupper() for c in match.group(0)):
+            return match.group(0)
+    for match in pattern.finditer(paper.get("title") or ""):
+        spelling = match.group(0)
+        if any(c.isupper() for c in spelling) and any(part[:1].islower() for part in re.split(r"[\s-]+", spelling)):
+            return match.group(0)
+    return None
+
+
+def sentence_case(label: str, forms, paper=None) -> str:
     """"Byte Dance" → "Byte dance", "Image-based vision" stays, "LLM Grounding" → "LLM grounding",
-    "uncertainty Morse" → "Uncertainty Morse". `forms` = surface_forms of the abstracts."""
+    "uncertainty Morse" → "Uncertainty Morse". `forms` = surface_forms of the abstracts. Each
+    hyphenated part is checked on its own ("Non-Linnaean": the abstracts write "non-Linnaean"),
+    and the paper's own deliberate spelling of the whole label wins (`_verbatim`: "jk-Plots")."""
+    own = _verbatim(label, paper)
+    if own:
+        return own
     words = []
     for word in label.split():
+        form = forms.get(word.lower(), "")
+        form_parts = form.split("-") if form.lower() == word.lower() else []
         parts = word.split("-")
-        words.append("-".join(p if _keeps_case(p, forms) else p.lower() for p in parts))
+        words.append(
+            "-".join(
+                p if _keeps_case(p, forms)
+                else form_parts[i] if form_parts and any(c.isupper() for c in form_parts[i])
+                else p.lower()
+                for i, p in enumerate(parts)
+            )
+        )
     text = " ".join(words)
     return text[:1].upper() + text[1:] if text and not _keeps_case(text.split()[0].split("-")[0], forms) else text
 
@@ -580,9 +613,9 @@ def add_short_labels(
         if name:
             paper["shortLabel"], paper["shortLabelSource"] = name, "title"
         elif raw:
-            paper["shortLabel"], paper["shortLabelSource"] = sentence_case(raw, forms), "llm"
+            paper["shortLabel"], paper["shortLabelSource"] = sentence_case(raw, forms, paper), "llm"
         else:
-            paper["shortLabel"], paper["shortLabelSource"] = sentence_case(keyphrase, forms), "keyphrase"
+            paper["shortLabel"], paper["shortLabelSource"] = sentence_case(keyphrase, forms, paper), "keyphrase"
     merge_near_duplicates(papers)
     for paper, name in zip(papers, names):
         entry = {"label": paper["shortLabel"], "source": paper["shortLabelSource"]}

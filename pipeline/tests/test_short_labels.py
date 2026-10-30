@@ -442,3 +442,18 @@ def test_v3_reruns_only_weak_labels_and_is_recorded(tmp_path):
     sl.run("testconf", cache_root=tmp_path / "empty", client=None, **kwargs)
     again = json.loads((conf / "data" / "papers.json").read_text())
     assert [p["shortLabel"] for p in again] == ["Uncertainty glyphs", "Blind readers", "LLM charting"]
+
+
+def test_sentence_case_checks_each_hyphenated_part_against_the_abstracts():
+    forms = {"non-linnaean": "non-Linnaean", "taxonomy": "taxonomy"}
+    assert sl.sentence_case("Non-Linnaean Taxonomy", forms) == "Non-Linnaean taxonomy"
+
+
+def test_sentence_case_uses_the_papers_own_deliberate_spelling():
+    paper = {"title": "jk-Plots: Joint Kernel Plots", "abstract": "We present jk-plots. With jk-plots, users see more."}
+    assert sl.sentence_case("Jk-Plots", {}, paper) == "jk-Plots"
+    morse = {"title": "Topology", "abstract": "We use the Morse-Smale complex. Morse-Smale complexes help."}
+    assert sl.sentence_case("morse-smale complex", {}, morse) == "Morse-Smale complex"
+    # a Title Case title is not a deliberate spelling
+    glyphs = {"title": "Uncertainty Glyphs for Weather", "abstract": "We design glyphs."}
+    assert sl.sentence_case("Uncertainty Glyphs", {}, glyphs) == "Uncertainty glyphs"
