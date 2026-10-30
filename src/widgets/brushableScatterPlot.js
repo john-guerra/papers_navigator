@@ -1,5 +1,6 @@
 // The npm "main" is a UMD bundle; import the ES build explicitly.
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
+import { attachNearestTooltip } from "./nearestTooltip.js";
 import {
   domainAt,
   easeExpr,
@@ -253,7 +254,7 @@ export function scatterSpec(
         },
       }),
       ...(tween && { opacity: tween.opacity("__op") }),
-      tooltip: tooltip.map(tooltipField),
+      tooltip: tooltip ? tooltip.map(tooltipField) : null,
     },
   };
   const rings = ringIds && {
@@ -273,7 +274,7 @@ export function scatterSpec(
     encoding: {
       ...position,
       ...(tween && { opacity: tween.opacity("__o") }),
-      tooltip: tooltip.map(tooltipField),
+      tooltip: tooltip ? tooltip.map(tooltipField) : null,
     },
   };
 
@@ -482,6 +483,7 @@ export async function BrushableScatterPlot(data, options = {}) {
     y = "y",
     id = "id",
     renderer = "canvas",
+    tooltip = [id],
     from = null,
     animate = null,
     brush = null,
@@ -497,8 +499,9 @@ export async function BrushableScatterPlot(data, options = {}) {
       duration: animate.duration,
       stageOf: animate.stageOf,
     });
+  // The tooltip follows the nearest point (attached below), not only exact hits on a dot
   const chart = await vegaSelected(
-    scatterSpec(data, { ...options, transition }),
+    scatterSpec(data, { ...options, transition, tooltip: null }),
     {
       vegaConfig: { renderer, actions: false },
     },
@@ -667,6 +670,12 @@ export async function BrushableScatterPlot(data, options = {}) {
     }
     return best;
   };
+
+  attachNearestTooltip(target, {
+    view: chart.view,
+    pointAt: target.pointAt,
+    entries: tooltip,
+  });
 
   Object.defineProperty(target, "value", {
     get: () => value,

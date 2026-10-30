@@ -96,7 +96,12 @@ describe("renderItinerary", () => {
     });
     const row = el.querySelector(".itinerary-item");
     expect(row.dataset.paperId).toBe("a");
-    row.querySelector("button.paper-details-open").click();
+    // the title opens the details (John: titles go to the app, not the conference site)
+    row
+      .querySelector("a.paper-details-open")
+      .dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
     expect(opened).toEqual(["a"]);
     expect(
       renderItinerary(schedule, { tz: TZ }).querySelector(
