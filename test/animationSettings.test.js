@@ -81,6 +81,34 @@ describe("animation settings", () => {
   });
 });
 
+describe("animation settings and a live prefers-reduced-motion", () => {
+  const fakeMedia = (matches) => {
+    const media = new EventTarget();
+    media.matches = matches;
+    media.flip = (value) => {
+      media.matches = value;
+      const event = new Event("change");
+      event.matches = value;
+      media.dispatchEvent(event);
+    };
+    return media;
+  };
+
+  it("follows the OS setting while the page is open, until the user chooses", () => {
+    const media = fakeMedia(false);
+    const store = createAnimationSettings({ storage: memoryStorage(), media });
+    let fired = 0;
+    store.addEventListener("input", () => fired++);
+    expect(store.value.enabled).toBe(true);
+    media.flip(true);
+    expect(store.value.enabled).toBe(false);
+    expect(fired).toBe(1);
+    store.set({ enabled: true });
+    media.flip(true);
+    expect(store.value.enabled).toBe(true);
+  });
+});
+
 describe("mapAnimation", () => {
   const settings = {
     enabled: true,

@@ -39,23 +39,23 @@ function readChoices(storage) {
   }
 }
 
-const prefersReducedMotion = () => {
+const reducedMotionQuery = () => {
   try {
-    return Boolean(
-      globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
-    );
+    return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
   } catch {
-    return false;
+    return null;
   }
 };
 
 /**
  * The settings as a reactive store: `.value` is the effective settings, `set(patch)` stores the
- * patch and emits `input` (like the followed store and theme.js).
+ * patch and emits `input` (like the followed store and theme.js). While "Animate the map" was
+ * never set, it follows `media` (prefers-reduced-motion) live, also emitting `input`.
  */
 export function createAnimationSettings({
   storage = globalThis.localStorage,
-  reducedMotion = prefersReducedMotion(),
+  media = reducedMotionQuery(),
+  reducedMotion = Boolean(media?.matches),
 } = {}) {
   const store = new EventTarget();
   let choices = readChoices(storage);
@@ -63,6 +63,10 @@ export function createAnimationSettings({
     ...defaultAnimationSettings({ reducedMotion }),
     ...choices,
   });
+  const update = () => {
+    store.value = compute();
+    store.dispatchEvent(new Event("input"));
+  };
   store.value = compute();
   store.set = (patch) => {
     choices = { ...choices, ...valid(patch) };
@@ -71,9 +75,12 @@ export function createAnimationSettings({
     } catch {
       // Private mode etc.: the choice still applies for this page view
     }
-    store.value = compute();
-    store.dispatchEvent(new Event("input"));
+    update();
   };
+  media?.addEventListener?.("change", (event) => {
+    reducedMotion = event.matches;
+    update();
+  });
   return store;
 }
 

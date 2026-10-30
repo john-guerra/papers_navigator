@@ -112,4 +112,21 @@ describe("BrushableScatterPlot animated redraw (#82)", () => {
     expect(restored.x[0]).toBeCloseTo(-1, 6);
     expect(restored.y[1]).toBeCloseTo(1, 6);
   });
+
+  it("emits no input during a tween with a kept brush (scale changes re-round it)", async () => {
+    const first = await BrushableScatterPlot(before, options);
+    const wider = [...before.slice(0, 3), { id: "e", x: 40, y: 30 }];
+    const second = await BrushableScatterPlot(wider, {
+      ...options,
+      from: first,
+      brush: { x: [-1, 11], y: [-1, 1] },
+      animate: { duration: 200 },
+    });
+    let fired = 0;
+    second.addEventListener("input", () => fired++);
+    const stats = await second.finished;
+    expect(stats.frames).toBeGreaterThan(3);
+    expect(fired).toBe(0);
+    expect(second.value.brushed.map((d) => d.id).sort()).toEqual(["a", "b"]);
+  });
 });

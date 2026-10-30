@@ -542,18 +542,24 @@ export async function BrushableScatterPlot(data, options = {}) {
   );
 
   // vega-selected emits input on any signal change (e.g. levelCut, mine): forward only real
-  // selection changes, or pages that set those signals from the map's value would loop
-  const selectionKey = () => {
-    const { drag, click } = chart.value ?? {};
-    return JSON.stringify([drag?.[x], drag?.[y], click?.[id]]);
-  };
-  let lastKey = selectionKey();
+  // selection changes, or pages that set those signals from the map's value would loop.
+  // Keyed by the selected ids, not the brush extent: while the scales move (#82), Vega maps the
+  // brush to pixels and back every frame, and the rounding noise would look like a new brush.
+  const selectionKey = (selection) =>
+    JSON.stringify([
+      selection.brushed.length === data.length
+        ? null
+        : selection.brushed.map((d) => d[id]),
+      selection.clicked.map((d) => d[id]),
+    ]);
+  let lastKey = selectionKey(value);
   chart.addEventListener("input", (event) => {
     event.stopPropagation();
-    const key = selectionKey();
+    const next = selectionFromChart(chart.value, data, { x, y, id });
+    const key = selectionKey(next);
     if (key === lastKey) return;
     lastKey = key;
-    value = selectionFromChart(chart.value, data, { x, y, id });
+    value = next;
     target.dispatchEvent(new Event("input", { bubbles: true }));
   });
 

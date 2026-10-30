@@ -501,6 +501,8 @@ const hasQuery = (researchMode || Boolean(query?.trim())) && modelStatus === "re
 // Similarity only exists after a search; until then one neutral color
 const colorField = colorBy === "score" && !hasQuery ? null : colorBy;
 const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session", clusterLabel: "Topic", liveCluster: "Cluster (live)" };
+const mapRun = { superseded: false };
+invalidation.then(() => (mapRun.superseded = true));
 const mapInput = await BrushableScatterPlot(positioned, {
   color: colorField,
   colorType: colorBy === "score" && hasQuery ? "quantitative" : "nominal",
@@ -533,7 +535,10 @@ const mapInput = await BrushableScatterPlot(positioned, {
   animate: mapAnimation(animationStore.value, { projectionChanged, stageOf: hasTopics ? (d) => d.cluster : null }),
   brush: keptBrush,
 });
-Object.assign(mapState, { map: mapInput, shown: projectionKey, reset: mapReset });
+// A run superseded while the map was being built never shows it: stop its motion and keep
+// mapState pointing at the map on screen
+if (mapRun.superseded) mapInput.stop();
+else Object.assign(mapState, { map: mapInput, shown: projectionKey, reset: mapReset });
 const map = Generators.input(mapInput);
 ```
 
