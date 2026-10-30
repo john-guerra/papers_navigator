@@ -1,14 +1,7 @@
 import { html } from "htl";
-import { authorsLine, paperWhen } from "../widgets/papersList.js";
+import { AWARDS, authorsLine, paperWhen } from "../widgets/papersList.js";
 import { authorUrl } from "../lib/authors.js";
 import { followToggles } from "./followToggles.js";
-
-const AWARDS = {
-  best: "🏆 Best paper",
-  honorable: "🏅 Honorable mention",
-  BEST_PAPER: "🏆 Best paper",
-  HONORABLE_MENTION: "🏅 Honorable mention",
-};
 
 /**
  * Paper details (#22) with related papers (#23): everything about one paper, its links, the

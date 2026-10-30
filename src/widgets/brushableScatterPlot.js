@@ -119,6 +119,8 @@ function categoryRange() {
 /**
  * Vega-Lite spec for the map. DESIGN.md → Data Visualization:
  * - quantitative color (similarity) uses the sequential ramp;
+ * - the legend sits in the top-right corner on `surface` (DESIGN.md → Legend); a ramp is labelled
+ *   only at its ends, with `legendLabels` ([low, high], e.g. ["less similar", "more similar"]);
  * - categorical color highlights at most 3 `categories` (pass them from the whole program so
  *   filtering never repaints survivors; default: top 3 of `data`), everything else is Other;
  * - points outside the brush are dimmed;
@@ -149,6 +151,7 @@ export function scatterSpec(
     labelSize = 11,
     scoreDomain = null,
     colorRange = null,
+    legendLabels = null,
     overlay = null,
     size = null,
     sizeRange = [12, 80],
@@ -164,8 +167,12 @@ export function scatterSpec(
     categorical && !colorScheme
       ? (categories ?? topCategories(data, color)).slice(0, 3)
       : null;
+  // Size echoing the color field gets its own copy: Vega-Lite merges two legends on one field
+  // into a symbol legend, and the color ramp's legend must stay a gradient (DESIGN.md → Legend)
+  const sizeCopy = size && size === color;
   const decorate = (d) => ({
     ...d,
+    ...(sizeCopy && { __size: d[size] }),
     ...(highlighted && {
       __color: highlighted.includes(d[color]) ? d[color] : OTHER,
     }),
@@ -173,7 +180,7 @@ export function scatterSpec(
   });
   // Copies whenever fields are added (Vega's formulas write on the objects it is given)
   const values =
-    highlighted || transition
+    highlighted || transition || sizeCopy
       ? [...data, ...(transition?.exits ?? [])].map(decorate)
       : data;
   const tween = transition && tweenParts(transition, { x, y });
@@ -239,20 +246,21 @@ export function scatterSpec(
               type: highlighted ? "nominal" : colorType,
               title: colorTitle,
               scale: colorScale,
-              legend: {
-                orient: "bottom",
-                columns: colorType === "quantitative" ? undefined : 4,
-                ...(highlighted && {
-                  labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
-                }),
-              },
+              legend: legendFor({
+                data,
+                color,
+                quantitative: colorType === "quantitative",
+                scoreDomain,
+                legendLabels,
+                highlighted,
+              }),
             }
           : { test: visible, value: token("color-viz-neutral", "#605954") },
         value: token("color-viz-dim", "#e1ddd8"),
       },
       ...(size && {
         size: {
-          field: size,
+          field: sizeCopy ? "__size" : size,
           type: "quantitative",
           scale: {
             range: sizeRange,
@@ -398,12 +406,55 @@ export function scatterSpec(
       view: { stroke: null },
       font: token("font-sans", "sans-serif"),
       title: { color: token("color-on-surface", "#241e1a"), fontWeight: 500 },
+      // DESIGN.md → Legend: always visible in a corner on `surface`
       legend: {
+        orient: "top-right",
+        offset: 8,
+        padding: 8,
+        cornerRadius: 6,
+        fillColor: token("color-surface", "#fffdfa"),
+        strokeColor: token("color-outline", "#d8d3cc"),
         titleColor: token("color-on-surface", "#241e1a"),
+        titleFontWeight: 500,
         labelColor: token("color-on-surface-muted", "#605954"),
+        labelLimit: 160,
+        symbolOpacity: 1,
       },
     },
   };
+}
+
+/**
+ * The color legend: a ramp labelled only at its two ends with `legendLabels` (its numbers mean
+ * little to readers; the tooltip has the exact score), or the 3 + Other categories.
+ */
+function legendFor({
+  data,
+  color,
+  quantitative,
+  scoreDomain,
+  legendLabels,
+  highlighted,
+}) {
+  if (quantitative) {
+    const ends =
+      scoreDomain ??
+      extent(data.map((d) => d[color]).filter((v) => Number.isFinite(v)));
+    return legendLabels && ends.every(Number.isFinite) && ends[0] < ends[1]
+      ? {
+          type: "gradient",
+          direction: "horizontal",
+          gradientLength: 120,
+          values: ends,
+          labelExpr: `datum.index === 0 ? ${JSON.stringify(legendLabels[0])} : ${JSON.stringify(legendLabels[1])}`,
+        }
+      : { type: "gradient", direction: "horizontal", gradientLength: 120 };
+  }
+  return highlighted
+    ? {
+        labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
+      }
+    : {};
 }
 
 /** Topic labels that fit (cullLabels) at the scales `data` gets, or `labels` as given. */

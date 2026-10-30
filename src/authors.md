@@ -18,6 +18,7 @@ import { paperPanel } from "./components/paperPanel.js";
 import { watchButton } from "./components/watchButton.js";
 import { showToast } from "./components/toast.js";
 import { bindMyPapersBadge } from "./components/badge.js";
+import { zoneLabel } from "./lib/time.js";
 ```
 
 ```js
@@ -29,10 +30,8 @@ const embeddingsFile = FileAttachment("data/embeddings.bin");
 
 ```js
 const tz = conference.timezone;
-// "EST": the conference timezone's short name during the conference
-const tzLabel = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" })
-  .formatToParts(new Date(`${conference.days?.[0] ?? "2026-01-01"}T12:00:00Z`))
-  .find((d) => d.type === "timeZoneName")?.value ?? "";
+// "ET", never "EST"/"EDT" (DESIGN.md → Vocabulary)
+const tzLabel = zoneLabel(tz);
 const followedStore = createFollowedStore(conference.id);
 const rulesStore = createRulesStore(conference.id);
 const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });

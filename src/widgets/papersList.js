@@ -1,16 +1,17 @@
 import { html } from "htl";
-import { dayKey, formatDay, formatTime } from "../lib/time.js";
+import { formatWhen } from "../lib/time.js";
 
-const AWARD_EMOJI = {
-  best: "🏆",
-  honorable: "🏅",
-  BEST_PAPER: "🏆",
-  HONORABLE_MENTION: "🏅",
+/** Awards as DESIGN.md markers, always followed by their name (Emoji & Iconography). */
+export const AWARDS = {
+  best: "🏆 Best paper",
+  honorable: "🏅 Honorable mention",
+  BEST_PAPER: "🏆 Best paper",
+  HONORABLE_MENTION: "🏅 Honorable mention",
 };
 
-export function paperWhen(p, tz) {
-  const iso = p.start ?? p.sessionStart;
-  return iso ? `${formatDay(dayKey(iso, tz))} ${formatTime(iso, tz)}` : "";
+/** "Tue Nov 10 10:00 ET": when the paper (or its session) starts, in the conference timezone. */
+export function paperWhen(p, tz, tzLabel) {
+  return formatWhen(p.start ?? p.sessionStart, tz, tzLabel);
 }
 
 /**
@@ -35,6 +36,18 @@ export function conferenceLink(p) {
         >Conference page ↗</a
       >`
     : "";
+}
+
+/**
+ * The paper's similarity score as a percentage ("54%", or "54% · abstract 2" with a `note`),
+ * for the right side of its row (DESIGN.md → Paper row); "" without a score.
+ */
+export function paperScore(p, note = "") {
+  if (p.score == null) return "";
+  const text = `${Math.round(p.score * 100)}%${note ? ` · ${note}` : ""}`;
+  return html`<span class="paper-score" title=${`Similarity ${text}`}
+    ><span class="sr-only">Similarity </span>${text}</span
+  >`;
 }
 
 /**
@@ -64,20 +77,28 @@ function titleLink(p, details) {
   return a;
 }
 
-function renderPaper(p, { tz, actions, preamble, authorHref, details }) {
-  const where = [p.typeLabel ?? p.type, p.sessionName, p.room && `📍${p.room}`]
+function renderPaper(
+  p,
+  { tz, tzLabel, actions, preamble, authorHref, details },
+) {
+  // DESIGN.md → Paper row: meta line = (award) · type · session · 📍 room · day, time ET
+  const where = [
+    AWARDS[p.award],
+    p.typeLabel ?? p.type,
+    p.sessionName,
+    p.room && `📍 ${p.room}`,
+    paperWhen(p, tz, tzLabel),
+  ]
     .filter(Boolean)
     .join(" · ");
-  const when = paperWhen(p, tz);
   const row = html`<div class="paper" data-paper-id=${p.id}>
     <div class="paper-title">
-      ${AWARD_EMOJI[p.award] ?? ""}${titleLink(p, details)}
-      ${actions ? actions(p) : ""}
+      ${titleLink(p, details)} ${actions ? actions(p) : ""}
     </div>
     ${preamble ? html`<div class="paper-preamble">${preamble(p)}</div>` : ""}
     <div class="paper-authors">${authorsLine(p.authors, authorHref)}</div>
     <div class="paper-where">
-      ${where}${when ? ` · 🕰️ ${when}` : ""}
+      ${where}
       ${(p.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
     </div>
     ${p.abstract ? html`<div class="paper-abstract">${p.abstract}</div>` : ""}
@@ -107,6 +128,7 @@ export function PapersList(
   papers,
   {
     tz,
+    tzLabel,
     actions,
     preamble,
     authorHref,
@@ -128,7 +150,14 @@ export function PapersList(
     const batch = papers.slice(shown, shown + count);
     list.append(
       ...batch.map((p) =>
-        renderPaper(p, { tz, actions, preamble, authorHref, details }),
+        renderPaper(p, {
+          tz,
+          tzLabel,
+          actions,
+          preamble,
+          authorHref,
+          details,
+        }),
       ),
     );
     shown += batch.length;

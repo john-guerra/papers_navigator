@@ -39,7 +39,7 @@ const STYLE = `
 .advanced-dr-panel .advanced-subhead { margin-top: var(--spacing-md, 12px); }
 .advanced-dr-panel label.advanced-check { flex-direction: row; align-items: center; gap: var(--spacing-xs, 4px); margin-bottom: var(--spacing-sm, 8px); color: var(--color-on-surface); font: var(--typography-body-sm); }
 .advanced-dr-panel input[type="checkbox"] { min-height: 0; width: 16px; height: 16px; accent-color: var(--color-primary); }
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .advanced-dr-panel input, .advanced-dr-panel select, .advanced-dr-panel button, .advanced-dr-panel label.advanced-check { min-height: var(--spacing-touch, 44px); }
   .advanced-dr-panel input[type="checkbox"] { min-height: 0; }
 }

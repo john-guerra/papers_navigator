@@ -158,7 +158,7 @@
   break-inside: avoid;
 }
 
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .author-row {
     grid-template-columns: 1fr auto;
     gap: 0 var(--spacing-sm, 8px);

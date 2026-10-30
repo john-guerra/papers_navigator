@@ -64,7 +64,7 @@ describe("renderPaperDetail", () => {
     expect(text).toContain("Paper a");
     expect(text).toContain("Ann (MIT)");
     expect(text).toContain("Room 1");
-    expect(text).toContain("Tue Nov 10 10:00");
+    expect(text).toContain("Tue Nov 10 10:00 ET");
     expect(el.querySelector(".paper-detail-abstract").innerHTML).not.toContain(
       "<b>",
     );

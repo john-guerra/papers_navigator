@@ -27,6 +27,8 @@ import { withParams } from "./lib/urlState.js";
 import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
+import { segmentedControl } from "./widgets/segmentedControl.js";
+import { PHONE_QUERY, matches } from "./lib/breakpoints.js";
 ```
 
 ```js
@@ -170,11 +172,13 @@ ${newNotice}
 
 ```js
 // Created once (no dependency on the followed list) so following/unfollowing keeps the choice
-const isSmall = window.matchMedia("(max-width: 640px)").matches;
+const isSmall = matches(PHONE_QUERY);
 const initialDays = groupIntoSlots(resolveFollowed(store.value, papers).items, tz).days;
 const liveAtLoad = nowNext(initialDays, nowParam ? new Date(nowParam) : new Date(), tz, { conferenceDays: conference.days });
-const viewInput = Inputs.radio(["Now / Next", "Itinerary"], {
+// A segmented control, not native radios (DESIGN.md → My Papers, phone)
+const viewInput = segmentedControl(["Now / Next", "Itinerary"], {
   value: isSmall && liveAtLoad ? "Now / Next" : "Itinerary",
+  label: "View",
 });
 const viewMode = Generators.input(viewInput);
 ```
@@ -193,14 +197,14 @@ const toggleSharePanel = () =>
       );
 // Phones get the native share sheet; laptops keep the QR panel (#16)
 const shareButton = renderShareButton({
-  narrow: matchMedia("(max-width: 640px)").matches,
+  narrow: matches(PHONE_QUERY),
   share: navigator.share?.bind(navigator),
   url: currentShareUrl,
   count: () => followedStore.value.length,
   title: conference.name,
   onFallback: toggleSharePanel,
 });
-const exportButton = html`<button>⬇️ Export JSON</button>`;
+const exportButton = html`<button>Export JSON</button>`;
 exportButton.onclick = () => {
   const blob = new Blob(
     [exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions })],
@@ -213,7 +217,7 @@ exportButton.onclick = () => {
   a.click();
   URL.revokeObjectURL(a.href);
 };
-const importInput = html`<label class="import">⬆️ Import JSON <input type="file" accept="application/json,.json"></label>`;
+const importInput = html`<label class="import">Import JSON <input type="file" accept="application/json,.json"></label>`;
 const importStatus = html`<span class="import-status"></span>`;
 importInput.querySelector("input").onchange = async (event) => {
   const file = event.target.files[0];
@@ -281,7 +285,7 @@ if (viewMode === "Itinerary" || !current || current.status === "over") {
 }
 ```
 
-${missing.length ? html`<details class="missing" open><summary>⚠️ ${missing.length} of your papers are no longer in the program</summary><ul>${missing.map((m) => html`<li><code>${m.id}</code> — ${m.reason} <button onclick=${() => store.remove([m.id])}>Remove</button></li>`)}</ul></details>` : ""}
+${missing.length ? html`<details class="missing" open><summary>${missing.length} of your papers are no longer in the program</summary><ul>${missing.map((m) => html`<li><code>${m.id}</code> — ${m.reason} <button onclick=${() => store.remove([m.id])}>Remove</button></li>`)}</ul></details>` : ""}
 
 ${watchingSection}
 
