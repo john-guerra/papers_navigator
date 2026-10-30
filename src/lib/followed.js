@@ -88,6 +88,17 @@ export function createFollowedStore(
   };
 
   Object.defineProperty(store, "value", { get: () => value });
+  const replaceWithBackup = (list) => {
+    const previous = load();
+    try {
+      storage?.setItem(`${key}:backup`, JSON.stringify(previous));
+    } catch (error) {
+      console.warn("Could not back up My Papers", error);
+    }
+    set(list);
+    return () => set(previous);
+  };
+
   Object.assign(store, {
     add(papers, reason, now = new Date()) {
       const addedOn = now.toISOString();
@@ -102,8 +113,12 @@ export function createFollowedStore(
       const drop = new Set(ids);
       update((current) => current.filter((d) => !drop.has(d.id)));
     },
+    /**
+     * Replaces the whole list, keeping a one-level backup (`<key>:backup`); returns an undo
+     * that puts the previous list back.
+     */
     replace(list) {
-      set(list.filter(isEntry).map((d) => ({ ...d })));
+      return replaceWithBackup(list.filter(isEntry).map((d) => ({ ...d })));
     },
     merge(list) {
       update((current) => mergeLists(current, list.filter(isEntry)));
@@ -115,10 +130,12 @@ export function createFollowedStore(
       return JSON.stringify(value, null, 2);
     },
     /** Merges the file into the list (or replaces it with `{replace: true}`). */
+    /** Merges (default) or replaces from exported JSON; replacing returns an undo. */
     importJSON(text, { replace = false } = {}) {
       const list = parseList(text);
-      if (replace) set(list);
-      else update((current) => mergeLists(current, list));
+      if (replace) return replaceWithBackup(list);
+      update((current) => mergeLists(current, list));
+      return () => {};
     },
   });
   return store;
