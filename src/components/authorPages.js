@@ -201,6 +201,7 @@ export function renderAuthorProfile(
   const toggles = followToggles({ inMyPapers, onToggle });
   const list = PapersList(papers, {
     tz,
+    tzLabel: tzLabel || undefined,
     max: 100,
     authorHref: authorUrl,
     preamble: (p) => {

@@ -33,7 +33,7 @@ import { BrushableScatterPlot, topCategories } from "./widgets/brushableScatterP
 import { bindMyPapersBadge } from "./components/badge.js";
 import { relevanceControl } from "./widgets/relevanceControl.js";
 import { themeControl } from "./components/themeControl.js";
-import { PapersList, conferenceLink } from "./widgets/papersList.js";
+import { PapersList, conferenceLink, paperScore } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
@@ -41,6 +41,8 @@ import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
+import { PHONE_QUERY } from "./lib/breakpoints.js";
+import { conferenceZone } from "./lib/time.js";
 ```
 
 ```js
@@ -52,6 +54,8 @@ const embeddingsBuffer = FileAttachment("data/embeddings.bin").arrayBuffer();
 
 ```js
 const tz = conference.timezone;
+// "ET" (config timezoneLabel, else from the zone; DESIGN.md → Vocabulary)
+const tzLabel = conferenceZone(conference);
 // My Papers = papers added by hand ∪ papers of watched people/institutions − exceptions (#5)
 const followedStore = createFollowedStore(conference.id);
 const rulesStore = createRulesStore(conference.id);
@@ -288,8 +292,8 @@ invalidation.then(() => topicRefresh.stop());
     input.value = "";
     input.placeholder =
       modelStatus === "loading"
-        ? "⏳ Loading the language model…"
-        : `⚠ Search unavailable: the language model failed to load (${modelStatus.slice(7)})`;
+        ? "Loading the language model…"
+        : `Search unavailable: the language model failed to load (${modelStatus.slice(7)})`;
   } else if (input.dataset.query != null) {
     input.value = input.dataset.query;
     delete input.dataset.query;
@@ -331,6 +335,7 @@ const facetsInput = facetStrip(papers, {
   value: urlStart.facets,
   // Clear all goes back to the defaults (Main tracks), so the URL is clean again (#104)
   defaultValue: { types: defaultTypes },
+  phoneQuery: PHONE_QUERY,
   // Watch a person or institution: a standing rule whose papers are always in My Papers (#6)
   rowAction: (facetId, value) => {
     const type = { authors: "author", affiliations: "affiliation" }[facetId];
@@ -584,6 +589,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labelSize: mapWidth < 500 ? 10 : 11,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
   scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
+  // DESIGN.md → Legend: the ramp says "less / more similar", not scores
+  legendLabels: ["less similar", "more similar"],
   // Readable labels and a percentage instead of raw field names and a long float
   tooltip: [
     { field: "title", title: "Title" },
@@ -798,7 +805,7 @@ const chipsRow = renderChips(chips, {
 // paper: find the nearest point to the tap, pin its neighbours (#102) and scroll the list to it;
 // a tap on empty map space unpins
 {
-  const phone = matchMedia("(max-width: 576px)");
+  const phone = matchMedia(PHONE_QUERY);
   const onTap = (event) => {
     if (!phone.matches || layout.classList.contains("select-mode")) return;
     // Taps on controls in the map area (Select region, Hide map, Color by) aren't point taps
@@ -850,14 +857,14 @@ const papersList = PapersList(ordered, {
   shown: listState.shown,
   onShow: (n) => (listState.shown = n),
   tz,
+  tzLabel,
   header: "",
   authorHref: authorUrl,
-  // My research with several abstracts: which one the paper is closest to
-  preamble: (p) =>
-    p.score == null ? "" : `🔍 ${(p.score * 100).toFixed(1)}%${researchAbstracts.length > 1 ? ` · abstract ${p.abstractIndex + 1}` : ""}`,
   // The title opens the paper's details here; "Conference page ↗" goes to the conference site
   details: { href: (p) => paperRoute.href(p.shortId ?? p.id), open: (p) => openPaper(p.shortId ?? p.id) },
-  actions: (p) => html`<span class="paper-actions">${listToggles.toggle(p)}${conferenceLink(p)}</span>`,
+  // DESIGN.md → Paper row: follow toggle and score on the right ("54%"); with several My
+  // research abstracts, also the one the paper is closest to ("54% · abstract 2")
+  actions: (p) => html`<span class="paper-actions">${listToggles.toggle(p)}${conferenceLink(p)}${paperScore(p, researchAbstracts.length > 1 ? `abstract ${p.abstractIndex + 1}` : "")}</span>`,
 });
 papersList.update = listToggles.update;
 ```
@@ -882,6 +889,7 @@ const embeddingMatrix = toMatrix(embeddingsBuffer, papers.length);
 const paperDetail = paperPanel(paperParam, {
   papers,
   tz,
+  tzLabel,
   store,
   route: paperRoute,
   related: (paper) => relatedPapers(paper.id, embeddingMatrix, papers),

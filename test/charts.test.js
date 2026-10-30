@@ -259,14 +259,71 @@ describe("BrushableHistogram", () => {
   });
 });
 
-describe("scatterSpec legend", () => {
-  it("puts the color legend below the plot so it doesn't take map width", async () => {
+describe("scatterSpec legend (DESIGN.md → Legend)", () => {
+  const legendTexts = async (spec) => {
+    const vega = await import("vega");
+    const { compile } = await import("vega-lite");
+    const view = new vega.View(vega.parse(compile(spec).spec), {
+      renderer: "none",
+    });
+    const svg = await view.toSVG();
+    view.finalize();
+    return [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+  };
+
+  it("sits in the top-right corner on surface, so it never takes map width", async () => {
     const { scatterSpec } =
       await import("../src/widgets/brushableScatterPlot.js");
     const spec = scatterSpec([], { color: "typeLabel" });
-    expect(spec.encoding.color.condition.legend).toMatchObject({
-      orient: "bottom",
+    expect(spec.config.legend).toMatchObject({
+      orient: "top-right",
+      fillColor: "#fffdfa",
+      padding: 8,
     });
+  });
+
+  it("labels the similarity ramp at its ends, not with scores", async () => {
+    const { scatterSpec } =
+      await import("../src/widgets/brushableScatterPlot.js");
+    const spec = scatterSpec(data, {
+      color: "score",
+      colorType: "quantitative",
+      colorTitle: "Similarity",
+      scoreDomain: [0.3, 0.9],
+      legendLabels: ["less similar", "more similar"],
+      // size echoes the score: its legend must not merge into the ramp's (symbol legend)
+      size: "score",
+      width: 300,
+      height: 200,
+    });
+    const { compile } = await import("vega-lite");
+    const [legend] = compile(spec).spec.legends;
+    expect(legend.fill).toBe("color");
+    expect(legend.size).toBeUndefined();
+    const texts = await legendTexts(spec);
+    expect(texts).toEqual(
+      expect.arrayContaining(["Similarity", "less similar", "more similar"]),
+    );
+    expect(texts.some((t) => /^\d\.\d$/.test(t))).toBe(false);
+  });
+
+  it("falls back to the data's extent without a score domain (e.g. reliability)", async () => {
+    const { scatterSpec } =
+      await import("../src/widgets/brushableScatterPlot.js");
+    const spec = scatterSpec(data, {
+      color: "score",
+      colorType: "quantitative",
+      legendLabels: ["less reliable", "more reliable"],
+    });
+    expect(spec.encoding.color.condition.legend.values).toEqual([0.2, 0.9]);
+  });
+
+  it("keeps categories (3 + Other) as a list of labels", async () => {
+    const { scatterSpec } =
+      await import("../src/widgets/brushableScatterPlot.js");
+    const spec = scatterSpec(data, { color: "type", width: 300, height: 200 });
+    const texts = await legendTexts(spec);
+    expect(texts).toEqual(expect.arrayContaining(["full", "short"]));
   });
 });
 
