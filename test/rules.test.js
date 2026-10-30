@@ -463,3 +463,34 @@ describe("ruleOnlyCount", () => {
     expect(ruleOnlyCount(items, "a")).toBe(1);
   });
 });
+
+describe("applyRules (import and share links)", () => {
+  function setup() {
+    const storage = memoryStorage();
+    const followed = createFollowedStore("conf", storage, null);
+    const rules = createRulesStore("conf", storage, null);
+    const myPapers = createMyPapers({ followed, rules, papers: PAPERS });
+    return { rules, myPapers };
+  }
+  it("adds new rules (current matches not flagged new), skips existing ones, and undo removes only what it added", async () => {
+    const { applyRules } = await import("../src/lib/rules.js");
+    const { rules, myPapers } = setup();
+    myPapers.watch(friend, T1);
+    const before = structuredClone(rules.value);
+    const result = applyRules(
+      myPapers,
+      rules,
+      [friend, { type: "affiliation", value: "MIT" }],
+      ["p9"],
+    );
+    expect(result.added).toBe(1);
+    expect(rules.value.rules).toHaveLength(2);
+    expect(rules.value.exceptions).toContain("p9");
+    expect(myPapers.value.filter((d) => d.new)).toEqual([]);
+    result.undo();
+    expect(rules.value.rules.map((r) => r.id)).toEqual(
+      before.rules.map((r) => r.id),
+    );
+    expect(rules.value.exceptions).toEqual(before.exceptions);
+  });
+});

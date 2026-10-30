@@ -371,3 +371,29 @@ export function ruleOnlyCount(items, ruleId) {
     (d) => !d.manual && d.ruleIds?.length === 1 && d.ruleIds[0] === ruleId,
   ).length;
 }
+
+/**
+ * Adds watch rules from an import or a share link, skipping ones already watched (their current
+ * matches are not flagged new), plus optional exceptions. Returns how many rules were added and
+ * an undo that removes exactly what was added.
+ */
+export function applyRules(myPapers, rulesStore, rules = [], exceptions = []) {
+  const addedRules = [];
+  for (const rule of rules) {
+    const normalized = normalizeRule(rule);
+    if (!normalized || rulesStore.has(normalized.id)) continue;
+    myPapers.watch(normalized);
+    addedRules.push(normalized.id);
+  }
+  const addedExceptions = exceptions.filter(
+    (id) => !rulesStore.value.exceptions.includes(id),
+  );
+  if (addedExceptions.length) rulesStore.except(addedExceptions);
+  return {
+    added: addedRules.length,
+    undo: () => {
+      if (addedRules.length) rulesStore.remove(addedRules);
+      if (addedExceptions.length) rulesStore.unexcept(addedExceptions);
+    },
+  };
+}

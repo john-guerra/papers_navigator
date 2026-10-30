@@ -5,7 +5,7 @@ toc: false
 
 ```js
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
-import { createMyPapers, createRulesStore, filterByReason, normalizeRule, pickReason, reasonOptions, ruleOnlyCount } from "./lib/rules.js";
+import { applyRules, createMyPapers, createRulesStore, filterByReason, normalizeRule, pickReason, reasonOptions, ruleOnlyCount } from "./lib/rules.js";
 import { facetValues } from "./lib/filters.js";
 import { renderWatching } from "./components/watching.js";
 import { showToast } from "./components/toast.js";
@@ -13,7 +13,8 @@ import { groupIntoSlots, nowNext } from "./lib/schedule.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
-import { decodeShareHash, resolveShortIds, shareUrl } from "./lib/share.js";
+import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
+import { exportMyPapers, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 ```
@@ -93,7 +94,11 @@ const shared = resolveShortIds(decodeShareHash(hash), papers);
 const clearHash = () => history.replaceState(null, "", location.pathname + location.search);
 const sharedReason = () => shared.ids.map((id) => ({ id, reason: "📱 shared", addedOn: new Date().toISOString() }));
 const banner = html`<div></div>`;
-if (shared.ids.length || shared.unknown.length) {
+// Watch rules from the link (#49) are only ever added, never used to remove local ones (even
+// on Replace: losing someone's watches by accident is worse than an extra rule)
+const sharedWatches = decodeShareWatches(hash);
+const addSharedWatches = () => applyRules(store, rulesStore, sharedWatches);
+if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
   const done = () => {
     clearHash();
     banner.replaceChildren();
@@ -105,15 +110,18 @@ if (shared.ids.length || shared.unknown.length) {
     renderShareBanner(
       {
         ...shared,
+        watches: sharedWatches,
         // "already" counts all of My Papers (watched too); Replace only touches hand-added ones
         already: shared.ids.filter((id) => store.has(id)).length,
         current: mine.size,
         watched: store.value.filter((d) => !d.manual).length,
       },
       {
-        onMerge: () => (followedStore.merge(sharedReason()), done()),
+        onMerge: () => (followedStore.merge(sharedReason()), addSharedWatches(), done()),
         onReplace: () => {
-          const undo = followedStore.replace(sharedReason());
+          const undoList = followedStore.replace(sharedReason());
+          const { undo: undoRules } = addSharedWatches();
+          const undo = () => (undoList(), undoRules());
           done();
           showToast(`Replaced your list with ${shared.ids.length} shared papers`, { actionLabel: "Undo", onAction: undo });
         },
@@ -147,11 +155,17 @@ shareButton.onclick = () =>
   sharePanel.childElementCount
     ? sharePanel.replaceChildren()
     : sharePanel.replaceChildren(
-        renderShareDialog(shareUrl(store.value, papers), { count: store.value.length }),
+        // The link carries hand-added papers plus watch rules; the phone recomputes watched papers
+        renderShareDialog(shareUrl(followedStore.value, papers, location.href, rulesStore.value.rules), {
+          count: followedStore.value.length,
+        }),
       );
 const exportButton = html`<button>⬇️ Export JSON</button>`;
 exportButton.onclick = () => {
-  const blob = new Blob([followedStore.exportJSON()], { type: "application/json" });
+  const blob = new Blob(
+    [exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions })],
+    { type: "application/json" },
+  );
   const a = Object.assign(document.createElement("a"), {
     href: URL.createObjectURL(blob),
     download: `${conference.id}-my-papers.json`,
@@ -169,10 +183,16 @@ importInput.querySelector("input").onchange = async (event) => {
   const run = (replace) => {
     try {
       const before = followedStore.value.length;
-      const undo = followedStore.importJSON(text, { replace });
+      // v2 files carry watch rules and exceptions too (#49): rules are added, never removed; the
+      // file's exceptions apply only on Replace (on Merge they could hide papers you have here)
+      const file = parseMyPapersFile(text);
+      const undoList = followedStore.importJSON(JSON.stringify(file.followed), { replace });
+      const rulesResult = applyRules(store, rulesStore, file.rules, replace ? file.exceptions : []);
+      const undo = () => (undoList(), rulesResult.undo());
+      const watchesText = rulesResult.added ? ` and ${rulesResult.added} ${rulesResult.added === 1 ? "watch" : "watches"}` : "";
       importStatus.textContent = replace
-        ? `Replaced your list with ${followedStore.value.length} papers.`
-        : `Added ${followedStore.value.length - before} papers (${store.value.length} total in My Papers).`;
+        ? `Replaced your list with ${followedStore.value.length} papers${watchesText}.`
+        : `Added ${followedStore.value.length - before} papers${watchesText} (${store.value.length} total in My Papers).`;
       if (replace) showToast("Replaced your list from the file", { actionLabel: "Undo", onAction: undo });
     } catch (error) {
       importStatus.textContent = error.message;
