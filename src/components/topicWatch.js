@@ -8,9 +8,18 @@ const LEVEL_NAMES = { strong: "Strong", good: "Good" };
  * opens an inline preview where you pick Strong or Good and see what is in and out before saving.
  * `previews` = `{strong, good}` from `topicPreview` (whole program, all types); `current` = the
  * watched rule for this query, if any. `onSave(level)` saves it.
+ * "My research" (#27): `research = {name}` asks for a short name (the rule's value and reason;
+ * `query` is then the label of what is ranked) and calls `onSave(level, name)`.
  */
 export function topicWatch(
-  { query, previews, current = null, level, open: startOpen = false },
+  {
+    query,
+    previews,
+    current = null,
+    level,
+    open: startOpen = false,
+    research = null,
+  },
   { onSave, onToggle },
 ) {
   let chosen = current?.level ?? (level === "strong" ? "strong" : "good");
@@ -20,8 +29,20 @@ export function topicWatch(
     aria-expanded="false"
   ></button>`;
   open.textContent = current
-    ? `🔍 Watching this research topic (${LEVEL_NAMES[current.level]})`
-    : "🔍 Watch this research topic";
+    ? research
+      ? `🔍 Watching as “${current.value}” (${LEVEL_NAMES[current.level]})`
+      : `🔍 Watching this research topic (${LEVEL_NAMES[current.level]})`
+    : research
+      ? "🔍 Watch as a research topic"
+      : "🔍 Watch this research topic";
+  const nameInput = html`<input
+    type="text"
+    class="topic-watch-name"
+    maxlength="80"
+    aria-label="Research topic name"
+  />`;
+  nameInput.value = current?.value ?? research?.name ?? "";
+  const savedName = () => nameInput.value.trim() || research?.name;
 
   const levelButtons = Object.entries(LEVEL_NAMES).map(([key, name]) => {
     const button = html`<button type="button" data-level=${key}>
@@ -41,10 +62,20 @@ export function topicWatch(
   ></button>`;
   const cancel = html`<button type="button" class="btn-text">Cancel</button>`;
   const panel = html`<div class="topic-watch-panel" hidden>
-    <p class="topic-watch-title">
-      Watch <strong>“${query}”</strong> as a research topic: matching papers
-      join My Papers as “🔍 ${query}”, now and after program updates.
-    </p>
+    ${
+      research
+        ? html`<p class="topic-watch-title">
+            Watch <strong>${query}</strong> as a research topic named
+            ${nameInput}: matching papers join My Papers with that name as their
+            reason, now and after program updates. Your abstracts are saved with
+            it on this device only (not in share links).
+          </p>`
+        : html`<p class="topic-watch-title">
+            Watch <strong>“${query}”</strong> as a research topic: matching
+            papers join My Papers as “🔍 ${query}”, now and after program
+            updates.
+          </p>`
+    }
     <div
       class="relevance-control"
       role="group"
@@ -110,7 +141,8 @@ export function topicWatch(
     open.focus();
   };
   save.onclick = () => {
-    onSave(chosen);
+    if (research) onSave(chosen, savedName());
+    else onSave(chosen);
     setOpen(false);
   };
   sync();

@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { createFollowedStore } from "../src/lib/followed.js";
-import { createMyPapers, createRulesStore } from "../src/lib/rules.js";
+import {
+  createMyPapers,
+  createRulesStore,
+  normalizeRule,
+} from "../src/lib/rules.js";
+import { MAX_ABSTRACT_LENGTH, MAX_ABSTRACTS } from "../src/lib/myResearch.js";
+import { encodeShareHash } from "../src/lib/share.js";
 import {
   canDownloadModel,
   refreshTopicRules,
+  researchRule,
   startTopicRefresh,
   thresholdFor,
   topicMatches,
@@ -341,5 +348,112 @@ describe("startTopicRefresh", () => {
     const status = startTopicRefresh(options);
     await flush(tasks);
     expect(status.value).toBe("error");
+  });
+});
+
+describe("My research as a research topic (#27)", () => {
+  const ABSTRACTS = ["We study uncertainty.", "We study color."];
+
+  it("researchRule keeps the name as the rule's value and the abstracts on the rule", () => {
+    const rule = researchRule(
+      " My research ",
+      ABSTRACTS,
+      "good",
+      { good: 0.5, strong: 0.7 },
+      [
+        { id: "p1", score: 0.9 },
+        { id: "p2", score: 0.4 },
+      ],
+      T1,
+    );
+    expect(rule).toEqual({
+      type: "topic",
+      value: "My research",
+      research: ABSTRACTS,
+      level: "good",
+      threshold: 0.5,
+      matches: { p1: 0.9 },
+      evaluatedOn: T1.toISOString(),
+    });
+  });
+
+  it("has its own id, so it never collides with a search for the same words", () => {
+    const research = normalizeRule({
+      type: "topic",
+      value: "My research",
+      research: ABSTRACTS,
+    });
+    const search = normalizeRule({ type: "topic", value: "my research" });
+    expect(research.id).toBe("research:my research");
+    expect(search.id).toBe("topic:my research");
+    expect(research.research).toEqual(ABSTRACTS);
+    expect(search.research).toBeUndefined();
+  });
+
+  it("validates the abstracts (imports are untrusted)", () => {
+    const rule = normalizeRule({
+      type: "topic",
+      value: "Mine",
+      research: [
+        " ok ",
+        42,
+        "",
+        "x".repeat(MAX_ABSTRACT_LENGTH + 10),
+        ...Array(20).fill("y"),
+      ],
+    });
+    expect(rule.research[0]).toBe("ok");
+    expect(rule.research[1]).toHaveLength(MAX_ABSTRACT_LENGTH);
+    expect(rule.research).toHaveLength(MAX_ABSTRACTS);
+    // No usable abstract: a plain research topic
+    expect(
+      normalizeRule({ type: "topic", value: "Mine", research: [1, ""] }).id,
+    ).toBe("topic:mine");
+  });
+
+  it("round-trips through the store; re-saving replaces the abstracts", () => {
+    const { rules, storage } = setup();
+    const rule = { type: "topic", value: "Mine", threshold: 0.5 };
+    rules.add({ ...rule, research: ["old"] }, T1);
+    rules.add({ ...rule, research: ABSTRACTS }, T2);
+    const again = createRulesStore("conf", storage, null);
+    expect(again.value.rules).toHaveLength(1);
+    expect(again.value.rules[0]).toMatchObject({
+      id: "research:mine",
+      research: ABSTRACTS,
+    });
+  });
+
+  it("is re-evaluated from its abstracts (best abstract per paper), never from its name", async () => {
+    const { rules, myPapers } = setup();
+    myPapers.watch(
+      { type: "topic", value: "Mine", research: ["A", "B"], threshold: 0.89 },
+      T1,
+    );
+    const embed = vi.fn(async (text) => (text === "A" ? [1, 0] : [-0.2, 0.98]));
+    await refreshTopicRules({
+      rules,
+      embed,
+      matrix: MATRIX,
+      papers: PAPERS,
+      dims: DIMS,
+      now: T2,
+    });
+    expect(embed.mock.calls.map((c) => c[0])).toEqual(["A", "B"]);
+    // p1 via A (0.9); p4 via B (≈1)
+    expect(Object.keys(rules.value.rules[0].matches)).toEqual(["p1", "p4"]);
+  });
+
+  it("stays out of share links (the abstracts stay on this device)", () => {
+    const mine = { type: "topic", value: "Mine", research: ABSTRACTS };
+    const hash = encodeShareHash(
+      ["a1"],
+      [
+        { ...mine, level: "good", threshold: 0.5 },
+        { type: "topic", value: "llm", level: "good", threshold: 0.3 },
+      ],
+    );
+    expect(hash).toBe("#follow=a1&watch=t:g0.3:llm");
+    expect(encodeShareHash([], [mine])).toBe("");
   });
 });

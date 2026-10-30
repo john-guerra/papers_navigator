@@ -1387,6 +1387,54 @@ details.missing > summary {
   }
 }
 
+.topic-watch-name {
+  font: inherit;
+  max-width: 14rem;
+}
+
+/* #27 — My research: button beside the search, panel on its own line under it */
+.my-research {
+  display: contents;
+}
+
+.my-research-open.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.my-research-panel {
+  flex-basis: 100%;
+  max-width: 48rem;
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  border-radius: var(--rounded-sm, 4px);
+  background: var(--color-surface-sunken);
+}
+
+.my-research-panel textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: var(--spacing-xs, 4px) 0;
+  font: var(--typography-body-sm);
+}
+
+.my-research-panel p {
+  margin: var(--spacing-xs, 4px) 0;
+}
+
+.my-research-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm, 8px);
+  align-items: center;
+}
+
+@media (max-width: 576px) {
+  .my-research button {
+    min-height: 44px;
+  }
+}
+
 .watching-actions {
   display: flex;
   flex-wrap: wrap;

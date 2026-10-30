@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { exportMyPapers, parseMyPapersFile } from "../src/lib/myPapersFile.js";
+import {
+  exportMyPapers,
+  exportNote,
+  parseMyPapersFile,
+} from "../src/lib/myPapersFile.js";
 
 const followed = [
   { id: "a", reason: "r", addedOn: "2026-10-30T00:00:00.000Z" },
@@ -61,5 +65,15 @@ describe("My Papers file with research topics (#24)", () => {
     };
     const text = exportMyPapers({ followed, rules: [topic], exceptions: [] });
     expect(parseMyPapersFile(text).rules).toEqual([topic]);
+  });
+});
+
+describe("exportNote", () => {
+  it("says the file includes the abstracts of My research topics, only when there are some", () => {
+    expect(exportNote(rules)).toBe("");
+    const mine = { type: "topic", value: "Mine", research: ["A"] };
+    expect(exportNote([...rules, mine])).toBe(
+      "Includes the abstracts of your research topics",
+    );
   });
 });
