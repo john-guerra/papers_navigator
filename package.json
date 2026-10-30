@@ -8,8 +8,8 @@
   "scripts": {
     "test": "vitest run",
     "dev": "observable preview",
-    "build": "observable build",
-    "lint": "eslint src test"
+    "build": "observable build && node scripts/buildSw.js",
+    "lint": "eslint src test scripts"
   },
   "repository": {
     "type": "git",
