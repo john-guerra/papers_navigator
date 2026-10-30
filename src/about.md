@@ -64,7 +64,7 @@ const storageTable = html`<table class="about-storage">
    5. [Add papers to My Papers](#add-papers-to-my-papers)
    6. [Watch people, institutions and research topics](#watch-people-institutions-and-research-topics)
    7. [My research: rank the program against your abstracts](#my-research)
-   8. [Options: projection, appearance, advanced](#options)
+   8. [Options: projection, animation, appearance, advanced](#options)
 4. [Tutorial: My Papers](#my-papers)
    1. [Now / Next and the itinerary](#now-next-and-the-itinerary)
    2. [Reasons, watching and recommendations](#reasons-watching-and-recommendations)
@@ -146,7 +146,8 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 
 Every dot is a paper; similar papers sit close together.
 
-- **Hover or tap** a dot for its title, authors, type, session and topic (and similarity after a search); **click** it to open its details.
+- **Hover** near a dot for its title, authors, type, session and topic (and similarity after a search); the tooltip follows the nearest point, so you don't have to hit the dot exactly.
+- **Click or tap** a dot to open its details.
 - **Select a region** to keep only the papers inside it: drag on the map on a laptop. On a phone the map never captures scrolling, so tap **Select region** first, then drag. The region becomes a chip ("Map region ✕").
 - **Color by** Similarity (after a search, darker = closer), Type, Room, Session or Topic.
 - **Topic labels** name the groups of similar papers; turn them off with the toggle under the map.
@@ -188,6 +189,11 @@ Your abstracts stay on this device: they are saved in this browser only and neve
 **⚙ Options** in the navbar (Explore only) opens the map options:
 
 - **Dimensionality reduction:** switch the map between UMAP, t-SNE and PCA.
+- **Animation:** how the map moves.
+  - *Animate the map*: dots glide to their new places when you switch projections. It starts off if your device asks for reduced motion.
+  - *Align projections*: before moving, each projection is rotated, scaled and flipped (Procrustes alignment) to best match the default UMAP map, so dots travel as little as possible.
+  - *Animate filter changes*: dots also glide when search, relevance or filters change; a selected map region is kept across those changes.
+  - *Motion*: **All at once**, or **By topic** (one topic after another). *Speed*: Slow, Normal or Fast.
 - **Appearance:** Auto (follows your device), Light or Dark. Every page uses your choice.
 - **Advanced:** live projections, clusters and quality, all computed in your browser:
   - *Compute a projection* with DruidJS on the 384-dimensional embeddings; it joins the projection list.
@@ -223,7 +229,7 @@ My Papers is your personal list and schedule. Everything happens in your browser
 
 ### At the venue and offline
 
-After one visit, My Papers, the itinerary, Now / Next and Researchers keep working with weak or no Wi-Fi: the browser keeps a copy of the site.
+After one visit, My Papers, the itinerary, Now / Next and Researchers keep working with weak or no Wi-Fi: the browser keeps a copy of the site, including its fonts.
 
 ## Researchers
 

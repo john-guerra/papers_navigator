@@ -1,5 +1,12 @@
 // The npm "main" is a UMD bundle; import the ES build explicitly.
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
+import { attachNearestTooltip } from "./nearestTooltip.js";
+import {
+  domainAt,
+  easeExpr,
+  planTransition,
+  positionAt,
+} from "./scatterTransition.js";
 
 /** Points inside a Vega-Lite interval brush ({[xField]: [lo, hi], [yField]: [lo, hi]}). */
 export function brushFilter(data, drag, { x = "x", y = "y" } = {}) {
@@ -109,7 +116,11 @@ function categoryRange() {
  *   `view.signal("mine", ids)` without redrawing (which would lose the brush);
  * - with `labels` ({text, x, y}, most important first), text labels (topic clusters) on top:
  *   ink on a halo of the page background, readable on any point color in both themes;
- *   labels that would overlap a more important one are left out (numeric width/height only).
+ *   labels that would overlap a more important one are left out (numeric width/height only);
+ * - with `transition` (from planTransition, #82), the points are drawn where they were and a
+ *   `tm` param (elapsed ms) tweens them: positions, the scale domains, entering points fading in,
+ *   leaving ones fading out and topic labels fading out then back in at their new centers, all
+ *   computed by Vega from one signal (no data churn per frame).
  */
 export function scatterSpec(
   data,
@@ -132,6 +143,7 @@ export function scatterSpec(
     width = "container",
     height = 500,
     title,
+    transition = null,
   } = {},
 ) {
   const categorical = color && colorType !== "quantitative";
@@ -139,12 +151,19 @@ export function scatterSpec(
     categorical && !colorScheme
       ? (categories ?? topCategories(data, color)).slice(0, 3)
       : null;
-  const values = highlighted
-    ? data.map((d) => ({
-        ...d,
-        __color: highlighted.includes(d[color]) ? d[color] : OTHER,
-      }))
-    : data;
+  const decorate = (d) => ({
+    ...d,
+    ...(highlighted && {
+      __color: highlighted.includes(d[color]) ? d[color] : OTHER,
+    }),
+    ...(transition && motionFields(transition.motion.get(d[id]))),
+  });
+  // Copies whenever fields are added (Vega's formulas write on the objects it is given)
+  const values =
+    highlighted || transition
+      ? [...data, ...(transition?.exits ?? [])].map(decorate)
+      : data;
+  const tween = transition && tweenParts(transition, { x, y });
   const palette = categoryRange();
   const colorScale = colorScheme
     ? { scheme: colorScheme }
@@ -170,11 +189,28 @@ export function scatterSpec(
   // nice: false + padding in pixels, so cullLabels can mirror the scales exactly
   const scale = { zero: false, nice: false, padding: 10 };
   const position = {
-    x: { field: x, type: "quantitative", axis: null, scale },
-    y: { field: y, type: "quantitative", axis: null, scale },
+    x: {
+      field: x,
+      type: "quantitative",
+      axis: null,
+      scale: { ...scale, ...tween?.xScale },
+    },
+    y: {
+      field: y,
+      type: "quantitative",
+      axis: null,
+      scale: { ...scale, ...tween?.yScale },
+    },
   };
   const points = {
-    mark: { type: "point", filled: true, opacity: 0.75 },
+    // Mid-motion, leaving points can sit outside the new extent: clip them so the chart
+    // keeps its size (autosize would grow it)
+    mark: {
+      type: "point",
+      filled: true,
+      opacity: 0.75,
+      ...(tween && { clip: true }),
+    },
     params: [
       { name: "drag", select: { type: "interval", encodings: ["x", "y"] } },
       { name: "click", select: { type: "point", fields: [id], on: "click" } },
@@ -205,37 +241,62 @@ export function scatterSpec(
         size: {
           field: size,
           type: "quantitative",
-          scale: { range: sizeRange },
+          scale: {
+            range: sizeRange,
+            // Fixed while leaving points are still in the data (#82)
+            ...(transition &&
+              data.length && {
+                domain: extent(data.map((d) => d[size])),
+                clamp: true,
+              }),
+          },
           legend: null,
         },
       }),
-      tooltip: tooltip.map(tooltipField),
+      ...(tween && { opacity: tween.opacity("__op") }),
+      tooltip: tooltip ? tooltip.map(tooltipField) : null,
     },
   };
   const rings = ringIds && {
-    transform: [{ filter: `indexof(mine, datum.${id}) >= 0` }],
+    transform: [
+      {
+        filter: `indexof(mine, datum.${id}) >= 0${tween ? " && !datum.__out" : ""}`,
+      },
+    ],
     mark: {
       type: "point",
+      ...(tween && { clip: true }),
       filled: false,
       size: 110,
       strokeWidth: 1.5,
       color: token("color-viz-followed-ring", "#241e1a"),
     },
-    encoding: { ...position, tooltip: tooltip.map(tooltipField) },
+    encoding: {
+      ...position,
+      ...(tween && { opacity: tween.opacity("__o") }),
+      tooltip: tooltip ? tooltip.map(tooltipField) : null,
+    },
   };
 
-  const shown =
-    labels?.length && typeof width === "number" && data.length
-      ? cullLabels(labels, {
-          width,
-          height,
-          xDomain: extent(data.map((d) => d[x])),
-          yDomain: extent(data.map((d) => d[y])),
-          fontSize: labelSize,
-        })
-      : labels;
+  const shown = visibleLabels(data, labels, { x, y, width, height, labelSize });
+  const labelRows = [
+    ...(shown ?? []).map((l) => ({
+      text: l.text,
+      [x]: l.x,
+      [y]: l.y,
+      ...(transition && { __old: 0, __s: transition.stageStart(l.cluster) }),
+    })),
+    ...(transition && shown?.length ? transition.fromLabels : []).map((l) => ({
+      text: l.text,
+      [x]: l.x,
+      [y]: l.y,
+      __old: 1,
+      __s: 0,
+    })),
+  ];
   const text = (mark) => ({
-    data: { values: shown.map((l) => ({ text: l.text, [x]: l.x, [y]: l.y })) },
+    data: { values: labelRows },
+    ...(tween && { transform: tween.labelTransform }),
     mark: {
       type: "text",
       fontSize: labelSize,
@@ -243,7 +304,12 @@ export function scatterSpec(
       font: token("font-sans", "sans-serif"),
       ...mark,
     },
-    encoding: { ...position, text: { field: "text" }, tooltip: null },
+    encoding: {
+      ...position,
+      text: { field: "text" },
+      ...(tween && { opacity: tween.opacity("__lo") }),
+      tooltip: null,
+    },
   });
   const background = token("color-background", "#fcf9f3");
   const textLayers = shown?.length
@@ -266,15 +332,20 @@ export function scatterSpec(
     height,
     title,
     data: { values },
+    ...(tween && { transform: tween.transform }),
     ...(layers.length > 1
       ? {
           params: [
             ...(rings ? [{ name: "mine", value: ringIds }] : []),
             levelCut,
+            ...(tween?.params ?? []),
           ],
           layer: layers,
         }
-      : { ...points, params: [...points.params, levelCut] }),
+      : {
+          ...points,
+          params: [...points.params, levelCut, ...(tween?.params ?? [])],
+        }),
     // Transparent so the page's paper shows through (Vega defaults to white)
     // and the title/legend take the page's ink and sans font (both themes).
     config: {
@@ -287,6 +358,86 @@ export function scatterSpec(
         labelColor: token("color-on-surface-muted", "#605954"),
       },
     },
+  };
+}
+
+/** Topic labels that fit (cullLabels) at the scales `data` gets, or `labels` as given. */
+export function visibleLabels(
+  data,
+  labels,
+  { x = "x", y = "y", width, height, labelSize = 11 },
+) {
+  return labels?.length && typeof width === "number" && data.length
+    ? cullLabels(labels, {
+        width,
+        height,
+        xDomain: extent(data.map((d) => d[x])),
+        yDomain: extent(data.map((d) => d[y])),
+        fontSize: labelSize,
+      })
+    : labels;
+}
+
+/** The per-point fields the tween formulas read (see tweenParts). */
+const motionFields = (m) =>
+  m && {
+    __x0: m.x0,
+    __y0: m.y0,
+    __x1: m.x1,
+    __y1: m.y1,
+    __s: m.start,
+    __in: m.enter,
+    __out: m.exit,
+  };
+
+/**
+ * Vega-Lite pieces of the tween (#82), all driven by the `tm` param (elapsed ms): each point's
+ * eased progress within its stage moves it from (__x0, __y0) to (__x1, __y1) and fades it in
+ * (entering) or out (leaving, then filtered out at the end); the domains ease from the old
+ * extent to the new one; old topic labels fade out in the first quarter of a stage and new ones
+ * fade in during the last quarter of their topic's stage.
+ */
+function tweenParts({ duration: D, total: T, xDomain, yDomain }, { x, y }) {
+  const domain = ([from, to], i) => ({
+    expr: `${from[i]} + (${to[i] - from[i]}) * ${easeExpr(`clamp(tm / ${T}, 0, 1)`)}`,
+  });
+  const axis = (d) => ({ domainMin: domain(d, 0), domainMax: domain(d, 1) });
+  return {
+    params: [{ name: "tm", value: 0 }],
+    transform: [
+      { calculate: `clamp((tm - datum.__s) / ${D}, 0, 1)`, as: "__p" },
+      { calculate: easeExpr("datum.__p"), as: "__e" },
+      {
+        calculate: "datum.__x0 + (datum.__x1 - datum.__x0) * datum.__e",
+        as: x,
+      },
+      {
+        calculate: "datum.__y0 + (datum.__y1 - datum.__y0) * datum.__e",
+        as: y,
+      },
+      {
+        calculate: "datum.__out ? 1 - datum.__e : datum.__in ? datum.__e : 1",
+        as: "__o",
+      },
+      { calculate: "0.75 * datum.__o", as: "__op" },
+      { filter: `!(datum.__out && tm >= ${T})` },
+    ],
+    xScale: axis(xDomain),
+    yScale: axis(yDomain),
+    opacity: (field) => ({
+      field,
+      type: "quantitative",
+      scale: null,
+      legend: null,
+    }),
+    // Labels are in the data only while visible: off-plot text would grow the chart (autosize)
+    labelTransform: [
+      { filter: `datum.__old ? tm < ${D / 4} : tm >= datum.__s + ${0.75 * D}` },
+      {
+        calculate: `datum.__old ? clamp(1 - tm / ${D / 4}, 0, 1) : clamp((tm - datum.__s - ${0.75 * D}) / ${D / 4}, 0, 1)`,
+        as: "__lo",
+      },
+    ],
   };
 }
 
@@ -307,21 +458,66 @@ export function selectionFromChart(
   };
 }
 
+const nextFrame = (callback) =>
+  globalThis.requestAnimationFrame
+    ? requestAnimationFrame(callback)
+    : setTimeout(() => callback(performance.now()), 16);
+const cancelFrame = (handle) =>
+  globalThis.cancelAnimationFrame
+    ? cancelAnimationFrame(handle)
+    : clearTimeout(handle);
+
 /**
  * Brushable scatterplot reactive widget, ported from @john-guerra/brushable-scatterplot.
  * `.value = {brushed, clicked}`: brushed points (all when no brush) and clicked points.
+ *
+ * Redrawing with a new widget can animate from the old one (#82): pass `from` (the previous
+ * widget, or its `snapshot()`) and `animate` ({duration, stageOf}: ms per stage and an optional
+ * grouping, e.g. topic, to stage the motion by), and points move from where they were drawn;
+ * `brush` ({x: [lo, hi], y: [lo, hi]} in data units, e.g. the previous widget's `brush()`)
+ * restores a region selection. `finished` resolves when the motion ends.
  */
 export async function BrushableScatterPlot(data, options = {}) {
-  const { x = "x", y = "y", id = "id", renderer = "canvas" } = options;
-  const chart = await vegaSelected(scatterSpec(data, options), {
-    vegaConfig: { renderer, actions: false },
-  });
+  const {
+    x = "x",
+    y = "y",
+    id = "id",
+    renderer = "canvas",
+    tooltip = [id],
+    from = null,
+    animate = null,
+    brush = null,
+  } = options;
+  const previous =
+    typeof from?.snapshot === "function" ? from.snapshot() : from;
+  const transition =
+    animate &&
+    planTransition(data, previous, {
+      x,
+      y,
+      id,
+      duration: animate.duration,
+      stageOf: animate.stageOf,
+    });
+  // The tooltip follows the nearest point (attached below), not only exact hits on a dot
+  const chart = await vegaSelected(
+    scatterSpec(data, { ...options, transition, tooltip: null }),
+    {
+      vegaConfig: { renderer, actions: false },
+    },
+  );
   const target = document.createElement("div");
   target.className = "brushable-scatterplot";
   target.append(chart);
   target.view = chart.view;
 
-  let value = { brushed: data, clicked: [] };
+  // Restore the region selection (pixels from data units at the scales now in effect)
+  if (brush?.x && brush?.y) {
+    const px = brush.x.map(chart.view.scale("x")).sort((a, b) => a - b);
+    const py = brush.y.map(chart.view.scale("y")).sort((a, b) => a - b);
+    await chart.view.signal("drag_x_1", px).signal("drag_y_1", py).runAsync();
+  }
+  let value = selectionFromChart(chart.value, data, { x, y, id });
 
   // Touch brushing (#85): Vega gives pointerdown the item under the last pointermove, and
   // Vega-Lite's brush only starts on a pointerdown with an item (inScope(event.item)). A mouse
@@ -346,20 +542,114 @@ export async function BrushableScatterPlot(data, options = {}) {
   );
 
   // vega-selected emits input on any signal change (e.g. levelCut, mine): forward only real
-  // selection changes, or pages that set those signals from the map's value would loop
-  const selectionKey = () => {
-    const { drag, click } = chart.value ?? {};
-    return JSON.stringify([drag?.[x], drag?.[y], click?.[id]]);
-  };
-  let lastKey = selectionKey();
+  // selection changes, or pages that set those signals from the map's value would loop.
+  // Keyed by the selected ids, not the brush extent: while the scales move (#82), Vega maps the
+  // brush to pixels and back every frame, and the rounding noise would look like a new brush.
+  const selectionKey = (selection) =>
+    JSON.stringify([
+      selection.brushed.length === data.length
+        ? null
+        : selection.brushed.map((d) => d[id]),
+      selection.clicked.map((d) => d[id]),
+    ]);
+  let lastKey = selectionKey(value);
   chart.addEventListener("input", (event) => {
     event.stopPropagation();
-    const key = selectionKey();
+    const next = selectionFromChart(chart.value, data, { x, y, id });
+    const key = selectionKey(next);
     if (key === lastKey) return;
     lastKey = key;
-    value = selectionFromChart(chart.value, data, { x, y, id });
+    value = next;
     target.dispatchEvent(new Event("input", { bubbles: true }));
   });
+
+  /** The region selection in data units, or null. */
+  target.brush = () => {
+    const drag = chart.value?.drag;
+    return drag?.[x] && drag?.[y] ? { x: [...drag[x]], y: [...drag[y]] } : null;
+  };
+
+  // The tween: one signal update per frame; Vega recomputes positions and opacities
+  let tm = transition ? 0 : Infinity;
+  let frame = null;
+  let resolveFinished;
+  target.finished = new Promise((resolve) => (resolveFinished = resolve));
+  const frameTimes = [];
+  const settle = () => {
+    frame = null;
+    resolveFinished(target.animationStats ?? null);
+  };
+  /** Stops the motion where it is (the next widget animates from there). */
+  target.stop = () => {
+    if (frame != null) cancelFrame(frame);
+    settle();
+  };
+  /** Jumps to the end of the motion. */
+  target.finish = async () => {
+    if (!transition || tm >= transition.total) return;
+    if (frame != null) cancelFrame(frame);
+    tm = transition.total;
+    await chart.view.signal("tm", tm).runAsync();
+    settle();
+  };
+  if (transition) {
+    let start = null;
+    let last = null;
+    const tick = (now) => {
+      start ??= now;
+      if (last != null) frameTimes.push(now - last);
+      last = now;
+      tm = Math.min(now - start, transition.total);
+      chart.view.signal("tm", tm).runAsync();
+      if (tm < transition.total) frame = nextFrame(tick);
+      else {
+        // Frame-to-frame times, for checking the 60 fps target (#82)
+        const n = frameTimes.length;
+        target.animationStats = n
+          ? {
+              frames: n,
+              meanMs: frameTimes.reduce((a, b) => a + b, 0) / n,
+              maxMs: Math.max(...frameTimes),
+            }
+          : null;
+        settle();
+      }
+    };
+    frame = nextFrame(tick);
+  } else settle();
+
+  // Where each point is drawn now (mid-motion: between its old and new position)
+  const drawnAt = (d) =>
+    transition && tm < transition.total
+      ? positionAt(transition.motion.get(d[id]), tm, transition.duration)
+      : [d[x], d[y]];
+
+  /** What is on screen, for the next widget to animate from (stops the motion). */
+  target.snapshot = () => {
+    target.stop();
+    const domains =
+      transition && tm < transition.total
+        ? [
+            domainAt(transition.xDomain, tm, transition.total),
+            domainAt(transition.yDomain, tm, transition.total),
+          ]
+        : // The data extent (the scales' own domains include the pixel padding)
+          [extent(data.map((d) => d[x])), extent(data.map((d) => d[y]))];
+    return {
+      positions: new Map(data.map((d) => [d[id], drawnAt(d)])),
+      rows: new Map(data.map((d) => [d[id], d])),
+      xDomain: domains[0],
+      yDomain: domains[1],
+      labels:
+        visibleLabels(data, options.labels, {
+          x,
+          y,
+          width: options.width,
+          height: options.height,
+          labelSize: options.labelSize,
+        }) ?? [],
+    };
+  };
 
   /**
    * The point nearest to a screen position (e.g. a tap), or null if none is within `radius`
@@ -375,8 +665,9 @@ export async function BrushableScatterPlot(data, options = {}) {
     let best = null;
     let bestDistance = radius * radius;
     for (const d of data) {
-      const dx = rect.left + ox + sx(d[x]) - clientX;
-      const dy = rect.top + oy + sy(d[y]) - clientY;
+      const [px, py] = drawnAt(d);
+      const dx = rect.left + ox + sx(px) - clientX;
+      const dy = rect.top + oy + sy(py) - clientY;
       const distance = dx * dx + dy * dy;
       if (distance <= bestDistance) {
         best = d;
@@ -385,6 +676,12 @@ export async function BrushableScatterPlot(data, options = {}) {
     }
     return best;
   };
+
+  attachNearestTooltip(target, {
+    view: chart.view,
+    pointAt: target.pointAt,
+    entries: tooltip,
+  });
 
   Object.defineProperty(target, "value", {
     get: () => value,

@@ -35,6 +35,10 @@ export const STORAGE_ITEMS = [
     what: "Whether the Options panel was open",
   },
   {
+    key: "papersNavigator:animation",
+    what: "Your map animation choices (Options → Animation)",
+  },
+  {
     key: "papersNavigator:theme",
     what: "Your Appearance choice (Auto, Light or Dark)",
   },

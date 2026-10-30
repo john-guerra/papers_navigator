@@ -88,6 +88,7 @@ const authorView = !authorParam
           showToast(`Added ${fresh.length} to My Papers`, { actionLabel: "Undo", onAction: undo });
         },
         onDetails: openPaper,
+        detailsHref: (p) => paperRoute.href(p.shortId ?? p.id),
         // Watch = an author rule (#5): their papers stay in My Papers, also after program updates
         watch: watchButton({ type: "author", value: author.name }, {
           rules: rulesStore,
