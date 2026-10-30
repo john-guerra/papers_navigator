@@ -176,3 +176,20 @@ def test_unify_keywords_uses_nfkc_and_casefold():
 
 def test_unify_keywords_keeps_abbreviation_periods():
     assert _unify(["Charts, e.g.", "U.S.", "Elections.", "Vol. A."]) == [["Charts, e.g.", "U.S.", "Elections", "Vol. A."]]
+
+
+def test_unify_keywords_counts_spacing_forms_across_case():
+    # "Multimodal…" is used twice (in two casings), so it beats the single "Multi-modal…".
+    out = _unify(["Multimodal Large Language Models"], ["Multimodal large language models"], ["Multi-modal large language models"])
+    assert out == [["Multimodal large language models"]] * 3
+
+
+def test_unify_keywords_drops_leading_conjunction_fragments():
+    out = _unify(["Risk; and Decision Making"], ["& design pattern"], ["or GenAI Techniques"], ["OR scheduling", "Andes"])
+    assert out == [["Risk", "Decision Making"], ["Design pattern"], ["GenAI Techniques"], ["OR scheduling", "Andes"]]
+
+
+def test_unify_keywords_prefers_consistent_casing_across_hyphens():
+    # "Time-series Classification" capitalizes after a space but not after the hyphen.
+    out = _unify(["Time-series Classification"], ["Time Series Classification"])
+    assert out == [["Time Series Classification"]] * 2
