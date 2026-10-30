@@ -81,3 +81,26 @@ describe("paperPanel", () => {
     expect(route.close).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("paperPanel mini-map (#101)", () => {
+  it("redraws the mini-map only when the map's key changes after the first", () => {
+    let rows = [
+      { id: "id-a", x: 0, y: 0, title: "A" },
+      { id: "id-b", x: 1, y: 1, title: "B" },
+    ];
+    const { el } = setup("a", { mapRows: () => rows });
+    const first = el.querySelector(".mini-map");
+    expect(first).toBeTruthy();
+    el.refreshMiniMap("umap:true");
+    el.refreshMiniMap("umap:true");
+    expect(el.querySelector(".mini-map")).toBe(first);
+    rows = [
+      { id: "id-a", x: 5, y: 5, title: "A" },
+      { id: "id-b", x: 9, y: 2, title: "B" },
+    ];
+    el.refreshMiniMap("tsne:true");
+    expect(el.querySelector(".mini-map")).not.toBe(first);
+    expect(el.querySelector(".mini-map")).toBeTruthy();
+    el.dispose();
+  });
+});

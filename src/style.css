@@ -2132,6 +2132,35 @@ details.missing > summary {
   line-height: 1.5;
 }
 
+/* #101 — the paper's map neighbourhood above its related papers */
+.mini-map {
+  margin: 0 0 var(--spacing-xs, 4px);
+}
+
+.mini-map-plot {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-md, 6px);
+  overflow: hidden;
+}
+
+.mini-map-plot canvas {
+  display: block;
+}
+
+.mini-map-note {
+  margin: 0 0 var(--spacing-sm, 8px);
+  font: var(--typography-body-sm);
+}
+
+@media print {
+  .mini-map,
+  .mini-map-note {
+    display: none;
+  }
+}
+
 .related-papers {
   margin: 0;
   padding: 0;

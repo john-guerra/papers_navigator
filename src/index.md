@@ -573,6 +573,9 @@ const withReliability = (list) => (reliabilityScores ? list.map((p) => ({ ...p, 
 const coords = { ...projections, ...liveProjections }[projection];
 const aligned = alignProjections ? mapState.aligner.align(coords, projections[conference.projections[0]]) : coords;
 const positioned = withReliability(withLiveClusters(applyProjection(filtered, aligned).papers));
+// Every paper as drawn on this projection: the distortion overlay and the details mini-map (#101)
+const everyPaper = applyProjection(papers, aligned).papers;
+mapState.everyPaper = everyPaper;
 const [mapW, mapH] = mapSize(mapWidth, { viewportHeight: stickyViewport });
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared
@@ -625,7 +628,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   width: mapW,
   height: mapH,
   // Color by: Reliability and the distortion overlay (#84; the Advanced panel builds them)
-  ...mapState.panel?.reliabilityMapOptions({ reliability: reliabilityState.latest, scores: reliabilityScores, colorBy, shown: positioned, everyPaper: applyProjection(papers, aligned).papers, cacheKey: [projection, alignProjections], width: mapW, height: mapH }),
+  ...mapState.panel?.reliabilityMapOptions({ reliability: reliabilityState.latest, scores: reliabilityScores, colorBy, shown: positioned, everyPaper, cacheKey: [projection, alignProjections], width: mapW, height: mapH }),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,
   from: previousMap,
   animate: mapAnimation(animationStore.value, { projectionChanged, stageOf: hasTopics ? (d) => d.cluster : null }),
@@ -933,6 +936,9 @@ const paperDetail = paperPanel(paperParam, {
   store,
   route: paperRoute,
   related: (paper) => relatedPapers(paper.id, embeddingMatrix, papers),
+  // The mini-map (#101) places papers as the map draws them (projection, alignment)
+  mapRows: () => mapState.everyPaper ?? papers,
+  animation: animationStore,
 });
 invalidation.then(paperDetail.dispose);
 ```
@@ -940,4 +946,9 @@ invalidation.then(paperDetail.dispose);
 ```js
 followed;
 paperDetail.update?.();
+```
+
+```js
+// The projection (or alignment) changed with details open: the mini-map follows the map (#101)
+paperDetail.refreshMiniMap(projectionKey);
 ```
