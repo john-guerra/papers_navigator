@@ -1,7 +1,8 @@
 import * as druid from "@saehrimnir/druidjs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   DR_METHODS,
+  computeProjection,
   defaultParams,
   runDruid,
   toProjection,
@@ -76,5 +77,18 @@ describe("toProjection", () => {
     expect(
       toProjection([{ id: "a" }, { id: "b" }], new Float64Array([1, 2, 3, 4])),
     ).toEqual({ a: [1, 2], b: [3, 4] });
+  });
+});
+
+describe("computeProjection", () => {
+  it("falls back to the main thread without workers and says so first", async () => {
+    const onFallback = vi.fn();
+    const result = await computeProjection(
+      { method: "PCA", data, dims: 4 },
+      { onFallback },
+    );
+    expect(result.where).toBe("main thread");
+    expect(result.coords).toHaveLength(24);
+    expect(onFallback).toHaveBeenCalledTimes(1);
   });
 });

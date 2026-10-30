@@ -78,3 +78,23 @@ describe("advancedPanel", () => {
     expect(panel.textContent).not.toContain("Min. cluster size");
   });
 });
+
+describe("advancedPanel value identity", () => {
+  it("returns the same projections object until a projection is computed", () => {
+    const panel = make();
+    document.body.append(panel);
+    const before = panel.value.projections;
+    expect(panel.value.projections).toBe(before);
+    [...panel.querySelectorAll("button")]
+      .find((b) => b.textContent.trim() === "Cluster")
+      .click();
+    expect(panel.value.projections).toBe(before);
+    panel.remove();
+  });
+
+  it("credits DruidJS and its license", () => {
+    const link = make().querySelector('a[href*="druidjs"]');
+    expect(link).not.toBeNull();
+    expect(link.closest("p").textContent).toContain("LGPL-3.0");
+  });
+});

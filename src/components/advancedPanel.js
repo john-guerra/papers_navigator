@@ -70,6 +70,7 @@ export function advancedPanel({
   seed = 42,
 }) {
   const live = {};
+  let liveSnapshot = {};
   let clusters = null;
   const all = () => ({ ...projections, ...live });
 
@@ -78,7 +79,8 @@ export function advancedPanel({
   const root = html`<div class="advanced-dr-panel">${style}</div>`;
   const emit = () => root.dispatchEvent(new Event("input", { bubbles: true }));
   Object.defineProperty(root, "value", {
-    get: () => ({ projections: { ...live }, clusters }),
+    // Same objects until they change, so the page can compare by identity
+    get: () => ({ projections: liveSnapshot, clusters }),
   });
 
   // --- Compute a projection (Druid) -------------------------------------------------------
@@ -136,6 +138,7 @@ export function advancedPanel({
         },
         {
           signal: controller.signal,
+          onFallback: () => (cancelButton.hidden = true),
           onProgress: (step, total) => {
             progress.value = step / total;
             computeStatus.textContent = `Computing ${method.label}… iteration ${step} of ${total}`;
@@ -145,6 +148,7 @@ export function advancedPanel({
       const name = `${method.label} (live)`;
       delete live[name]; // newest last
       live[name] = toProjection(papers, result.coords);
+      liveSnapshot = { ...live };
       for (const key of results.keys())
         if (key.startsWith(`${name}|`)) results.delete(key);
       computeStatus.textContent = `${name} computed in ${(result.ms / 1000).toFixed(1)} s (${result.where}) and shown on the map.`;
@@ -291,6 +295,22 @@ export function advancedPanel({
         ${paramsBox}
         <div class="advanced-actions">${computeButton}${cancelButton}</div>
         ${progress}${computeStatus}
+        <p class="advanced-note">
+          Projections by
+          <a
+            href="https://github.com/saehm/druidjs"
+            target="_blank"
+            rel="noopener"
+            >DruidJS</a
+          >
+          (René Cutura, LGPL-3.0-or-later;
+          <a
+            href="https://www.gnu.org/licenses/lgpl-3.0.html"
+            target="_blank"
+            rel="noopener"
+            >license</a
+          >).
+        </p>
       </section>
       <section>
         <h4>Re-cluster the map</h4>

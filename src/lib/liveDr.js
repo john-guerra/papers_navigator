@@ -175,11 +175,12 @@ async function inMainThread(job, onProgress) {
 
 /**
  * Computes a 2D projection of `data` (flat Float32Array, `dims` per row) with `method`.
- * Resolves to `{coords: Float64Array, ms, where: "worker" | "main thread"}`.
+ * Resolves to `{coords: Float64Array, ms, where: "worker" | "main thread"}`; `onFallback` is
+ * called when it falls back to the main thread (which `signal` can't interrupt).
  */
 export async function computeProjection(
   { method, params = defaultParams(method), seed = 42, data, dims },
-  { onProgress = () => {}, signal } = {},
+  { onProgress = () => {}, onFallback = () => {}, signal } = {},
 ) {
   const iterations =
     DR_METHODS.find((m) => m.id === method)?.iterations ?? null;
@@ -194,6 +195,7 @@ export async function computeProjection(
   } catch (error) {
     if (!error.workerFailed) throw error;
     where = "main thread";
+    onFallback(); // the main thread can't be interrupted: no Cancel
     coords = await inMainThread(job, onProgress);
   }
   return { coords, ms: Math.round(performance.now() - start), where };

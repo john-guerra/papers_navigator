@@ -310,7 +310,8 @@ advancedDr.addEventListener("toggle", async () => {
 ```
 
 ```js
-// A newly computed live projection is shown right away
+// Re-runs only when a projection is computed (the panel keeps the same object otherwise),
+// so the newly computed one is shown; clustering never changes the selection
 const projectionInput = Inputs.select([...conference.projections, ...Object.keys(liveProjections)], {
   label: "Projection",
   format: formatProjection,
@@ -395,7 +396,8 @@ const resetMap = () => ++mapReset.value;
 mapReset; // redraw (clearing the brush) when the map-region chip is cleared
 theme; // and when Appearance changes (colors come from the tokens)
 // Live clusters (#28) are a per-paper field, so they color any projection
-const withLiveClusters = (list) => (liveClusters ? list.map((p) => ({ ...p, liveCluster: liveClusters.byId[p.id] })) : list);
+// (papers in no cluster: null, so they color as Other; the tooltip says None)
+const withLiveClusters = (list) => (liveClusters ? list.map((p) => ({ ...p, liveCluster: liveClusters.byId[p.id], liveClusterName: liveClusters.byId[p.id] ?? "None" })) : list);
 const positioned = withLiveClusters(applyProjection(filtered, { ...projections, ...liveProjections }[projection]).papers);
 mapState.projection = projection;
 mapState.panel?.refreshCurrent();
@@ -418,7 +420,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labelSize: mapWidth < 500 ? 10 : 11,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
   scoreDomain: hasQuery ? scoreRampDomain(scored) : null,
-  tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), ...(liveClusters ? ["liveCluster"] : []), "score"],
+  tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), ...(liveClusters ? ["liveClusterName"] : []), "score"],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to “${query}”` : ""}`,
