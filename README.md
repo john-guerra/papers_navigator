@@ -34,7 +34,7 @@ npm install
 .venv/bin/python -m pipeline.embed --conference ieeevis2026           # embeddings + projections
 ```
 
-Re-run both when the program changes; cached pages are reused (delete `pipeline/cache/<conference>/` to force a full refresh).
+Re-run both when the program changes; cached pages are reused (`--refresh` re-downloads paper/session pages at ≤1 req/s; every run prints what changed vs the previous `papers.raw.json`).
 
 ## Develop
 

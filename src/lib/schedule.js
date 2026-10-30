@@ -92,17 +92,41 @@ export function groupIntoSlots(items, tz) {
 }
 
 /**
- * Current slot (if any), the next followed talk in its recommended session, and the
- * remaining slots of today. Null when nothing followed is left today.
+ * What to show on the phone's Now / Next view at `now` (conference timezone):
+ * - `{status: "live", now, nowItem, nextItem, next}` when something of yours is on now or later
+ *   today (`nowItem` = talk in progress, `nextItem` = the following talk);
+ * - `{status: "nothing-today", upcoming: {date, slot} | null}` on a conference day with nothing
+ *   (more) of yours, pointing to the first slot of a later day;
+ * - `{status: "over"}` after the last conference day;
+ * - `null` otherwise (before the conference), so the page shows the itinerary.
+ * Without `conferenceDays`, days with slots count as conference days.
  */
-export function nowNext(days, now, tz) {
-  const today = days.find((d) => d.date === dayKey(now, tz));
-  if (!today) return null;
+export function nowNext(days, now, tz, { conferenceDays } = {}) {
+  const todayKey = dayKey(now, tz);
+  const known = conferenceDays?.length
+    ? conferenceDays
+    : days.map((d) => d.date);
   const t = now.getTime();
-  const current = today.slots.find((s) => s.start <= t && t < s.end) ?? null;
-  const nowItem =
-    current?.recommended.items.find((d) => time(d.end) > t) ?? null;
-  const next = today.slots.filter((s) => s.start > t);
-  if (!current && !next.length) return null; // done for the day: show the itinerary
-  return { now: current, nowItem, next };
+  const today = days.find((d) => d.date === todayKey);
+  if (today) {
+    const current = today.slots.find((s) => s.start <= t && t < s.end) ?? null;
+    const next = today.slots.filter((s) => s.start > t);
+    if (current || next.length) {
+      const talks = current?.recommended.items ?? [];
+      const nowItem =
+        talks.find((d) => time(d.start) <= t && t < time(d.end)) ?? null;
+      const nextItem = talks.find((d) => time(d.start) > t) ?? null;
+      return { status: "live", now: current, nowItem, nextItem, next };
+    }
+  }
+  const last = [...known].sort().at(-1);
+  if (last && todayKey > last) return { status: "over" };
+  if (known.includes(todayKey)) {
+    const later = days.find((d) => d.date > todayKey && d.slots.length);
+    return {
+      status: "nothing-today",
+      upcoming: later ? { date: later.date, slot: later.slots[0] } : null,
+    };
+  }
+  return null;
 }
