@@ -257,7 +257,7 @@ This file follows the [DESIGN.md format](https://github.com/google-labs-code/des
 
 Check this file with `npx @google/design.md lint docs/DESIGN.md`.
 
-**Scope and authority.** This file describes the target look and behavior; it is built incrementally through the GitHub issues (CLAUDE.md → Workflow), not in one pass. Where the mockups and this file disagree, this file wins; the mockups are illustrative. Where this file and the PRD disagree on _what_ to build, the PRD wins and this file gets fixed. Decisions are logged at the end.
+**Scope and authority.** This file describes the target look and behavior; it is built incrementally through the GitHub issues (AGENTS.md → Workflow), not in one pass. Where the mockups and this file disagree, this file wins; the mockups are illustrative. Where this file and the PRD disagree on _what_ to build, the PRD wins and this file gets fixed. Decisions are logged at the end.
 
 ## Overview
 
@@ -307,7 +307,7 @@ Tokens are in the front matter. Rules:
 
 ## Layout
 
-- **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (CLAUDE.md).
+- **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (AGENTS.md).
 - **Gutters:** 28px desktop, 16px phone. Spacing comes from the 4px scale in the tokens; don't invent values.
 - **Explore, desktop:** nav (56px) → controls band (search + relevance, then the facet strip) → body split **7fr map / 5fr list**, separated by a hairline. The map is sticky and fills the viewport height; the list scrolls.
 - **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **map** (visible by default, "Hide map" tucks it away; decision 8) → list. The map never captures page scrolling (see Mobile & At the venue).

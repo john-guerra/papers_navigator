@@ -131,7 +131,7 @@ Priority: **M** = must for Stage 1 launch (~Nov 3), **S** = should, **L** = late
 
 Risk: UC10 at launch is 5 days of work away from the Nov 3 target together with the UC4 redesign; if time runs short, ship UC10 first (John's "regular use case") and keep the current bulk-follow buttons.
 
-Tracking: every story or redesign item becomes a GitHub issue in `john-guerra/papers_navigator`, labelled by area and milestone = stage (see `CLAUDE.md` → Workflow).
+Tracking: every story or redesign item becomes a GitHub issue in `john-guerra/papers_navigator`, labelled by area and milestone = stage (see `AGENTS.md` → Workflow).
 
 ## 7. Out of scope (Stage 1)
 
