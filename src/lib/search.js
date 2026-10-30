@@ -45,3 +45,18 @@ export function relevanceCounts(papers, { good, strong }) {
     all: papers.length,
   };
 }
+
+/** The `k` papers most similar to paper `id` (cosine on the precomputed embeddings), itself excluded. */
+export function relatedPapers(
+  id,
+  matrix,
+  papers,
+  { k = 10, dims = DIMS } = {},
+) {
+  const i = papers.findIndex((p) => p.id === id);
+  if (i < 0) return [];
+  const vector = matrix.subarray(i * dims, (i + 1) * dims);
+  return rankBySimilarity(vector, matrix, papers, dims)
+    .filter((p) => p.id !== id)
+    .slice(0, k);
+}

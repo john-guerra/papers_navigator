@@ -7,7 +7,8 @@ toc: false
 import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore, matches } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
-import { rankBySimilarity, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
+import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
+import { renderPaperDetail } from "./components/paperDetail.js";
 const scoreRampDomain = (papers) => {
   const scores = papers.map((d) => d.score).filter((s) => s != null);
   return scores.length ? [relevanceCuts(scores).good, Math.max(...scores)] : null;
@@ -68,6 +69,7 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${addBar}
   ${papersList}
 </section>
+${paperDetail}
 <aside id="filters-panel" class="filters-panel" aria-label="Map options">
   <div class="filters-header"><h2>Map options</h2>${filtersClose}</div>
   <h3>Dimensionality reduction</h3>
@@ -110,7 +112,8 @@ const closeOnOutsideClick = (event) => {
 };
 document.addEventListener("click", closeOnOutsideClick);
 invalidation.then(() => document.removeEventListener("click", closeOnOutsideClick));
-const closeOnEscape = (event) => event.key === "Escape" && setFiltersOpen(false);
+// An open paper details panel takes Esc first
+const closeOnEscape = (event) => event.key === "Escape" && !document.querySelector(".paper-detail") && setFiltersOpen(false);
 document.addEventListener("keydown", closeOnEscape);
 invalidation.then(() => document.removeEventListener("keydown", closeOnEscape));
 let savedOpen = null;
@@ -493,7 +496,82 @@ const papersList = PapersList(ordered, {
         showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
       }
     };
-    return toggle;
+    const details = html`<button class="btn-text paper-details-open">Details</button>`;
+    details.onclick = () => openPaper(p.shortId ?? p.id);
+    return html`<span class="paper-actions">${toggle}${details}</span>`;
   },
 });
+```
+
+```js
+// Paper details (#22) and related papers (#23): ?paper=<shortId> is the source of truth, so a
+// details view can be shared or reloaded, and Back closes it
+const paperParam = Generators.observe((notify) => {
+  const read = () => notify(new URLSearchParams(location.search).get("paper"));
+  read();
+  addEventListener("popstate", read);
+  addEventListener("paperchange", read);
+  return () => {
+    removeEventListener("popstate", read);
+    removeEventListener("paperchange", read);
+  };
+});
+// history.state.paperDetail = how many details views were pushed (related papers stack), so
+// Close goes back past all of them and returns focus to the Details button that opened it
+let detailOpener = null;
+const openPaper = (key) => {
+  if (!history.state?.paperDetail) detailOpener = document.activeElement?.closest("[data-paper-id]")?.dataset.paperId ?? null;
+  const url = new URL(location.href);
+  url.searchParams.set("paper", key);
+  history.pushState({ paperDetail: (history.state?.paperDetail ?? 0) + 1 }, "", url);
+  dispatchEvent(new Event("paperchange"));
+};
+const closePaper = () => {
+  // the list may have re-rendered meanwhile: find the opener's row again by paper id
+  const opener = detailOpener;
+  detailOpener = null;
+  if (opener) setTimeout(() => document.querySelector(`[data-paper-id="${CSS.escape(opener)}"] .paper-details-open`)?.focus(), 150);
+  const depth = history.state?.paperDetail;
+  if (depth) return history.go(-depth);
+  const url = new URL(location.href);
+  url.searchParams.delete("paper");
+  history.replaceState(null, "", url);
+  dispatchEvent(new Event("paperchange"));
+};
+const embeddingMatrix = toMatrix(embeddingsBuffer, papers.length);
+```
+
+```js
+const detailPaper = paperParam ? papers.find((p) => p.shortId === paperParam || p.id === paperParam) : null;
+const paperDetail = detailPaper
+  ? renderPaperDetail(detailPaper, {
+      tz,
+      related: relatedPapers(detailPaper.id, embeddingMatrix, papers),
+      // reads the store, not `followed`, so toggling doesn't rebuild the panel (see the next cell)
+      inMyPapers: (id) => store.value.some((d) => d.id === id),
+      onToggle: (p) => {
+        if (store.value.some((d) => d.id === p.id)) {
+          const undo = store.remove([p.id]);
+          showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
+        } else {
+          const undo = addWithUndo(store, [p], "★ Added by hand");
+          showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
+        }
+      },
+      onOpen: (id) => openPaper(papers.find((p) => p.id === id)?.shortId ?? id),
+      onClose: closePaper,
+    })
+  : html`<span></span>`;
+if (detailPaper) {
+  const onKey = (event) => event.key === "Escape" && closePaper();
+  addEventListener("keydown", onKey);
+  invalidation.then(() => removeEventListener("keydown", onKey));
+  // after Framework attaches the panel
+  requestAnimationFrame(() => paperDetail.querySelector(".paper-detail-close")?.focus());
+}
+```
+
+```js
+followed;
+paperDetail.update?.();
 ```
