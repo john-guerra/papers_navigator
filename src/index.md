@@ -595,8 +595,10 @@ const mapInput = await BrushableScatterPlot(positioned, {
   color: colorField,
   colorType: colorBy === "score" && hasQuery ? "quantitative" : "nominal",
   colorTitle: colorTitles[colorField],
-  // Size only echoes similarity, subtly (DESIGN.md: never a second variable)
+  // Size only echoes similarity (DESIGN.md: never a second variable)
   size: hasQuery ? "score" : null,
+  // John: three times the default upper bound (80 → 240) so similarity reads at a glance
+  sizeRange: [12, 240],
   // Hues for the 3 largest categories of the whole program, so filtering never repaints them
   categories: colorField && colorField !== "score" ? topCategories(withLiveClusters(papers), colorField) : undefined,
   // Read once (not reactive); later changes go through the "mine" signal below
