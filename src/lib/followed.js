@@ -96,6 +96,7 @@ export function createFollowedStore(
       console.warn("Could not back up My Papers", error);
     }
     set(list);
+    // Undo restores this exact list (an edit made in another tab within the toast's 10 s is lost)
     return () => set(previous);
   };
 
@@ -129,7 +130,6 @@ export function createFollowedStore(
     exportJSON() {
       return JSON.stringify(value, null, 2);
     },
-    /** Merges the file into the list (or replaces it with `{replace: true}`). */
     /** Merges (default) or replaces from exported JSON; replacing returns an undo. */
     importJSON(text, { replace = false } = {}) {
       const list = parseList(text);

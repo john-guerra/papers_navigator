@@ -38,7 +38,7 @@ export function renderShareDialog(url, { count = 0 } = {}) {
 
 /** Banner offering to merge or replace the local list with papers from a share link. */
 export function renderShareBanner(
-  { ids, unknown, already = 0, current = 0 },
+  { ids, unknown, already = 0, current = 0, watched = 0 },
   { onMerge, onReplace, onIgnore },
 ) {
   const button = (label, fn) => {
@@ -59,23 +59,32 @@ export function renderShareBanner(
     html`📱
       <strong>${papers(ids.length)} shared with you</strong
       >${unknown.length ? ` (${unknown.length} not in the program)` : ""}${already ? `; you already have ${already}` : ""}. `;
-  const showChoices = () =>
+  let replaceButton;
+  const showChoices = () => {
+    replaceButton = button("Replace", showConfirm);
     banner.replaceChildren(
       summary(),
       button("Merge", onMerge),
       " ",
-      button("Replace", showConfirm),
+      replaceButton,
       " ",
       button("Ignore", onIgnore),
     );
-  // Inline confirm (DESIGN.md): say what will be lost before replacing
+  };
+  // Inline confirm (DESIGN.md): say what will be lost before replacing. Replace only touches
+  // papers added by hand; papers kept by watch rules stay.
   const showConfirm = () => {
     const yes = button("Yes, replace", onReplace);
+    const what = watched ? `${papers(current)} added by hand` : papers(current);
     banner.replaceChildren(
-      html`📱 Replace your ${papers(current)} with these ${ids.length}? `,
+      html`📱 Replace your ${what} with these
+      ${ids.length}?${watched ? ` (The ${papers(watched)} from your watches stay.)` : ""} `,
       yes,
       " ",
-      button("Cancel", showChoices),
+      button("Cancel", () => {
+        showChoices();
+        replaceButton.focus?.();
+      }),
     );
     yes.focus?.();
   };

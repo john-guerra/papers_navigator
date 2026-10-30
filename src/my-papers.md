@@ -103,7 +103,13 @@ if (shared.ids.length || shared.unknown.length) {
   const mine = new Set(followedStore.value.map((d) => d.id));
   banner.append(
     renderShareBanner(
-      { ...shared, already: shared.ids.filter((id) => mine.has(id)).length, current: mine.size },
+      {
+        ...shared,
+        // "already" counts all of My Papers (watched too); Replace only touches hand-added ones
+        already: shared.ids.filter((id) => store.has(id)).length,
+        current: mine.size,
+        watched: store.value.filter((d) => !d.manual).length,
+      },
       {
         onMerge: () => (followedStore.merge(sharedReason()), done()),
         onReplace: () => {

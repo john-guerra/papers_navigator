@@ -76,3 +76,24 @@ describe("renderShareBanner safe Replace", () => {
     expect(onReplace).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("renderShareBanner with watched papers", () => {
+  it("says Replace only affects papers added by hand, and focuses Replace after Cancel", () => {
+    const el = renderShareBanner(
+      { ids: ["a", "b"], unknown: [], already: 0, current: 5, watched: 20 },
+      { onMerge: noop, onReplace: noop, onIgnore: noop },
+    );
+    document.body.append(el);
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Replace")
+      .click();
+    expect(el.textContent.replace(/\s+/g, " ")).toContain(
+      "Replace your 5 papers added by hand with these 2? (The 20 papers from your watches stay.)",
+    );
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Cancel")
+      .click();
+    expect(document.activeElement.textContent).toBe("Replace");
+    el.remove();
+  });
+});
