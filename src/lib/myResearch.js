@@ -253,7 +253,7 @@ export function programFingerprint(papers, matrix) {
  */
 export function researchCuts(scores) {
   const values = scores.filter((s) => s != null);
-  if (!values.length) return { good: 0, strong: 0 };
+  if (!values.length) return { good: 0, strong: 0, weak: 0 };
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const sd = Math.sqrt(
     values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length,
@@ -263,7 +263,9 @@ export function researchCuts(scores) {
   if (sorted.filter((s) => s >= good).length < 5)
     good = sorted[Math.min(9, sorted.length - 1)];
   const strong = Math.min(sorted[0], Math.max(good, mean + 2.5 * sd));
-  return { good, strong };
+  // Weak: mean + 1 sd (about the top sixth of the program), never above Good
+  const weak = Math.min(good, mean + sd);
+  return { good, strong, weak };
 }
 
 /** Best score of row `i` over `vectors`, and which vector gave it. */

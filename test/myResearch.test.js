@@ -9,6 +9,7 @@ import {
   maxSimilarityMatches,
   meanPool,
   rankByMaxSimilarity,
+  researchCuts,
   researchLabel,
   researchVectors,
   splitAbstracts,
@@ -193,5 +194,19 @@ describe("createResearchStore", () => {
       text: "",
       active: false,
     });
+  });
+});
+
+describe("researchCuts weak level", () => {
+  it("puts weak at mean + 1 sd, never above good", () => {
+    const scores = Array.from({ length: 200 }, (_, i) => i / 200);
+    const { weak, good, strong } = researchCuts(scores);
+    expect(weak).toBeLessThan(good);
+    expect(good).toBeLessThanOrEqual(strong);
+    const mean = scores.reduce((a, b) => a + b) / scores.length;
+    const sd = Math.sqrt(
+      scores.reduce((a, b) => a + (b - mean) ** 2, 0) / scores.length,
+    );
+    expect(weak).toBeCloseTo(mean + sd);
   });
 });

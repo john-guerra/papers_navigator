@@ -6,10 +6,10 @@ const VALID_ID = /^[A-Za-z0-9_-]+$/;
 const WATCH = "&watch=";
 const WATCH_TYPES = { a: "author", i: "affiliation", t: "topic" };
 const WATCH_CODES = { author: "a", affiliation: "i", topic: "t" };
-const LEVEL_CODES = { strong: "s", good: "g" };
-const LEVELS = { s: "strong", g: "good" };
+const LEVEL_CODES = { strong: "s", good: "g", weak: "w" };
+const LEVELS = { s: "strong", g: "good", w: "weak" };
 /** A research topic's "<level><threshold>" in a link, e.g. "g0.3" (thresholds are -1…1). */
-const TOPIC_META = /^([sg])(-?[01](?:\.\d{1,4})?)$/;
+const TOPIC_META = /^([sgw])(-?[01](?:\.\d{1,4})?)$/;
 /** A link is attacker-controllable: cap how many watch rules one link can add. */
 export const MAX_SHARED_WATCHES = 50;
 /** Longest name a link can carry (real author/institution names are far shorter). */

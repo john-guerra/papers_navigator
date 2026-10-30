@@ -511,3 +511,16 @@ describe("research topic threshold floor (#73 review)", () => {
     ).toBe(0.4321);
   });
 });
+
+describe("weak research topics", () => {
+  it("keeps the weak level", () => {
+    expect(
+      normalizeRule({
+        type: "topic",
+        value: "x",
+        level: "weak",
+        threshold: 0.2,
+      }).level,
+    ).toBe("weak");
+  });
+});

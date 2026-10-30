@@ -1,7 +1,7 @@
 import { html } from "htl";
 
 const papersWord = (n) => `${n} ${n === 1 ? "paper" : "papers"}`;
-const LEVEL_NAMES = { strong: "Strong", good: "Good" };
+const LEVEL_NAMES = { strong: "Strong", good: "Good", weak: "Weak" };
 
 /**
  * "Watch this research topic" for the current Explore search (#24, US11.1–11.2): a button that
@@ -22,7 +22,7 @@ export function topicWatch(
   },
   { onSave, onToggle },
 ) {
-  let chosen = current?.level ?? (level === "strong" ? "strong" : "good");
+  let chosen = current?.level ?? (level in LEVEL_NAMES ? level : "good");
   const open = html`<button
     type="button"
     class="btn-secondary topic-watch-open"
@@ -44,16 +44,19 @@ export function topicWatch(
   nameInput.value = current?.value ?? research?.name ?? "";
   const savedName = () => nameInput.value.trim() || research?.name;
 
-  const levelButtons = Object.entries(LEVEL_NAMES).map(([key, name]) => {
-    const button = html`<button type="button" data-level=${key}>
-      ${name} <span class="count">${previews[key].count}</span>
-    </button>`;
-    button.onclick = () => {
-      chosen = key;
-      sync();
-    };
-    return button;
-  });
+  // Only the levels with a preview (Explore passes Strong, Good and Weak)
+  const levelButtons = Object.entries(LEVEL_NAMES)
+    .filter(([key]) => previews[key])
+    .map(([key, name]) => {
+      const button = html`<button type="button" data-level=${key}>
+        ${name} <span class="count">${previews[key].count}</span>
+      </button>`;
+      button.onclick = () => {
+        chosen = key;
+        sync();
+      };
+      return button;
+    });
   const summary = html`<p class="topic-watch-summary" aria-live="polite"></p>`;
   const borderline = html`<div class="topic-watch-borderline"></div>`;
   const save = html`<button

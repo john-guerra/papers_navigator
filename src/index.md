@@ -546,7 +546,7 @@ const topicWatchInput = hasQuery
         query: rankingLabel,
         research: researchMode ? { name: "My research" } : null,
         // Whole program, all types: a rule ignores facets and map region
-        previews: Object.fromEntries(["strong", "good"].map((l) => [l, topicPreview(scored, thresholdFor(cuts, l), { inMyPapers, current: watchedTopic?.matches })])),
+        previews: Object.fromEntries(["strong", "good", "weak"].map((l) => [l, topicPreview(scored, thresholdFor(cuts, l), { inMyPapers, current: watchedTopic?.matches })])),
         current: watchedTopic,
         level: relevance,
         open: topicWatchState.open,
@@ -594,7 +594,7 @@ const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))
     showToast(`Added ${fresh.length} to My Papers`, { actionLabel: "Undo", onAction: undo });
   },
 });
-const levelName = { strong: "Strong", good: "Good", all: "All" }[relevance];
+const levelName = { strong: "Strong", good: "Good", weak: "Weak", all: "All" }[relevance];
 const leaveResearch = () => researchStore.value.active && researchStore.set({ active: false });
 const chips = [
   hasQuery && researchMode && { label: rankingLabel, value: `${levelName} matches`, onClear: leaveResearch },
