@@ -1,7 +1,8 @@
+import { conferenceLink } from "../widgets/papersList.js";
 import { html } from "htl";
 import { dayKey, formatDay, formatTime } from "../lib/time.js";
 
-function renderItem(p, { tz, onUnfollow, onDetails }) {
+function renderItem(p, { tz, onUnfollow, onDetails, detailsHref }) {
   const unfollow = html`<button
     class="unfollow"
     title="Remove from My Papers"
@@ -10,16 +11,33 @@ function renderItem(p, { tz, onUnfollow, onDetails }) {
     ✕
   </button>`;
   unfollow.onclick = () => onUnfollow?.(p.id);
-  // Details (#70): the same panel as on Explore
-  const details = onDetails
-    ? html`<button class="btn-text paper-details-open">Details</button>`
-    : "";
-  if (details) details.onclick = () => onDetails(p);
+  // The title opens the paper's details (#70, same panel as on Explore); "Conference page ↗"
+  // goes to the conference site. A real link, so cmd/ctrl-click opens a new tab.
+  const title = onDetails
+    ? html`<a
+        class="paper-details-open"
+        href=${detailsHref?.(p) ?? `?paper=${encodeURIComponent(p.shortId ?? p.id)}`}
+        >${p.title}</a
+      >`
+    : html`<a href=${p.url} target="_blank" rel="noopener">${p.title}</a>`;
+  if (onDetails)
+    title.onclick = (event) => {
+      if (
+        event.button ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      event.preventDefault();
+      onDetails(p);
+    };
+  const details = onDetails ? conferenceLink(p) : "";
   return html`<li class="itinerary-item" data-paper-id=${p.id}>
     <span class="time">${p.start ? formatTime(p.start, tz) : "—"}</span>
-    <a href=${p.url} target="_blank" rel="noopener">${p.title}</a>
-    ${p.reason ? html`<span class="reason">${p.reason}</span>` : ""} ${details}
-    ${unfollow}
+    ${title} ${p.reason ? html`<span class="reason">${p.reason}</span>` : ""}
+    ${details} ${unfollow}
   </li>`;
 }
 
@@ -83,11 +101,11 @@ function renderSlot(slot, options) {
  */
 export function renderItinerary(
   { days, unscheduled },
-  { tz, onUnfollow, onDetails, now = new Date(), state = {} } = {},
+  { tz, onUnfollow, onDetails, detailsHref, now = new Date(), state = {} } = {},
 ) {
   // `state` survives re-renders (selected day, open slots) when the caller keeps it
   state.open ??= new Set();
-  const options = { tz, onUnfollow, onDetails, state };
+  const options = { tz, onUnfollow, onDetails, detailsHref, state };
   const today = dayKey(now, tz);
   const has = (date) => days.some((d) => d.date === date);
   let selected = has(state.day)

@@ -36,8 +36,8 @@ export function createPaperRoute({
     history.pushState(withDepth(1), "", paperUrl);
   }
 
-  // Close returns focus to the Details button that opened the panel: the same button if it's
-  // still on the page, else (the list re-rendered meanwhile) that row's button, by paper id.
+  // Close returns focus to the title link (or button) that opened the panel: the same element if
+  // it's still on the page, else (the list re-rendered meanwhile) that row's link, by paper id.
   // Focus moves once the panel is gone (history.go is async; the page re-renders after `input`).
   // Without an opener (a direct link): the row of the paper the stack started with, else the
   // page's main heading, never <body>.
@@ -72,6 +72,12 @@ export function createPaperRoute({
   };
   win.addEventListener("popstate", sync);
 
+  /** Link to paper `key`'s details on this page (other params kept), for real <a href>s. */
+  route.href = (key) => {
+    const url = new URL(win.location.href);
+    url.searchParams.set(param, key);
+    return url.pathname + url.search;
+  };
   route.open = (key) => {
     if (!depth()) {
       const element = win.document.activeElement;
