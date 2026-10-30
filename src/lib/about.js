@@ -43,6 +43,10 @@ export const STORAGE_ITEMS = [
     what: "Your nearest neighbours choices (Options → Advanced)",
   },
   {
+    key: "papersNavigator:paperLabels",
+    what: "Whether the map shows paper labels (the toggle under the map)",
+  },
+  {
     key: "papersNavigator:theme",
     what: "Your Appearance choice (Auto, Light or Dark)",
   },

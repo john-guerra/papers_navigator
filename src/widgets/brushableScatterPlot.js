@@ -2,6 +2,8 @@
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import { attachNearestTooltip } from "./nearestTooltip.js";
 import { attachNeighbours } from "./mapNeighbours.js";
+import { attachPaperLabels, legendBoxes } from "./paperLabels.js";
+import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import {
   domainAt,
   easeExpr,
@@ -1152,7 +1154,8 @@ export async function BrushableScatterPlot(data, options = {}) {
           ),
       )
       .signal("queryHover", -1)
-      .runAsync();
+      .runAsync()
+      .then(() => target.paperLabels?.schedule());
   };
   /** The index of the query marker within `radius` px of a screen position, or -1. */
   target.queryAt = (clientX, clientY, radius = 14) => {
@@ -1219,6 +1222,77 @@ export async function BrushableScatterPlot(data, options = {}) {
         ? (event) => target.queryAt(event.clientX, event.clientY) >= 0
         : null,
     });
+
+  // Short paper labels (#99): `paperLabels` = {label, enabled, emphasis}; an overlay drawn when
+  // the motion settles and redrawn (debounced) when the brush, relevance cut, pin or query changes
+  if (options.paperLabels) {
+    const labelSize = options.labelSize ?? 11;
+    const topics =
+      visibleLabels(data, options.labels, {
+        x,
+        y,
+        width: options.width,
+        height: options.height,
+        labelSize,
+      }) ?? [];
+    // A text box centered on (cx, cy), `em` px per character at `size` px, 3 px clear around it
+    const box = (cx, cy, text, size, em = 0.6) =>
+      textBox({
+        x: cx,
+        y: cy,
+        width: estimateWidth(text, size) * (em / 0.55),
+        height: size * 1.2,
+        margin: 3,
+      });
+    const positions = new Map(data.map((d) => [d[id], [d[x], d[y]]]));
+    const labels = attachPaperLabels(target, {
+      ...options.paperLabels,
+      view: chart.view,
+      data,
+      x,
+      y,
+      id,
+      font: token("font-sans", "sans-serif"),
+      fill: token("color-on-surface", "#241e1a"),
+      halo: token("color-background", "#fcf9f3"),
+      moving: () => Boolean(transition) && tm < transition.total,
+      brush: () => target.brush(),
+      levelCut: () => chart.view.signal("levelCut"),
+      pinned: () => target.neighbours?.pinned ?? null,
+      focusIds: () => {
+        const n = target.neighbours;
+        return n?.pinned != null
+          ? [n.pinned, ...n.neighbours.map((d) => d.id)]
+          : null;
+      },
+      // Everything else drawn as text or on top: topic labels, the query marker and its label,
+      // the pinned paper's neighbour percentages and the legend
+      obstacles: (toPixel) => [
+        ...topics.map((l) => box(...toPixel([l.x, l.y]), l.text, labelSize)),
+        ...markers.flatMap((m) => {
+          const [px, py] = toPixel([m.x, m.y]);
+          return [
+            [px - 10, py - 10, px + 10, py + 10],
+            box(px, py - 15, m.label, 12, 0.65),
+          ];
+        }),
+        ...(target.neighbours?.pinned != null
+          ? target.neighbours.neighbours
+              .filter((d) => positions.has(d.id))
+              .map((d) => {
+                const [px, py] = toPixel(positions.get(d.id));
+                return box(px, py - 9, "100%", 10);
+              })
+          : []),
+        ...legendBoxes(chart.view),
+      ],
+    });
+    target.paperLabels = labels;
+    target.finished.then(labels.schedule);
+    target.addEventListener("input", labels.schedule);
+    target.addEventListener("neighbours", labels.schedule);
+    chart.view.addSignalListener("levelCut", labels.schedule);
+  }
 
   Object.defineProperty(target, "value", {
     get: () => value,
