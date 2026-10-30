@@ -116,3 +116,80 @@ def test_unify_keywords_splits_semicolon_lists_and_collapses_whitespace():
 
     out = unify_keywords([{"keywords": ["Ice Sheet; Art-Science\ncollaboration; Cryosphere.", " "]}])
     assert out[0]["keywords"] == ["Ice Sheet", "Art-Science collaboration", "Cryosphere"]
+
+
+def _unify(*keyword_lists):
+    from pipeline.normalize import unify_keywords
+
+    return [p["keywords"] for p in unify_keywords([{"keywords": list(ks)} for ks in keyword_lists])]
+
+
+def test_unify_keywords_prefers_capitalized_over_lowercase():
+    # The most used spelling is all-lowercase: it is shown sentence-cased instead.
+    out = _unify(["data visualization"], ["data visualization"], ["Data Visualization"])
+    assert out == [["Data visualization"]] * 3
+
+
+def test_unify_keywords_capitalizes_lowercase_only_groups():
+    out = _unify(["accessibility"], ["clustering", "accessibility"])
+    assert out == [["Accessibility"], ["Clustering", "Accessibility"]]
+
+
+def test_unify_keywords_keeps_lowercase_variable_prefixes():
+    # "k-means", "t-test": the single lowercase letter is a variable name; "iPhone", "mRNA" are
+    # written that way on purpose.
+    out = _unify(["k-means"], ["t-test"], ["iPhone"], ["mRNA vaccines"])
+    assert out == [["k-means"], ["t-test"], ["iPhone"], ["mRNA vaccines"]]
+
+
+def test_unify_keywords_capitalizes_a_lowercase_first_word():
+    out = _unify(["human-AI interaction"], ["generative AI"], ["a priori"])
+    assert out == [["Human-AI interaction"], ["Generative AI"], ["A priori"]]
+
+
+def test_unify_keywords_prefers_regular_hyphen_spacing():
+    out = _unify(["topology- based visualization"], ["Topology-based visualization"])
+    assert out == [["Topology-based visualization"]] * 2
+
+
+def test_unify_keywords_merges_hyphen_and_space_variants():
+    out = _unify(["Colormap"], ["Color Map"], ["Colormap"], ["Decision-making"], ["Decision-making"], ["Decision Making"], ["decision making"])
+    assert out[:3] == [["Colormap"]] * 3
+    assert out[3:] == [["Decision-making"]] * 4
+
+
+def test_unify_keywords_merges_dash_variants_and_dedupes_per_paper():
+    assert _unify(["t-SNE", "tSNE", "t SNE", "t‐SNE", "T-SNE"], ["t-SNE"]) == [["t-SNE"]] * 2
+
+
+def test_unify_keywords_does_not_merge_distinct_words():
+    keywords = ["Graph", "Graphs", "Map", "Maps", "US", "U.S.", "Re-search", "Search", "3D", "3D", "3-D", "2D"]
+    out = _unify(*[[k] for k in keywords])
+    assert out == [["Graph"], ["Graphs"], ["Map"], ["Maps"], ["US"], ["U.S."], ["Re-search"], ["Search"], ["3D"], ["3D"], ["3D"], ["2D"]]
+
+
+def test_unify_keywords_uses_nfkc_and_casefold():
+    # "ﬁ" ligature → "fi"; "ß" casefolds to "ss".
+    out = _unify(["Scientiﬁc visualization"], ["scientific visualization"], ["STRASSE"], ["Straße"])
+    assert out == [["Scientific visualization"]] * 2 + [["Straße"]] * 2
+
+
+def test_unify_keywords_keeps_abbreviation_periods():
+    assert _unify(["Charts, e.g.", "U.S.", "Elections.", "Vol. A."]) == [["Charts, e.g.", "U.S.", "Elections", "Vol. A."]]
+
+
+def test_unify_keywords_counts_spacing_forms_across_case():
+    # "Multimodal…" is used twice (in two casings), so it beats the single "Multi-modal…".
+    out = _unify(["Multimodal Large Language Models"], ["Multimodal large language models"], ["Multi-modal large language models"])
+    assert out == [["Multimodal large language models"]] * 3
+
+
+def test_unify_keywords_drops_leading_conjunction_fragments():
+    out = _unify(["Risk; and Decision Making"], ["& design pattern"], ["or GenAI Techniques"], ["OR scheduling", "Andes"])
+    assert out == [["Risk", "Decision Making"], ["Design pattern"], ["GenAI Techniques"], ["OR scheduling", "Andes"]]
+
+
+def test_unify_keywords_prefers_consistent_casing_across_hyphens():
+    # "Time-series Classification" capitalizes after a space but not after the hyphen.
+    out = _unify(["Time-series Classification"], ["Time Series Classification"])
+    assert out == [["Time Series Classification"]] * 2
