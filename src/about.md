@@ -164,7 +164,7 @@ Every dot is a paper; similar papers sit close together.
 
 - One paper: the **Add to My Papers** button next to it (it then reads **In My Papers**; tap again to remove it).
 - Many papers: above the list, **Add N to My Papers** adds exactly the N matching papers listed (it says how many are already there).
-- Every change shows a message with **Undo**. The navbar's My Papers count shows your list size on every page.
+- Every change shows a message with **Undo**. The My Papers count in the navigation (the top bar, or the tab bar at the bottom of the screen on a phone) shows your list size on every page.
 
 ### Watch researchers, institutions and research topics
 
@@ -208,6 +208,8 @@ My Papers is your personal list and schedule. Everything happens in your browser
 
 ### Now / Next and the itinerary
 
+On a laptop the itinerary and **All my papers** take the main column; sharing and export, **Watching** and **Recommended papers** sit in a column on the right. On a tablet or phone everything is in one column.
+
 - Switch between **Now / Next** and **Itinerary** at the top. **Now / Next** (the default on phones during the conference) shows what's on for you right now and what comes next, with the room in large type.
 - **Itinerary** lists your papers by day, time slot and room, in the conference timezone.
 - ⚠ marks a schedule conflict: two of your papers at the same time in different rooms.
@@ -219,7 +221,7 @@ My Papers is your personal list and schedule. Everything happens in your browser
 - **Watching** lists your watches with how many papers each brings and where they fall in the week. Add one with **Watch a friend or an institution**; **Stop watching** asks whether to keep or remove its papers.
 - **Recommended papers** (✨) are papers similar to the ones in your list. **Add to My Papers**, or **Dismiss** the ones you don't want. They are computed in your browser.
 - **New** flags papers that joined your list through your watches after a program update; **Mark as seen** clears the flag.
-- **All my papers** at the bottom has a search box and **Sort by** (Time, Room, Added on, Title, Reason).
+- **All my papers** has a search box and **Sort by** (Time, Room, Added on, Title, Reason).
 
 ### Share, export and import
 

@@ -27,6 +27,7 @@ import { withParams } from "./lib/urlState.js";
 import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
+import { arrangeMyPapers } from "./components/myPapersLayout.js";
 import { segmentedControl } from "./widgets/segmentedControl.js";
 import { conferenceZone } from "./lib/time.js";
 import { PHONE_QUERY, matches } from "./lib/breakpoints.js";
@@ -169,9 +170,12 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
 display(banner);
 ```
 
-<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton}</div>
-${newNotice}
-<div>${sharePanel}</div>
+<!-- Desktop: main column + a side column for the list tools, Watching and Recommended
+     (DESIGN.md → Layout); src/components/myPapersLayout.js moves the .mp-* sections -->
+<div class="my-papers-layout">
+<div class="mp-main">
+<div class="mp-view"><div class="my-papers-tools">${viewInput} ${reasonInput}</div>${newNotice}</div>
+<div class="mp-tools"><div class="my-papers-tools">${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton}</div><div>${sharePanel}</div><div>${importStatus}</div></div>
 
 ```js
 // Created once (no dependency on the followed list) so following/unfollowing keeps the choice
@@ -267,7 +271,8 @@ importInput.querySelector("input").onchange = async (event) => {
 };
 ```
 
-<div>${importStatus}</div>
+
+<div class="mp-schedule">
 
 ```js
 // Removing shows Undo, which restores exactly what was removed (#5)
@@ -290,11 +295,18 @@ if (viewMode === "Itinerary" || !current || current.status === "over") {
 
 ${missing.length ? html`<details class="missing" open><summary>${missing.length} of your papers are no longer in the program</summary><ul>${missing.map((m) => html`<li><code>${m.id}</code> — ${m.reason} <button onclick=${() => store.remove([m.id])}>Remove</button></li>`)}</ul></details>` : ""}
 
-${watchingSection}
+</div>
+
+<div class="mp-watching">${watchingSection}</div>
+
+<div class="mp-recommended">
 
 ## Recommended papers
 
 ${recommendedSection}
+
+</div>
+<div class="mp-list">
 
 ## All my papers
 
@@ -342,6 +354,16 @@ display(
     },
   ),
 );
+```
+
+</div>
+</div>
+<div class="mp-side"></div>
+</div>
+
+```js
+// Desktop (≥ 1024px): list tools, Watching and Recommended in a side column (#110)
+invalidation.then(arrangeMyPapers(document.querySelector(".my-papers-layout")));
 ```
 
 ```js

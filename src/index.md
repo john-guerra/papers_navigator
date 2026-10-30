@@ -39,7 +39,8 @@ import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
-import { PHONE_QUERY } from "./lib/breakpoints.js";
+import { PHONE_QUERY, STACKED_QUERY } from "./lib/breakpoints.js";
+import { mapSize, watchStickyViewport } from "./lib/mapSize.js";
 import { conferenceZone } from "./lib/time.js";
 ```
 
@@ -486,6 +487,8 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 // Measured on the controls (same column, always visible): hiding the map on phones must not
 // change the width, which would redraw the map and drop its selection
 const mapWidth = Generators.width(document.querySelector(".explore-controls"));
+// Desktop: the map is sticky, so it fits the viewport height too (null on stacked layouts)
+const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
 // Survive re-runs: the paper last scrolled to, and how far the list is expanded
 const lastScrolled = { id: null };
 const scrollToPaper = (id) => {
@@ -533,7 +536,7 @@ const withReliability = (list) => (reliabilityScores ? list.map((p) => ({ ...p, 
 const coords = { ...projections, ...liveProjections }[projection];
 const aligned = alignProjections ? mapState.aligner.align(coords, projections[conference.projections[0]]) : coords;
 const positioned = withReliability(withLiveClusters(applyProjection(filtered, aligned).papers));
-const [mapW, mapH] = [Math.max(260, mapWidth - 20), Math.min(620, Math.max(320, mapWidth * 0.75))];
+const [mapW, mapH] = mapSize(mapWidth, { viewportHeight: stickyViewport });
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared
 const projectionKey = `${projection}:${alignProjections}`;
