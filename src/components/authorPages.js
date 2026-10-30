@@ -21,9 +21,13 @@ const time = (p) => p.start ?? p.sessionStart ?? "~";
 /**
  * Researchers index (#78): everyone listed as an author, most papers first, with a search over
  * names and affiliations and "Show n more" (the program has ~1,500 researchers). `state`
- * ({query, shown}) survives re-renders, so Back to the index keeps the search.
+ * ({query, shown}) survives re-renders, so Back to the index keeps the search; `onQuery(text)`
+ * hears each change (e.g. to keep it in the URL, #92).
  */
-export function renderAuthorIndex(index, { state = {}, step = 100 } = {}) {
+export function renderAuthorIndex(
+  index,
+  { state = {}, step = 100, onQuery = null } = {},
+) {
   state.query ??= "";
   state.shown ??= step;
   const input = html`<input
@@ -73,6 +77,7 @@ export function renderAuthorIndex(index, { state = {}, step = 100 } = {}) {
   input.oninput = () => {
     state.query = input.value;
     state.shown = step;
+    onQuery?.(state.query);
     draw();
   };
   draw();

@@ -23,6 +23,7 @@ import { renderNowNext } from "./components/nowNext.js";
 import { PapersList, conferenceLink } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
 import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
+import { withParams } from "./lib/urlState.js";
 import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
@@ -118,8 +119,9 @@ const hash = Generators.observe((notify) => {
 
 ```js
 const shared = resolveShortIds(decodeShareHash(hash), papers);
-// keeps history.state: it counts the open paper details (#70)
-const clearHash = () => history.replaceState(history.state, "", location.pathname + location.search);
+// keeps history.state: it counts the open paper details (#70); removes only the share link's
+// own keys, so other fragment pairs (#92) stay
+const clearHash = () => history.replaceState(history.state, "", withParams(location.href, new URLSearchParams(), ["follow", "watch"]));
 const sharedReason = () => shared.ids.map((id) => ({ id, reason: "📱 shared", addedOn: new Date().toISOString() }));
 const banner = html`<div></div>`;
 // Watch rules from the link (#49) are only ever added, never used to remove local ones (even

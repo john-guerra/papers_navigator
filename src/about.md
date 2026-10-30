@@ -109,7 +109,7 @@ The browser also keeps a copy of the site's files and of the search model (Cache
 
 ### Who your browser talks to, and why
 
-- **johnguerra.co**, the web server that hosts this site, delivers its pages and data. Like any web server it may keep standard access logs (IP address, browser, page address, time). Page addresses include an open paper (<code>?paper=…</code>) or researcher (<code>?name=…</code>) when you open or reload such a link. Your list and abstracts never go in a page address that reaches the server.
+- **johnguerra.co**, the web server that hosts this site, delivers its pages and data. Like any web server it may keep standard access logs (IP address, browser, page address, time). Page addresses include an open paper (<code>?paper=…</code>) or researcher (<code>?name=…</code>) when you open or reload such a link. Your list and abstracts never go in a page address that reaches the server. Searches, filters and map options (and the Researchers search too) are kept in the page address after <code>#</code>, so you can reload or share a view; the part after <code>#</code> is never sent to the server.
 - **Hugging Face** (huggingface.co and its download servers) delivers the search model files (about 23 MB) the first time you open Explore; after that the browser reuses its saved copy. My Papers also loads it in the background only if you watch research topics (and not when your device asks to save data). Only the model is downloaded: your words are never sent.
 - **The conference website** (${sourceHost}) and other sites only when you follow a link, such as a paper's Conference page ↗, a PDF or a video.
 
@@ -141,6 +141,7 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 - An active facet shows its value on the button; its ✕ clears it. **Clear all** clears every constraint.
 - Constraints that aren't facets (your search, a map region) appear as chips with a ✕.
 - On a phone the facets fold into one **Filters (n)** button.
+- **Share a view:** your search, relevance, filters, map region and map options are kept in the page address, so a reload brings you back to the same view. Copy the address from your browser to send someone exactly what you see. (Your abstracts from My research are never in it.)
 
 ### Use the map
 

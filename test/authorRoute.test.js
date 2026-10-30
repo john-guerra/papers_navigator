@@ -13,6 +13,11 @@ function fakeWindow(href) {
     },
   };
   win.history = {
+    state: null,
+    replaceState(state, __, url) {
+      this.state = state;
+      entries[index] = String(url);
+    },
     pushState(_, __, url) {
       entries.splice(index + 1);
       entries.push(String(url));
@@ -108,5 +113,65 @@ describe("createAuthorRoute (#78)", () => {
     root.querySelector("#same").dispatchEvent(withMeta);
     expect(withMeta.defaultPrevented).toBe(false);
     root.remove();
+  });
+});
+
+describe("Researchers index search in the URL (#92)", () => {
+  it("reads the search from #q= (the fragment never reaches the server)", () => {
+    expect(createAuthorRoute({ win: fakeWindow(`${base}#q=Lee`) }).query).toBe(
+      "Lee",
+    );
+    expect(createAuthorRoute({ win: fakeWindow(base) }).query).toBe("");
+  });
+
+  it("writes the search with replaceState on the index (no history entry)", () => {
+    const win = fakeWindow(`${base}?now=x`);
+    const route = createAuthorRoute({ win });
+    const push = vi.spyOn(win.history, "pushState");
+    route.setQuery("Lee, A & B");
+    const url = new URL(win.location.href);
+    expect(new URLSearchParams(url.hash.slice(1)).get("q")).toBe("Lee, A & B");
+    expect(url.searchParams.has("q")).toBe(false);
+    expect(new URL(win.location.href).searchParams.get("now")).toBe("x");
+    route.setQuery("");
+    expect(win.location.href).toBe(`${base}?now=x`);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("keeps the search out of profile URLs and back on the index", () => {
+    const win = fakeWindow(base);
+    const route = createAuthorRoute({ win });
+    route.setQuery("Lee");
+    route.open("Ann Lee");
+    expect(win.location.href).toBe(`${base}?name=Ann+Lee`);
+    // on a profile, the search isn't written
+    route.setQuery("Other");
+    expect(win.location.href).toBe(`${base}?name=Ann+Lee`);
+    route.open(null);
+    expect(win.location.href).toBe(`${base}#q=Other`);
+    // Back to the index entry: it still has the search it was left with
+    win.history.back();
+    win.history.back();
+    expect(win.location.href).toBe(`${base}#q=Lee`);
+  });
+});
+
+describe("Researchers search pasted in the address bar (#92)", () => {
+  it("starts over when only the fragment's search changed", () => {
+    const win = fakeWindow(`${base}#q=Lee`);
+    const onExternalChange = vi.fn();
+    createAuthorRoute({ win, onExternalChange });
+    win.history.pushState(null, "", `${base}#q=Kim`);
+    win.dispatchEvent(new Event("popstate"));
+    expect(onExternalChange).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't on Back from a profile to the index", () => {
+    const win = fakeWindow(`${base}#q=Lee`);
+    const onExternalChange = vi.fn();
+    const route = createAuthorRoute({ win, onExternalChange });
+    route.open("Ann Lee");
+    win.history.back();
+    expect(onExternalChange).not.toHaveBeenCalled();
   });
 });
