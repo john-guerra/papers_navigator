@@ -73,7 +73,33 @@ describe("scatterSpec color scales", () => {
       colorType: "quantitative",
     });
     expect(spec.encoding.color.type).toBe("quantitative");
-    expect(spec.encoding.color.scale.scheme).toBe("brownbluegreen");
+    // DESIGN.md similarity ramp (viz-similarity-1..3); no CSS vars in jsdom, so the fallbacks
+    expect(spec.encoding.color.scale.range).toEqual(["#d5958c", "#b14f45", "#75201a"]);
+    expect(spec.encoding.color.scale.scheme).toBeUndefined();
+  });
+
+  it("reads the similarity ramp from the --color-viz-similarity-* tokens", () => {
+    document.documentElement.style.setProperty("--color-viz-similarity-3", "#ffa99a");
+    try {
+      const spec = scatterSpec(data, { color: "score", colorType: "quantitative" });
+      expect(spec.encoding.color.scale.range[2]).toBe("#ffa99a");
+    } finally {
+      document.documentElement.style.removeProperty("--color-viz-similarity-3");
+    }
+  });
+
+  it("still accepts an explicit colorScheme", () => {
+    const spec = scatterSpec(data, {
+      color: "score",
+      colorType: "quantitative",
+      colorScheme: "viridis",
+    });
+    expect(spec.encoding.color.scale).toEqual({ scheme: "viridis" });
+  });
+
+  it("paints uncolored points with the viz-neutral token", () => {
+    const spec = scatterSpec(data);
+    expect(spec.mark.color).toBe("#605954");
   });
 
   it("keeps a categorical scale by default", () => {
