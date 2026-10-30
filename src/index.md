@@ -315,17 +315,20 @@ const chipsRow = renderChips(chips, {
 
 ```js
 // Clicking a point on the map scrolls the list to that paper (no hidden "clicked" mode).
-// Vega keeps the click selected, so only scroll when the clicked paper changes.
+// Vega keeps the click selected, so only scroll when the clicked paper changes. A click also
+// re-renders the list, so wait a frame and use the list that is actually on the page.
 {
   const id = map.clicked[0]?.id ?? null;
   const changed = id !== lastScrolled.id;
   lastScrolled.id = id;
-  const row = changed && id ? papersList.showThrough(id) : null;
-  if (row) {
-    row.scrollIntoView({ behavior: "smooth", block: "center" });
-    row.classList.add("flash");
-    setTimeout(() => row.classList.remove("flash"), 1500);
-  }
+  if (changed && id)
+    requestAnimationFrame(() => {
+      const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
+      if (!row?.isConnected) return;
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.classList.add("flash");
+      setTimeout(() => row.classList.remove("flash"), 1500);
+    });
 }
 ```
 
