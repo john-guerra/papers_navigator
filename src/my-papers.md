@@ -12,7 +12,9 @@ import { showToast } from "./components/toast.js";
 import { groupIntoSlots, nowNext, scheduleSummary } from "./lib/schedule.js";
 import { startTopicRefresh } from "./lib/researchTopics.js";
 import { getEmbedder } from "./lib/embedder.js";
-import { toMatrix } from "./lib/search.js";
+import { lazyLoader, relatedPapers, toMatrix } from "./lib/search.js";
+import { createPaperRoute } from "./components/paperRoute.js";
+import { paperPanel } from "./components/paperPanel.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
@@ -26,7 +28,9 @@ import { themeControl } from "./components/themeControl.js";
 ```js
 const conference = FileAttachment("data/conference.json").json();
 const papers = FileAttachment("data/papers.json").json();
-// Read only by the background evaluation of research topics (#24), never before first paint
+// Never read before first paint: only by the background evaluation of research topics (#24)
+// and when a paper's details need related papers (#70). The service worker precaches it with
+// the page, so after one visit it's there offline too.
 const embeddingsFile = FileAttachment("data/embeddings.bin");
 ```
 
@@ -39,13 +43,15 @@ const store = createMyPapers({ followed: followedStore, rules: rulesStore, paper
 const followed = Generators.input(store);
 const rulesState = Generators.input(rulesStore);
 invalidation.then(bindMyPapersBadge(store));
+// The embeddings, loaded once on first need (a failed load, e.g. offline, is retried)
+const loadMatrix = lazyLoader(async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length));
 // Research topics (#24): their cached matches show right away; after first paint the model
 // loads in the background (not with Save-Data) to re-evaluate them against this program
 const topicRefresh = startTopicRefresh({
   rules: rulesStore,
   papers,
   loadEmbedder: getEmbedder,
-  loadMatrix: async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length),
+  loadMatrix,
   onRefresh: ({ updated, ms }) => console.info(`Research topics re-evaluated in ${ms} ms (${updated} updated)`),
 });
 invalidation.then(() => topicRefresh.stop());
@@ -96,6 +102,7 @@ const current = nowNext(fullSchedule.days, now, tz, { conferenceDays: conference
 ```
 
 <h1>My Papers <small>(${items.length})</small></h1>
+${paperDetail}
 
 ```js
 const hash = Generators.observe((notify) => {
@@ -108,7 +115,8 @@ const hash = Generators.observe((notify) => {
 
 ```js
 const shared = resolveShortIds(decodeShareHash(hash), papers);
-const clearHash = () => history.replaceState(null, "", location.pathname + location.search);
+// keeps history.state: it counts the open paper details (#70)
+const clearHash = () => history.replaceState(history.state, "", location.pathname + location.search);
 const sharedReason = () => shared.ids.map((id) => ({ id, reason: "📱 shared", addedOn: new Date().toISOString() }));
 const banner = html`<div></div>`;
 // Watch rules from the link (#49) are only ever added, never used to remove local ones (even
@@ -264,7 +272,7 @@ if (viewMode === "Now / Next") {
 }
 // "over" shows the itinerary under its message for reference
 if (viewMode === "Itinerary" || !current || current.status === "over") {
-  display(renderItinerary(schedule, { tz, onUnfollow: unfollow, now, state: itineraryState }));
+  display(renderItinerary(schedule, { tz, onUnfollow: unfollow, onDetails: (p) => openPaper(p), now, state: itineraryState }));
 }
 ```
 
@@ -309,7 +317,9 @@ display(
       actions: (p) => {
         const button = html`<button class="follow-toggle" title="Remove from My Papers" aria-label="Remove from My Papers"><span class="ring" aria-hidden="true"></span>Remove</button>`;
         button.onclick = () => unfollow(p.id);
-        return button;
+        const details = html`<button class="btn-text paper-details-open">Details</button>`;
+        details.onclick = () => openPaper(p);
+        return html`<span class="paper-actions">${button}${details}</span>`;
       },
     },
   ),
@@ -395,4 +405,29 @@ const restoreButton = previous && !sameIds(previous, followedStore.value)
       return button;
     })()
   : html`<span></span>`;
+```
+
+```js
+// Paper details (#70): the same panel and ?paper=<shortId> URL as on Explore. Related papers
+// need the embeddings, loaded only now (they show "unavailable" if that fails offline)
+const paperRoute = createPaperRoute();
+invalidation.then(() => paperRoute.stop());
+const paperParam = Generators.input(paperRoute);
+const openPaper = (p) => paperRoute.open(p.shortId ?? p.id);
+```
+
+```js
+const paperDetail = paperPanel(paperParam, {
+  papers,
+  tz,
+  store,
+  route: paperRoute,
+  related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
+});
+invalidation.then(paperDetail.dispose);
+```
+
+```js
+followed;
+paperDetail.update?.();
 ```

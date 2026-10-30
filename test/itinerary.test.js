@@ -88,6 +88,23 @@ describe("renderItinerary", () => {
     expect(removed).toEqual(["a"]);
   });
 
+  it("opens a paper's details from its row when onDetails is given (#70)", () => {
+    const opened = [];
+    const el = renderItinerary(schedule, {
+      tz: TZ,
+      onDetails: (p) => opened.push(p.id),
+    });
+    const row = el.querySelector(".itinerary-item");
+    expect(row.dataset.paperId).toBe("a");
+    row.querySelector("button.paper-details-open").click();
+    expect(opened).toEqual(["a"]);
+    expect(
+      renderItinerary(schedule, { tz: TZ }).querySelector(
+        ".paper-details-open",
+      ),
+    ).toBeNull();
+  });
+
   it("lists unscheduled items", () => {
     const el = renderItinerary(
       groupIntoSlots([{ id: "p", title: "Poster" }], TZ),

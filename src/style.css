@@ -1603,7 +1603,9 @@ details.missing > summary {
 
 .related-open {
   flex: 1 1 100%;
+  justify-content: flex-start;
   text-align: left;
+  white-space: normal;
   font-weight: 600;
 }
 
