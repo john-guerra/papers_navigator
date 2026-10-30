@@ -11,7 +11,12 @@ const papers = [
 ];
 
 const facets = [
-  { id: "type", label: "Type", accessor: (p) => p.type, format: (v) => v.toUpperCase() },
+  {
+    id: "type",
+    label: "Type",
+    accessor: (p) => p.type,
+    format: (v) => v.toUpperCase(),
+  },
   { id: "author", label: "Author", accessor: (p) => p.authors },
 ];
 
@@ -28,7 +33,10 @@ const open = (widget, id) => {
 };
 const rows = (popover) => [...popover.querySelectorAll("[role=option]")];
 const rowData = (popover) =>
-  rows(popover).map((r) => [r.dataset.label, Number(r.querySelector(".fs-count").textContent)]);
+  rows(popover).map((r) => [
+    r.dataset.label,
+    Number(r.querySelector(".fs-count").textContent),
+  ]);
 const key = (target, k) =>
   target.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
 
@@ -36,7 +44,10 @@ afterEach(() => (document.body.innerHTML = ""));
 
 describe("facetStrip value/input contract", () => {
   it("starts with the given value, filling missing facets with []", () => {
-    expect(make({ value: { type: ["full"] } }).value).toEqual({ type: ["full"], author: [] });
+    expect(make({ value: { type: ["full"] } }).value).toEqual({
+      type: ["full"],
+      author: [],
+    });
   });
 
   it("emits input with the new value when a row is clicked", () => {
@@ -44,9 +55,13 @@ describe("facetStrip value/input contract", () => {
     const events = [];
     widget.addEventListener("input", () => events.push(widget.value));
     const popover = open(widget, "author");
-    rows(popover).find((r) => r.dataset.label === "Bo").click();
+    rows(popover)
+      .find((r) => r.dataset.label === "Bo")
+      .click();
     expect(events).toEqual([{ type: [], author: ["Bo"] }]);
-    rows(popover).find((r) => r.dataset.label === "Bo").click();
+    rows(popover)
+      .find((r) => r.dataset.label === "Bo")
+      .click();
     expect(widget.value.author).toEqual([]);
   });
 
@@ -62,7 +77,9 @@ describe("facetStrip value/input contract", () => {
 
   it("shows the value with format and a ✕ that clears that facet", () => {
     const widget = make({ value: { type: ["full"] } });
-    expect(facetEl(widget, "type").querySelector(".fs-button").textContent).toContain("Type: FULL");
+    expect(
+      facetEl(widget, "type").querySelector(".fs-button").textContent,
+    ).toContain("Type: FULL");
     let fired = 0;
     widget.addEventListener("input", () => fired++);
     facetEl(widget, "type").querySelector(".fs-clear").click();
@@ -73,10 +90,18 @@ describe("facetStrip value/input contract", () => {
 
   it("uses a facet summary for the button label when given", () => {
     const widget = make({
-      facets: [{ ...facets[0], summary: (values) => (values.length === 2 ? "Main tracks" : null) }, facets[1]],
+      facets: [
+        {
+          ...facets[0],
+          summary: (values) => (values.length === 2 ? "Main tracks" : null),
+        },
+        facets[1],
+      ],
       value: { type: ["full", "short"] },
     });
-    expect(facetEl(widget, "type").querySelector(".fs-button").textContent).toContain("Type: Main tracks");
+    expect(
+      facetEl(widget, "type").querySelector(".fs-button").textContent,
+    ).toContain("Type: Main tracks");
   });
 
   it("Clear all empties every facet", () => {
@@ -152,7 +177,9 @@ describe("facetStrip popover", () => {
     expect(calls).toContainEqual(["author", "Ann"]);
     authorRows[0].querySelector(".watch").click();
     expect(widget.value.author).toEqual([]);
-    expect(rows(open(widget, "type")).some((r) => r.querySelector(".watch"))).toBe(false);
+    expect(
+      rows(open(widget, "type")).some((r) => r.querySelector(".watch")),
+    ).toBe(false);
   });
 
   it("shows only `limit` rows with a Show all footer", () => {
@@ -175,7 +202,9 @@ describe("facetStrip popover", () => {
     authorButton.click();
     expect(typeButton.getAttribute("aria-expanded")).toBe("false");
     expect(authorButton.getAttribute("aria-expanded")).toBe("true");
-    expect(widget.querySelectorAll(".fs-popover:not([hidden])")).toHaveLength(1);
+    expect(widget.querySelectorAll(".fs-popover:not([hidden])")).toHaveLength(
+      1,
+    );
   });
 
   it("supports the listbox keyboard pattern: arrows, Enter, Escape", () => {
@@ -185,17 +214,25 @@ describe("facetStrip popover", () => {
     expect(input.getAttribute("role")).toBe("combobox");
     key(input, "ArrowDown");
     key(input, "ArrowDown");
-    const active = popover.querySelector(`#${input.getAttribute("aria-activedescendant")}`);
+    const active = popover.querySelector(
+      `#${input.getAttribute("aria-activedescendant")}`,
+    );
     expect(active.dataset.label).toBe("Bo");
     key(input, "Enter");
     expect(widget.value.author).toEqual(["Bo"]);
-    expect(rows(popover).find((r) => r.dataset.label === "Bo").getAttribute("aria-selected")).toBe("true");
+    expect(
+      rows(popover)
+        .find((r) => r.dataset.label === "Bo")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
     key(input, "ArrowUp");
     key(input, "Enter");
     expect(widget.value.author).toEqual(["Bo", "Ann"]);
     key(input, "Escape");
     expect(popover.hidden).toBe(true);
-    expect(document.activeElement).toBe(facetEl(widget, "author").querySelector(".fs-button"));
+    expect(document.activeElement).toBe(
+      facetEl(widget, "author").querySelector(".fs-button"),
+    );
   });
 
   it("closes when clicking outside", () => {
@@ -216,5 +253,26 @@ describe("facetStrip phone sheet", () => {
     expect(button.getAttribute("aria-expanded")).toBe("true");
     widget.querySelector(".fs-sheet-done").click();
     expect(widget.classList.contains("fs-sheet-open")).toBe(false);
+  });
+});
+
+describe("facetStrip row actions and the keyboard", () => {
+  it("leaves Enter/Space on a row action to the action (no row toggle, no preventDefault)", () => {
+    const widget = make({
+      rowAction: () =>
+        Object.assign(document.createElement("button"), { className: "act" }),
+    });
+    const popover = open(widget, "author");
+    const input = popover.querySelector("input");
+    key(input, "ArrowDown"); // a row is active, so a stray Enter would toggle it
+    const action = popover.querySelector(".act");
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    action.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(widget.value.author ?? []).toEqual([]);
   });
 });

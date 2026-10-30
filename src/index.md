@@ -207,15 +207,18 @@ const facetsInput = facetStrip(papers, {
       rules: rulesStore,
       onWatch: (rule) => {
         const saved = store.watch(rule);
-        const n = papers.filter((p) => matches(saved, p)).length;
-        showToast(`Watching ${value} · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`, {
+        // Papers this rule now keeps in My Papers (all types; not ones you removed by hand)
+        const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
+        showToast(`Watching ${value} · ${n} ${n === 1 ? "paper" : "papers"} (all types) now in My Papers`, {
           actionLabel: "Undo",
           onAction: () => store.unwatch([saved.id]),
         });
       },
       onUnwatch: (id) => {
+        // Undo puts the same rule back (date, seen/new state and exceptions untouched)
+        const rule = rulesStore.value.rules.find((r) => r.id === id);
         store.unwatch([id]);
-        showToast(`Stopped watching ${value}`, { actionLabel: "Undo", onAction: () => store.watch({ type, value }) });
+        showToast(`Stopped watching ${value}`, { actionLabel: "Undo", onAction: () => rule && rulesStore.add(rule) });
       },
     });
   },

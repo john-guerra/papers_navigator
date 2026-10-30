@@ -127,11 +127,11 @@ importInput.querySelector("input").onchange = async (event) => {
   const text = await file.text();
   const run = (replace) => {
     try {
-      const before = store.value.length;
+      const before = followedStore.value.length;
       followedStore.importJSON(text, { replace });
       importStatus.textContent = replace
-        ? `Replaced your list with ${store.value.length} papers.`
-        : `Added ${store.value.length - before} papers (${store.value.length} total).`;
+        ? `Replaced your list with ${followedStore.value.length} papers.`
+        : `Added ${followedStore.value.length - before} papers (${store.value.length} total in My Papers).`;
     } catch (error) {
       importStatus.textContent = error.message;
     }

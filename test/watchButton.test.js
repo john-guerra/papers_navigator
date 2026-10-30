@@ -50,3 +50,27 @@ describe("watchButton", () => {
     expect(rowClick).not.toHaveBeenCalled();
   });
 });
+
+describe("watchButton follows rule changes made elsewhere", () => {
+  it("updates when the rules store changes (another tab, Undo)", () => {
+    const store = new Map();
+    const rules = createRulesStore(
+      "t",
+      {
+        getItem: (k) => store.get(k) ?? null,
+        setItem: (k, v) => store.set(k, v),
+      },
+      null,
+    );
+    const button = watchButton(
+      { type: "author", value: "Ann" },
+      { rules, onWatch: () => {}, onUnwatch: () => {} },
+    );
+    document.body.append(button);
+    rules.add({ type: "author", value: "Ann" });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    rules.remove(["author:ann"]);
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    button.remove();
+  });
+});

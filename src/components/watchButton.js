@@ -23,5 +23,14 @@ export function watchButton(rule, { rules, onWatch, onUnwatch }) {
     render();
   };
   render();
+  // Follow changes made elsewhere (another tab, a toast's Undo); stop once the button is gone
+  let attached = false;
+  const onRulesChange = () => {
+    if (button.isConnected) {
+      attached = true;
+      render();
+    } else if (attached) rules.removeEventListener("input", onRulesChange);
+  };
+  rules.addEventListener("input", onRulesChange);
   return button;
 }
