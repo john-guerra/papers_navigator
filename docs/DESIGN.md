@@ -283,7 +283,7 @@ Tokens are in the front matter. Rules:
 - **`primary-container`** is for notes that need attention without alarm: schedule conflicts, "new since last update".
 - **Focus is blue (`focus`)**, the only blue in the UI, so keyboard focus is never confused with selection.
 - **Status colors are not part of this palette.** The app has no good/warning/error states beyond conflicts; those use `primary-container` plus a ⚠ marker and text, never color alone.
-- **Dark theme** is a selected variant, not an automatic inversion: use the `dark-*` tokens. An **Appearance toggle (Auto · Light · Dark)** is OK and lives in Options (Explore) and the My Papers tools: Auto follows `prefers-color-scheme`, Light/Dark force a theme via `data-theme` on `<html>`, remembered per browser and applied before first paint. Light is the default and the reference for screenshots.
+- **Dark theme** is a selected variant, not an automatic inversion: use the `dark-*` tokens. An **Appearance toggle (Auto · Light · Dark)** is OK and lives only in Options (Explore); other pages follow the saved choice and show no control: Auto follows `prefers-color-scheme`, Light/Dark force a theme via `data-theme` on `<html>`, remembered per browser and applied before first paint. Light is the default and the reference for screenshots.
 - Text contrast (WCAG): ink on paper 15.7:1, muted on paper 6.5:1, on-primary on primary 7.5:1; dark: 15.3, 7.9, 7.2. All AA.
 
 ## Typography

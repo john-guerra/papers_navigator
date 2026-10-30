@@ -489,7 +489,16 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labelSize: mapWidth < 500 ? 10 : 11,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
   scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
-  tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), ...(liveClusters ? ["liveClusterName"] : []), "score"],
+  // Readable labels and a percentage instead of raw field names and a long float
+  tooltip: [
+    { field: "title", title: "Title" },
+    { field: "authorNames", title: "Authors" },
+    { field: "typeLabel", title: "Type" },
+    { field: "sessionName", title: "Session" },
+    ...(hasTopics ? [{ field: "clusterLabel", title: "Topic" }] : []),
+    ...(liveClusters ? [{ field: "liveClusterName", title: "Cluster (live)" }] : []),
+    ...(hasQuery ? [{ field: "score", title: "Similarity", format: ".0%" }] : []),
+  ],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,

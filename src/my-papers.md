@@ -26,7 +26,6 @@ import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "
 import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
-import { themeControl } from "./components/themeControl.js";
 ```
 
 ```js
@@ -163,7 +162,7 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
 display(banner);
 ```
 
-<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton} ${themeControl()}</div>
+<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton}</div>
 ${newNotice}
 <div>${sharePanel}</div>
 

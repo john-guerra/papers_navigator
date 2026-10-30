@@ -1720,3 +1720,33 @@ details.missing > summary {
 .author-link:hover {
   text-decoration-color: currentColor;
 }
+
+/* Map tooltip (vega-tooltip): page tokens instead of its light/dark defaults, both themes */
+body #vg-tooltip-element {
+  max-width: 360px;
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  border: 1px solid var(--color-outline);
+  border-radius: 6px;
+  background: var(--color-surface);
+  box-shadow: var(--elevation-1);
+  color: var(--color-on-surface);
+  font: 400 0.875rem/1.35 var(--font-sans);
+  white-space: normal;
+}
+
+body #vg-tooltip-element h2 {
+  margin: 0 0 var(--spacing-xs, 4px);
+  font: 500 1rem/1.25 var(--font-serif);
+}
+
+body #vg-tooltip-element table tr td.key {
+  padding-right: var(--spacing-sm, 8px);
+  color: var(--color-on-surface-muted);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: top;
+}
+
+body #vg-tooltip-element table tr td.value {
+  color: var(--color-on-surface);
+}
