@@ -11,6 +11,8 @@ from pathlib import Path
 
 import numpy as np
 
+from pipeline.normalize import unify_keywords
+
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = "all-MiniLM-L6-v2"
 
@@ -65,6 +67,7 @@ def run(conference_id: str, root: Path = ROOT, encoder=None, reducers=None) -> N
     papers = json.loads((data_dir / "papers.raw.json").read_text())
     excluded = set(config.get("excludeTypeLabels", []))
     papers = [p for p in papers if p.get("typeLabel") not in excluded]
+    papers = unify_keywords(papers)
     matrix = np.asarray(encoder(embed_texts(papers)), dtype=np.float32)
     write_embeddings(matrix, data_dir / "embeddings.bin")
 

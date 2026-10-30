@@ -69,3 +69,50 @@ def test_unknown_projection_raises(tmp_path):
     make_conference(tmp_path, PAPERS, ["nope"])
     with pytest.raises(ValueError, match="nope"):
         embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={})
+
+
+def test_unify_keywords_picks_one_spelling_per_case_group():
+    from pipeline.normalize import unify_keywords
+
+    papers = [
+        {"id": "a", "keywords": ["Scientific Visualization", "Design Study"]},
+        {"id": "b", "keywords": ["Scientific visualization", "Design study"]},
+        {"id": "c", "keywords": ["Scientific visualization", "evaluation", "Evaluation"]},
+        {"id": "d", "keywords": ["scientific visualization", "LLM"]},
+    ]
+    out = unify_keywords(papers)
+    # most common spelling wins
+    assert out[0]["keywords"][0] == "Scientific visualization"
+    assert out[3]["keywords"] == ["Scientific visualization", "LLM"]
+    # tie (1 vs 1): sentence case beats title case
+    assert out[0]["keywords"][1] == "Design study"
+    # duplicates inside one paper collapse, order kept
+    assert out[2]["keywords"] == ["Scientific visualization", "Evaluation"]
+    # input not mutated
+    assert papers[0]["keywords"] == ["Scientific Visualization", "Design Study"]
+
+
+def test_run_unifies_keywords(tmp_path):
+    papers = [
+        {**PAPERS[0], "keywords": ["Graph Drawing"]},
+        {**PAPERS[1], "keywords": ["graph drawing"]},
+        {**PAPERS[2], "keywords": ["Graph drawing"]},
+    ]
+    conf = make_conference(tmp_path, papers, ["a"])
+    embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": lambda m: np.zeros((len(m), 2))})
+    out = json.loads((conf / "data" / "papers.json").read_text())
+    assert {k for p in out for k in p["keywords"]} == {"Graph drawing"}
+
+
+def test_unify_keywords_ignores_trailing_punctuation():
+    from pipeline.normalize import unify_keywords
+
+    out = unify_keywords([{"keywords": ["Scientific visualization"]}, {"keywords": ["scientific visualization."]}])
+    assert [p["keywords"] for p in out] == [["Scientific visualization"], ["Scientific visualization"]]
+
+
+def test_unify_keywords_splits_semicolon_lists_and_collapses_whitespace():
+    from pipeline.normalize import unify_keywords
+
+    out = unify_keywords([{"keywords": ["Ice Sheet; Art-Science\ncollaboration; Cryosphere.", " "]}])
+    assert out[0]["keywords"] == ["Ice Sheet", "Art-Science collaboration", "Cryosphere"]
