@@ -10,8 +10,9 @@
  },
  "counts": {
   "title": 154,
-  "llm": 329,
-  "keyphrase": 5
+  "llm": 326,
+  "keyphrase": 1,
+  "manual": 7
  },
  "missingLlm": 0,
  "labels": {
@@ -76,8 +77,8 @@
    "source": "title"
   },
   "0ba8821b-a917-4cf6-9f63-34c62fd9fd7b": {
-   "label": "Image-based vision",
-   "source": "llm",
+   "label": "Vision models",
+   "source": "manual",
    "llm": {
     "v2": "Image-based vision",
     "v3": "Vision models"
@@ -1477,8 +1478,8 @@
    "inputHash": "8ae730801f914925"
   },
   "47c1a9c5-88ae-47ff-8cc6-c2d4fcac5d78": {
-   "label": "Autonomous decision-making",
-   "source": "keyphrase",
+   "label": "VLM decisions",
+   "source": "manual",
    "llm": {
     "v2": null,
     "v3": null
@@ -1701,8 +1702,8 @@
    "source": "title"
   },
   "88ac885c-eced-46ef-80ce-ca8a1dacad1a": {
-   "label": "Image distribution",
-   "source": "llm",
+   "label": "Uncertainty graphics",
+   "source": "manual",
    "llm": {
     "v2": "Image Distribution"
    },
@@ -2146,8 +2147,8 @@
    "inputHash": "5022e917020b6174"
   },
   "ece53f3e-93ca-45b7-982a-bfdfc1932dac": {
-   "label": "Surface substance",
-   "source": "llm",
+   "label": "Vis pedagogy",
+   "source": "manual",
    "llm": {
     "v2": "Surface Substance",
     "v3": "Surface Substance"
@@ -2406,8 +2407,8 @@
    "inputHash": "b2ff424a5b2f3a2d"
   },
   "ef649821-38c9-4cb5-9496-fd8edabdeaf6": {
-   "label": "Collaboration networks",
-   "source": "keyphrase",
+   "label": "Care teams",
+   "source": "manual",
    "llm": {
     "v2": null,
     "v3": null
@@ -2479,8 +2480,8 @@
    "inputHash": "0d2335a07a2c6222"
   },
   "57666a76-d0fa-46cd-8914-0fad28dae84f": {
-   "label": "Rendering quantum",
-   "source": "keyphrase",
+   "label": "Quantum circuits",
+   "source": "manual",
    "llm": {
     "v2": null,
     "v3": "Design Space"
@@ -3990,8 +3991,8 @@
    "inputHash": "512dbdb80e6e3d19"
   },
   "eeb1a91c-5761-4ea7-8b0b-55e185123f87": {
-   "label": "Generative image",
-   "source": "keyphrase",
+   "label": "Image generation",
+   "source": "manual",
    "llm": {
     "v2": null,
     "v3": "Design Space"
