@@ -352,6 +352,53 @@ describe("BrushableScatterPlot pointAt", () => {
   });
 });
 
+describe("BrushableScatterPlot touch brushing (#85)", () => {
+  // Vega hands pointerdown the item under the last pointermove; a touch has no hover first, so
+  // the item is null and Vega-Lite's brush (a "scope" stream: inScope(event.item)) ignores it
+  const PointerEventClass = globalThis.PointerEvent ?? MouseEvent;
+  const press = (surface, pointerType) => {
+    const event = new PointerEventClass("pointerdown", {
+      bubbles: true,
+      clientX: 40,
+      clientY: 50,
+    });
+    Object.defineProperty(event, "pointerType", { value: pointerType });
+    surface.dispatchEvent(event);
+  };
+  const record = async () => {
+    const widget = await BrushableScatterPlot(data, {
+      renderer: "svg",
+      width: 200,
+      height: 200,
+    });
+    document.body.append(widget);
+    const surface = widget.querySelector("svg");
+    const seen = [];
+    for (const type of ["pointermove", "pointerdown"])
+      surface.addEventListener(type, (e) =>
+        seen.push([type, e.clientX, e.clientY]),
+      );
+    return { widget, surface, seen };
+  };
+
+  it("sends a pointermove at the touch point before a touch pointerdown", async () => {
+    const { widget, surface, seen } = await record();
+    press(surface, "touch");
+    expect(seen).toEqual([
+      ["pointermove", 40, 50],
+      ["pointerdown", 40, 50],
+    ]);
+    widget.remove();
+  });
+
+  it("leaves mouse presses alone (a mouse always hovers first)", async () => {
+    const { widget, surface, seen } = await record();
+    press(surface, "mouse");
+    expect(seen).toEqual([["pointerdown", 40, 50]]);
+    widget.remove();
+  });
+});
+
 describe("BrushableScatterPlot only emits on selection changes", () => {
   it("doesn't emit input when a non-selection signal (levelCut, mine) changes", async () => {
     const widget = await BrushableScatterPlot(data, {

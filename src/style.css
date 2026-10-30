@@ -743,8 +743,14 @@ a.navbar-brand {
 
   .select-mode .explore-map .brushable-scatterplot {
     pointer-events: auto;
-    touch-action: none;
     outline: 2px solid var(--color-focus);
+  }
+
+  /* On the chart surface itself: touch-action only applies up to the nearest scroll container,
+     and vega-embed's wrapper is one (overflow: auto), so the outer div's value never reached
+     the canvas and the drag scrolled the page (#85) */
+  .select-mode .explore-map .brushable-scatterplot :is(canvas, svg) {
+    touch-action: none;
   }
 }
 

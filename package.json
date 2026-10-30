@@ -8,7 +8,7 @@
   "scripts": {
     "test": "vitest run",
     "dev": "observable preview",
-    "build": "observable build && node scripts/buildSw.js",
+    "build": "observable build && node scripts/buildSw.js && node scripts/copyStatic.js",
     "lint": "eslint src test scripts"
   },
   "repository": {

@@ -13,6 +13,9 @@ export default {
   ],
   head: `<meta property="og:title" content="${conference.name} Papers Navigator">
 <meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${conference.name} Papers Navigator: the map of all papers, colored by topic">
 <meta name="twitter:card" content="summary_large_image">
 <script>
   // Apply the saved Appearance before the page draws (no flash); see src/lib/theme.js
