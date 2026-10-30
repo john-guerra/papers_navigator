@@ -432,6 +432,8 @@ const chipsRow = renderChips(chips, {
   const phone = matchMedia("(max-width: 576px)");
   const onTap = (event) => {
     if (!phone.matches || layout.classList.contains("select-mode")) return;
+    // Taps on controls in the map area (Select region, Hide map, Color by) aren't point taps
+    if (event.target.closest("button, select, input, label, a")) return;
     const paper = mapInput.pointAt(event.clientX, event.clientY);
     if (paper) scrollToPaper(paper.id);
   };
