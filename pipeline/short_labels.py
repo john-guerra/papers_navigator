@@ -112,6 +112,21 @@ STRICT_SUFFIX = (
     " Your previous reply was rejected because it was longer than 2 words or too generic. "
     "Reply with exactly 1 or 2 specific words."
 )
+# v3 (#99 review): rerun only for weak labels (`is_weak`), with few-shot examples from VIS 2026
+REFINE_VERSION = "v3"
+SYSTEM_PROMPT_V3 = (
+    "You label research papers from {conference}. Every paper there is about visualization, so "
+    "the label must name what sets THIS paper apart: its specific method, phenomenon, "
+    "application domain or artifact, something that would not fit most other papers. Reply "
+    "with ONLY the 1-2 word label. Keep acronyms and tool names. No punctuation, no quotes.\n"
+    "Good labels from this conference: INR rendering (a volume rendering method for implicit "
+    "neural representations), Sheaf theory (the math behind a model of visual encodings), "
+    "PaintEcho (the paper's named tool), mCCDF regression (a plot adapted to ordinal "
+    "regression results).\n"
+    "Bad labels: Agentic System (fits dozens of papers), Learning Experience (vague: names no "
+    "method, domain or artifact)."
+)
+PROMPTS = {"v2": SYSTEM_PROMPT, REFINE_VERSION: SYSTEM_PROMPT_V3}
 TEMPERATURE = 0
 SEED = 42
 MAX_TOKENS = 1200  # the model reasons (~350 tokens) before answering
@@ -152,10 +167,10 @@ def user_prompt(paper) -> str:
     )
 
 
-def prompt_hash(conference: str) -> str:
+def prompt_hash(conference: str, version: str = PROMPT_VERSION) -> str:
     spec = {
-        "version": PROMPT_VERSION,
-        "system": SYSTEM_PROMPT.format(conference=conference),
+        "version": version,
+        "system": PROMPTS[version].format(conference=conference),
         "strict": STRICT_SUFFIX,
         "temperature": TEMPERATURE,
         "seed": SEED,
@@ -233,34 +248,34 @@ class _Missing:
 MISSING = _Missing()
 
 
-def _cache_file(cache_root, model, conference, paper) -> Path:
+def _cache_file(cache_root, model, conference, paper, version=PROMPT_VERSION) -> Path:
     """<cache>/<model>/<promptHash>/<hash of id + paper text>.json: hashing the (scraped,
     untrusted) id means names never collide or escape the cache, and an edited abstract misses."""
     root = Path(cache_root).resolve()
     key = hashlib.sha256(f"{paper['id']}\n{input_hash(paper)}".encode()).hexdigest()[:24]
-    path = (root / _safe_name(model) / prompt_hash(conference) / f"{key}.json").resolve()
+    path = (root / _safe_name(model) / prompt_hash(conference, version) / f"{key}.json").resolve()
     if not path.is_relative_to(root):
         raise ValueError(f"cache path escapes {root}: {path}")
     return path
 
 
-def llm_label(paper, client, cache_root, conference="the IEEE VIS conference", model=None):
+def llm_label(paper, client, cache_root, conference="the IEEE VIS conference", model=None, version=PROMPT_VERSION):
     """Validated LLM label (or None if the model's replies were rejected) for `paper`; cached per
     model + prompt. `client=None` reads the cache only and returns MISSING when it has no entry."""
     model = model or client.model
-    path = _cache_file(cache_root, model, conference, paper)
+    path = _cache_file(cache_root, model, conference, paper, version)
     if path.exists():
         return json.loads(path.read_text())["label"]
     if client is None:
         return MISSING
-    system = SYSTEM_PROMPT.format(conference=conference)
+    system = PROMPTS[version].format(conference=conference)
     replies = [client.complete(system, user_prompt(paper))]
     label = normalize_label(replies[0])
     if label is None:
         replies.append(client.complete(system + STRICT_SUFFIX, user_prompt(paper)))
         label = normalize_label(replies[1])
     path.parent.mkdir(parents=True, exist_ok=True)
-    record = {"id": paper["id"], "label": label, "replies": replies, "model": model, "promptVersion": PROMPT_VERSION}
+    record = {"id": paper["id"], "label": label, "replies": replies, "model": model, "promptVersion": version}
     write_atomic(path, json.dumps(record, ensure_ascii=False))
     return label
 
@@ -423,21 +438,78 @@ def merge_near_duplicates(papers) -> None:
                 paper["shortLabel"] = best
 
 
+# --- Weak labels (rerun with prompt v3) ------------------------------------------------------
+
+# Words that say little on their own: a label made only of these ("Design algorithm",
+# "Foundation models", "Novice interaction") fits too many papers
+VAGUE_WORDS = GENERIC_LABEL_WORDS | {
+    "model", "models", "system", "systems", "design", "learning", "interaction", "analysis",
+    "signal", "image", "images", "vision", "experience", "review", "agentic", "agent", "agents",
+    "foundation", "interpretation", "novice", "novices", "time", "surface", "substance",
+    "cognitive", "algorithm", "algorithms", "noise", "process", "performance", "insight",
+    "insights", "understanding", "quality", "effect", "effects", "impact", "perspective",
+    "reflection", "task", "tasks", "human", "ai", "knowledge", "skill", "skills", "practice",
+    "practices", "behavior", "communication", "exploration", "generation", "representation",
+    "structure", "pattern", "patterns", "space", "view", "views", "installation", "skin",
+    "based", "image-based", "multi", "collaborative", "intelligent", "explanation", "support",
+}
+TEXT_TOKEN = re.compile(TOKEN_PATTERN)
+
+
+def _words(text) -> list[str]:
+    return [w.lower() for w in TEXT_TOKEN.findall(text or "")]
+
+
+def _grounded(word: str, paper_words: set) -> bool:
+    """`word` (or a word sharing its first 5 letters: "agentic"/"agents") is in the paper."""
+    return word in paper_words or any(w[:5] == word[:5] for w in paper_words if len(word) >= 5)
+
+
+def is_weak(label, source, paper, flagged=()) -> bool:
+    """A label worth a second try with prompt v3: a keyphrase fallback, one John flagged
+    (config shortLabels.weakLabels), one made only of vague words, or one whose words
+    (crudely stemmed) appear nowhere in the paper's title, keywords or abstract ("Byte dance")."""
+    if source == "keyphrase" or not label:
+        return True
+    words = _words(label)
+    if label.lower() in {f.lower() for f in flagged} or all(w in VAGUE_WORDS for w in words):
+        return True
+    paper_words = set(_words(paper_text(paper)))
+    return not any(_grounded(w, paper_words) for w in words)
+
+
+def specificity(label, document_frequency, n_docs) -> float:
+    """Mean IDF of the label's words across the papers (title + keywords + abstract)."""
+    words = _words(label)
+    if not words:
+        return 0.0
+    return float(np.mean([np.log((n_docs + 1) / (document_frequency.get(w, 0) + 1)) for w in words]))
+
+
+def pick_refined(v2, v3, paper, document_frequency, n_docs, flagged=()):
+    """(raw label, winning prompt version): v3 if it's valid and not weak, else the more
+    specific of the two valid labels (ties: v2), else None. Without a v2 label the paper keeps
+    its keyphrase rather than a weak v3 ("Design space" would replace "Rendering quantum")."""
+    if v3 and not is_weak(v3, "llm", paper, flagged):
+        return v3, REFINE_VERSION
+    if not v2:
+        return None, None
+    candidates = [(label, version) for label, version in ((v2, PROMPT_VERSION), (v3, REFINE_VERSION)) if label]
+    if not candidates:
+        return None, None
+    return max(candidates, key=lambda c: (specificity(c[0], document_frequency, n_docs), c[1] == PROMPT_VERSION))
+
+
 # --- The pipeline step --------------------------------------------------------------------
 
 
-def _stored_llm(entry, paper, model):
-    """The committed LLM label for `paper` from shortLabels.json, or MISSING if there's none for
-    this model, prompt version and paper text."""
-    if (
-        entry
-        and "llm" in entry
-        and entry.get("model") == model
-        and entry.get("promptVersion") == PROMPT_VERSION
-        and entry.get("inputHash") == input_hash(paper)
-    ):
-        return entry["llm"]
-    return MISSING
+def _stored_llm(entry, paper, model) -> dict:
+    """The committed raw LLM labels for `paper` from shortLabels.json, {prompt version: label
+    or None}, for this model and paper text ({} if none)."""
+    if not entry or "llm" not in entry or entry.get("model") != model or entry.get("inputHash") != input_hash(paper):
+        return {}
+    llm = entry["llm"]
+    return {k: v for k, v in llm.items() if k in PROMPTS} if isinstance(llm, dict) else {PROMPT_VERSION: llm}
 
 
 def add_short_labels(
@@ -458,21 +530,26 @@ def add_short_labels(
     fallback = keyphrase_labels(papers, embeddings, encoder, stop_words=stop_words)
     names = [title_tool_name(p) for p in papers]
     store = store or {}
-    llm = {}
-    for paper, name in zip(papers, names):
-        if not name:
-            llm[paper["id"]] = _stored_llm(store.get(paper["id"]), paper, model)
-    todo = [p for p, name in zip(papers, names) if not name and llm[p["id"]] is MISSING]
+    stored = {p["id"]: _stored_llm(store.get(p["id"]), p, model) for p, name in zip(papers, names) if not name}
 
-    def label_of(paper):
-        return llm_label(paper, client, cache_root, conference, model=model)
+    def ask(todo, version):
+        """{id: label} from the store, else the cache/LLM (MISSING when neither knows)."""
+        known = {p["id"]: stored[p["id"]][version] for p in todo if version in stored[p["id"]]}
+        rest = [p for p in todo if p["id"] not in known]
 
-    if concurrency > 1 and client is not None:
-        with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            llm.update(zip((p["id"] for p in todo), pool.map(label_of, todo)))
-    else:
-        llm.update((p["id"], label_of(p)) for p in todo)
-    missing = [p for p, name in zip(papers, names) if not name and llm[p["id"]] is MISSING]
+        def label_of(paper):
+            return llm_label(paper, client, cache_root, conference, model=model, version=version)
+
+        if concurrency > 1 and client is not None:
+            with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                known.update(zip((p["id"] for p in rest), pool.map(label_of, rest)))
+        else:
+            known.update((p["id"], label_of(p)) for p in rest)
+        return known
+
+    base = [p for p, name in zip(papers, names) if not name]
+    v2 = ask(base, PROMPT_VERSION)
+    missing = [p for p in base if v2[p["id"]] is MISSING]
     if missing:
         print(
             f"WARNING: {len(missing)} papers have no LLM label (not in shortLabels.json or the cache, "
@@ -482,29 +559,45 @@ def add_short_labels(
             + (" …" if len(missing) > 10 else ""),
             file=sys.stderr,
         )
+    # Weak v2 labels (and keyphrase fallbacks) get a second try with prompt v3
+    flagged = opts.get("weakLabels", [])
+    weak = [p for p in base if v2[p["id"]] is not MISSING and is_weak(v2[p["id"]], "llm" if v2[p["id"]] else "keyphrase", p, flagged)]
+    v3 = ask(weak, REFINE_VERSION)
+    frequency = Counter(w for p in papers for w in set(_words(paper_text(p))))
+    chosen = {}
+    for paper in base:
+        raw2, raw3 = v2[paper["id"]], v3.get(paper["id"], MISSING)
+        if raw2 is MISSING:
+            chosen[paper["id"]] = (None, None)
+        elif raw3 is MISSING:
+            chosen[paper["id"]] = (raw2, PROMPT_VERSION if raw2 else None)
+        else:
+            chosen[paper["id"]] = pick_refined(raw2, raw3, paper, frequency, len(papers), flagged)
     forms = surface_forms([p.get("abstract") for p in papers])
     labels = {}
     for paper, name, keyphrase in zip(papers, names, fallback):
-        raw = None if name else llm[paper["id"]]
+        raw = None if name else chosen[paper["id"]][0]
         if name:
             paper["shortLabel"], paper["shortLabelSource"] = name, "title"
-        elif raw is not MISSING and raw:
+        elif raw:
             paper["shortLabel"], paper["shortLabelSource"] = sentence_case(raw, forms), "llm"
         else:
             paper["shortLabel"], paper["shortLabelSource"] = sentence_case(keyphrase, forms), "keyphrase"
     merge_near_duplicates(papers)
     for paper, name in zip(papers, names):
         entry = {"label": paper["shortLabel"], "source": paper["shortLabelSource"]}
-        raw = None if name else llm[paper["id"]]
-        if not name and raw is not MISSING:
-            entry.update(llm=raw, model=model, promptVersion=PROMPT_VERSION, inputHash=input_hash(paper))
+        if not name and v2[paper["id"]] is not MISSING:
+            raws = {PROMPT_VERSION: v2[paper["id"]]}
+            if v3.get(paper["id"], MISSING) is not MISSING:
+                raws[REFINE_VERSION] = v3[paper["id"]]
+            entry.update(llm=raws, promptVersion=chosen[paper["id"]][1], model=model, inputHash=input_hash(paper))
         labels[paper["id"]] = entry
     counts = {s: sum(p["shortLabelSource"] == s for p in papers) for s in ("title", "llm", "keyphrase")}
     asked = any("llm" in e for e in labels.values())
     return {
         "model": model if asked else None,
-        "promptVersion": PROMPT_VERSION if asked else None,
-        "promptHash": prompt_hash(conference) if asked else None,
+        "promptVersions": {v: prompt_hash(conference, v) for v in PROMPTS} if asked else None,
+        "refined": {v: sum(e.get("promptVersion") == v for e in labels.values()) for v in PROMPTS},
         "counts": counts,
         "missingLlm": len(missing),
         "labels": labels,

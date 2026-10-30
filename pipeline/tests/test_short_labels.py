@@ -232,7 +232,7 @@ def test_run_adds_labels_without_changing_anything_else(tmp_path):
 
 def test_run_uses_the_llm_for_papers_without_a_tool_name(tmp_path):
     conf = make_conference(tmp_path, KP_PAPERS)
-    client = FakeClient(["Uncertainty Glyphs", "Visualization", "Study", "Agent Charts"])
+    client = FakeClient(["Uncertainty Glyphs", "Visualization", "Study", "LLM Charting", "Charts", "Data"])  # v3 retry for b too
     sl.run(
         "testconf", root=tmp_path, encoder=hash_encoder, cache_root=tmp_path / "cache", dims=64, client=client,
         concurrency=1,  # FakeClient answers in call order
@@ -241,10 +241,10 @@ def test_run_uses_the_llm_for_papers_without_a_tool_name(tmp_path):
     assert [(p["shortLabel"], p["shortLabelSource"]) for p in out] == [
         ("Uncertainty glyphs", "llm"),
         ("Tactile charts", "keyphrase"),
-        ("Agent charts", "llm"),
+        ("LLM charting", "llm"),
     ]
     meta = json.loads((conf / "data" / "shortLabels.json").read_text())
-    assert meta["model"] == "fake/model" and meta["promptVersion"] == sl.PROMPT_VERSION
+    assert meta["model"] == "fake/model" and set(meta["promptVersions"]) == {"v2", "v3"}
 
 
 def test_run_does_nothing_when_disabled(tmp_path):
@@ -274,7 +274,7 @@ class SlowClient:
         return f"Topic {title.split()[-1]}"
 
 
-PARALLEL = [{"id": f"q{i}", "title": f"Paper number {i}", "abstract": "Some words here."} for i in range(8)]
+PARALLEL = [{"id": f"q{i}", "title": f"Paper number {i}", "abstract": "Some topic words here."} for i in range(8)]
 
 
 def test_concurrent_llm_requests_keep_paper_order_and_cache_each(tmp_path):
@@ -353,13 +353,13 @@ def test_merge_near_duplicates_prefers_the_title_spelling():
 
 def test_committed_labels_survive_a_wiped_cache(tmp_path, capsys):
     conf = make_conference(tmp_path, KP_PAPERS, shortLabels={"enabled": True, "model": "fake/model"})
-    client = FakeClient(["Uncertainty Glyphs", "Visualization", "Study", "Agent Charts"])
+    client = FakeClient(["Uncertainty Glyphs", "Visualization", "Study", "LLM Charting", "Charts", "Data"])  # v3 retry for b too
     kwargs = dict(root=tmp_path, encoder=hash_encoder, dims=64)
     sl.run("testconf", cache_root=tmp_path / "cache", client=client, concurrency=1, **kwargs)
     first = (conf / "data" / "papers.json").read_bytes()
     meta = json.loads((conf / "data" / "shortLabels.json").read_text())
-    assert meta["labels"]["a"]["llm"] == "Uncertainty Glyphs" and meta["labels"]["a"]["source"] == "llm"
-    assert meta["labels"]["b"]["llm"] is None  # rejected twice: known, not missing
+    assert meta["labels"]["a"]["llm"] == {"v2": "Uncertainty Glyphs"} and meta["labels"]["a"]["promptVersion"] == "v2"
+    assert meta["labels"]["b"]["llm"] == {"v2": None, "v3": None}  # rejected: known, not missing
     capsys.readouterr()
     # fresh clone: no cache, no LLM → same labels from shortLabels.json, no warning, no call
     sl.run("testconf", cache_root=tmp_path / "empty", client=None, **kwargs)
@@ -380,7 +380,7 @@ def test_missing_llm_labels_warn_loudly(tmp_path, capsys):
 def test_a_changed_abstract_needs_a_new_llm_label(tmp_path):
     conf = make_conference(tmp_path, KP_PAPERS)
     kwargs = dict(root=tmp_path, encoder=hash_encoder, dims=64, cache_root=tmp_path / "cache", concurrency=1)
-    sl.run("testconf", client=FakeClient(["Uncertainty Glyphs", "Tactile Maps", "Agent Charts"]), **kwargs)
+    sl.run("testconf", client=FakeClient(["Uncertainty Glyphs", "Tactile Maps", "LLM Charting"]), **kwargs)
     papers = json.loads((conf / "data" / "papers.json").read_text())
     papers[0]["abstract"] = "A different abstract about glyph uncertainty."
     (conf / "data" / "papers.json").write_text(json.dumps(papers))
@@ -388,4 +388,57 @@ def test_a_changed_abstract_needs_a_new_llm_label(tmp_path):
     sl.run("testconf", client=client, **kwargs)
     out = json.loads((conf / "data" / "papers.json").read_text())
     assert len(client.calls) == 1
-    assert [p["shortLabel"] for p in out] == ["Glyph uncertainty", "Tactile maps", "Agent charts"]
+    assert [p["shortLabel"] for p in out] == ["Glyph uncertainty", "Tactile maps", "LLM charting"]
+
+
+# --- weak labels get a second try with prompt v3 -------------------------------------------
+
+GLYPH = {"id": "g", "title": "Uncertainty glyphs for weather ensembles", "keywords": [], "abstract": "We design glyphs."}
+
+
+@pytest.mark.parametrize(
+    "label, source, weak",
+    [
+        ("Uncertainty glyphs", "llm", False),
+        ("Design algorithm", "llm", True),  # only vague words
+        ("Foundation models", "llm", True),
+        ("Byte dance", "llm", True),  # no word from the paper
+        ("Weather glyphs", "llm", False),
+        ("tactile charts", "keyphrase", True),
+        ("Ensemble members", "llm", False),  # "ensembles" shares the stem
+    ],
+)
+def test_is_weak(label, source, weak):
+    assert sl.is_weak(label, source, GLYPH) is weak
+
+
+def test_is_weak_includes_labels_flagged_in_config():
+    assert sl.is_weak("Weather glyphs", "llm", GLYPH, flagged=["weather Glyphs"])
+
+
+def test_pick_refined_prefers_a_good_v3_else_the_more_specific_label():
+    df = {"glyphs": 1, "uncertainty": 30, "design": 200, "algorithm": 40, "weather": 3}
+    assert sl.pick_refined("Design algorithm", "Weather glyphs", GLYPH, df, 488) == ("Weather glyphs", "v3")
+    # v3 still vague: the more specific (higher IDF) label wins
+    assert sl.pick_refined("Weather design", "Design algorithm", GLYPH, df, 488) == ("Weather design", "v2")
+    assert sl.pick_refined(None, None, GLYPH, df, 488) == (None, None)
+    # no v2 label (keyphrase fallback): a vague v3 ("Design space") does not replace the keyphrase
+    assert sl.pick_refined(None, "Design algorithm", GLYPH, df, 488) == (None, None)
+
+
+def test_v3_reruns_only_weak_labels_and_is_recorded(tmp_path):
+    conf = make_conference(tmp_path, KP_PAPERS, shortLabels={"enabled": True, "model": "fake/model"})
+    client = FakeClient(["Uncertainty Glyphs", "Design Algorithm", "LLM Charting", "Blind Readers"])
+    kwargs = dict(root=tmp_path, encoder=hash_encoder, dims=64, concurrency=1)
+    sl.run("testconf", cache_root=tmp_path / "cache", client=client, **kwargs)
+    assert len(client.calls) == 4
+    assert client.calls[3][0] == sl.SYSTEM_PROMPT_V3.format(conference="Test Conf")
+    out = json.loads((conf / "data" / "papers.json").read_text())
+    assert [p["shortLabel"] for p in out] == ["Uncertainty glyphs", "Blind readers", "LLM charting"]
+    labels = json.loads((conf / "data" / "shortLabels.json").read_text())["labels"]
+    assert labels["b"]["llm"] == {"v2": "Design Algorithm", "v3": "Blind Readers"}
+    assert labels["b"]["promptVersion"] == "v3" and labels["a"]["promptVersion"] == "v2"
+    # rerun without cache or LLM: the committed map gives the same labels
+    sl.run("testconf", cache_root=tmp_path / "empty", client=None, **kwargs)
+    again = json.loads((conf / "data" / "papers.json").read_text())
+    assert [p["shortLabel"] for p in again] == ["Uncertainty glyphs", "Blind readers", "LLM charting"]

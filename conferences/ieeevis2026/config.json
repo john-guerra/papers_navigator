@@ -24,7 +24,8 @@
   "shortLabels": {
     "enabled": true,
     "model": "google/gemma-4-e4b",
-    "baseUrl": "http://localhost:1234/v1"
+    "baseUrl": "http://localhost:1234/v1",
+    "weakLabels": ["Byte Dance", "Noise Signal", "Image-based vision", "Design Algorithm", "Agentic System", "Foundation Models", "Model Interpretation", "Learning Experience", "Learning Review", "Cognitive Skin", "Time Installation", "Surface Substance", "Novice Interaction"]
   },
   "deployDir": "papersNavigator/ieeevis2026",
   "legacyDirs": ["ieeevis2026Papers"],
