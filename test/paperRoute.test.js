@@ -187,3 +187,14 @@ describe("createPaperRoute", () => {
     expect(seen).not.toHaveBeenCalled();
   });
 });
+
+describe("route.href", () => {
+  it("is the current page with ?paper=<key>, keeping other params", () => {
+    const win = fakeWindow(
+      "https://x.org/viz/index.html?now=2026-11-10&paper=old#top",
+    );
+    const route = createPaperRoute({ win });
+    expect(route.href("s1")).toBe("/viz/index.html?now=2026-11-10&paper=s1");
+    route.stop();
+  });
+});

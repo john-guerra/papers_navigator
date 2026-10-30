@@ -11,7 +11,7 @@ import {
   topics,
 } from "../lib/authors.js";
 import { planAdd } from "../lib/selection.js";
-import { PapersList } from "../widgets/papersList.js";
+import { PapersList, conferenceLink } from "../widgets/papersList.js";
 import { followToggles } from "./followToggles.js";
 
 const plural = (n, word) =>
@@ -127,6 +127,7 @@ export function renderAuthorProfile(
     onToggle,
     onAddAll,
     onDetails,
+    detailsHref = (p) => `?paper=${encodeURIComponent(p.shortId ?? p.id)}`,
     watch = "",
     coauthorLimit = 24,
   },
@@ -202,15 +203,12 @@ export function renderAuthorProfile(
       conflictSlots.set(p.id, slot);
       return slot;
     },
-    actions: (p) => {
-      const details = html`<button class="btn-text paper-details-open">
-        Details
-      </button>`;
-      details.onclick = () => onDetails(p);
-      return html`<span class="paper-actions"
-        >${toggles.toggle(p)}${details}</span
-      >`;
-    },
+    // The title opens the paper's details; "Conference page ↗" goes to the conference site
+    details: { href: detailsHref, open: onDetails },
+    actions: (p) =>
+      html`<span class="paper-actions"
+        >${toggles.toggle(p)}${conferenceLink(p)}</span
+      >`,
   });
 
   const anyTimed = summary.days.length > 0;

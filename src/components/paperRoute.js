@@ -72,6 +72,12 @@ export function createPaperRoute({
   };
   win.addEventListener("popstate", sync);
 
+  /** Link to paper `key`'s details on this page (other params kept), for real <a href>s. */
+  route.href = (key) => {
+    const url = new URL(win.location.href);
+    url.searchParams.set(param, key);
+    return url.pathname + url.search;
+  };
   route.open = (key) => {
     if (!depth()) {
       const element = win.document.activeElement;

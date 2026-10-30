@@ -1,5 +1,6 @@
 // The npm "main" is a UMD bundle; import the ES build explicitly.
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
+import { attachNearestTooltip } from "./nearestTooltip.js";
 
 /** Points inside a Vega-Lite interval brush ({[xField]: [lo, hi], [yField]: [lo, hi]}). */
 export function brushFilter(data, drag, { x = "x", y = "y" } = {}) {
@@ -209,7 +210,7 @@ export function scatterSpec(
           legend: null,
         },
       }),
-      tooltip: tooltip.map(tooltipField),
+      tooltip: tooltip ? tooltip.map(tooltipField) : null,
     },
   };
   const rings = ringIds && {
@@ -221,7 +222,10 @@ export function scatterSpec(
       strokeWidth: 1.5,
       color: token("color-viz-followed-ring", "#241e1a"),
     },
-    encoding: { ...position, tooltip: tooltip.map(tooltipField) },
+    encoding: {
+      ...position,
+      tooltip: tooltip ? tooltip.map(tooltipField) : null,
+    },
   };
 
   const shown =
@@ -312,10 +316,20 @@ export function selectionFromChart(
  * `.value = {brushed, clicked}`: brushed points (all when no brush) and clicked points.
  */
 export async function BrushableScatterPlot(data, options = {}) {
-  const { x = "x", y = "y", id = "id", renderer = "canvas" } = options;
-  const chart = await vegaSelected(scatterSpec(data, options), {
-    vegaConfig: { renderer, actions: false },
-  });
+  const {
+    x = "x",
+    y = "y",
+    id = "id",
+    renderer = "canvas",
+    tooltip = [id],
+  } = options;
+  // The tooltip follows the nearest point (attached below), not only exact hits on a dot
+  const chart = await vegaSelected(
+    scatterSpec(data, { ...options, tooltip: null }),
+    {
+      vegaConfig: { renderer, actions: false },
+    },
+  );
   const target = document.createElement("div");
   target.className = "brushable-scatterplot";
   target.append(chart);
@@ -385,6 +399,12 @@ export async function BrushableScatterPlot(data, options = {}) {
     }
     return best;
   };
+
+  attachNearestTooltip(target, {
+    view: chart.view,
+    pointAt: target.pointAt,
+    entries: tooltip,
+  });
 
   Object.defineProperty(target, "value", {
     get: () => value,
