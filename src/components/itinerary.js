@@ -106,7 +106,7 @@ export function renderItinerary(
   render();
 
   return html`<div class="itinerary">
-    ${days.length ? tabs : html`<p>Follow some papers on the Explore page to build your schedule.</p>`}
+    ${days.length ? tabs : html`<p><a href="./">Add papers in Explore</a> to build your itinerary.</p>`}
     ${panels}
     ${
       unscheduled.length

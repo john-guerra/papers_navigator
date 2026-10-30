@@ -1,7 +1,8 @@
 import { html } from "htl";
 import { formatDay, formatTime } from "../lib/time.js";
 
-const papersOf = (n) => `${n} ${n === 1 ? "paper" : "papers"}`;
+const plural = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+const papersOf = (n) => plural(n, "paper");
 
 const slotCard = (slot, tz, { day } = {}) =>
   html`<div class="next">
@@ -14,18 +15,27 @@ const slotCard = (slot, tz, { day } = {}) =>
     ${
       slot.alternatives.length
         ? html` <span class="conflict"
-            >⚠ ${slot.alternatives.length} conflict</span
+            >⚠ ${plural(slot.alternatives.length, "conflict")}</span
           >`
         : ""
     }
   </div>`;
 
-/** Phone "Now / Next" view built from `nowNext()` (see lib/schedule.js). */
-export function renderNowNext(state, { tz }) {
+/**
+ * Phone "Now / Next" view built from `nowNext()` (see lib/schedule.js).
+ * `empty`: My Papers has no papers at all (the page knows; `nowNext` only sees scheduled slots).
+ */
+export function renderNowNext(state, { tz, empty = false }) {
   if (state?.status === "over")
     return html`<div class="now-next">
       <div class="now idle">
         The conference is over. Your itinerary is below for reference.
+      </div>
+    </div>`;
+  if (state?.status === "nothing-today" && empty)
+    return html`<div class="now-next">
+      <div class="now idle">
+        Nothing in My Papers yet — <a href="./">add papers in Explore</a>.
       </div>
     </div>`;
   if (state?.status === "nothing-today")

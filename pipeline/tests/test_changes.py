@@ -126,6 +126,11 @@ def fake_site(tmp_path, monkeypatch):
     class Response:
         def __init__(self, text):
             self.content = text.encode()
+            self.headers = {"Content-Type": "text/html"}
+            self.url = "https://example.org/"
+
+        def close(self):
+            pass
 
         def raise_for_status(self):
             pass
@@ -161,3 +166,123 @@ def test_run_refresh_redownloads_pages_once_and_reports_changes(fake_site, capsy
     assert len(changes["changed"]) == 2
     assert "room: Room A → Room B" in capsys.readouterr().out
     assert not (conf / "data" / "changes.json").exists()
+
+
+def test_format_changes_shows_placeholder_for_missing_titles():
+    old = [paper("a", title=None), paper("b", title=None)]
+    new = [paper("b", title=None, room="Room B"), paper("c", title=None)]
+    text = format_changes(diff_papers(old, new))
+    assert "None" not in text
+    assert "+ c (untitled)" in text
+    assert "- a (untitled)" in text
+    assert "~ b (untitled)" in text
+
+
+class StreamedResponse:
+    """A streamed response whose body must not be read when it is a PDF."""
+
+    def __init__(self, url, content_type, body=b"<h1>ok</h1>"):
+        self.url = url
+        self.headers = {"Content-Type": content_type}
+        self._body = body
+        self.body_read = False
+        self.closed = False
+
+    @property
+    def content(self):
+        self.body_read = True
+        return self._body
+
+    def raise_for_status(self):
+        pass
+
+    def close(self):
+        self.closed = True
+
+
+@pytest.fixture
+def fake_get(monkeypatch):
+    import pipeline.fetch_ieeevis as fetcher
+
+    calls = []
+
+    def install(response):
+        def get(url, **kwargs):
+            calls.append((url, kwargs))
+            return response
+
+        monkeypatch.setattr(fetcher.requests, "get", get)
+        monkeypatch.setattr(fetcher.time, "sleep", lambda s: None)
+        return calls
+
+    return install
+
+
+@pytest.mark.parametrize(
+    "final_url, content_type",
+    [
+        ("https://example.org/paper/p1/", "application/pdf"),
+        ("https://example.org/paper/p1/", "Application/PDF; charset=binary"),
+        ("https://cdn.example.org/files/p1.PDF", "application/octet-stream"),
+    ],
+)
+def test_fetch_cached_refuses_pdf_responses_without_reading_the_body(
+    tmp_path, fake_get, final_url, content_type
+):
+    response = StreamedResponse(final_url, content_type)
+    calls = fake_get(response)
+    with pytest.raises(ValueError, match="PDF"):
+        fetch_cached("https://example.org/paper/p1/", tmp_path, refresh=True)
+    assert len(calls) == 1  # no extra requests (e.g. HEAD)
+    assert calls[0][1].get("stream") is True
+    assert not response.body_read
+    assert response.closed
+    assert list(tmp_path.iterdir()) == []  # nothing cached
+
+
+def test_fetch_cached_reads_html_responses(tmp_path, fake_get):
+    response = StreamedResponse("https://example.org/paper/p1/", "text/html")
+    fake_get(response)
+    assert fetch_cached("https://example.org/paper/p1/", tmp_path) == "<h1>ok</h1>"
+    assert response.closed
+
+
+def test_write_atomic_keeps_the_previous_file_when_writing_fails(tmp_path):
+    from pipeline.fetch_ieeevis import write_atomic
+
+    target = tmp_path / "papers.raw.json"
+    target.write_text("previous")
+    with pytest.raises(UnicodeEncodeError):
+        write_atomic(target, "x" * 100_000 + "\ud800")  # unencodable: fails mid-write
+    assert target.read_text() == "previous"
+    assert [p.name for p in tmp_path.iterdir()] == ["papers.raw.json"]  # no temp left over
+
+    write_atomic(target, "new ✓")
+    assert target.read_text(encoding="utf-8") == "new ✓"
+    assert [p.name for p in tmp_path.iterdir()] == ["papers.raw.json"]
+
+
+def test_fetch_cached_and_run_write_atomically(fake_site, monkeypatch):
+    import pipeline.fetch_ieeevis as fetcher
+
+    written = []
+    real = fetcher.write_atomic
+
+    def spy(path, text):
+        written.append(path)
+        real(path, text)
+
+    monkeypatch.setattr(fetcher, "write_atomic", spy)
+    _, _, conf = fake_site
+    run("test")
+    assert conf / "data" / "papers.raw.json" in written
+    assert sum(p.suffix == ".html" for p in written) == 4  # listing, 2 papers, session
+
+
+def test_run_tolerates_a_truncated_previous_raw_file(fake_site, capsys):
+    _, _, conf = fake_site
+    (conf / "data").mkdir()
+    (conf / "data" / "papers.raw.json").write_text('[{"id": "p1", "tit')
+    changes = run("test")
+    assert len(changes["added"]) == 2
+    assert "not valid JSON" in capsys.readouterr().out

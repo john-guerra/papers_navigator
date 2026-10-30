@@ -135,3 +135,20 @@ describe("renderShareDialog QR limit by link length", () => {
     );
   });
 });
+
+describe("renderShareBanner lazy counts (#52)", () => {
+  it("reads current/watched when Replace is clicked, not when the banner is built", () => {
+    let current = 3;
+    const el = renderShareBanner(
+      { ids: ["a"], unknown: [], current: () => current, watched: () => 0 },
+      { onMerge: noop, onReplace: noop, onIgnore: noop },
+    );
+    current = 9;
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Replace")
+      .click();
+    expect(el.textContent.replace(/\s+/g, " ")).toContain(
+      "Replace your 9 papers",
+    );
+  });
+});
