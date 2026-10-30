@@ -323,6 +323,28 @@ export async function BrushableScatterPlot(data, options = {}) {
 
   let value = { brushed: data, clicked: [] };
 
+  // Touch brushing (#85): Vega gives pointerdown the item under the last pointermove, and
+  // Vega-Lite's brush only starts on a pointerdown with an item (inScope(event.item)). A mouse
+  // always hovers first; a finger doesn't, so the brush ignored touches. Hover first: a
+  // pointermove at the touch point, sent (capture phase) before Vega sees the pointerdown.
+  target.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.pointerType === "mouse") return;
+      const { clientX, clientY, pointerId, pointerType } = event;
+      const Pointer = globalThis.PointerEvent ?? MouseEvent;
+      const hover = new Pointer("pointermove", {
+        bubbles: true,
+        clientX,
+        clientY,
+        pointerId,
+        pointerType,
+      });
+      event.target.dispatchEvent(hover);
+    },
+    { capture: true },
+  );
+
   // vega-selected emits input on any signal change (e.g. levelCut, mine): forward only real
   // selection changes, or pages that set those signals from the map's value would loop
   const selectionKey = () => {
