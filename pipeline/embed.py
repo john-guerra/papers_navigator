@@ -13,7 +13,7 @@ import numpy as np
 
 from pipeline.clusters import add_clusters, report, write_clusters
 from pipeline.normalize import unify_keywords
-from pipeline.short_labels import add_short_labels, write_meta
+from pipeline.short_labels import add_short_labels, read_store, write_atomic, write_meta
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = "all-MiniLM-L6-v2"
@@ -91,11 +91,12 @@ def run(conference_id: str, root: Path = ROOT, encoder=None, reducers=None) -> N
         )
     # Topic clusters on the default projection (pipeline/clusters.py)
     info = add_clusters(papers, default, config.get("clusters"))
-    # Short labels (pipeline/short_labels.py): cached LLM replies + keyphrases, no LLM calls
+    # Short labels (pipeline/short_labels.py): committed LLM labels (shortLabels.json), the cache,
+    # keyphrases; no LLM calls (papers it doesn't know are reported)
     short_meta = None
     if (config.get("shortLabels") or {}).get("enabled"):
-        short_meta = add_short_labels(papers, matrix, config, encoder=encoder)
-    (data_dir / "papers.json").write_text(json.dumps(papers, ensure_ascii=False))
+        short_meta = add_short_labels(papers, matrix, config, encoder=encoder, store=read_store(data_dir))
+    write_atomic(data_dir / "papers.json", json.dumps(papers, ensure_ascii=False))
     write_clusters(info, data_dir)
     if short_meta:
         write_meta(short_meta, data_dir)

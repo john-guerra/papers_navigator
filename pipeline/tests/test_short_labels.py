@@ -105,7 +105,7 @@ def test_llm_label_returns_the_validated_reply_and_caches_it(tmp_path):
     again = FakeClient([])
     assert sl.llm_label(PAPER, again, tmp_path) == "DR Explainability"
     assert again.calls == []
-    files = list(tmp_path.rglob("p1.json"))
+    files = list(tmp_path.rglob("*.json"))
     assert len(files) == 1
     assert json.loads(files[0].read_text())["label"] == "DR Explainability"
 
@@ -123,7 +123,7 @@ def test_llm_label_retry_can_succeed(tmp_path):
 
 
 def test_llm_label_cache_only_mode_does_not_call(tmp_path):
-    assert sl.llm_label(PAPER, None, tmp_path, model="fake/model") is None
+    assert sl.llm_label(PAPER, None, tmp_path, model="fake/model") is sl.MISSING
 
 
 def test_user_prompt_contains_title_keywords_and_abstract():
@@ -239,9 +239,9 @@ def test_run_uses_the_llm_for_papers_without_a_tool_name(tmp_path):
     )
     out = json.loads((conf / "data" / "papers.json").read_text())
     assert [(p["shortLabel"], p["shortLabelSource"]) for p in out] == [
-        ("Uncertainty Glyphs", "llm"),
-        ("tactile charts", "keyphrase"),
-        ("Agent Charts", "llm"),
+        ("Uncertainty glyphs", "llm"),
+        ("Tactile charts", "keyphrase"),
+        ("Agent charts", "llm"),
     ]
     meta = json.loads((conf / "data" / "shortLabels.json").read_text())
     assert meta["model"] == "fake/model" and meta["promptVersion"] == sl.PROMPT_VERSION
@@ -286,7 +286,7 @@ def test_concurrent_llm_requests_keep_paper_order_and_cache_each(tmp_path):
     )
     assert [p["shortLabel"] for p in papers] == [f"Topic {i}" for i in range(8)]
     assert client.peak > 1
-    assert len(list(tmp_path.rglob("q*.json"))) == 8
+    assert len(list(tmp_path.rglob("*.json"))) == 8
     assert not list(tmp_path.rglob("*.tmp"))
 
 
@@ -302,7 +302,90 @@ def test_cache_writes_stay_inside_the_cache_root(tmp_path, bad_id):
     assert "/" not in written[0].name
 
 
-@pytest.mark.parametrize("model, paper_id", [("m", ".."), ("m", "."), ("..", "p1"), ("m", "")])
-def test_cache_path_rejects_dot_names(tmp_path, model, paper_id):
+@pytest.mark.parametrize("model", ["..", ".", ""])
+def test_cache_path_rejects_dot_model_names(tmp_path, model):
     with pytest.raises(ValueError):
-        sl._cache_file(tmp_path, model, "c", paper_id)
+        sl._cache_file(tmp_path, model, "c", {"id": "p1"})
+
+
+def test_cache_file_names_never_collide(tmp_path):
+    names = {sl._cache_file(tmp_path, "m", "c", {"id": i}).name for i in ["a/b", "a_b", "a b", "..", "."]}
+    assert len(names) == 5
+
+
+# --- casing and near-duplicates ------------------------------------------------------------
+
+FORMS = {"morse": "Morse", "jacobi": "Jacobi", "dance": "dance", "uncertainty": "uncertainty"}
+
+
+@pytest.mark.parametrize(
+    "label, cased",
+    [
+        ("Byte Dance", "Byte dance"),
+        ("LLM Grounding", "LLM grounding"),
+        ("Uncertainty Morse", "Uncertainty Morse"),
+        ("uncertainty Jacobi", "Uncertainty Jacobi"),
+        ("mCCDF Regression", "mCCDF regression"),
+        ("Image-based Vision", "Image-based vision"),
+        ("Evidence-Action Mismatches", "Evidence-action mismatches"),
+        ("GPU2 Rendering", "GPU2 rendering"),
+        ("Sheaf theory", "Sheaf theory"),
+    ],
+)
+def test_sentence_case_keeps_acronyms_coinages_and_proper_nouns(label, cased):
+    assert sl.sentence_case(label, FORMS) == cased
+
+
+def test_merge_near_duplicates_prefers_the_title_spelling():
+    papers = [
+        {"shortLabel": "LeakAnalysis", "shortLabelSource": "title"},
+        {"shortLabel": "Leak analysis", "shortLabelSource": "llm"},
+        {"shortLabel": "Tactile charts", "shortLabelSource": "llm"},
+        {"shortLabel": "Tactile Charts", "shortLabelSource": "keyphrase"},
+        {"shortLabel": "tactile charts", "shortLabelSource": "llm"},
+    ]
+    sl.merge_near_duplicates(papers)
+    assert [p["shortLabel"] for p in papers] == ["LeakAnalysis", "LeakAnalysis", "Tactile Charts", "Tactile Charts", "Tactile Charts"]
+
+
+# --- committed labels (shortLabels.json) are the source of truth ---------------------------
+
+
+def test_committed_labels_survive_a_wiped_cache(tmp_path, capsys):
+    conf = make_conference(tmp_path, KP_PAPERS, shortLabels={"enabled": True, "model": "fake/model"})
+    client = FakeClient(["Uncertainty Glyphs", "Visualization", "Study", "Agent Charts"])
+    kwargs = dict(root=tmp_path, encoder=hash_encoder, dims=64)
+    sl.run("testconf", cache_root=tmp_path / "cache", client=client, concurrency=1, **kwargs)
+    first = (conf / "data" / "papers.json").read_bytes()
+    meta = json.loads((conf / "data" / "shortLabels.json").read_text())
+    assert meta["labels"]["a"]["llm"] == "Uncertainty Glyphs" and meta["labels"]["a"]["source"] == "llm"
+    assert meta["labels"]["b"]["llm"] is None  # rejected twice: known, not missing
+    capsys.readouterr()
+    # fresh clone: no cache, no LLM → same labels from shortLabels.json, no warning, no call
+    sl.run("testconf", cache_root=tmp_path / "empty", client=None, **kwargs)
+    assert (conf / "data" / "papers.json").read_bytes() == first
+    assert "WARNING" not in capsys.readouterr().err
+    assert not list((conf / "data").glob(".*.tmp"))
+
+
+def test_missing_llm_labels_warn_loudly(tmp_path, capsys):
+    conf = make_conference(tmp_path, KP_PAPERS)
+    sl.run("testconf", root=tmp_path, encoder=hash_encoder, dims=64, cache_root=tmp_path / "cache", client=None)
+    err = capsys.readouterr().err
+    assert "WARNING: 3 papers have no LLM label" in err
+    meta = json.loads((conf / "data" / "shortLabels.json").read_text())
+    assert meta["missingLlm"] == 3 and meta["counts"]["keyphrase"] == 3
+
+
+def test_a_changed_abstract_needs_a_new_llm_label(tmp_path):
+    conf = make_conference(tmp_path, KP_PAPERS)
+    kwargs = dict(root=tmp_path, encoder=hash_encoder, dims=64, cache_root=tmp_path / "cache", concurrency=1)
+    sl.run("testconf", client=FakeClient(["Uncertainty Glyphs", "Tactile Maps", "Agent Charts"]), **kwargs)
+    papers = json.loads((conf / "data" / "papers.json").read_text())
+    papers[0]["abstract"] = "A different abstract about glyph uncertainty."
+    (conf / "data" / "papers.json").write_text(json.dumps(papers))
+    client = FakeClient(["Glyph Uncertainty"])
+    sl.run("testconf", client=client, **kwargs)
+    out = json.loads((conf / "data" / "papers.json").read_text())
+    assert len(client.calls) == 1
+    assert [p["shortLabel"] for p in out] == ["Glyph uncertainty", "Tactile maps", "Agent charts"]

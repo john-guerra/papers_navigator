@@ -23,8 +23,10 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 import threading
 import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse
@@ -208,23 +210,49 @@ def _safe_name(value) -> str:
     return name
 
 
-def _cache_file(cache_root, model, conference, paper_id) -> Path:
+def write_atomic(path: Path, text: str) -> None:
+    """Write-then-rename, so an interrupted run never leaves a half-written file."""
+    path = Path(path)
+    tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
+    tmp.write_text(text)
+    tmp.replace(path)
+
+
+def input_hash(paper) -> str:
+    """Hash of what the LLM sees for `paper`: a changed title/keywords/abstract needs a new label."""
+    return hashlib.sha256(user_prompt(paper).encode()).hexdigest()[:16]
+
+
+class _Missing:
+    """No LLM answer known for a paper (unlike None: the LLM answered, but nothing usable)."""
+
+    def __repr__(self):
+        return "MISSING"
+
+
+MISSING = _Missing()
+
+
+def _cache_file(cache_root, model, conference, paper) -> Path:
+    """<cache>/<model>/<promptHash>/<hash of id + paper text>.json: hashing the (scraped,
+    untrusted) id means names never collide or escape the cache, and an edited abstract misses."""
     root = Path(cache_root).resolve()
-    path = (root / _safe_name(model) / prompt_hash(conference) / f"{_safe_name(paper_id)}.json").resolve()
+    key = hashlib.sha256(f"{paper['id']}\n{input_hash(paper)}".encode()).hexdigest()[:24]
+    path = (root / _safe_name(model) / prompt_hash(conference) / f"{key}.json").resolve()
     if not path.is_relative_to(root):
         raise ValueError(f"cache path escapes {root}: {path}")
     return path
 
 
 def llm_label(paper, client, cache_root, conference="the IEEE VIS conference", model=None):
-    """Validated LLM label (or None) for `paper`; cached per model + prompt. `client=None` reads
-    the cache only."""
+    """Validated LLM label (or None if the model's replies were rejected) for `paper`; cached per
+    model + prompt. `client=None` reads the cache only and returns MISSING when it has no entry."""
     model = model or client.model
-    path = _cache_file(cache_root, model, conference, paper["id"])
+    path = _cache_file(cache_root, model, conference, paper)
     if path.exists():
         return json.loads(path.read_text())["label"]
     if client is None:
-        return None
+        return MISSING
     system = SYSTEM_PROMPT.format(conference=conference)
     replies = [client.complete(system, user_prompt(paper))]
     label = normalize_label(replies[0])
@@ -232,12 +260,8 @@ def llm_label(paper, client, cache_root, conference="the IEEE VIS conference", m
         replies.append(client.complete(system + STRICT_SUFFIX, user_prompt(paper)))
         label = normalize_label(replies[1])
     path.parent.mkdir(parents=True, exist_ok=True)
-    # write-then-rename: an interrupted run never leaves a half-written cache file
-    tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
-    tmp.write_text(
-        json.dumps({"label": label, "replies": replies, "model": model, "promptVersion": PROMPT_VERSION}, ensure_ascii=False)
-    )
-    tmp.replace(path)
+    record = {"id": paper["id"], "label": label, "replies": replies, "model": model, "promptVersion": PROMPT_VERSION}
+    write_atomic(path, json.dumps(record, ensure_ascii=False))
     return label
 
 
@@ -359,11 +383,71 @@ def keyphrase_labels(papers, embeddings, encoder=None, stop_words=()) -> list[st
     return labels
 
 
+# --- Casing and near-duplicates -----------------------------------------------------------
+
+
+def _keeps_case(part: str, forms) -> bool:
+    """Acronyms, inner capitals and digits (LLM, mCCDF, GPU2), and words the abstracts
+    capitalize mid-sentence (proper nouns: Morse, Jacobi)."""
+    if re.search(r"[A-Z].*[A-Z]", part) or re.search(r".[A-Z]", part) or re.search(r"\d", part):
+        return True
+    form = forms.get(part.lower(), "")
+    return form[:1].isupper() and form.lower() == part.lower()
+
+
+def sentence_case(label: str, forms) -> str:
+    """"Byte Dance" → "Byte dance", "Image-based vision" stays, "LLM Grounding" → "LLM grounding",
+    "uncertainty Morse" → "Uncertainty Morse". `forms` = surface_forms of the abstracts."""
+    words = []
+    for word in label.split():
+        parts = word.split("-")
+        words.append("-".join(p if _keeps_case(p, forms) else p.lower() for p in parts))
+    text = " ".join(words)
+    return text[:1].upper() + text[1:] if text and not _keeps_case(text.split()[0].split("-")[0], forms) else text
+
+
+def merge_near_duplicates(papers) -> None:
+    """Labels that differ only in spacing or case ("Leak Analysis", "LeakAnalysis") get one
+    spelling: a title-derived one if any, else the most common (ties: alphabetical)."""
+    groups: dict[str, list] = {}
+    for paper in papers:
+        groups.setdefault(re.sub(r"\s+", "", paper["shortLabel"].lower()), []).append(paper)
+    for group in groups.values():
+        spellings = Counter(p["shortLabel"] for p in group)
+        if len(spellings) < 2:
+            continue
+        titles = sorted(p["shortLabel"] for p in group if p["shortLabelSource"] == "title")
+        best = titles[0] if titles else sorted(spellings, key=lambda s: (-spellings[s], s))[0]
+        for paper in group:
+            if paper["shortLabelSource"] != "title":
+                paper["shortLabel"] = best
+
+
 # --- The pipeline step --------------------------------------------------------------------
 
 
-def add_short_labels(papers, embeddings, config, client=None, encoder=None, cache_root=CACHE_ROOT, concurrency=1):
-    """Sets `shortLabel` / `shortLabelSource` on each paper; returns the metadata dict.
+def _stored_llm(entry, paper, model):
+    """The committed LLM label for `paper` from shortLabels.json, or MISSING if there's none for
+    this model, prompt version and paper text."""
+    if (
+        entry
+        and "llm" in entry
+        and entry.get("model") == model
+        and entry.get("promptVersion") == PROMPT_VERSION
+        and entry.get("inputHash") == input_hash(paper)
+    ):
+        return entry["llm"]
+    return MISSING
+
+
+def add_short_labels(
+    papers, embeddings, config, client=None, encoder=None, cache_root=CACHE_ROOT, concurrency=1, store=None
+):
+    """Sets `shortLabel` / `shortLabelSource` on each paper; returns the metadata dict, whose
+    `labels` (id → label, source, raw LLM label, model, prompt version, input hash) is committed
+    in shortLabels.json and passed back as `store` on the next run: the source of truth, so a
+    fresh clone or a wiped cache keeps the LLM labels. The LLM (or its cache) is asked only
+    about papers the store doesn't cover; without an LLM those are reported loudly.
 
     LLM requests run `concurrency` at a time (each cached as soon as it finishes); labels are
     assigned in paper order, so the output doesn't depend on which request finishes first."""
@@ -373,32 +457,68 @@ def add_short_labels(papers, embeddings, config, client=None, encoder=None, cach
     stop_words = (config.get("clusters") or {}).get("stopWords", [])
     fallback = keyphrase_labels(papers, embeddings, encoder, stop_words=stop_words)
     names = [title_tool_name(p) for p in papers]
-    todo = [p for p, name in zip(papers, names) if not name]
+    store = store or {}
+    llm = {}
+    for paper, name in zip(papers, names):
+        if not name:
+            llm[paper["id"]] = _stored_llm(store.get(paper["id"]), paper, model)
+    todo = [p for p, name in zip(papers, names) if not name and llm[p["id"]] is MISSING]
 
     def label_of(paper):
         return llm_label(paper, client, cache_root, conference, model=model)
 
     if concurrency > 1 and client is not None:
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            llm = dict(zip((p["id"] for p in todo), pool.map(label_of, todo)))
+            llm.update(zip((p["id"] for p in todo), pool.map(label_of, todo)))
     else:
-        llm = {p["id"]: label_of(p) for p in todo}
-    for paper, name, keyphrase in zip(papers, names, fallback):
-        label = None if name else llm[paper["id"]]
-        paper["shortLabel"], paper["shortLabelSource"] = (
-            (name, "title") if name else (label, "llm") if label else (keyphrase, "keyphrase")
+        llm.update((p["id"], label_of(p)) for p in todo)
+    missing = [p for p, name in zip(papers, names) if not name and llm[p["id"]] is MISSING]
+    if missing:
+        print(
+            f"WARNING: {len(missing)} papers have no LLM label (not in shortLabels.json or the cache, "
+            f"and no LLM available); they get keyphrase labels. Run "
+            f"`python -m pipeline.short_labels --llm lmstudio` to label them: "
+            + ", ".join(p["id"] for p in missing[:10])
+            + (" …" if len(missing) > 10 else ""),
+            file=sys.stderr,
         )
+    forms = surface_forms([p.get("abstract") for p in papers])
+    labels = {}
+    for paper, name, keyphrase in zip(papers, names, fallback):
+        raw = None if name else llm[paper["id"]]
+        if name:
+            paper["shortLabel"], paper["shortLabelSource"] = name, "title"
+        elif raw is not MISSING and raw:
+            paper["shortLabel"], paper["shortLabelSource"] = sentence_case(raw, forms), "llm"
+        else:
+            paper["shortLabel"], paper["shortLabelSource"] = sentence_case(keyphrase, forms), "keyphrase"
+    merge_near_duplicates(papers)
+    for paper, name in zip(papers, names):
+        entry = {"label": paper["shortLabel"], "source": paper["shortLabelSource"]}
+        raw = None if name else llm[paper["id"]]
+        if not name and raw is not MISSING:
+            entry.update(llm=raw, model=model, promptVersion=PROMPT_VERSION, inputHash=input_hash(paper))
+        labels[paper["id"]] = entry
     counts = {s: sum(p["shortLabelSource"] == s for p in papers) for s in ("title", "llm", "keyphrase")}
+    asked = any("llm" in e for e in labels.values())
     return {
-        "model": model if counts["llm"] else None,
-        "promptVersion": PROMPT_VERSION if counts["llm"] else None,
-        "promptHash": prompt_hash(conference) if counts["llm"] else None,
+        "model": model if asked else None,
+        "promptVersion": PROMPT_VERSION if asked else None,
+        "promptHash": prompt_hash(conference) if asked else None,
         "counts": counts,
+        "missingLlm": len(missing),
+        "labels": labels,
     }
 
 
 def write_meta(meta, data_dir: Path) -> None:
-    (Path(data_dir) / "shortLabels.json").write_text(json.dumps(meta, indent=2) + "\n")
+    write_atomic(Path(data_dir) / "shortLabels.json", json.dumps(meta, indent=1, ensure_ascii=False) + "\n")
+
+
+def read_store(data_dir: Path) -> dict:
+    """The committed id → label entries from a previous run (empty if none)."""
+    path = Path(data_dir) / "shortLabels.json"
+    return json.loads(path.read_text()).get("labels", {}) if path.exists() else {}
 
 
 def read_embeddings(path: Path, n: int, dims: int = DIMS) -> np.ndarray:
@@ -423,10 +543,10 @@ def run(
             print(f"LM Studio not reachable at {opts['baseUrl']} with {opts['model']}: cached labels + keyphrases")
             client = None
     started = time.time()
-    meta = add_short_labels(papers, embeddings, config, client, encoder, cache_root, concurrency)
-    if client is None and meta["counts"]["llm"]:  # cache-only run that found cached replies
-        meta.update(model=opts["model"])
-    (data_dir / "papers.json").write_text(json.dumps(papers, ensure_ascii=False))
+    meta = add_short_labels(
+        papers, embeddings, config, client, encoder, cache_root, concurrency, store=read_store(data_dir)
+    )
+    write_atomic(data_dir / "papers.json", json.dumps(papers, ensure_ascii=False))
     write_meta(meta, data_dir)
     labels = [p["shortLabel"] for p in papers]
     duplicates = len(labels) - len({label.lower() for label in labels})
