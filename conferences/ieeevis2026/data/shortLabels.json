@@ -1,0 +1,10 @@
+{
+  "model": "google/gemma-4-e4b",
+  "promptVersion": "v2",
+  "promptHash": "47d6837584f1",
+  "counts": {
+    "title": 154,
+    "llm": 323,
+    "keyphrase": 11
+  }
+}
