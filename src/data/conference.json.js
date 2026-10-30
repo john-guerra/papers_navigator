@@ -1,3 +1,3 @@
-import { loadConferenceConfig } from "../lib/conference.js";
+import { loadConferenceConfig, publicConfig } from "../lib/conference.js";
 
-process.stdout.write(JSON.stringify(await loadConferenceConfig()));
+process.stdout.write(JSON.stringify(publicConfig(await loadConferenceConfig())));

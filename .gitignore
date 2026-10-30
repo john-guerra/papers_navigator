@@ -14,3 +14,6 @@ src/.observablehq/cache/
 __pycache__/
 .pytest_cache/
 conferences/*/data/papers.raw.json
+
+# Deploy secrets/server details
+.env.deploy
