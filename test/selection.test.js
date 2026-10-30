@@ -37,6 +37,11 @@ describe("selectionReason", () => {
       "Type: poster",
     );
   });
+  it("names the topics picked", () => {
+    expect(selectionReason({ ...base, topics: ["Graph, layout"] })).toBe(
+      "Topic: Graph, layout",
+    );
+  });
   it("falls back when nothing narrows the list", () => {
     expect(selectionReason(base)).toBe("All matching papers");
   });

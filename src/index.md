@@ -17,6 +17,7 @@ const scoreRampDomain = (papers) => {
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
 import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
+import { clusterLabels } from "./lib/clusters.js";
 import { facetStrip } from "./widgets/facetStrip.js";
 import { BrushableScatterPlot, topCategories } from "./widgets/brushableScatterPlot.js";
 import { bindMyPapersBadge } from "./components/badge.js";
@@ -46,6 +47,8 @@ const store = createMyPapers({ followed: followedStore, rules: rulesStore, paper
 const followed = Generators.input(store);
 invalidation.then(bindMyPapersBadge(store));
 const typeLabels = typeNames(papers, conference.typeNames);
+// Topic clusters (#25) exist only if the pipeline computed them for this conference
+const hasTopics = papers.some((p) => p.clusterLabel);
 ```
 
 <h1>${conference.name} Papers</h1>
@@ -64,7 +67,7 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${selectRegionButton}
   <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   ${mapInput}
-  <div class="map-controls">${colorByInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
+  <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
 </section>
 <section class="explore-list">
   ${addBar}
@@ -213,6 +216,7 @@ const facetsInput = facetStrip(papers, {
     facet("authors", "Author"),
     facet("affiliations", "Institution"),
     facet("keywords", "Keyword"),
+    ...(hasTopics ? [facet("topics", "Topic")] : []),
     facet("sessions", "Session"),
   ],
   value: { types: defaultTypes },
@@ -244,11 +248,11 @@ const facetSelection = Generators.input(facetsInput);
 ```
 
 ```js
-const { types, authors, affiliations, keywords, sessions } = facetSelection;
+const { types, authors, affiliations, keywords, sessions, topics = [] } = facetSelection;
 ```
 
 ```js
-const filtered = applyFilters(scored, { types, authors, affiliations, keywords, sessions });
+const filtered = applyFilters(scored, { types, authors, affiliations, keywords, sessions, topics });
 ```
 
 ```js
@@ -257,10 +261,13 @@ const projectionInput = Inputs.select(conference.projections, {
   format: (d) => d.toUpperCase(),
 });
 const projection = Generators.input(projectionInput);
-const colorByInput = Inputs.select(new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"]]), {
+const colorByInput = Inputs.select(new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"], ...(hasTopics ? [["Topic", "clusterLabel"]] : [])]), {
   label: "Color by",
 });
 const colorBy = Generators.input(colorByInput);
+// Topic labels at the cluster centers (#25), on by default
+const topicLabelsInput = hasTopics ? Inputs.toggle({ label: "Topic labels", value: true }) : null;
+const showTopics = topicLabelsInput ? Generators.input(topicLabelsInput) : false;
 ```
 
 ```js
@@ -327,7 +334,7 @@ const positioned = applyProjection(filtered, projections[projection]).papers;
 const hasQuery = Boolean(query?.trim()) && modelStatus === "ready";
 // Similarity only exists after a search; until then one neutral color
 const colorField = colorBy === "score" && !hasQuery ? null : colorBy;
-const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session" };
+const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session", clusterLabel: "Topic" };
 const mapInput = await BrushableScatterPlot(positioned, {
   color: colorField,
   colorType: colorBy === "score" && hasQuery ? "quantitative" : "nominal",
@@ -338,9 +345,12 @@ const mapInput = await BrushableScatterPlot(positioned, {
   categories: colorField && colorField !== "score" ? topCategories(papers, colorField) : undefined,
   // Read once (not reactive); later changes go through the "mine" signal below
   ringIds: store.value.map((d) => d.id),
+  // Largest topics first: a label that would overlap a bigger topic's is left out
+  labels: showTopics ? clusterLabels(positioned) : null,
+  labelSize: mapWidth < 500 ? 10 : 11,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
   scoreDomain: hasQuery ? scoreRampDomain(scored) : null,
-  tooltip: ["title", "authorNames", "typeLabel", "sessionName", "score"],
+  tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), "score"],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to “${query}”` : ""}`,
@@ -391,6 +401,7 @@ const addReason = selectionReason({
   affiliations,
   keywords,
   sessions,
+  topics,
   types,
   defaultTypes,
   typeLabel: (t) => typeLabels.get(t) ?? t,
@@ -398,7 +409,7 @@ const addReason = selectionReason({
 });
 // With nothing narrowing the list, one click would add the whole program: ask to narrow first
 const narrowed =
-  hasQuery || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || !sameSet(types, defaultTypes);
+  hasQuery || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || topics.length || !sameSet(types, defaultTypes);
 const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))), {
   disabledHint: narrowed ? null : "Search, filter or select a map region to add papers in bulk",
   onAdd: (fresh) => {

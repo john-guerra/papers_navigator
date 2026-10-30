@@ -46,6 +46,42 @@ export function topCategories(data, field, n = 3) {
     .map(([value]) => value);
 }
 
+/**
+ * Labels that fit without overlapping, in priority order (pass the largest topics first):
+ * each label's box is estimated from its text length at `fontSize` and placed with the same
+ * linear mapping as the map (domain → [padding, size - padding]); a label overlapping one
+ * already kept is dropped. `{text, x, y}` in data units.
+ */
+export function cullLabels(
+  labels,
+  { width, height, xDomain, yDomain, fontSize = 11, padding = 10, gap = 2 },
+) {
+  const scale =
+    ([d0, d1], size) =>
+    (v) =>
+      padding + ((v - d0) / (d1 - d0 || 1)) * (size - 2 * padding);
+  const sx = scale(xDomain, width);
+  const sy = scale(yDomain, height);
+  const kept = [];
+  const boxes = [];
+  for (const label of labels) {
+    const w = label.text.length * fontSize * 0.55 + 2 * gap;
+    const h = fontSize * 1.2 + 2 * gap;
+    const cx = sx(label.x);
+    const cy = height - sy(label.y);
+    const box = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
+    const overlaps = boxes.some(
+      (b) => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3],
+    );
+    if (overlaps) continue;
+    boxes.push(box);
+    kept.push(label);
+  }
+  return kept;
+}
+
+const extent = (values) => [Math.min(...values), Math.max(...values)];
+
 // Internal value for the "everything else" bucket; a real category may be called "Other"
 const OTHER = "\u0000other";
 
@@ -66,7 +102,10 @@ function categoryRange() {
  * - points outside the brush are dimmed;
  * - with `ringIds`, those papers get a ring (In My Papers) on a layer of their own, so it shows
  *   regardless of color; the ids live in the `mine` param, so pages update them with
- *   `view.signal("mine", ids)` without redrawing (which would lose the brush).
+ *   `view.signal("mine", ids)` without redrawing (which would lose the brush);
+ * - with `labels` ({text, x, y}, most important first), text labels (topic clusters) on top:
+ *   ink on a halo of the page background, readable on any point color in both themes;
+ *   labels that would overlap a more important one are left out (numeric width/height only).
  */
 export function scatterSpec(
   data,
@@ -80,6 +119,8 @@ export function scatterSpec(
     colorScheme = null,
     categories,
     ringIds = null,
+    labels = null,
+    labelSize = 11,
     scoreDomain = null,
     size = null,
     sizeRange = [12, 80],
@@ -122,9 +163,11 @@ export function scatterSpec(
   };
   // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
   const levelCut = { name: "levelCut", value: null };
+  // nice: false + padding in pixels, so cullLabels can mirror the scales exactly
+  const scale = { zero: false, nice: false, padding: 10 };
   const position = {
-    x: { field: x, type: "quantitative", axis: null, scale: { zero: false } },
-    y: { field: y, type: "quantitative", axis: null, scale: { zero: false } },
+    x: { field: x, type: "quantitative", axis: null, scale },
+    y: { field: y, type: "quantitative", axis: null, scale },
   };
   const points = {
     mark: { type: "point", filled: true, opacity: 0.75 },
@@ -177,16 +220,55 @@ export function scatterSpec(
     encoding: { ...position, tooltip: tooltip.map((field) => ({ field })) },
   };
 
+  const shown =
+    labels?.length && typeof width === "number" && data.length
+      ? cullLabels(labels, {
+          width,
+          height,
+          xDomain: extent(data.map((d) => d[x])),
+          yDomain: extent(data.map((d) => d[y])),
+          fontSize: labelSize,
+        })
+      : labels;
+  const text = (mark) => ({
+    data: { values: shown.map((l) => ({ text: l.text, [x]: l.x, [y]: l.y })) },
+    mark: {
+      type: "text",
+      fontSize: labelSize,
+      fontWeight: 600,
+      font: token("font-sans", "sans-serif"),
+      ...mark,
+    },
+    encoding: { ...position, text: { field: "text" }, tooltip: null },
+  });
+  const background = token("color-background", "#fcf9f3");
+  const textLayers = shown?.length
+    ? [
+        text({
+          fill: background,
+          stroke: background,
+          strokeWidth: 4,
+          strokeJoin: "round",
+          strokeOpacity: 0.9,
+        }),
+        text({ fill: token("color-on-surface", "#241e1a") }),
+      ]
+    : [];
+  const layers = [points, ...(rings ? [rings] : []), ...textLayers];
+
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     width,
     height,
     title,
     data: { values },
-    ...(rings
+    ...(layers.length > 1
       ? {
-          params: [{ name: "mine", value: ringIds }, levelCut],
-          layer: [points, rings],
+          params: [
+            ...(rings ? [{ name: "mine", value: ringIds }] : []),
+            levelCut,
+          ],
+          layer: layers,
         }
       : { ...points, params: [...points.params, levelCut] }),
     // Transparent so the page's paper shows through (Vega defaults to white)

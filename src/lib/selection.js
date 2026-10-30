@@ -14,6 +14,7 @@ export function selectionReason({
   affiliations = [],
   keywords = [],
   sessions = [],
+  topics = [],
   types = [],
   defaultTypes = [],
   typeLabel = (t) => t,
@@ -29,6 +30,8 @@ export function selectionReason({
       affiliations.length && `🏫 ${affiliations.join(", ")}`,
       keywords.length && `Keyword: ${keywords.join(", ")}`,
       sessions.length && `Session: ${sessions.join(", ")}`,
+      // topic labels contain commas themselves
+      topics.length && `Topic: ${topics.join("; ")}`,
       !isDefaultTypes &&
         types.length &&
         `Type: ${types.map(typeLabel).join(", ")}`,

@@ -403,6 +403,7 @@ The map is the overview (principle 3). Rules:
 - **Size** may echo similarity subtly (radius ~2–5px); never encode a second variable with size (so the current "Size by" option goes away).
 - **Relevance levels** (Strong / Good / All) are cut points on the similarity score; how they're derived from the score distribution is left to the relevance-control issue. The ramp's light end starts at the Good cut.
 - **"Color by" a category** (type, room, session) is optional and replaces similarity. Scatterplots can only keep **three** categorical hues distinguishable for color-blind readers (validated: `viz-cat-1..3`), so: the three largest categories (or the ones the user picks in the legend) get `viz-cat-1..3`, everything else is `viz-cat-other`. Color follows the category, never its rank: a filter must not repaint survivors.
+- **Topic labels** (clusters, US2.3): ink text on a halo of `background` at each topic's center, on by default ("Topic labels" toggle); a label that would overlap a larger topic's is left out. They add no hue; "Color by: Topic" follows the 3 + Other rule.
 - **In My Papers** = a 1.5px `viz-followed-ring` ring around the point, always on, independent of color-by. Same meaning as the follow toggle.
 - **Brush / map region:** points outside are `viz-dim`; the region becomes a chip ("Map region ✕").
 - **Hover** a point: tooltip with title, type, room, day/time. **Click**: open that paper's details (desktop: scroll to/expand it in the list; phone: details sheet). No hidden "clicked point" mode.

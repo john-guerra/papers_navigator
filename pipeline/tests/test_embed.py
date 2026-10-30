@@ -65,6 +65,19 @@ def test_run_drops_excluded_type_labels(tmp_path):
     assert list(json.loads((conf / "data" / "projections" / "a.json").read_text())) == ["p1"]
 
 
+def test_run_adds_clusters_from_the_first_projection(tmp_path):
+    papers = [{"id": f"p{i}", "title": f"T{i}", "abstract": None, "authors": []} for i in range(30)]
+    conf = make_conference(tmp_path, papers, ["a", "b"], clusters={"minClusterSize": 5, "minSamples": 2})
+
+    def blobs(m):
+        return np.array([[10.0 * (i // 10) + 0.01 * (i % 10), 0.0] for i in range(len(m))])
+
+    embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": blobs, "b": lambda m: np.zeros((len(m), 2))})
+    out = json.loads((conf / "data" / "papers.json").read_text())
+    assert {p["cluster"] for p in out} == {0, 1, 2}
+    assert [c["size"] for c in json.loads((conf / "data" / "clusters.json").read_text())] == [10, 10, 10]
+
+
 def test_unknown_projection_raises(tmp_path):
     make_conference(tmp_path, PAPERS, ["nope"])
     with pytest.raises(ValueError, match="nope"):

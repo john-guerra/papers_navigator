@@ -9,6 +9,8 @@ const ACCESSORS = {
   affiliations: (p) => unique((p.authors ?? []).map((a) => a.affiliation)),
   keywords: (p) => unique(p.keywords ?? []),
   sessionName: (p) => unique([p.sessionName]),
+  // Topic cluster label (pipeline/clusters.py); noise papers have none
+  clusterLabel: (p) => unique([p.clusterLabel]),
 };
 
 /** Filter option name → facet key. */
@@ -18,6 +20,7 @@ const FILTER_FACETS = {
   affiliations: "affiliations",
   keywords: "keywords",
   sessions: "sessionName",
+  topics: "clusterLabel",
 };
 
 /** paper → its values for a filter option name (e.g. "authors"), as applyFilters matches them. */
