@@ -1959,3 +1959,24 @@ body #vg-tooltip-element table tr td.value {
     margin: -10px -6px;
   }
 }
+
+/* Forced colors (Windows High Contrast): backgrounds and gradients are replaced by system
+   colors, which would erase the custom checkbox's check and the select's chevron. Give both
+   back to the platform there. */
+@media (forced-colors: active) {
+  #observablehq-main select {
+    appearance: auto;
+    padding-right: 4px;
+    background-image: none;
+  }
+
+  #observablehq-main input[type="checkbox"] {
+    appearance: auto;
+    width: 16px;
+    height: 16px;
+  }
+
+  #observablehq-main input[type="checkbox"]::before {
+    content: none;
+  }
+}

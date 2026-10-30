@@ -11,6 +11,7 @@ export function renderPaperDetail(
   paper,
   {
     tz,
+    tzLabel,
     related = [],
     inMyPapers,
     onToggle,
@@ -31,7 +32,7 @@ export function renderPaperDetail(
     paper.typeLabel ?? paper.type,
     paper.sessionName,
     paper.room && `📍 ${paper.room}`,
-    paperWhen(paper, tz),
+    paperWhen(paper, tz, tzLabel),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -47,7 +48,7 @@ export function renderPaperDetail(
               return html`<li class="related-paper">
                 ${open}
                 <span class="related-meta"
-                  >${[p.room && `📍 ${p.room}`, paperWhen(p, tz), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
+                  >${[p.room && `📍 ${p.room}`, paperWhen(p, tz, tzLabel), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
                 >
                 ${toggle(p)}
               </li>`;

@@ -40,6 +40,7 @@ import { renderChips } from "./components/chips.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
 import { PHONE_QUERY } from "./lib/breakpoints.js";
+import { conferenceZone } from "./lib/time.js";
 ```
 
 ```js
@@ -51,6 +52,8 @@ const embeddingsBuffer = FileAttachment("data/embeddings.bin").arrayBuffer();
 
 ```js
 const tz = conference.timezone;
+// "ET" (config timezoneLabel, else from the zone; DESIGN.md → Vocabulary)
+const tzLabel = conferenceZone(conference);
 // My Papers = papers added by hand ∪ papers of watched people/institutions − exceptions (#5)
 const followedStore = createFollowedStore(conference.id);
 const rulesStore = createRulesStore(conference.id);
@@ -793,6 +796,7 @@ const papersList = PapersList(ordered, {
   shown: listState.shown,
   onShow: (n) => (listState.shown = n),
   tz,
+  tzLabel,
   header: "",
   authorHref: authorUrl,
   // The title opens the paper's details here; "Conference page ↗" goes to the conference site
@@ -824,6 +828,7 @@ const embeddingMatrix = toMatrix(embeddingsBuffer, papers.length);
 const paperDetail = paperPanel(paperParam, {
   papers,
   tz,
+  tzLabel,
   store,
   route: paperRoute,
   related: (paper) => relatedPapers(paper.id, embeddingMatrix, papers),

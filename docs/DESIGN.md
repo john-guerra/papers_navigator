@@ -421,7 +421,7 @@ UI copy uses these terms and only these (PRD §4). Sentence case everywhere.
 | **Now / Next**                | what's on for you at the current conference time                                                   | live                                                       |
 | **Strong / Good / Weak / All** | relevance levels of a search (a research topic is watched at Strong, Good or Weak)                | score range, threshold                                     |
 
-Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Thu Nov 12`, always with "ET" (from config) in headers. The zone is written "ET", never "EST"/"EDT": `zoneLabel()` / `formatWhen()` in `src/lib/time.js` ("Tue Nov 10 10:00 ET"), which use the zone's generic name.
+Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Thu Nov 12`, always with "ET" (from config) in headers. The zone is written "ET", never "EST"/"EDT": `conferenceZone()` / `formatWhen()` in `src/lib/time.js` ("Tue Nov 10 10:00 ET"): the config's `timezoneLabel` if set, else the zone's generic code ("ET"), else its short abbreviation ("GMT+1", never "Germany Time").
 
 ## Interaction & State
 
@@ -499,6 +499,7 @@ Buttons carry no emoji ("Export JSON", "Share list", "Copy link"), except a mark
 - Never color alone: similarity has a legend and per-paper score text; My Papers has a ring + toggle state + label; conflicts have ⚠ + text.
 - The map has a text equivalent: the list is the accessible view of the same data.
 - Respect `prefers-reduced-motion` and `prefers-color-scheme`.
+- Forced colors (Windows High Contrast): custom-drawn controls whose state lives in backgrounds or gradients (checkbox check, select chevron) fall back to `appearance: auto`.
 
 ## Building UI: reactive widgets
 

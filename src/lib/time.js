@@ -43,24 +43,32 @@ export function formatDay(key) {
 
 const zoneLabels = new Map();
 
+const zoneName = (tz, style) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: style })
+    .formatToParts(new Date())
+    .find((d) => d.type === "timeZoneName")?.value ?? "";
+
 /**
  * The conference timezone as written in the UI (DESIGN.md → Vocabulary): `label` from the
- * conference config when it sets one ("timezoneLabel"), else the zone's generic short name,
- * which is "ET" for US/Eastern all year (never "EST"/"EDT").
+ * conference config when it sets one ("timezoneLabel"), else the zone's generic short code,
+ * which is "ET" for US/Eastern all year (never "EST"/"EDT"). Where the generic name is a
+ * country ("Germany Time"), the short abbreviation ("GMT+1") instead.
  */
 export function zoneLabel(tz, label) {
   if (label) return label;
-  if (!zoneLabels.has(tz))
+  if (!zoneLabels.has(tz)) {
+    const generic = zoneName(tz, "shortGeneric");
     zoneLabels.set(
       tz,
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        timeZoneName: "shortGeneric",
-      })
-        .formatToParts(new Date())
-        .find((d) => d.type === "timeZoneName")?.value ?? "",
+      /^[A-Z]{1,5}$/.test(generic) ? generic : zoneName(tz, "short"),
     );
+  }
   return zoneLabels.get(tz);
+}
+
+/** The zone label of a conference config: its `timezoneLabel`, else from its `timezone`. */
+export function conferenceZone(conference) {
+  return zoneLabel(conference.timezone, conference.timezoneLabel);
 }
 
 /** "Tue Nov 10 10:00 ET": an instant's day, time and zone in the conference timezone. */

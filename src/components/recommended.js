@@ -11,7 +11,7 @@ const STEP = 10;
  */
 export function renderRecommended(
   state,
-  { tz, shown = STEP, onAdd, onDismiss, onOpen, onShowMore, onRetry },
+  { tz, tzLabel, shown = STEP, onAdd, onDismiss, onOpen, onShowMore, onRetry },
 ) {
   const note = (text) => html`<p class="muted">${text}</p>`;
   const body = (() => {
@@ -76,7 +76,7 @@ export function renderRecommended(
     dismiss.onclick = () => onDismiss(p);
     const meta = [
       p.room && `📍 ${p.room}`,
-      paperWhen(p, tz),
+      paperWhen(p, tz, tzLabel),
       `${Math.round(p.score * 100)}% similar`,
     ]
       .filter(Boolean)

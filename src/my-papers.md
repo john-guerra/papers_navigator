@@ -28,6 +28,7 @@ import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFil
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { segmentedControl } from "./widgets/segmentedControl.js";
+import { conferenceZone } from "./lib/time.js";
 import { PHONE_QUERY, matches } from "./lib/breakpoints.js";
 ```
 
@@ -42,6 +43,8 @@ const embeddingsFile = FileAttachment("data/embeddings.bin");
 
 ```js
 const tz = conference.timezone;
+// "ET" (config timezoneLabel, else from the zone; DESIGN.md → Vocabulary)
+const tzLabel = conferenceZone(conference);
 // My Papers = papers added by hand ∪ papers of watched people/institutions − exceptions (#5)
 const followedStore = createFollowedStore(conference.id);
 const rulesStore = createRulesStore(conference.id);
@@ -325,6 +328,7 @@ display(
     [...searched].sort((a, b) => d3.ascending(key(a), key(b))),
     {
       tz,
+      tzLabel,
       authorHref: authorUrl,
       // The title opens the paper's details; "Conference page ↗" goes to the conference site
       details: { href: (p) => paperRoute.href(p.shortId ?? p.id), open: (p) => openPaper(p) },
@@ -440,6 +444,7 @@ const openPaper = (p) => paperRoute.open(p.shortId ?? p.id);
 const paperDetail = paperPanel(paperParam, {
   papers,
   tz,
+  tzLabel,
   store,
   route: paperRoute,
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
@@ -486,6 +491,7 @@ const drawRecommended = () => {
   recommendedSection.replaceChildren(
     renderRecommended(recommendations, {
       tz,
+      tzLabel,
       shown: recommendState.shown,
       onShowMore: (n) => {
         recommendState.shown = n;

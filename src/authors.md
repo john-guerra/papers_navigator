@@ -18,7 +18,7 @@ import { paperPanel } from "./components/paperPanel.js";
 import { watchButton } from "./components/watchButton.js";
 import { showToast } from "./components/toast.js";
 import { bindMyPapersBadge } from "./components/badge.js";
-import { zoneLabel } from "./lib/time.js";
+import { conferenceZone } from "./lib/time.js";
 ```
 
 ```js
@@ -30,8 +30,8 @@ const embeddingsFile = FileAttachment("data/embeddings.bin");
 
 ```js
 const tz = conference.timezone;
-// "ET", never "EST"/"EDT" (DESIGN.md → Vocabulary)
-const tzLabel = zoneLabel(tz);
+// "ET" (config timezoneLabel, else from the zone; DESIGN.md → Vocabulary)
+const tzLabel = conferenceZone(conference);
 const followedStore = createFollowedStore(conference.id);
 const rulesStore = createRulesStore(conference.id);
 const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
@@ -127,6 +127,7 @@ authorView.update?.();
 const paperDetail = paperPanel(paperParam, {
   papers,
   tz,
+  tzLabel,
   store,
   route: paperRoute,
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),

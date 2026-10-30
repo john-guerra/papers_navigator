@@ -411,7 +411,7 @@ export function scatterSpec(
         orient: "top-right",
         offset: 8,
         padding: 8,
-        cornerRadius: 6,
+        cornerRadius: parseFloat(token("rounded-md", "6px")) || 6,
         fillColor: token("color-surface", "#fffdfa"),
         strokeColor: token("color-outline", "#d8d3cc"),
         titleColor: token("color-on-surface", "#241e1a"),
