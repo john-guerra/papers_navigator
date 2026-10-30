@@ -221,8 +221,9 @@ const colorBy = Generators.input(colorByInput);
 
 ```js
 const mapWidth = Generators.width(document.getElementById("explore-map"));
-// Survives re-runs of the click-to-scroll cell
+// Survive re-runs: the paper last scrolled to, and how far the list is expanded
 const lastScrolled = { id: null };
+const listState = { key: null, shown: 100 };
 // Bumped by the "Map region ✕" chip: redraws the map without its brush
 const mapReset = Mutable(0);
 const resetMap = () => ++mapReset.value;
@@ -324,17 +325,20 @@ const chipsRow = renderChips(chips, {
 
 ```js
 // Clicking a point on the map scrolls the list to that paper (no hidden "clicked" mode).
-// Vega keeps the click selected, so only scroll when the clicked paper changes.
+// Vega keeps the click selected, so only scroll when the clicked paper changes. A click also
+// re-renders the list, so wait a frame and use the list that is actually on the page.
 {
   const id = map.clicked[0]?.id ?? null;
   const changed = id !== lastScrolled.id;
   lastScrolled.id = id;
-  const row = changed && id && document.querySelector(`.explore-list [data-paper-id="${CSS.escape(id)}"]`);
-  if (row) {
-    row.scrollIntoView({ behavior: "smooth", block: "center" });
-    row.classList.add("flash");
-    setTimeout(() => row.classList.remove("flash"), 1500);
-  }
+  if (changed && id)
+    requestAnimationFrame(() => {
+      const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
+      if (!row?.isConnected) return;
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.classList.add("flash");
+      setTimeout(() => row.classList.remove("flash"), 1500);
+    });
 }
 ```
 
@@ -361,7 +365,13 @@ const navioSummary = NavioWidget(
 
 ```js
 const ordered = hasQuery ? selected : [...selected].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
+// Keep "Show more" expansion while only My Papers changes; reset it when the matches change
+const listKey = ordered.map((p) => p.id).join();
+if (listKey !== listState.key) Object.assign(listState, { key: listKey, shown: 100 });
 const papersList = PapersList(ordered, {
+  max: 100,
+  shown: listState.shown,
+  onShow: (n) => (listState.shown = n),
   tz,
   header: "",
   preamble: (p) => (p.score != null ? `🔍 ${(p.score * 100).toFixed(1)}%` : ""),
