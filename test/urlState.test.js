@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   EXPLORE_KEYS,
+  MAX_HASH,
+  cleanHash,
   createUrlSync,
   decodeExploreState,
   encodeExploreState,
@@ -164,6 +166,25 @@ describe("decodeExploreState", () => {
     expect(state.facets.keywords).not.toContain("b".repeat(500));
   });
 
+  it("accepts only plain decimal numbers in a region (no empty, hex or Infinity)", () => {
+    const region = (text) =>
+      decodeExploreState(new URLSearchParams({ region: text }), options).region;
+    expect(region("-1.5,2,.5,3e1")).toEqual({
+      projection: "umap",
+      x: [-1.5, 2],
+      y: [0.5, 30],
+    });
+    for (const bad of [
+      ",1,2,3",
+      "0x10,1,2,3",
+      "Infinity,1,2,3",
+      " 1,2,3,4",
+      "1,2,3,4,",
+      "0b1,2,3,4",
+    ])
+      expect(region(bad)).toBeNull();
+  });
+
   it("drops a malformed region", () => {
     for (const region of ["1,2,3", "a,b,c,d", "1,2,3,Infinity", "1,1,2,3"])
       expect(
@@ -234,6 +255,15 @@ describe("withParams (in the fragment: it never reaches the server)", () => {
     );
   });
 
+  it("with `keep`, drops pairs that are neither the page's nor kept (no junk carried along)", () => {
+    const href = "https://x.org/?paper=a#follow=ab&junk=1&q=old&watch=a:X";
+    expect(
+      withParams(href, new URLSearchParams("q=new"), ["q"], {
+        keep: ["follow", "watch"],
+      }),
+    ).toBe("https://x.org/?paper=a#follow=ab&watch=a%3AX&q=new");
+  });
+
   it("reads the fragment's pairs", () => {
     expect(hashParams("https://x.org/?q=no#q=yes&type=").get("q")).toBe("yes");
     expect([...hashParams("https://x.org/")]).toEqual([]);
@@ -277,6 +307,35 @@ function fakeWindow(href) {
   };
   return win;
 }
+
+describe("cleanHash (at load: a link is attacker-controllable)", () => {
+  it("keeps only the page's keys and share keys, rewriting the URL", () => {
+    const win = fakeWindow("https://x.org/?paper=a#q=x&junk=1&follow=ab");
+    const params = cleanHash({ win, keys: ["q"] });
+    expect([...params]).toEqual([
+      ["q", "x"],
+      ["follow", "ab"],
+    ]);
+    expect(win.location.href).toBe("https://x.org/?paper=a#q=x&follow=ab");
+    expect(win.history.state).toEqual({ paperDetail: 1 });
+  });
+
+  it("leaves a clean URL alone", () => {
+    const win = fakeWindow("https://x.org/#q=x");
+    cleanHash({ win, keys: ["q"] });
+    expect(win.history.replaceState).not.toHaveBeenCalled();
+  });
+
+  it("drops a fragment over ~4 KB, with a warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const win = fakeWindow(`https://x.org/?paper=a#q=${"x".repeat(MAX_HASH)}`);
+    const params = cleanHash({ win, keys: ["q"] });
+    expect([...params]).toEqual([]);
+    expect(win.location.href).toBe("https://x.org/?paper=a");
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+});
 
 describe("createUrlSync", () => {
   const encode = (s) => new URLSearchParams(s.q ? { q: s.q } : {});
@@ -348,6 +407,30 @@ describe("createUrlSync", () => {
     win.fire("popstate");
     expect(onExternalChange).toHaveBeenCalledOnce();
     expect(win.location.href).toBe("https://x.org/?paper=a#q=b");
+  });
+
+  it("doesn't take an in-page anchor (#privacy) for a new link", () => {
+    const win = fakeWindow("https://x.org/#q=a");
+    const onExternalChange = vi.fn();
+    createUrlSync({
+      win,
+      encode,
+      keys: ["q"],
+      state: { q: "a" },
+      delay: 0,
+      onExternalChange,
+    });
+    win.location.href = "https://x.org/#privacy";
+    win.fire("popstate");
+    expect(onExternalChange).not.toHaveBeenCalled();
+    expect(win.location.href).toBe("https://x.org/#privacy");
+  });
+
+  it("writes only its own keys and share keys (unknown pairs are dropped)", () => {
+    const win = fakeWindow("https://x.org/#junk=1&follow=ab");
+    const sync = createUrlSync({ win, encode, keys: ["q"], delay: 0 });
+    sync.update({ q: "a" });
+    expect(win.location.href).toBe("https://x.org/#follow=ab&q=a");
   });
 
   it("isn't fooled by closing paper details onto an older fragment", () => {

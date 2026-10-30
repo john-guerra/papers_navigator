@@ -9,7 +9,7 @@ import { createMyPapers, createRulesStore, matches, normalizeRule } from "./lib/
 import { watchButton } from "./components/watchButton.js";
 import { researchRule, startTopicRefresh, thresholdFor, topicPreview, topicRule } from "./lib/researchTopics.js";
 import { createResearchStore, createVectorCache, programFingerprint, pruneVectorCache, rankByMaxSimilarity, researchCuts, researchLabel, researchVectors, splitAbstracts } from "./lib/myResearch.js";
-import { myResearch } from "./components/myResearch.js";
+import { myResearch, pauseResearchForLink, researchPausedToast } from "./components/myResearch.js";
 import { topicWatch } from "./components/topicWatch.js";
 import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
 import { createPaperRoute } from "./components/paperRoute.js";
@@ -68,8 +68,8 @@ const hasTopics = papers.some((p) => p.clusterLabel);
 // The view (search, filters, options) lives in the URL (#92): read once here, kept in step below
 const { start: urlStart, explicitQuery, sync: urlSync } = startExploreUrl({ papers, conference, typeLabels, hasTopics });
 invalidation.then(urlSync.stop);
-// A link that names a search shows that search, not your "My research" ranking
-if (explicitQuery && researchStore.value.active) researchStore.set({ active: false });
+// A link that names a search shows that search, not your "My research" ranking (a toast offers Resume)
+const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 ```
 
 <h1>${conference.name} Papers</h1>
@@ -185,11 +185,13 @@ const query = Generators.observe((notify) => {
     queryInput.removeEventListener("input", onInput);
   };
 });
-const clearQuery = () => {
-  queryInput.querySelector("input").value = "";
-  queryInput.value = "";
+const setQuery = (text) => {
+  queryInput.querySelector("input").value = text;
+  queryInput.value = text;
   queryInput.dispatchEvent(new Event("input", { bubbles: true }));
 };
+const clearQuery = () => setQuery("");
+if (researchPaused) researchPausedToast(researchStore, { onResume: clearQuery });
 // Typing a search leaves "My research": one ranking at a time, the last one asked for
 queryInput.addEventListener("input", () => researchStore.value.active && researchStore.set({ active: false }));
 ```
@@ -317,6 +319,8 @@ const facetsInput = facetStrip(papers, {
     facet("sessions", "Session"),
   ],
   value: urlStart.facets,
+  // Clear all goes back to the defaults (Main tracks), so the URL is clean again (#104)
+  defaultValue: { types: defaultTypes },
   // Watch a person or institution: a standing rule whose papers are always in My Papers (#6)
   rowAction: (facetId, value) => {
     const type = { authors: "author", affiliations: "affiliation" }[facetId];
@@ -615,7 +619,7 @@ mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 const peopleCount = authors.length + affiliations.length;
 if (hasQuery && peopleCount > relevanceState.people && relevanceState.level !== "all") {
   relevanceState.level = "all";
-  showToast("Showing All matches for the people and institutions you picked");
+  showToast("Showing all matching papers by the researchers and institutions you picked");
 }
 relevanceState.people = peopleCount;
 const cuts = cutsFor(scored.map((d) => d.score));
@@ -707,12 +711,14 @@ const chips = [
   },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
 ].filter(Boolean);
+// Clear all = back to the view a fresh visit opens with (the default search, no region), so the
+// URL fragment is clean again (#104)
 const chipsRow = renderChips(chips, {
   onClearAll:
     chips.length > 1
       ? () => {
-          clearQuery();
           leaveResearch();
+          setQuery(conference.defaultQuery ?? "");
           resetMap();
         }
       : null,

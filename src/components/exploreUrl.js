@@ -1,8 +1,8 @@
 import { filterAccessor } from "../lib/filters.js";
 import {
   FACET_KEYS,
+  cleanHash,
   createUrlSync,
-  hashParams,
   decodeExploreState,
   encodeExploreState,
 } from "../lib/urlState.js";
@@ -21,7 +21,8 @@ export function startExploreUrl({
   hasTopics,
   win = globalThis.window,
 }) {
-  const params = hashParams(win.location.href);
+  // Only Explore's keys and share-link keys, capped (unknown pairs are dropped from the URL)
+  const params = cleanHash({ win });
   const defaults = {
     query: conference.defaultQuery ?? "",
     types: (conference.defaultTypes ?? []).filter((t) => typeLabels.has(t)),

@@ -5,6 +5,8 @@ const conference = await loadConferenceConfig();
 export default {
   title: `${conference.name} Papers`,
   root: "src",
+  // No "Previous page / Next page" cards: the nav already links every page
+  pager: false,
   output: "dist",
   pages: [
     { name: "Explore", path: "/" },

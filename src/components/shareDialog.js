@@ -11,7 +11,7 @@ export const QR_MAX_URL_LENGTH = 1000;
 export function renderShareDialog(url, { count = 0 } = {}) {
   const qr = html`<div class="share-qr"></div>`;
   if (count > QR_MAX_PAPERS) {
-    qr.textContent = `You follow ${count} papers, too many papers for a QR code. Copy the link instead, or use Export JSON.`;
+    qr.textContent = `You have ${count} papers in My Papers, too many for a QR code. Copy the link instead, or use Export JSON.`;
   } else if (url.length > QR_MAX_URL_LENGTH) {
     qr.textContent =
       "This link is too long for a QR code (many papers or watches). Copy the link instead, or use Export JSON.";

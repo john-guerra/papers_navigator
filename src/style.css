@@ -141,7 +141,6 @@
   --color-viz-reliability-2: #6f84cf;
   --color-viz-reliability-3: #b4c3ff;
   --color-viz-dim: #3b3734;
-  /* DESIGN.md defines no dark-viz-neutral; muted ink is the light value's role */
   --color-viz-neutral: #aeaaa4;
   --color-viz-followed-ring: #eeebe5;
   --color-viz-cat-1: #3987e5;
@@ -175,7 +174,6 @@
     --color-viz-reliability-2: #6f84cf;
     --color-viz-reliability-3: #b4c3ff;
     --color-viz-dim: #3b3734;
-    /* DESIGN.md defines no dark-viz-neutral; muted ink is the light value's role */
     --color-viz-neutral: #aeaaa4;
     --color-viz-followed-ring: #eeebe5;
     --color-viz-cat-1: #3987e5;
@@ -752,7 +750,8 @@ a.navbar-brand {
 
   .select-mode .explore-map .brushable-scatterplot {
     pointer-events: auto;
-    outline: 2px solid var(--color-focus);
+    /* A mode, not focus: blue is only for focus (DESIGN.md → Colors) */
+    outline: 2px solid var(--color-primary);
   }
 
   /* On the chart surface itself: touch-action only applies up to the nearest scroll container,
@@ -1232,8 +1231,9 @@ details.missing > summary {
   display: flex;
   align-items: center;
   gap: var(--spacing-md, 12px);
-  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
-  border-radius: var(--rounded-sm, 4px);
+  /* DESIGN.md → components.toast: 10px 14px (between spacing steps) */
+  padding: 10px 14px;
+  border-radius: var(--rounded-sm, 3px);
   background: var(--color-on-surface);
   color: var(--color-background);
   font: var(--typography-label-md);
@@ -1337,16 +1337,22 @@ details.missing > summary {
   opacity: 0.4;
 }
 
-/* #6 — Watch toggle in the facet popovers */
-.watch-toggle {
+/* #6 — Watch toggle in the facet popovers (a text button); on a profile it's secondary */
+.watch-toggle.btn-text {
   min-height: 0;
   padding: 0 6px;
   color: var(--color-primary);
   font: var(--typography-label-md);
 }
 
-.watch-toggle[aria-pressed="true"] {
+.watch-toggle.btn-text[aria-pressed="true"] {
   border-radius: var(--rounded-full, 999px);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.watch-toggle.btn-secondary[aria-pressed="true"] {
+  border-color: var(--color-on-primary-container);
   background: var(--color-primary-container);
   color: var(--color-on-primary-container);
 }
@@ -1779,17 +1785,17 @@ body #vg-tooltip-element {
   max-width: 360px;
   padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
   border: 1px solid var(--color-outline);
-  border-radius: 6px;
+  border-radius: var(--rounded-md);
   background: var(--color-surface);
   box-shadow: var(--elevation-1);
   color: var(--color-on-surface);
-  font: 400 0.875rem/1.35 var(--font-sans);
+  font: var(--typography-body-sm);
   white-space: normal;
 }
 
 body #vg-tooltip-element h2 {
   margin: 0 0 var(--spacing-xs, 4px);
-  font: 500 1rem/1.25 var(--font-serif);
+  font: var(--typography-title-paper);
 }
 
 body #vg-tooltip-element table tr td.key {
