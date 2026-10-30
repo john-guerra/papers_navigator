@@ -229,3 +229,18 @@ describe("BrushableScatterPlot with rings", () => {
     expect(widget.value.brushed.map((d) => d.id)).toEqual(["b", "c"]);
   });
 });
+
+describe("BrushableScatterPlot pointAt", () => {
+  it("returns the point nearest to a screen position, within a tolerance", async () => {
+    const widget = await BrushableScatterPlot(data, { renderer: "svg", width: 200, height: 200 });
+    document.body.append(widget);
+    const view = widget.view;
+    const [ox, oy] = view.origin();
+    const rect = widget.querySelector("svg").getBoundingClientRect();
+    const px = (d) => [rect.left + ox + view.scale("x")(d.x), rect.top + oy + view.scale("y")(d.y)];
+    const [x, y] = px(data[1]);
+    expect(widget.pointAt(x + 3, y - 2)?.id).toBe(data[1].id);
+    expect(widget.pointAt(x + 200, y + 200)).toBeNull();
+    widget.remove();
+  });
+});
