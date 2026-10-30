@@ -28,7 +28,7 @@ import { BrushableScatterPlot, topCategories } from "./widgets/brushableScatterP
 import { bindMyPapersBadge } from "./components/badge.js";
 import { relevanceControl } from "./widgets/relevanceControl.js";
 import { themeControl } from "./components/themeControl.js";
-import { PapersList } from "./widgets/papersList.js";
+import { PapersList, conferenceLink } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
@@ -696,11 +696,9 @@ const papersList = PapersList(ordered, {
   // My research with several abstracts: which one the paper is closest to
   preamble: (p) =>
     p.score == null ? "" : `🔍 ${(p.score * 100).toFixed(1)}%${researchAbstracts.length > 1 ? ` · abstract ${p.abstractIndex + 1}` : ""}`,
-  actions: (p) => {
-    const details = html`<button class="btn-text paper-details-open">Details</button>`;
-    details.onclick = () => openPaper(p.shortId ?? p.id);
-    return html`<span class="paper-actions">${listToggles.toggle(p)}${details}</span>`;
-  },
+  // The title opens the paper's details here; "Conference page ↗" goes to the conference site
+  details: { href: (p) => paperRoute.href(p.shortId ?? p.id), open: (p) => openPaper(p.shortId ?? p.id) },
+  actions: (p) => html`<span class="paper-actions">${listToggles.toggle(p)}${conferenceLink(p)}</span>`,
 });
 papersList.update = listToggles.update;
 ```
