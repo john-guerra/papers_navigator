@@ -20,6 +20,7 @@ const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
   return scores.length ? [cutsOf(scores).good, Math.max(...scores)] : null;
 };
 import { getEmbedder } from "./lib/embedder.js";
+import { keywordMatches, readyAnnouncement, searchMode, searchStatusLine, watchModel } from "./lib/searchStatus.js";
 import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
@@ -87,6 +88,8 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 <div id="explore" class="explore-layout">
 <section class="explore-controls">
   <div class="search-row">${queryInput}${myResearchInput}</div>
+  <p id="search-status" class="search-status" hidden></p>
+  <p id="search-live" class="sr-only" aria-live="polite"></p>
   ${facetsInput}
   ${chipsRow}
   ${relevanceInput ?? ""}${topicWatchInput ?? ""}
@@ -261,19 +264,22 @@ const myResearchInput = myResearch(
 ```
 
 ```js
-// Load the language model as soon as the page opens, not on the first search.
+// Load the language model right after the program is on screen (#120): its ~50 MB (model and
+// runtime) would otherwise compete with the program's data on a slow connection. Until then
+// the program is listed and a search shows keyword matches; a failed load is retried.
 const modelStatus = Generators.observe((notify) => {
-  notify("loading");
-  getEmbedder().then(
-    () => notify("ready"),
-    (error) => notify(`error: ${error?.message ?? error}`),
-  );
+  // This cell waits for the data (named here); then a frame and an idle moment to render the list
+  void [papers, embeddingsBuffer, projections];
+  const start = new Promise((resolve) => requestAnimationFrame(() => (window.requestIdleCallback ?? setTimeout)(resolve, { timeout: 1500 })));
+  return watchModel({ load: getEmbedder, notify, start });
 });
 ```
 
 ```js
 // Research topics (#24): re-evaluate their cached matches against this program in the
-// background (Explore loads the model anyway, so Save-Data doesn't skip it here)
+// background (Explore loads the model anyway, so Save-Data doesn't skip it here), once the
+// model is ready so it never delays the first render (#120)
+if (modelStatus === "ready") {
 const topicRefresh = startTopicRefresh({
   rules: rulesStore,
   papers,
@@ -284,28 +290,24 @@ const topicRefresh = startTopicRefresh({
   onRefresh: ({ updated, ms }) => console.info(`Research topics re-evaluated in ${ms} ms (${updated} updated)`),
 });
 invalidation.then(() => topicRefresh.stop());
+}
 ```
 
 ```js
-// Search stays disabled, with the reason inside the box, until the model is ready.
+// The search box works while the model loads (#120): keyword matches until it's ready. One
+// line under it says what the list shows; screen readers hear when it's ranked by meaning.
+const rankingMode = searchMode({ modelStatus, query, research: researchMode });
 {
-  const input = queryInput.querySelector("input");
-  const button = queryInput.querySelector("button");
-  const ready = modelStatus === "ready";
-  if (!ready) {
-    input.dataset.query ??= input.value;
-    input.value = "";
-    input.placeholder =
-      modelStatus === "loading"
-        ? "Loading the language model…"
-        : `Search unavailable: the language model failed to load (${modelStatus.slice(7)})`;
-  } else if (input.dataset.query != null) {
-    input.value = input.dataset.query;
-    delete input.dataset.query;
-    input.placeholder = queryPlaceholder;
+  const line = searchStatusLine({ modelStatus, mode: rankingMode, offline: navigator.onLine === false });
+  const status = document.getElementById("search-status");
+  const live = document.getElementById("search-live");
+  if (status) {
+    status.textContent = line ?? "";
+    status.hidden = !line;
   }
-  input.disabled = !ready;
-  if (button) button.disabled = !ready;
+  const said = readyAnnouncement(searchStatusState.model, modelStatus, rankingMode);
+  if (said && live) live.textContent = said;
+  searchStatusState.model = modelStatus;
 }
 ```
 
@@ -334,6 +336,9 @@ const scored = (() => {
 ```js
 // Facet strip (#35): crossfilter-style counts; facet ids are applyFilters' option names.
 const sameSet = (a, b) => a.length === b.length && a.every((v) => b.includes(v));
+// The program's usual order (no ranking): by time
+const byTime = (list) => [...list].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
+const papersByTime = byTime(papers);
 const defaultTypes = (conference.defaultTypes ?? []).filter((t) => typeLabels.has(t));
 const mainTracks = (values) =>
   defaultTypes.length && sameSet(values, defaultTypes) ? (conference.defaultTypesLabel ?? "Main tracks") : null;
@@ -540,6 +545,7 @@ const relevanceState = { level: urlStart.level, people: urlStart.facets.authors.
 const topicWatchState = { open: false };
 const researchPanelState = { open: false };
 const listState = { key: null, shown: 100 };
+const searchStatusState = { model: null }; // the previous model status, for "Ranked by meaning"
 // The map reads its colors from CSS tokens when drawn: redraw when Appearance changes
 const theme = Generators.observe((notify) => {
   // Auto follows the OS, so an OS switch also changes the colors
@@ -588,7 +594,7 @@ const urlRegion = !previousMap && urlSync.state.region?.projection === regionFra
 const keptBrush = (!projectionChanged && mapReset === mapState.reset ? previousMap?.brush() : null) ?? urlRegion;
 mapState.projection = projection;
 mapState.panel?.refreshCurrent();
-const hasQuery = (researchMode || Boolean(query?.trim())) && modelStatus === "ready";
+const hasQuery = rankingMode === "semantic";
 // Similarity only exists after a search; until then one neutral color
 const colorField = colorBy === "score" && !hasQuery ? null : colorBy;
 const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session", clusterLabel: "Topic", liveCluster: "Cluster (live)" };
@@ -749,7 +755,11 @@ const relevance = relevanceInput ? Generators.input(relevanceInput) : "all";
 
 ```js
 if (relevanceInput) relevanceState.level = relevance;
-const inRange = relevance === "all" ? map.brushed : map.brushed.filter((d) => d.score >= cuts[relevance]);
+// Before the model is ready, a search keeps its keyword matches (#120), in this order
+const keywordOrder = rankingMode === "keyword" ? new Map(keywordMatches(papersByTime, query).map((p, i) => [p.id, i])) : null;
+const inRange = keywordOrder
+  ? map.brushed.filter((d) => keywordOrder.has(d.id))
+  : relevance === "all" ? map.brushed : map.brushed.filter((d) => d.score >= cuts[relevance]);
 // The list is exactly the matching papers: query, relevance, facets and map region
 const selected = inRange;
 ```
@@ -797,7 +807,7 @@ const topicWatchInput = hasQuery
 // Three ways into My Papers (DESIGN.md): this is "Add N", bound to exactly the listed papers
 const regionActive = map.brushed.length < positioned.length;
 const addReason = selectionReason({
-  query: hasQuery ? rankingLabel : null,
+  query: hasQuery ? rankingLabel : rankingMode === "keyword" ? query.trim() : null,
   authors,
   affiliations,
   keywords,
@@ -810,7 +820,7 @@ const addReason = selectionReason({
 });
 // With nothing narrowing the list, one click would add the whole program: ask to narrow first
 const narrowed =
-  hasQuery || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || topics.length || !sameSet(types, defaultTypes);
+  rankingMode !== "none" || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || topics.length || !sameSet(types, defaultTypes);
 const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))), {
   disabledHint: narrowed ? null : "Search, filter or select a map region to add papers in bulk",
   onAdd: (fresh) => {
@@ -827,6 +837,7 @@ const chips = [
     value: `${query} · ${levelName} matches`,
     onClear: clearQuery,
   },
+  rankingMode === "keyword" && { label: "Search", value: `${query} · keyword matches`, onClear: clearQuery },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
 ].filter(Boolean);
 // Clear all empties the search (like its chip's ✕; the default search is for first visits only)
@@ -878,7 +889,7 @@ const navioSummary = selected.length
 ```
 
 ```js
-const ordered = hasQuery ? selected : [...selected].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
+const ordered = hasQuery ? selected : keywordOrder ? [...selected].sort((a, b) => keywordOrder.get(a.id) - keywordOrder.get(b.id)) : byTime(selected);
 // Keep "Show more" expansion while only My Papers changes; reset it when the matches change
 const listKey = ordered.map((p) => p.id).join();
 if (listKey !== listState.key) Object.assign(listState, { key: listKey, shown: 100 });
@@ -890,7 +901,7 @@ const listToggles = followToggles({
       const undo = store.remove([p.id]);
       showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
     } else {
-      const undo = addWithUndo(store, [p], hasQuery ? `★ ${rankingLabel}` : "★ Added by hand");
+      const undo = addWithUndo(store, [p], hasQuery ? `★ ${rankingLabel}` : rankingMode === "keyword" ? `★ ${query.trim()}` : "★ Added by hand");
       showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
     }
   },
