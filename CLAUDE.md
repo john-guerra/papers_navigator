@@ -41,7 +41,7 @@ scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John fi
 ## Product docs
 
 - PRD (what to build, user stories with IDs): `docs/prd/2026-10-29-papers-navigator-prd.md`
-- Visual design system + UX guidelines: `docs/DESIGN.md` (Google DESIGN.md format; being written in another session — once it exists, UI work follows it)
+- Visual design system + UX guidelines: `docs/DESIGN.md` (Google DESIGN.md format). UI work follows its tokens, vocabulary ("Add to My Papers" / "Remove", "Watch", "Matching papers") and reactive-widget rules; where it differs from the PRD or the redesign doc, DESIGN.md wins. Lint it with `npx @google/design.md lint docs/DESIGN.md` after editing.
 - Selection/list redesign (option B chosen) and independent review: `docs/prd/2026-10-29-selection-redesign.md`, `docs/prd/2026-10-29-review.md`
 
 ## Workflow (issues, several agents in parallel)
