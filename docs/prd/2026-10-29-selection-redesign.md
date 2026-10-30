@@ -2,6 +2,13 @@
 
 Date: 2026-10-29 · Status: **decided — John chose option B on 2026-10-29** (see issue #1) · Based on the PRD (`2026-10-29-papers-navigator-prd.md`) and the independent review (`2026-10-29-review.md`).
 
+> **Updated by `docs/DESIGN.md` (PR #34, John's decisions 2026-10-29). Where this doc differs, DESIGN.md wins:**
+>
+> - Wording: "Add to My Papers" / "Remove" with a ring toggle; ★ only marks the "added by hand" reason. Not Follow/Unfollow.
+> - Filters are a **facet strip** (issue #35). An active facet button is the chip for that facet; separate chips exist only for the topic query and the map region. "Options" is only the map's view-settings popover (Projection, Color by). "Size by" is removed.
+> - Watch is a row action inside the facet popovers.
+> - Phone map: drag pans; a "Select region" mode enables one brush.
+
 ## Problem (from the review, verified in code)
 
 1. Three bulk Follow/Unfollow pairs act on three different sets — `map.brushed`, `inRange`, `filtered` (`src/index.md:290-292`) — while the list shows a fourth (`inRange` or the clicked point). "Follow 39" can add 34 papers you never saw.
