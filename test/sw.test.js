@@ -161,6 +161,29 @@ describe("cssAssetRefs", () => {
       at("./_file/fonts/source-sans-3-latin-wght-normal.woff2"),
     ]);
   });
+
+  it("precaches only the latin subsets; the rest are cached on first use (#91)", () => {
+    const cssUrl = at("./_file/fonts/fonts.2d7cdded.css");
+    const css = [
+      "newsreader-latin-opsz-normal",
+      "newsreader-latin-ext-opsz-normal",
+      "newsreader-vietnamese-opsz-italic",
+      "source-sans-3-greek-wght-normal",
+      "source-sans-3-latin-wght-normal",
+    ]
+      .map((f) => `@font-face { src: url("./${f}.woff2"); }`)
+      .join("\n");
+    expect(
+      strategyFor(
+        at("./_file/fonts/newsreader-latin-ext-opsz-normal.woff2"),
+        scope,
+      ),
+    ).toBe("cache-first");
+    expect(cssAssetRefs(css, cssUrl, scope)).toEqual([
+      at("./_file/fonts/newsreader-latin-opsz-normal.woff2"),
+      at("./_file/fonts/source-sans-3-latin-wght-normal.woff2"),
+    ]);
+  });
 });
 
 describe("caches", () => {
@@ -190,10 +213,10 @@ describe("freshRequest", () => {
 describe("build id (scripts/buildSw.js)", () => {
   it("stamps the build id into VERSION, so each deploy gets a new cache", () => {
     const stamped = stampVersion(source, "abc123");
-    expect(stamped).toContain('const VERSION = "v3-abc123";');
+    expect(stamped).toContain('const VERSION = "v4-abc123";');
     const built = { URL, Request };
     vm.runInNewContext(stamped, built);
-    expect(built.cacheName(scope)).toBe(`papersNavigator-v3-abc123:${scope}`);
+    expect(built.cacheName(scope)).toBe(`papersNavigator-v4-abc123:${scope}`);
     expect(built.isStaleCache(cacheName(scope), scope)).toBe(true);
   });
 

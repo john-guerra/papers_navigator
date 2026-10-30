@@ -9,7 +9,8 @@
     "test": "vitest run",
     "dev": "observable preview",
     "build": "observable build && node scripts/buildSw.js && node scripts/copyStatic.js",
-    "lint": "eslint src test scripts"
+    "lint": "eslint src test scripts",
+    "fonts": "node scripts/fonts.js"
   },
   "repository": {
     "type": "git",

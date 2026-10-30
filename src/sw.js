@@ -13,16 +13,17 @@
 //   #21): not touched. Transformers.js keeps its own copy in Cache Storage
 //   (useWasmCache), so caching it here too would store it twice.
 // - The self-hosted fonts (_file/fonts/*.woff2, #91): cache-first although unhashed (each
-//   deploy gets a fresh cache); precached from the url()s of the stylesheets pages link.
+//   deploy gets a fresh cache). Only the latin subsets are precached (from the url()s of
+//   the stylesheets pages link); the others are cached when a page first renders them.
 // - Other origins (the Transformers.js model): not touched.
 //
 // The pure helpers at the top are tested in test/sw.test.js (loaded with node:vm).
 
 /* global ServiceWorkerGlobalScope */
-// Bump the "v3" when the caching rules change; `npm run build` (scripts/buildSw.js)
+// Bump the "v4" when the caching rules change; `npm run build` (scripts/buildSw.js)
 // appends a build id, so every deploy installs a new worker that re-precaches and
 // drops the previous deploy's cache.
-const VERSION = "v3";
+const VERSION = "v4";
 const CACHE_PREFIX = "papersNavigator-";
 const ASSET_DIRS = [
   "_file",
@@ -79,12 +80,18 @@ function assetRefs(html, pageUrl, scope) {
   return [...refs];
 }
 
-/** Same-scope assets a built stylesheet names with url() — the self-hosted fonts (#91). */
+/**
+ * Fonts worth precaching from a built stylesheet's url()s (#91): only the latin subsets, which
+ * every page paints. latin-ext, vietnamese and greek are cached on first use (cache-first), so
+ * phones keep the unicode-range savings.
+ */
 function cssAssetRefs(css, cssUrl, scope) {
   const refs = new Set();
   for (const match of css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) {
     const url = new URL(match[1], cssUrl).href;
-    if (strategyFor(url, scope) === "cache-first") refs.add(url);
+    if (strategyFor(url, scope) !== "cache-first") continue;
+    if (url.endsWith(".woff2") && !/-latin-(?!ext-)/.test(url)) continue;
+    refs.add(url);
   }
   return [...refs];
 }
