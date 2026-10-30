@@ -109,3 +109,31 @@ export function renderShareBanner(
   showChoices();
   return banner;
 }
+
+/**
+ * "Share my list" with the native share sheet on phones (#16); elsewhere, or without
+ * navigator.share, "Send to my phone", which opens the QR panel (`onFallback`). A failed share
+ * also falls back to the panel; cancelling the sheet does nothing.
+ */
+export function renderShareButton({
+  narrow,
+  share,
+  url,
+  count,
+  title,
+  onFallback,
+}) {
+  const native = narrow && typeof share === "function";
+  const button = html`<button>
+    ${native ? "📤 Share my list" : "📱 Send to my phone"}
+  </button>`;
+  button.onclick = () => {
+    if (!native) return onFallback();
+    share({ title: `${title}: My Papers (${count()})`, url: url() }).catch(
+      (error) => {
+        if (error?.name !== "AbortError") onFallback();
+      },
+    );
+  };
+  return button;
+}
