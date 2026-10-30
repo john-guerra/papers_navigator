@@ -8,6 +8,10 @@ const WATCH_TYPES = { a: "author", i: "affiliation" };
 const WATCH_CODES = { author: "a", affiliation: "i" };
 /** A link is attacker-controllable: cap how many watch rules one link can add. */
 export const MAX_SHARED_WATCHES = 50;
+/** Longest name a link can carry (real author/institution names are far shorter). */
+const MAX_WATCH_NAME = 200;
+/** Longest paper token (short ids are ~8–36 characters). */
+const MAX_ID_LENGTH = 64;
 
 /**
  * "#follow=<id>.<id>…[&watch=a:<name>,i:<institution>]" from short ids and watch rules (names
@@ -35,7 +39,7 @@ export function decodeShareHash(hash) {
     .slice(PREFIX.length)
     .split("&", 1)[0]
     .split(".", MAX_SHARED_PAPERS)
-    .filter((id) => VALID_ID.test(id));
+    .filter((id) => id.length <= MAX_ID_LENGTH && VALID_ID.test(id));
 }
 
 /**
@@ -56,13 +60,20 @@ export function decodeShareWatches(hash) {
   for (const entry of entries) {
     if (rules.length >= MAX_SHARED_WATCHES) break;
     const code = entry.slice(0, 1);
-    if (entry[1] !== ":" || !WATCH_TYPES[code]) continue;
+    // Skip overlong entries before decoding (an encoded character is at most 12 characters)
+    if (
+      entry[1] !== ":" ||
+      !WATCH_TYPES[code] ||
+      entry.length > MAX_WATCH_NAME * 12 + 2
+    )
+      continue;
     let value;
     try {
       value = decodeURIComponent(entry.slice(2)).trim();
     } catch {
       continue;
     }
+    if (value.length > MAX_WATCH_NAME) continue;
     const rule = normalizeRule({ type: WATCH_TYPES[code], value });
     if (!rule || seen.has(rule.id)) continue;
     seen.add(rule.id);

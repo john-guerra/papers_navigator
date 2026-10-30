@@ -142,3 +142,20 @@ describe("decodeShareHash with hostile input", () => {
     expect(decodeShareHash(huge)).toHaveLength(MAX_SHARED_PAPERS);
   });
 });
+
+describe("share link length caps", () => {
+  it("drops overlong watch names and paper ids", async () => {
+    const { decodeShareWatches, decodeShareHash } =
+      await import("../src/lib/share.js");
+    const long = "x".repeat(201);
+    expect(
+      decodeShareWatches(`#follow=&watch=a:${long},a:Ann`).map((r) => r.value),
+    ).toEqual(["Ann"]);
+    expect(
+      decodeShareWatches(`#follow=&watch=a:${"%C3%A9".repeat(201)}`),
+    ).toEqual([]);
+    expect(decodeShareHash(`#follow=${"a".repeat(65)}.abc12345`)).toEqual([
+      "abc12345",
+    ]);
+  });
+});
