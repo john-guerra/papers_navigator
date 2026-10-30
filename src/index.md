@@ -85,6 +85,7 @@ ${paperDetail}
   <h3>Appearance</h3>
   ${themeControl()}
   <h3>Advanced</h3>
+  ${advancedDr}
   <details class="navio-summary">
     <summary>Summary of the matching papers (navio)</summary>
     ${navioSummary}
@@ -274,15 +275,61 @@ const filtered = applyFilters(scored, { types, authors, affiliations, keywords, 
 ```
 
 ```js
-const projectionInput = Inputs.select(conference.projections, {
+// Advanced (#28): live projections, re-clustering and quality metrics. The panel (and Druid)
+// load only when its section is opened; it hands results back through these two values.
+const liveProjections = Mutable({});
+const liveClusters = Mutable(null);
+const setLive = ({ projections, clusters }) => {
+  if (projections !== liveProjections.value) liveProjections.value = projections;
+  if (clusters !== liveClusters.value) liveClusters.value = clusters;
+};
+const formatProjection = (d) => (conference.projections.includes(d) ? d.toUpperCase() : d);
+const mapState = { projection: conference.projections[0], panel: null };
+```
+
+```js
+const advancedDr = html`<details class="advanced-dr"><summary>Live projections, clusters and quality</summary></details>`;
+advancedDr.addEventListener("toggle", async () => {
+  if (!advancedDr.open || advancedDr.dataset.loaded) return;
+  advancedDr.dataset.loaded = "true";
+  const loading = html`<p class="muted">Loading…</p>`;
+  advancedDr.append(loading);
+  const { advancedPanel } = await import("./components/advancedPanel.js");
+  const panel = advancedPanel({
+    papers,
+    embeddings: toMatrix(embeddingsBuffer, papers.length),
+    dims: embeddingsBuffer.byteLength / 4 / papers.length,
+    projections,
+    currentProjection: () => mapState.projection,
+    format: formatProjection,
+    clusterDefaults: conference.clusters,
+  });
+  panel.addEventListener("input", () => setLive(panel.value));
+  mapState.panel = panel;
+  loading.replaceWith(panel);
+});
+```
+
+```js
+// Re-runs only when a projection is computed (the panel keeps the same object otherwise),
+// so the newly computed one is shown; clustering never changes the selection
+const projectionInput = Inputs.select([...conference.projections, ...Object.keys(liveProjections)], {
   label: "Projection",
-  format: (d) => d.toUpperCase(),
+  format: formatProjection,
+  value: Object.keys(liveProjections).at(-1),
 });
 const projection = Generators.input(projectionInput);
-const colorByInput = Inputs.select(new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"], ...(hasTopics ? [["Topic", "clusterLabel"]] : [])]), {
+```
+
+```js
+const colorByInput = Inputs.select(new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"], ...(hasTopics ? [["Topic", "clusterLabel"]] : []), ...(liveClusters ? [["Cluster (live)", "liveCluster"]] : [])]), {
   label: "Color by",
+  value: liveClusters ? "liveCluster" : undefined,
 });
 const colorBy = Generators.input(colorByInput);
+```
+
+```js
 // Topic labels at the cluster centers (#25), on by default
 const topicLabelsInput = hasTopics ? Inputs.toggle({ label: "Topic labels", value: true }) : null;
 const showTopics = topicLabelsInput ? Generators.input(topicLabelsInput) : false;
@@ -349,11 +396,16 @@ const resetMap = () => ++mapReset.value;
 ```js
 mapReset; // redraw (clearing the brush) when the map-region chip is cleared
 theme; // and when Appearance changes (colors come from the tokens)
-const positioned = applyProjection(filtered, projections[projection]).papers;
+// Live clusters (#28) are a per-paper field, so they color any projection
+// (papers in no cluster: null, so they color as Other; the tooltip says None)
+const withLiveClusters = (list) => (liveClusters ? list.map((p) => ({ ...p, liveCluster: liveClusters.byId[p.id], liveClusterName: liveClusters.byId[p.id] ?? "None" })) : list);
+const positioned = withLiveClusters(applyProjection(filtered, { ...projections, ...liveProjections }[projection]).papers);
+mapState.projection = projection;
+mapState.panel?.refreshCurrent();
 const hasQuery = Boolean(query?.trim()) && modelStatus === "ready";
 // Similarity only exists after a search; until then one neutral color
 const colorField = colorBy === "score" && !hasQuery ? null : colorBy;
-const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session", clusterLabel: "Topic" };
+const colorTitles = { score: "Similarity", typeLabel: "Type", room: "Room", sessionName: "Session", clusterLabel: "Topic", liveCluster: "Cluster (live)" };
 const mapInput = await BrushableScatterPlot(positioned, {
   color: colorField,
   colorType: colorBy === "score" && hasQuery ? "quantitative" : "nominal",
@@ -361,7 +413,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   // Size only echoes similarity, subtly (DESIGN.md: never a second variable)
   size: hasQuery ? "score" : null,
   // Hues for the 3 largest categories of the whole program, so filtering never repaints them
-  categories: colorField && colorField !== "score" ? topCategories(papers, colorField) : undefined,
+  categories: colorField && colorField !== "score" ? topCategories(withLiveClusters(papers), colorField) : undefined,
   // Read once (not reactive); later changes go through the "mine" signal below
   ringIds: store.value.map((d) => d.id),
   // Largest topics first: a label that would overlap a bigger topic's is left out
@@ -369,7 +421,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labelSize: mapWidth < 500 ? 10 : 11,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
   scoreDomain: hasQuery ? scoreRampDomain(scored) : null,
-  tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), "score"],
+  tooltip: ["title", "authorNames", "typeLabel", "sessionName", ...(hasTopics ? ["clusterLabel"] : []), ...(liveClusters ? ["liveClusterName"] : []), "score"],
   width: Math.max(260, mapWidth - 20),
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to “${query}”` : ""}`,
