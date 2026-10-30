@@ -1,0 +1,477 @@
+---
+version: alpha
+name: Papers Navigator — Proceedings
+description: >-
+  Visual identity and UX guidelines for the Papers Navigator, a reusable
+  conference paper explorer (first target IEEE VIS 2026). Editorial, warm
+  paper, serif titles, one oxblood accent. Light is the default theme; dark is
+  a selected variant (tokens prefixed `dark-`).
+colors:
+  # Light (default)
+  primary: "#903129" # oxblood accent: primary action, selected state, similarity
+  on-primary: "#fbf8f1"
+  primary-hover: "#78231d"
+  primary-container: "#ffe4e0" # soft accent: conflict notes, selected rows
+  on-primary-container: "#241e1a"
+  background: "#fcf9f3" # warm paper
+  surface: "#fffdfa" # nav, popovers, cards
+  surface-sunken: "#f6efe1" # active facet, highlighted text, hover
+  surface-hover: "#ece7df"
+  on-surface: "#241e1a" # ink
+  on-surface-muted: "#605954" # secondary text; also control outlines (>= 3:1)
+  outline: "#d8d3cc" # hairline rules, decorative only (1.4:1)
+  focus: "#1f74bf" # focus ring, the only blue in the UI
+  # Data visualization (light)
+  viz-similarity-1: "#d5958c" # weakest still-matching paper
+  viz-similarity-2: "#b14f45"
+  viz-similarity-3: "#75201a" # strongest match
+  viz-dim: "#e1ddd8" # filtered-out / outside brush
+  viz-neutral: "#605954" # points when no query and no color-by
+  viz-followed-ring: "#241e1a" # "in My Papers" ring
+  viz-cat-1: "#2a78d6"
+  viz-cat-2: "#eb6834"
+  viz-cat-3: "#1baf7a"
+  viz-cat-other: "#c9c3bb"
+  # Dark (selected variant)
+  dark-primary: "#eb8373"
+  dark-on-primary: "#16100f"
+  dark-primary-hover: "#fb9989"
+  dark-primary-container: "#492924"
+  dark-on-primary-container: "#eeebe5"
+  dark-background: "#181512"
+  dark-surface: "#221f1b"
+  dark-surface-sunken: "#2d2823"
+  dark-surface-hover: "#312d28"
+  dark-on-surface: "#eeebe5"
+  dark-on-surface-muted: "#aeaaa4"
+  dark-outline: "#413c38"
+  dark-focus: "#70b3f7"
+  dark-viz-similarity-1: "#8f4e44"
+  dark-viz-similarity-2: "#d67161"
+  dark-viz-similarity-3: "#ffa99a"
+  dark-viz-dim: "#3b3734"
+  dark-viz-followed-ring: "#eeebe5"
+  dark-viz-cat-1: "#3987e5"
+  dark-viz-cat-2: "#d95926"
+  dark-viz-cat-3: "#199e70"
+  dark-viz-cat-other: "#5a554f"
+typography:
+  display: # page titles ("My Papers"), room name on the Now card
+    fontFamily: Newsreader
+    fontSize: 1.75rem
+    fontWeight: 500
+    lineHeight: 1.1
+    letterSpacing: -0.01em
+  room: # room name in the Now card
+    fontFamily: Newsreader
+    fontSize: 1.875rem
+    fontWeight: 500
+    lineHeight: 1.05
+    letterSpacing: -0.015em
+  headline: # section heads ("Matching papers"), italic in use
+    fontFamily: Newsreader
+    fontSize: 1.25rem
+    fontWeight: 500
+    lineHeight: 1.2
+  search: # the search field text, italic in use
+    fontFamily: Newsreader
+    fontSize: 1.375rem
+    fontWeight: 400
+    lineHeight: 1.2
+  title-paper: # paper titles in lists
+    fontFamily: Newsreader
+    fontSize: 1.0625rem
+    fontWeight: 500
+    lineHeight: 1.3
+  brand:
+    fontFamily: Newsreader
+    fontSize: 1.1875rem
+    fontWeight: 500
+    lineHeight: 1
+  body-md:
+    fontFamily: Source Sans 3
+    fontSize: 0.9375rem
+    fontWeight: 400
+    lineHeight: 1.5
+  body-sm: # authors, abstracts in lists
+    fontFamily: Source Sans 3
+    fontSize: 0.8125rem
+    fontWeight: 400
+    lineHeight: 1.45
+  label-md: # buttons, tabs, chips
+    fontFamily: Source Sans 3
+    fontSize: 0.8125rem
+    fontWeight: 500
+    lineHeight: 1.2
+  label-caps: # group headers in popovers, "NOW · UNTIL 09:30"
+    fontFamily: Source Sans 3
+    fontSize: 0.6875rem
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: 0.08em
+  meta: # type · room · time line; counts
+    fontFamily: Source Sans 3
+    fontSize: 0.78125rem
+    fontWeight: 400
+    lineHeight: 1.3
+    fontFeature: '"tnum" 1'
+rounded:
+  none: 0px
+  sm: 3px # buttons, segmented controls, inputs with a box
+  md: 6px # popovers, cards, the Now card
+  lg: 12px # bottom sheets (top corners only)
+  full: 9999px # chips, badges, follow toggle, map marks
+spacing:
+  base: 4px
+  xs: 4px
+  sm: 8px
+  md: 12px
+  lg: 16px # phone side gutter
+  xl: 24px # list column padding
+  2xl: 28px # desktop page gutter
+  3xl: 40px
+  touch: 44px # minimum hit target on phones
+components:
+  nav-bar:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface-muted}"
+    typography: "{typography.label-md}"
+    height: 56px
+    padding: 0 28px
+  nav-tab-active:
+    textColor: "{colors.on-surface}"
+  badge-my-papers:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.meta}"
+    rounded: "{rounded.full}"
+    height: 20px
+    padding: 0 6px
+  search-field:
+    backgroundColor: transparent
+    textColor: "{colors.on-surface}"
+    typography: "{typography.search}"
+    rounded: "{rounded.none}"
+    height: 44px
+  relevance-segment:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface-muted}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.sm}"
+    height: 40px
+    padding: 0 14px
+  relevance-segment-selected:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+  chip:
+    backgroundColor: transparent
+    textColor: "{colors.on-surface}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.full}"
+    height: 28px
+    padding: 0 6px 0 10px
+  facet-button:
+    backgroundColor: transparent
+    textColor: "{colors.on-surface}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.sm}"
+    height: 30px
+    padding: 0 10px
+  facet-button-active:
+    backgroundColor: "{colors.surface-sunken}"
+    textColor: "{colors.on-surface}"
+  facet-button-open:
+    backgroundColor: "{colors.on-surface}"
+    textColor: "{colors.background}"
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.sm}"
+    height: 34px
+    padding: 0 14px
+  button-primary-hover:
+    backgroundColor: "{colors.primary-hover}"
+  button-secondary:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.sm}"
+    height: 34px
+    padding: 0 12px
+  button-text:
+    backgroundColor: transparent
+    textColor: "{colors.primary}"
+    typography: "{typography.label-md}"
+  follow-toggle:
+    backgroundColor: transparent
+    textColor: "{colors.primary}"
+    rounded: "{rounded.full}"
+    size: 28px
+  popover:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    rounded: "{rounded.md}"
+  bottom-sheet:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    rounded: "{rounded.lg}"
+  paper-row:
+    backgroundColor: transparent
+    textColor: "{colors.on-surface}"
+    typography: "{typography.title-paper}"
+    padding: 14px 0
+  now-card:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    rounded: "{rounded.md}"
+    padding: 16px
+  conflict-note:
+    backgroundColor: "{colors.primary-container}"
+    textColor: "{colors.on-primary-container}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.sm}"
+    padding: 8px 10px
+  toast:
+    backgroundColor: "{colors.on-surface}"
+    textColor: "{colors.background}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.sm}"
+    padding: 10px 14px
+---
+
+# Papers Navigator — Design
+
+Status: approved direction **A · Proceedings** (2026-10-29). Mockups: [Claude Design project](https://claude.ai/design/p/6ae09146-78b7-466f-9d56-e58c61ca6faa?file=Directions.dc.html) (directions) and [filters](https://claude.ai/design/p/6ae09146-78b7-466f-9d56-e58c61ca6faa?file=A+Filters.dc.html).
+
+This file follows the [DESIGN.md format](https://github.com/google-labs-code/design.md): the YAML front matter holds the **normative tokens**; the sections below explain how to apply them. After the standard sections come project-specific ones (Vocabulary, Interaction & State, Data Visualization, Emoji, Mobile, Accessibility, Building UI). What to build lives in the PRD (`docs/prd/2026-10-29-papers-navigator-prd.md`); story IDs like US4.3 refer to it.
+
+Check this file with `npx @google/design.md lint docs/DESIGN.md`.
+
+**Scope and authority.** This file describes the target look and behavior; it is built incrementally through the GitHub issues (CLAUDE.md → Workflow), not in one pass. Where the mockups and this file disagree, this file wins; the mockups are illustrative. Where this file and the PRD disagree on _what_ to build, the PRD wins and this file gets fixed. Decisions are logged at the end.
+
+## Overview
+
+The Papers Navigator helps a conference attendee find the papers they care about, keep a personal list, and know which room to be in, on a laptop while planning and on a phone at the venue.
+
+**Feel: a well-typeset proceedings volume that happens to be interactive.** Clean, elegant, with a research appeal; never a SaaS dashboard. Warm paper background, ink text, serif for anything you _read_ (titles, rooms, headings, the search query), a quiet sans for anything you _operate_ (buttons, labels, counts). One accent color, oxblood, carries meaning and nothing else. Hairline rules instead of boxes. Generous whitespace, but dense where scanning matters (lists, itineraries).
+
+**It must be particularly easy to use.** A first-time visitor understands the page in five seconds; an attendee between talks gets the room in two.
+
+### Design principles
+
+Every UI decision should be traceable to one of these. When a PR breaks one, it says which and why.
+
+1. **One concept, one mark.** A concept looks the same everywhere it appears. "In My Papers" is a ring on the map, a filled ring toggle in lists, and a count badge in the nav, never a color, never three different labels. Similarity is the oxblood ramp, nothing else is. (Consistency; Norman.)
+2. **No hidden state.** Every constraint narrowing what you see is visible on screen and removable in one click: the query, the relevance level, each facet, the map brush. If the list shows 12 of 283, the page says why. (Visibility of system status; Nielsen #1.)
+3. **Overview first, zoom and filter, then details on demand.** The map gives the landscape; search, relevance and facets narrow it; a paper opens for details. (Shneiderman's mantra.)
+4. **Recognition over recall.** Offer what exists instead of asking people to remember it: counted facet lists, example queries, autocomplete. (Nielsen #6.)
+5. **Make actions reversible instead of asking for confirmation.** Prefer Undo after the fact over "Are you sure?". The only confirmations are inline two-step ones for destroying a list (Replace). (Nielsen #3, #5.)
+6. **Say exactly what an action will do.** Buttons carry their count and target: "Add 96 to My Papers", "3 already there". A count on a button always equals what is listed. (US4.3.)
+7. **Data-ink first.** Chrome recedes: hairlines, muted labels, no decorative color, no gradients, no shadows except on floating layers. Ink goes to papers and data. (Tufte.)
+8. **The conference clock is the truth.** Times and days are always in the conference timezone, labelled (ET), never the device's.
+9. **Phone is a first-class target, not a fallback.** Full feature set on a 400px screen (Q2), with a layout designed for it, not squeezed.
+10. **Fast perceived performance.** Map visible in ~2 s; controls that depend on the model show a loading state, never a broken one (Q1).
+
+## Colors
+
+Tokens are in the front matter. Rules:
+
+- **Oxblood (`primary`) is reserved for meaning:** the one primary action on a screen, the selected state (relevance segment, follow toggle, active "Now"), the similarity ramp, and the My Papers badge. Never decoration, never headings, never borders.
+- **Ink (`on-surface`) for content, muted (`on-surface-muted`) for metadata.** Muted is also the outline for interactive controls that need a visible boundary (checkboxes, unchecked toggles), since it clears 3:1. `outline` (1.4:1) is for decorative hairlines only.
+- **`surface-sunken`** marks "active but not primary": an applied facet button, matched text in suggestions, a hovered row.
+- **`primary-container`** is for notes that need attention without alarm: schedule conflicts, "new since last update".
+- **Focus is blue (`focus`)**, the only blue in the UI, so keyboard focus is never confused with selection.
+- **Status colors are not part of this palette.** The app has no good/warning/error states beyond conflicts; those use `primary-container` plus a ⚠ marker and text, never color alone.
+- **Dark theme** is a selected variant, not an automatic inversion: use the `dark-*` tokens under `prefers-color-scheme: dark` and Framework's dark theme. It follows the OS setting; no manual toggle in Stage 1. Light is the default and the reference for screenshots.
+- Text contrast (WCAG): ink on paper 15.7:1, muted on paper 6.5:1, on-primary on primary 7.5:1; dark: 15.3, 7.9, 7.2. All AA.
+
+## Typography
+
+- **Newsreader** (serif, optical sizes) for what you read: paper titles, room names, page and section headings, the search query, the brand. Section heads and the query are set in _italic_.
+- **Source Sans 3** for what you operate: buttons, tabs, chips, labels, authors, metadata, counts.
+- **Numbers are tabular** (`font-feature-settings: "tnum"`) wherever they align or update: counts, times, scores.
+- Load both from Google Fonts with `display=swap`; fall back to Georgia / system-ui.
+- Paper titles wrap with `text-wrap: pretty`; never truncate a title with ellipsis. Author lists and abstracts may clamp to 2–4 lines with a "more" toggle, **never an inner scroll box**.
+- Uppercase only for `label-caps` (popover group headers, card kickers), always letter-spaced.
+- Measure: running text (abstracts) max 70ch.
+
+## Layout
+
+- **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (CLAUDE.md).
+- **Gutters:** 28px desktop, 16px phone. Spacing comes from the 4px scale in the tokens; don't invent values.
+- **Explore, desktop:** nav (56px) → controls band (search + relevance, then the facet strip) → body split **7fr map / 5fr list**, separated by a hairline. The map is sticky and fills the viewport height; the list scrolls.
+- **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **list first**; the map is behind a "Map" toggle, not above the list. The first paper must be visible without scrolling.
+- **My Papers, phone:** title + conference time → Now / Itinerary segmented control → content. A bottom tab bar (Explore · My Papers) with the badge.
+- **My Papers, desktop:** itinerary by day (tabs) with slots as rows; rules and list tools in a side column.
+- No horizontal page scroll at any width. Rows of sibling controls use flex/grid with `gap`, never margins between inline elements.
+
+## Elevation & Depth
+
+The page is flat paper. Structure comes from hairlines (`outline`) and whitespace, not boxes or shadows.
+
+- **Level 0** (everything on the page): no shadow.
+- **Level 1** (floating layers only: popovers, autocomplete, bottom sheets, toasts): `0 12px 32px -12px rgb(36 30 26 / .28), 0 2px 6px -2px rgb(36 30 26 / .12)`.
+- The Now card is distinguished by a 1.5px ink border, not a shadow.
+- No glassmorphism, no blur.
+
+## Shapes
+
+- Controls: `rounded.sm` (3px). Popovers and cards: `rounded.md` (6px). Sheets: `rounded.lg` on the top corners.
+- Pills (`rounded.full`) only for chips, the badge, the follow toggle and map marks.
+- The search field is an underline (1.5px ink), not a box, on desktop and phone.
+- No left-border accent stripes on cards.
+
+## Components
+
+Visual specs; tokens in the front matter. Behavior in _Interaction & State_.
+
+- **Nav bar.** Brand (Newsreader) + conference name in `label-caps` muted; tabs Explore · My Papers with **badge-my-papers** showing the list size on every page (US4.4). Active tab: ink text with a 2px ink underline.
+- **Search field.** Newsreader italic, underline only, placeholder hint in muted sans on the right ("ranked by meaning"). While the model loads: disabled with "Loading search model…" in the hint, never a spinner over the map.
+- **Relevance control.** Segmented control _Strong n · Good n · All n_ with counts; selected segment is `primary`. Replaces the score histogram in the default UI (the histogram may live in an advanced view).
+- **Facet strip.** A row of **facet buttons** under the search: `Type: Main tracks ▾ · Author ▾ · Institution ▾ · Keyword ▾ · Session ▾ │ Clear all` (a Day facet is optional, builder's call). A facet with a value shows it in the button ("Institution: Northeastern +1") on `surface-sunken`, with a ✕ that clears that facet, so **an active facet button is the chip for that facet**; the open facet is inverted (ink background). Each opens a **popover**: a search input (underline), a `label-caps` header ("Among matching papers"), rows of _checkbox · name · scent bar · count · row action (Watch)_, and a footer ("Show all 513"). Counts are crossfilter-style (computed with every other constraint applied). On phones the strip collapses into one "Filters (n)" button opening a bottom sheet with the facets stacked. The facet strip is a reactive widget; its API is specified in its own issue, not here.
+- **Chips.** For constraints not in the facet strip (topic query, map region): label in muted + value in ink + ✕. Pill, transparent with an `outline` border. Followed by "Clear all" as a text button.
+- **Buttons.** One **primary** per view (e.g. "Add 96 to My Papers"). **Secondary** for alternatives (Export, Share). **Text** buttons for tertiary actions (Clear all, Undo, Show all). Destructive actions are never primary-colored until the inline confirm step.
+- **Follow toggle.** A 28px circle (44px hit area on phones): empty ring = not in My Papers; ink ring with an oxblood dot = in My Papers. Same mark as the map ring. Tooltip/label: "Add to My Papers" / "In My Papers — remove".
+- **Paper row.** Title (`title-paper`), authors (`body-sm`, muted, matched names highlighted on `surface-sunken`), meta line (`meta`: type · **room** · day, time ET), follow toggle and score on the right. Separated by hairlines. Clicking the title expands the row in place (abstract, affiliations, award, links: preprint, supplemental, conference page), US8.1. A separate details view with its own URL and related papers is Stage 2 (US8.2–8.3); on phones it becomes a sheet.
+- **Map options.** A small secondary button in the map's top-right corner ("Options") opens a popover with view settings only: Projection (UMAP / t-SNE / PCA) and Color by (Similarity / Type / Room / Session). Filters never live here.
+- **Add bar.** Above the list: "Matching papers n" (headline italic) + primary "Add N to My Papers" + muted note "k already there". When all are in: disabled "✓ All n in My Papers".
+- **Toast.** Bottom-center, inverted (ink background). Always carries Undo when it reports a change: "Added 96 · Undo". Lives 10 s; never stacks more than one.
+- **Inline confirm.** Replaces the button in place: "Replace your 14 papers with these 2? [Replace] [Cancel]". No native `confirm()`.
+- **Now card (phone).** `label-caps` kicker in primary ("NOW · UNTIL 09:30") + "3 of yours"; room in `room` type; session name muted; my talks with times (current talk's time in primary); conflict note at the bottom. 1.5px ink border.
+- **Slot row (itinerary / Next).** Time (tabular, ink) · room (Newsreader) + session (muted) · count of my papers. Hairline separated.
+- **Conflict note.** `primary-container` background: "⚠ Also now: America center · How can I do this myself? · 1 of yours". Shows its own time range when it differs.
+- **Empty states** say what to do next, in one sentence and one action: "Nothing of yours right now. Next: 10:00, Essex north."
+
+## Do's and Don'ts
+
+**Do**
+
+- Use tokens via CSS custom properties; add a token here before using a new value.
+- Put the count on every bulk button and make it equal what's listed.
+- Show every active constraint on screen; make each removable.
+- Give every list-changing action an Undo.
+- Use serif for reading, sans for operating.
+- Keep the map's color for similarity (or one chosen category), and the ring for My Papers.
+
+**Don't**
+
+- Don't use default browser controls unstyled (selects, checkboxes, range inputs, `details` triangles). Style them to these tokens or use our widgets.
+- Don't use gradients (except the legend ramp), glassmorphism, drop shadows on in-page elements, or colored left-border cards.
+- Don't use the accent for decoration or headings.
+- Don't put nested scroll boxes inside rows.
+- Don't use Inter, Roboto or Arial.
+- Don't hide filters behind a drawer with no on-page trace.
+- Don't use `alert`/`confirm`/`prompt`.
+
+## Vocabulary
+
+UI copy uses these terms and only these (PRD §4). Sentence case everywhere.
+
+| Say                           | Meaning                                                                           | Never say                                          |
+| ----------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **Program**                   | everything presented at the conference                                            | data, items                                        |
+| **Matching papers**           | what's listed now after search, relevance, facets, map region                     | selected papers, selection, results in score range |
+| **My Papers**                 | the papers you keep                                                               | followed, favorites, my selection                  |
+| **Add to My Papers / Remove** | one-paper actions                                                                 | follow / unfollow, star                            |
+| **Watch**                     | a standing rule (person, institution, topic) whose papers are always in My Papers | subscribe, follow author                           |
+| **Reason**                    | why a paper is in My Papers ("🏫 Northeastern University")                        | tag, source                                        |
+| **Itinerary**                 | My Papers by day, slot, room                                                      | schedule preview, where to go                      |
+| **Now / Next**                | what's on for you at the current conference time                                  | live                                               |
+| **Strong / Good / All**       | relevance levels of a topic search                                                | score range, threshold                             |
+
+Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Thu Nov 12`, always with "ET" (from config) in headers.
+
+## Interaction & State
+
+- **Two things stay visibly separate:** _matching papers_ (temporary, what you see) and _My Papers_ (persistent, what you keep). Every control acts on exactly one of them, and its label says which.
+- **Three ways into My Papers:** the follow toggle on one paper; **Watch** on a person/institution/topic (a rule, kept in sync after re-scrapes); **Add N** for exactly the listed papers. No bulk remove on Explore.
+- **Composition is a visible chain:** query → relevance → facets → map region → list. The list header count equals the list. Adding an author or institution facet while a query is active switches relevance to _All_ (decided in issue #1), and says so in the toast.
+- **Feedback within 100 ms** for every click (state change in place); toasts for anything that changed My Papers.
+- **Undo over confirm** (principle 5). Removal of one paper: toast with Undo. Remove a rule: inline choice "Remove rule only / Remove rule and its 12 papers". Replace (share link, import): inline confirm showing what will be lost, plus a one-level backup.
+- **Hover is never required.** Anything shown on hover is also reachable by tap/focus.
+- **URL reflects shareable state** (query, facets, open paper) so a view can be linked.
+- **Loading:** map renders from static data first; search shows its loading state; nothing jumps when the model arrives.
+- **Motion:** 120–200 ms ease-out for popovers, sheets and toasts; no decorative animation; respect `prefers-reduced-motion`.
+
+## Data Visualization
+
+The map is the overview (principle 3). Rules:
+
+- **Position** = the 2D projection (UMAP default; t-SNE/PCA in advanced settings). No axes, no grid; a one-line caption explains it ("Similar papers sit close together").
+- **Color, with a query:** similarity on the oxblood **sequential ramp** `viz-similarity-1 → 3` (light → dark; in dark mode dim → bright). Papers below the current relevance level are `viz-dim`. Without a query and without color-by: `viz-neutral`.
+- **Size** may echo similarity subtly (radius ~2–5px); never encode a second variable with size (so the current "Size by" option goes away).
+- **Relevance levels** (Strong / Good / All) are cut points on the similarity score; how they're derived from the score distribution is left to the relevance-control issue. The ramp's light end starts at the Good cut.
+- **"Color by" a category** (type, room, session) is optional and replaces similarity. Scatterplots can only keep **three** categorical hues distinguishable for color-blind readers (validated: `viz-cat-1..3`), so: the three largest categories (or the ones the user picks in the legend) get `viz-cat-1..3`, everything else is `viz-cat-other`. Color follows the category, never its rank: a filter must not repaint survivors.
+- **In My Papers** = a 1.5px `viz-followed-ring` ring around the point, always on, independent of color-by. Same meaning as the follow toggle.
+- **Brush / map region:** points outside are `viz-dim`; the region becomes a chip ("Map region ✕").
+- **Hover** a point: tooltip with title, type, room, day/time. **Click**: open that paper's details (desktop: scroll to/expand it in the list; phone: details sheet). No hidden "clicked point" mode.
+- **Legend** always visible in a corner on `surface`: the ramp with "less / more similar" (or the categories), plus "◯ in My Papers".
+- **Scent bars** in facet lists: 4px bars in `primary` on an `outline` track, with the count as text beside them.
+- Charts follow the same tokens; no chart library defaults (Vega/Plot default schemes must be overridden).
+- Palettes were validated with the dataviz palette validator (CVD ΔE ≥ 9.2 for the three categorical slots, all pairs, both themes; sequential ramp monotone, single hue). Light `viz-cat-3` is 2.7:1 on paper, so categories always come with a legend.
+
+## Emoji & Iconography
+
+Emoji are welcome as **meaning markers**, a small fixed set, always followed by text, never alone and never decorative.
+
+| Marker | Meaning                           |
+| ------ | --------------------------------- |
+| 📍     | room                              |
+| 👥     | reason: friend (watched person)   |
+| 🏫     | reason: institution               |
+| 🔍     | reason: topic                     |
+| ★      | reason: added by hand             |
+| ⚠      | schedule conflict                 |
+| 🏆     | award                             |
+| 🆕     | new since the last program update |
+
+Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No hand-drawn complex SVG in the app.
+
+## Mobile & At the venue
+
+- **Phone layout is designed, not shrunk:** list first on Explore; Now first on My Papers during conference hours.
+- **Hit targets ≥ 44px**; primary controls in the bottom half of the screen when possible (bottom tab bar, sheets).
+- **The Now card answers "where do I go" in two seconds:** room name is the largest text on screen.
+- **Sharing on a phone** uses `navigator.share` when available ("Share list"); the QR code is for laptops ("Send to my phone").
+- **Works after first load on weak Wi-Fi** (US6.3): My Papers must not depend on the embedding model.
+- Map on phones: behind a "Map" toggle. Drag pans and pinch zooms by default; a **"Select region" mode button** turns drag into brushing (US2.2 on phones) and turns itself off after one selection, so the map never hijacks page scrolling.
+
+## Accessibility
+
+- WCAG 2.2 AA: text ≥ 4.5:1, UI boundaries and focus ≥ 3:1 (all tokens comply; see Colors).
+- Visible focus ring: 2px `focus`, 2px offset, on every interactive element.
+- Full keyboard use: facet popovers and autocomplete follow the listbox pattern (↑↓, Enter, Esc), `aria-expanded` on facet buttons, toasts in an `aria-live="polite"` region.
+- Never color alone: similarity has a legend and per-paper score text; My Papers has a ring + toggle state + label; conflicts have ⚠ + text.
+- The map has a text equivalent: the list is the accessible view of the same data.
+- Respect `prefers-reduced-motion` and `prefers-color-scheme`.
+
+## Building UI: reactive widgets
+
+We prefer **[reactive widgets](https://reactivewidgets.org)** for every interactive UI piece (facet strip, relevance control, map, list, follow toggle, itinerary).
+
+- A widget is a function `widget(data, options) → HTMLElement` whose **`.value`** is the user's selection and which **emits `input`** on user interaction and **updates itself when `.value` is set and an `input` event is dispatched** (so pages can drive it).
+- **Independent and reusable:** a widget imports nothing from `src/lib` or the conference config; everything it needs comes in through `data` and `options`. Actions that belong to the app (e.g. Watch) are injected through options/hooks.
+- **Styled only with this file's tokens** (CSS custom properties with sensible fallbacks), so it looks right here and can be reused elsewhere.
+- Pages compose widgets with `view()` / `Generators.input()`; the pipeline (search → relevance → facets → map → list) is wired in the page or `src/components/`, not inside widgets.
+- New widgets start in `src/widgets/`; once proven in production, extract them into their own npm package like `multi-auto-select`.
+- Each widget has jsdom tests for its `.value`/`input` contract.
+
+## Checking work
+
+- `npx @google/design.md lint docs/DESIGN.md` after editing this file.
+- UI PRs: screenshots at 1600×1000 and 400×860, light theme (plus dark when colors change), and a note of which principle(s) any deviation breaks.
+- Reviewers check: tokens only, vocabulary table, counts equal lists, Undo present, no default browser controls, no hidden constraints.
+
+## Decisions (2026-10-29)
+
+Decided by John:
+
+1. Visual direction **A · Proceedings** (over Instrument and Atlas).
+2. Filters as a **facet strip**, replacing the "Options" filter drawer; "Options" survives only as the map's view-settings popover.
+3. UI pieces are **reactive widgets**, independent and token-styled; the facet strip's API lives in its own issue; widgets become npm packages once proven.
+4. Emoji are fine as a fixed set of meaning markers.
+5. Phone map: region selection through an explicit "Select region" mode.
+6. Verb: **"Add to My Papers" / "Remove"** with a ring toggle, not Follow/Unfollow/★. This supersedes the wording in the selection-redesign doc.
+
+Calls made while writing this file (open to change): dark theme follows the OS with no toggle; map category colors capped at 3 + Other; phone Explore is list-first with the map behind a toggle; the score histogram leaves the default UI; Size by is removed; blue only for focus; the Day facet is optional; in Stage 1, details expand in place.
