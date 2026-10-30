@@ -46,3 +46,20 @@ describe("parseMyPapersFile validates entries (#65 review)", () => {
     ).toThrow();
   });
 });
+
+describe("My Papers file with research topics (#24)", () => {
+  it("keeps a topic's level, threshold and cached matches", () => {
+    const topic = {
+      id: "topic:llm",
+      type: "topic",
+      value: "llm",
+      level: "good",
+      threshold: 0.3,
+      matches: { a: 0.5 },
+      evaluatedOn: "2026-10-30T00:00:00.000Z",
+      addedOn: "2026-10-30T00:00:00.000Z",
+    };
+    const text = exportMyPapers({ followed, rules: [topic], exceptions: [] });
+    expect(parseMyPapersFile(text).rules).toEqual([topic]);
+  });
+});

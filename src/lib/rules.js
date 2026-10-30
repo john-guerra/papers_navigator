@@ -17,7 +17,13 @@
  * @property {string} id stable `${type}:${normalized value}`; adding the same rule twice keeps one
  * @property {RuleType} type
  * @property {string} value author name, institution, or topic query
- * @property {number} [threshold] topic only: minimum relevance score (0–1) to match
+ * @property {number} [threshold] topic only: minimum similarity score to match, an absolute
+ *   score fixed when the topic is saved (the level's cut then), so a re-scrape doesn't move it
+ * @property {"strong" | "good"} [level] topic only: the relevance level it was saved at
+ * @property {Record<string, number>} [matches] topic only: cached `paper id → score` of the
+ *   papers at or above the threshold, so My Papers works without the language model (#24)
+ * @property {string} [evaluatedOn] topic only: ISO date `matches` were computed; missing for a
+ *   rule that arrived without them (share link), which matches nothing until evaluated
  * @property {string} addedOn ISO date
  */
 /**
@@ -61,8 +67,39 @@ export function normalizeRule(rule, now = new Date()) {
     value,
     addedOn: isoOr(rule.addedOn, now),
   };
-  if (type === "topic") normalized.threshold = Number(rule.threshold) || 0;
+  if (type === "topic") Object.assign(normalized, topicFields(rule));
   return normalized;
+}
+
+const LEVELS = new Set(["strong", "good"]);
+/** Cached matches cap: more than any program; bounds work on an untrusted import. */
+const MAX_MATCHES = 10000;
+
+/** Topic-only fields, validated (rules come from files and links too). */
+function topicFields(rule) {
+  const threshold = Number(rule.threshold);
+  const fields = {
+    threshold: Number.isFinite(threshold) ? threshold : 0,
+    level: LEVELS.has(rule.level) ? rule.level : "good",
+  };
+  if (rule.matches && typeof rule.matches === "object") {
+    const entries = Object.entries(rule.matches)
+      .slice(0, MAX_MATCHES)
+      .filter(
+        ([id, score]) =>
+          id.length > 0 &&
+          id.length <= 64 &&
+          typeof score === "number" &&
+          Number.isFinite(score),
+      );
+    fields.matches = Object.fromEntries(entries);
+  }
+  if (
+    typeof rule.evaluatedOn === "string" &&
+    !Number.isNaN(Date.parse(rule.evaluatedOn))
+  )
+    fields.evaluatedOn = rule.evaluatedOn;
+  return fields;
 }
 
 /** Reason text shown for papers a rule brings in ("👥 Friend: Name", "🏫 …", "🔍 …"). */
@@ -75,7 +112,7 @@ export function ruleReason(rule) {
  * Authors and affiliations match the whole normalized name (no substrings, so
  * "University" does not watch every university). Topic rules do no search here: they
  * match when `scores` (Map or object, paper id → relevance) has a score ≥ threshold;
- * without scores a topic rule matches nothing (live evaluation lands with #24).
+ * without scores a topic rule matches nothing (evaluation: researchTopics.js, #24).
  */
 export function matches(rule, paper, { scores } = {}) {
   if (rule.type === "topic") {
@@ -92,7 +129,9 @@ export function matches(rule, paper, { scores } = {}) {
 function matchSets(rules, papers, scoresFor) {
   return new Map(
     rules.map((rule) => {
-      const scores = rule.type === "topic" ? scoresFor?.(rule) : undefined;
+      // Topic rules use the page's scores if given, else their cached matches (#24)
+      const scores =
+        rule.type === "topic" ? (scoresFor?.(rule) ?? rule.matches) : undefined;
       const ids = papers
         .filter((p) => matches(rule, p, { scores }))
         .map((p) => p.id);
@@ -215,14 +254,48 @@ export function createRulesStore(
       update((s) => {
         const existing = s.rules.find((r) => r.id === next.id);
         if (!existing) return { ...s, rules: [...s.rules, next] };
-        saved = { ...existing, threshold: next.threshold };
-        if (saved.threshold === undefined) delete saved.threshold;
+        saved = { ...existing };
+        if (next.type === "topic") {
+          // Re-saving a research topic replaces its level, threshold and (if given) matches;
+          // matches cached for another threshold are dropped until it is re-evaluated
+          const { matches, evaluatedOn, ...rest } = existing;
+          saved = { ...rest, threshold: next.threshold, level: next.level };
+          if (next.matches) {
+            saved.matches = next.matches;
+            if (next.evaluatedOn) saved.evaluatedOn = next.evaluatedOn;
+          } else if (matches && existing.threshold === next.threshold)
+            Object.assign(saved, { matches }, evaluatedOn && { evaluatedOn });
+        }
         return {
           ...s,
           rules: s.rules.map((r) => (r.id === next.id ? saved : r)),
         };
       });
       return saved;
+    },
+    /**
+     * Stores freshly computed matches of research topics (`[{id, threshold, matches,
+     * evaluatedOn}]`) in one write and one `input`. A rule removed, or re-saved with another
+     * threshold, meanwhile is left alone. Returns how many rules changed.
+     */
+    setMatches(updates) {
+      let changed = 0;
+      update((s) => ({
+        ...s,
+        rules: s.rules.map((rule) => {
+          const next = updates.find(
+            (u) => u.id === rule.id && u.threshold === rule.threshold,
+          );
+          if (!next) return rule;
+          changed++;
+          return {
+            ...rule,
+            matches: next.matches,
+            evaluatedOn: next.evaluatedOn,
+          };
+        }),
+      }));
+      return changed;
     },
     remove(ruleIds) {
       const drop = new Set(ruleIds);

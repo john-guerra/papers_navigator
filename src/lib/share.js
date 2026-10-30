@@ -4,23 +4,36 @@ const PREFIX = "#follow=";
 const VALID_ID = /^[A-Za-z0-9_-]+$/;
 
 const WATCH = "&watch=";
-const WATCH_TYPES = { a: "author", i: "affiliation" };
-const WATCH_CODES = { author: "a", affiliation: "i" };
+const WATCH_TYPES = { a: "author", i: "affiliation", t: "topic" };
+const WATCH_CODES = { author: "a", affiliation: "i", topic: "t" };
+const LEVEL_CODES = { strong: "s", good: "g" };
+const LEVELS = { s: "strong", g: "good" };
+/** A research topic's "<level><threshold>" in a link, e.g. "g0.3" (thresholds are -1…1). */
+const TOPIC_META = /^([sg])(-?[01](?:\.\d{1,4})?)$/;
 /** A link is attacker-controllable: cap how many watch rules one link can add. */
 export const MAX_SHARED_WATCHES = 50;
 /** Longest name a link can carry (real author/institution names are far shorter). */
 const MAX_WATCH_NAME = 200;
+/** Longest research topic query a link can carry. */
+const MAX_TOPIC_QUERY = 300;
 /** Longest paper token (short ids are ~8–36 characters). */
 const MAX_ID_LENGTH = 64;
 
+/** "a:<name>", "i:<institution>" or "t:<level code><threshold>:<query>" (text URI-encoded). */
+function encodeWatch(rule) {
+  const text = encodeURIComponent(rule.value);
+  if (rule.type !== "topic") return `${WATCH_CODES[rule.type]}:${text}`;
+  const threshold = Math.round((Number(rule.threshold) || 0) * 1e4) / 1e4;
+  return `t:${LEVEL_CODES[rule.level] ?? "g"}${threshold}:${text}`;
+}
+
 /**
- * "#follow=<id>.<id>…[&watch=a:<name>,i:<institution>]" from short ids and watch rules (names
- * URI-encoded); "" when there is nothing to share.
+ * "#follow=<id>.<id>…[&watch=a:<name>,i:<institution>,t:g0.3:<query>]" from short ids and watch
+ * rules; "" when there is nothing to share. A research topic travels as its query, level and
+ * threshold, not its cached matches (the receiving page re-evaluates it, #24).
  */
 export function encodeShareHash(shortIds, rules = []) {
-  const watches = rules
-    .filter((r) => WATCH_CODES[r.type])
-    .map((r) => `${WATCH_CODES[r.type]}:${encodeURIComponent(r.value)}`);
+  const watches = rules.filter((r) => WATCH_CODES[r.type]).map(encodeWatch);
   if (!shortIds.length && !watches.length) return "";
   return (
     PREFIX +
@@ -43,9 +56,9 @@ export function decodeShareHash(hash) {
 }
 
 /**
- * Watch rules ({type, value}) from a share hash: malformed entries and duplicates (by rule id,
- * so case and accents are ignored) are dropped, at most MAX_SHARED_WATCHES. Only
- * person/institution rules travel in links; topic rules (#24) and exceptions stay on the device.
+ * Watch rules ({type, value}, plus {level, threshold} for research topics) from a share hash:
+ * malformed entries and duplicates (by rule id, so case and accents are ignored) are dropped, at
+ * most MAX_SHARED_WATCHES. Exceptions and cached topic matches stay on the device.
  * The hash is attacker-controllable, so work is bounded: entries scanned are capped and parsing
  * stops once enough rules are collected.
  */
@@ -61,23 +74,32 @@ export function decodeShareWatches(hash) {
     if (rules.length >= MAX_SHARED_WATCHES) break;
     const code = entry.slice(0, 1);
     // Skip overlong entries before decoding (an encoded character is at most 12 characters)
-    if (
-      entry[1] !== ":" ||
-      !WATCH_TYPES[code] ||
-      entry.length > MAX_WATCH_NAME * 12 + 2
-    )
-      continue;
+    const type = WATCH_TYPES[code];
+    const maxText = type === "topic" ? MAX_TOPIC_QUERY : MAX_WATCH_NAME;
+    if (entry[1] !== ":" || !type || entry.length > maxText * 12 + 12) continue;
+    let text = entry.slice(2);
+    const topic = {};
+    if (type === "topic") {
+      const colon = text.indexOf(":");
+      const meta = colon > 0 && TOPIC_META.exec(text.slice(0, colon));
+      if (!meta || Math.abs(Number(meta[2])) > 1) continue;
+      Object.assign(topic, {
+        level: LEVELS[meta[1]],
+        threshold: Number(meta[2]),
+      });
+      text = text.slice(colon + 1);
+    }
     let value;
     try {
-      value = decodeURIComponent(entry.slice(2)).trim();
+      value = decodeURIComponent(text).trim();
     } catch {
       continue;
     }
-    if (value.length > MAX_WATCH_NAME) continue;
-    const rule = normalizeRule({ type: WATCH_TYPES[code], value });
+    if (value.length > maxText) continue;
+    const rule = normalizeRule({ type, value, ...topic });
     if (!rule || seen.has(rule.id)) continue;
     seen.add(rule.id);
-    rules.push({ type: rule.type, value: rule.value });
+    rules.push({ type: rule.type, value: rule.value, ...topic });
   }
   return rules;
 }

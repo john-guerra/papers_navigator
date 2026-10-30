@@ -368,24 +368,27 @@ Visual specs; tokens in the front matter. Behavior in _Interaction & State_.
 
 UI copy uses these terms and only these (PRD §4). Sentence case everywhere.
 
-| Say                           | Meaning                                                                           | Never say                                          |
-| ----------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
-| **Program**                   | everything presented at the conference                                            | data, items                                        |
-| **Matching papers**           | what's listed now after search, relevance, facets, map region                     | selected papers, selection, results in score range |
-| **My Papers**                 | the papers you keep                                                               | followed, favorites, my selection                  |
-| **Add to My Papers / Remove** | one-paper actions                                                                 | follow / unfollow, star                            |
-| **Watch**                     | a standing rule (person, institution, topic) whose papers are always in My Papers | subscribe, follow author                           |
-| **Reason**                    | why a paper is in My Papers ("🏫 Northeastern University")                        | tag, source                                        |
-| **Itinerary**                 | My Papers by day, slot, room                                                      | schedule preview, where to go                      |
-| **Now / Next**                | what's on for you at the current conference time                                  | live                                               |
-| **Strong / Good / All**       | relevance levels of a topic search                                                | score range, threshold                             |
+| Say                           | Meaning                                                                                            | Never say                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Program**                   | everything presented at the conference                                                             | data, items                                                |
+| **Matching papers**           | what's listed now after search, relevance, facets, map region                                      | selected papers, selection, results in score range         |
+| **My Papers**                 | the papers you keep                                                                                | followed, favorites, my selection                          |
+| **Add to My Papers / Remove** | one-paper actions                                                                                  | follow / unfollow, star                                    |
+| **Watch**                     | a standing rule (person, institution, research topic) whose papers are always in My Papers         | subscribe, follow author                                   |
+| **Research topic**            | a search watched as a rule at Strong or Good ("🔍 LLM agents"); kept in sync after program updates | saved search, alert, topic (that word is for map clusters) |
+| **Topic**                     | a cluster of similar papers on the map (US2.3), with its label                                     | research topic, category                                   |
+| **Reason**                    | why a paper is in My Papers ("🏫 Northeastern University")                                         | tag, source                                                |
+| **Itinerary**                 | My Papers by day, slot, room                                                                       | schedule preview, where to go                              |
+| **Now / Next**                | what's on for you at the current conference time                                                   | live                                                       |
+| **Strong / Good / All**       | relevance levels of a search (a research topic is watched at Strong or Good)                       | score range, threshold                                     |
 
 Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Thu Nov 12`, always with "ET" (from config) in headers.
 
 ## Interaction & State
 
 - **Two things stay visibly separate:** _matching papers_ (temporary, what you see) and _My Papers_ (persistent, what you keep). Every control acts on exactly one of them, and its label says which.
-- **Three ways into My Papers:** the follow toggle on one paper; **Watch** on a person/institution/topic (a rule, kept in sync after re-scrapes); **Add N** for exactly the listed papers. No bulk remove on Explore.
+- **Three ways into My Papers:** the follow toggle on one paper; **Watch** on a person/institution, or "Watch this research topic" on a search (a rule, kept in sync after re-scrapes); **Add N** for exactly the listed papers. No bulk remove on Explore.
+- **Research topics** (#24): "Watch this research topic" sits under the relevance control and opens an inline preview (no dialog): Strong / Good with the count in the whole program (all types, not just the matching papers), how many would join My Papers, and the papers just in and just out. The rule keeps the score cut of the chosen level at save time, plus its matches, so My Papers shows them without the language model; pages re-evaluate them in the background after first paint (skipped with Save-Data, then a quiet note says matches are pending). The Watching section shows each rule's count and where its papers fall (papers per day, busiest session).
 - **Composition is a visible chain:** query → relevance → facets → map region → list. The list header count equals the list. Adding an author or institution facet while a query is active switches relevance to _All_ (decided in issue #1), and says so in the toast.
 - **Feedback within 100 ms** for every click (state change in place); toasts for anything that changed My Papers.
 - **Undo over confirm** (principle 5). Removal of one paper: toast with Undo. Remove a rule: inline choice "Remove rule only / Remove rule and its 12 papers". Replace (share link, import): inline confirm showing what will be lost, plus a one-level backup.
@@ -421,7 +424,7 @@ Emoji are welcome as **meaning markers**, a small fixed set, always followed by 
 | 📍     | room                              |
 | 👥     | reason: friend (watched person)   |
 | 🏫     | reason: institution               |
-| 🔍     | reason: topic                     |
+| 🔍     | reason: research topic            |
 | ★      | reason: added by hand             |
 | ⚠      | schedule conflict                 |
 | 🏆     | award                             |
