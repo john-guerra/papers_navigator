@@ -132,7 +132,7 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 ### Search by meaning
 
 1. Type what you are looking for in plain words, for example ${conference.exampleQueries?.slice(0, 3).map((q) => `“${q}”`).join(", ") ?? "a topic"}. Or tap one of the example searches in the introduction under the title.
-2. Results are ranked by meaning, not keywords: a paper can match without using your exact words. The search box says "Loading the language model…" until the model is ready (the first visit downloads it).
+2. Results are ranked by meaning, not keywords: a paper can match without using your exact words. Until the model is ready (the first visit downloads it), Explore lists the whole program and a search shows keyword matches, as the line under the search box says.
 3. Pick how close a match must be with **Strong · Good · Weak · All**; each shows how many papers it includes. **Good** is the default. Each paper shows its similarity on the right of its row (for example "54%").
 
 ### Filter the program

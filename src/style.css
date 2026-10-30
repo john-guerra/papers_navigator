@@ -804,6 +804,13 @@ a.navbar-brand {
   align-items: center;
 }
 
+/* What the list shows until the language model is ready (#120): one calm line */
+.search-status {
+  margin: var(--spacing-xs, 4px) 0 0;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
 .map-controls {
   display: flex;
   flex-wrap: wrap;
