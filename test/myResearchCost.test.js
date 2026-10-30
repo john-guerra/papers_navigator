@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createVectorCache,
   hashText,
+  pruneVectorCache,
   programFingerprint,
   researchCuts,
   researchVectors,
@@ -80,6 +81,35 @@ describe("createVectorCache", () => {
     cache.set("c", new Float32Array([3]));
     expect(cache.get("a")).toBeUndefined();
     expect([...cache.get("c")]).toEqual([3]);
+  });
+});
+
+describe("pruneVectorCache", () => {
+  it("drops cached vectors of abstracts no rule uses any more, also from storage", async () => {
+    const storage = memoryStorage();
+    const cache = createVectorCache("conf", storage);
+    const embed = vi.fn(async () => new Float32Array([1, 0]));
+    await researchVectors(embed, ["kept", "gone"], cache);
+    pruneVectorCache(cache, [
+      { type: "topic", value: "Mine", research: ["kept"] },
+      { type: "author", value: "Ann" },
+    ]);
+    embed.mockClear();
+    const again = createVectorCache("conf", storage);
+    await researchVectors(embed, ["kept"], again);
+    expect(embed).not.toHaveBeenCalled();
+    await researchVectors(embed, ["gone"], again);
+    expect(embed).toHaveBeenCalledTimes(1);
+  });
+
+  it("empties the cache when no rule has abstracts", async () => {
+    const storage = memoryStorage();
+    const cache = createVectorCache("conf", storage);
+    await researchVectors(async () => [1, 0], ["a"], cache);
+    pruneVectorCache(cache, []);
+    expect(storage.data["papersNavigator:conf:researchVectors"] ?? "{}").toBe(
+      "{}",
+    );
   });
 });
 

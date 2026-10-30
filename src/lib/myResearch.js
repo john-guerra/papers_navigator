@@ -198,7 +198,29 @@ export function createVectorCache(
         console.warn("Could not clear research vectors", error);
       }
     },
+    /** Keeps only these keys (memory and storage). */
+    retain(keys) {
+      const keep = new Set(keys);
+      if (!keep.size) return this.clear();
+      for (const k of Object.keys(entries)) if (!keep.has(k)) delete entries[k];
+      for (const k of [...memory.keys()]) if (!keep.has(k)) memory.delete(k);
+      try {
+        storage?.setItem(key, JSON.stringify(entries));
+      } catch (error) {
+        console.warn("Could not cache research vectors", error);
+      }
+    },
   };
+}
+
+/**
+ * Drops cached vectors of abstracts that no rule uses any more (after "Delete from this device":
+ * vectors are derived from private text, so they go with it).
+ */
+export function pruneVectorCache(cache, ruleList) {
+  cache.retain(
+    ruleList.flatMap((r) => (r.research ?? []).map((a) => vectorKey(a))),
+  );
 }
 
 /**

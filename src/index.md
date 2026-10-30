@@ -8,7 +8,7 @@ import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore, matches, normalizeRule } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
 import { researchRule, startTopicRefresh, thresholdFor, topicPreview, topicRule } from "./lib/researchTopics.js";
-import { createResearchStore, createVectorCache, programFingerprint, rankByMaxSimilarity, researchCuts, researchLabel, researchVectors, splitAbstracts } from "./lib/myResearch.js";
+import { createResearchStore, createVectorCache, programFingerprint, pruneVectorCache, rankByMaxSimilarity, researchCuts, researchLabel, researchVectors, splitAbstracts } from "./lib/myResearch.js";
 import { myResearch } from "./components/myResearch.js";
 import { topicWatch } from "./components/topicWatch.js";
 import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
@@ -210,10 +210,9 @@ const myResearchInput = myResearch(
       const previous = researchStore.value;
       const stopped = rulesStore.value.rules.filter((r) => topics.includes(r.id));
       researchStore.forget();
-      if (stopped.length) {
-        store.unwatch(topics);
-        researchVectorCache.clear();
-      }
+      if (stopped.length) store.unwatch(topics);
+      // Vectors go with the text: keep only those of abstracts saved research topics still use
+      pruneVectorCache(researchVectorCache, rulesStore.value.rules);
       const what = stopped.length ? `Deleted your abstracts and stopped watching ${stopped.map((r) => `“${r.value}”`).join(", ")}` : "Deleted your abstracts from this device";
       showToast(what, {
         actionLabel: "Undo",
