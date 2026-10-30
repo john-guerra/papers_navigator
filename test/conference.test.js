@@ -18,3 +18,17 @@ describe("conference config", () => {
     expect(config.timezone).toBe("US/Eastern");
   });
 });
+
+describe("publicConfig", () => {
+  it("drops server-only deploy fields before the config reaches the browser", async () => {
+    const { publicConfig } = await import("../src/lib/conference.js");
+    const pub = publicConfig({
+      id: "x",
+      name: "X",
+      deployDir: "papersNavigator/x",
+      legacyDirs: ["xPapers"],
+      deployPath: "/var/www/a",
+    });
+    expect(pub).toEqual({ id: "x", name: "X" });
+  });
+});

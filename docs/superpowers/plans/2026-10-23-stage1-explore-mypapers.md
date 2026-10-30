@@ -275,7 +275,7 @@ nowItem = first item of now.recommended whose end > now
 - Create: `scripts/deploy.sh`, `README.md`
 - Modify: `CLAUDE.md` (replace the "Status" section with real commands)
 
-- [ ] **Step 1:** `scripts/deploy.sh` runs `CONFERENCE=${1:-ieeevis2026} npm run build`, then `rsync -avz --delete -e "ssh -i /Users/aguerra/Dropbox/dutoVizNew.pem" dist/ ubuntu@johnguerra.co:<deployPath from config>/`. It reads `deployPath` with `node -e`.
+- [ ] **Step 1:** `scripts/deploy.sh` runs `CONFERENCE=${1:-ieeevis2026} npm run build`, then `rsync -avz --delete` of `dist/` to the server (host, user, key and web root come from the gitignored `.env.deploy`). It reads `deployPath` with `node -e`.
 - [ ] **Step 2:** Write a README covering what the site is, the pipeline commands (Tasks 2–3), `npm run dev/test/build`, deploying, and how to add a conference (config + fetcher emitting the §5.2 format).
 - [ ] **Step 3:** Update CLAUDE.md: commands, a single-test example (`npx vitest run test/schedule.test.js -t "workshop"`, `.venv/bin/pytest pipeline/tests/test_fetch_ieeevis.py::test_parse_paper`), and the data flow.
 - [ ] **Step 4:** Run `npm test && npm run lint && .venv/bin/pytest pipeline`. Expected: all green.
