@@ -17,7 +17,7 @@
                                  --typography-meta-font-feature-settings where
                                  the token sets them
 
-   Dark mode follows the OS (`prefers-color-scheme`, no toggle): the `dark-*`
+   Dark mode follows the OS (`prefers-color-scheme`) unless Appearance forces light/dark (`data-theme`): the `dark-*`
    colors are not separate properties; they redefine the same `--color-*`
    names, so code only ever uses the semantic name. Widgets use them with a
    fallback, e.g. `var(--color-surface-sunken, #f6efe1)`.
@@ -116,8 +116,39 @@
   --theme-blue: var(--color-primary);
 }
 
+/* Dark tokens: chosen in Appearance (data-theme="dark"), or "Auto" with a dark OS */
+:root[data-theme="dark"] {
+  --color-primary: #eb8373;
+  --color-on-primary: #16100f;
+  --color-primary-hover: #fb9989;
+  --color-primary-container: #492924;
+  --color-on-primary-container: #eeebe5;
+  --color-background: #181512;
+  --color-surface: #221f1b;
+  --color-surface-sunken: #2d2823;
+  --color-surface-hover: #312d28;
+  --color-on-surface: #eeebe5;
+  --color-on-surface-muted: #aeaaa4;
+  --color-outline: #413c38;
+  --color-focus: #70b3f7;
+  --color-viz-similarity-1: #8f4e44;
+  --color-viz-similarity-2: #d67161;
+  --color-viz-similarity-3: #ffa99a;
+  --color-viz-dim: #3b3734;
+  /* DESIGN.md defines no dark-viz-neutral; muted ink is the light value's role */
+  --color-viz-neutral: #aeaaa4;
+  --color-viz-followed-ring: #eeebe5;
+  --color-viz-cat-1: #3987e5;
+  --color-viz-cat-2: #d95926;
+  --color-viz-cat-3: #199e70;
+  --color-viz-cat-other: #5a554f;
+  --elevation-1:
+    0 12px 32px -12px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --color-primary: #eb8373;
     --color-on-primary: #16100f;
     --color-primary-hover: #fb9989;
@@ -1420,4 +1451,21 @@ details.missing > summary {
   .relevance-control button {
     min-height: 44px;
   }
+}
+
+/* Appearance (Auto / Light / Dark) — reuses the segmented relevance-control look */
+.theme-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+}
+
+.theme-label {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-md);
+}
+
+/* In Map options the "Appearance" heading already names the control */
+.filters-panel .theme-label {
+  display: none;
 }

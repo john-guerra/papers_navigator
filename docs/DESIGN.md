@@ -283,7 +283,7 @@ Tokens are in the front matter. Rules:
 - **`primary-container`** is for notes that need attention without alarm: schedule conflicts, "new since last update".
 - **Focus is blue (`focus`)**, the only blue in the UI, so keyboard focus is never confused with selection.
 - **Status colors are not part of this palette.** The app has no good/warning/error states beyond conflicts; those use `primary-container` plus a ⚠ marker and text, never color alone.
-- **Dark theme** is a selected variant, not an automatic inversion: use the `dark-*` tokens under `prefers-color-scheme: dark` and Framework's dark theme. It follows the OS setting; no manual toggle in Stage 1. Light is the default and the reference for screenshots.
+- **Dark theme** is a selected variant, not an automatic inversion: use the `dark-*` tokens. An **Appearance toggle (Auto · Light · Dark)** is OK and lives in Options (Explore) and the My Papers tools: Auto follows `prefers-color-scheme`, Light/Dark force a theme via `data-theme` on `<html>`, remembered per browser and applied before first paint. Light is the default and the reference for screenshots.
 - Text contrast (WCAG): ink on paper 15.7:1, muted on paper 6.5:1, on-primary on primary 7.5:1; dark: 15.3, 7.9, 7.2. All AA.
 
 ## Typography
@@ -301,7 +301,7 @@ Tokens are in the front matter. Rules:
 - **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (CLAUDE.md).
 - **Gutters:** 28px desktop, 16px phone. Spacing comes from the 4px scale in the tokens; don't invent values.
 - **Explore, desktop:** nav (56px) → controls band (search + relevance, then the facet strip) → body split **7fr map / 5fr list**, separated by a hairline. The map is sticky and fills the viewport height; the list scrolls.
-- **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **list first**; the map is behind a "Map" toggle, not above the list. The first paper must be visible without scrolling.
+- **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **map** (visible by default, "Hide map" tucks it away; decision 8) → list. The map never captures page scrolling (see Mobile & At the venue).
 - **My Papers, phone:** title + conference time → Now / Itinerary segmented control → content. A bottom tab bar (Explore · My Papers) with the badge.
 - **My Papers, desktop:** itinerary by day (tabs) with slots as rows; rules and list tools in a side column.
 - No horizontal page scroll at any width. Rows of sibling controls use flex/grid with `gap`, never margins between inline elements.
@@ -430,12 +430,12 @@ Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No
 
 ## Mobile & At the venue
 
-- **Phone layout is designed, not shrunk:** list first on Explore; Now first on My Papers during conference hours.
+- **Phone layout is designed, not shrunk:** on Explore the map shows right after search, filters and relevance, then the list; Now first on My Papers during conference hours.
 - **Hit targets ≥ 44px**; primary controls in the bottom half of the screen when possible (bottom tab bar, sheets).
 - **The Now card answers "where do I go" in two seconds:** room name is the largest text on screen.
 - **Sharing on a phone** uses `navigator.share` when available ("Share list"); the QR code is for laptops ("Send to my phone").
 - **Works after first load on weak Wi-Fi** (US6.3): My Papers must not depend on the embedding model.
-- Map on phones: behind a "Map" toggle. Drag pans and pinch zooms by default; a **"Select region" mode button** turns drag into brushing (US2.2 on phones) and turns itself off after one selection, so the map never hijacks page scrolling.
+- Map on phones: visible by default (John wants the visualization on his phone), with a "Hide map" toggle. It ignores touches by default so page scrolling always works; a **"Select region" mode button** turns drag into brushing (US2.2 on phones) and turns itself off after one selection, so the map never hijacks page scrolling.
 
 ## Accessibility
 
@@ -473,5 +473,7 @@ Decided by John:
 4. Emoji are fine as a fixed set of meaning markers.
 5. Phone map: region selection through an explicit "Select region" mode.
 6. Verb: **"Add to My Papers" / "Remove"** with a ring toggle, not Follow/Unfollow/★. This supersedes the wording in the selection-redesign doc.
+7. (2026-10-30) An **Appearance toggle** (Auto · Light · Dark) is OK; Auto follows the OS.
+8. (2026-10-30) On phones the **map is visible by default** ("Hide map" to tuck it away), not list-first.
 
-Calls made while writing this file (open to change): dark theme follows the OS with no toggle; map category colors capped at 3 + Other; phone Explore is list-first with the map behind a toggle; the score histogram leaves the default UI; Size by is removed; blue only for focus; the Day facet is optional; in Stage 1, details expand in place.
+Calls made while writing this file (open to change): map category colors capped at 3 + Other; the score histogram leaves the default UI; Size by is removed; blue only for focus; the Day facet is optional; in Stage 1, details expand in place.

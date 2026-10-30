@@ -15,6 +15,7 @@ import { facetStrip } from "./widgets/facetStrip.js";
 import { BrushableScatterPlot, topCategories } from "./widgets/brushableScatterPlot.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { relevanceControl } from "./widgets/relevanceControl.js";
+import { themeControl } from "./components/themeControl.js";
 import { PapersList } from "./widgets/papersList.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
@@ -70,6 +71,8 @@ const typeLabels = typeNames(papers, conference.typeNames);
   <div class="filters-header"><h2>Map options</h2>${filtersClose}</div>
   <h3>Dimensionality reduction</h3>
   ${projectionInput}
+  <h3>Appearance</h3>
+  ${themeControl()}
   ${filtersDone}
 </aside>
 </div>
@@ -278,6 +281,19 @@ const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 const lastScrolled = { id: null };
 const relevanceState = { level: "good", people: 0 };
 const listState = { key: null, shown: 100 };
+// The map reads its colors from CSS tokens when drawn: redraw when Appearance changes
+const theme = Generators.observe((notify) => {
+  // Auto follows the OS, so an OS switch also changes the colors
+  const os = matchMedia("(prefers-color-scheme: dark)");
+  const update = () => notify(`${document.documentElement.dataset.theme ?? "auto"}:${os.matches}`);
+  update();
+  addEventListener("themechange", update);
+  os.addEventListener("change", update);
+  return () => {
+    removeEventListener("themechange", update);
+    os.removeEventListener("change", update);
+  };
+});
 // Bumped by the "Map region ✕" chip: redraws the map without its brush
 const mapReset = Mutable(0);
 const resetMap = () => ++mapReset.value;
@@ -285,6 +301,7 @@ const resetMap = () => ++mapReset.value;
 
 ```js
 mapReset; // redraw (clearing the brush) when the map-region chip is cleared
+theme; // and when Appearance changes (colors come from the tokens)
 const positioned = applyProjection(filtered, projections[projection]).papers;
 const hasQuery = Boolean(query?.trim()) && modelStatus === "ready";
 // Similarity only exists after a search; until then one neutral color
