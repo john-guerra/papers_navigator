@@ -121,3 +121,17 @@ describe("renderShareBanner with watch rules (#49)", () => {
     expect(onMerge).toHaveBeenCalled();
   });
 });
+
+describe("renderShareDialog QR limit by link length", () => {
+  it("skips the QR code when the link is too long to scan, whatever the paper count", async () => {
+    const { renderShareDialog } =
+      await import("../src/components/shareDialog.js");
+    const el = renderShareDialog(
+      `https://example.org/#follow=&watch=${"i:x,".repeat(400)}`,
+      { count: 0 },
+    );
+    expect(el.textContent.replace(/\s+/g, " ")).toMatch(
+      /too long for a QR code/i,
+    );
+  });
+});

@@ -4,12 +4,17 @@ import QRCode from "qrcode";
 
 /** Above this many papers a QR code gets too dense for phones to scan (~1 KB). */
 export const QR_MAX_PAPERS = 100;
+/** Links longer than this (papers + watch rules) make QR codes too dense to scan. */
+export const QR_MAX_URL_LENGTH = 1000;
 
 /** Link + copy button + QR code for sending the followed list to another device. */
 export function renderShareDialog(url, { count = 0 } = {}) {
   const qr = html`<div class="share-qr"></div>`;
   if (count > QR_MAX_PAPERS) {
     qr.textContent = `You follow ${count} papers, too many papers for a QR code. Copy the link instead, or use Export JSON.`;
+  } else if (url.length > QR_MAX_URL_LENGTH) {
+    qr.textContent =
+      "This link is too long for a QR code (many papers or watches). Copy the link instead, or use Export JSON.";
   } else {
     const canvas = document.createElement("canvas");
     qr.append(canvas);

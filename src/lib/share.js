@@ -4,6 +4,8 @@ const VALID_ID = /^[A-Za-z0-9_-]+$/;
 const WATCH = "&watch=";
 const WATCH_TYPES = { a: "author", i: "affiliation" };
 const WATCH_CODES = { author: "a", affiliation: "i" };
+/** A link is attacker-controllable: cap how many watch rules one link can add. */
+export const MAX_SHARED_WATCHES = 50;
 
 /**
  * "#follow=<id>.<id>…[&watch=a:<name>,i:<institution>]" from short ids and watch rules (names
@@ -31,7 +33,11 @@ export function decodeShareHash(hash) {
     .filter((id) => VALID_ID.test(id));
 }
 
-/** Watch rules ({type, value}) from a share hash; malformed entries are dropped. */
+/**
+ * Watch rules ({type, value}) from a share hash: malformed entries and duplicates (same type,
+ * case-insensitive name) are dropped, at most MAX_SHARED_WATCHES. Only person/institution
+ * rules travel in links; topic rules (#24) and exceptions stay on the device.
+ */
 export function decodeShareWatches(hash) {
   if (!hash?.startsWith(PREFIX) || !hash.includes(WATCH)) return [];
   return hash
@@ -48,7 +54,16 @@ export function decodeShareWatches(hash) {
         return null;
       }
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(
+      (rule, i, all) =>
+        all.findIndex(
+          (r) =>
+            r.type === rule.type &&
+            r.value.toLowerCase() === rule.value.toLowerCase(),
+        ) === i,
+    )
+    .slice(0, MAX_SHARED_WATCHES);
 }
 
 /**

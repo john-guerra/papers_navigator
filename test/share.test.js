@@ -97,3 +97,19 @@ describe("share hash with watch rules (#49)", () => {
     expect(decodeShareWatches("#follow=a&watch=x:bad,a:")).toEqual([]);
   });
 });
+
+describe("decodeShareWatches limits (#49 review)", () => {
+  it("drops duplicates and caps the number of watches a link can add", async () => {
+    const { decodeShareWatches, MAX_SHARED_WATCHES } =
+      await import("../src/lib/share.js");
+    expect(
+      decodeShareWatches("#follow=&watch=a:Ann,a:ann,a:Ann%20").map(
+        (r) => r.value,
+      ),
+    ).toEqual(["Ann"]);
+    const many = Array.from({ length: 200 }, (_, i) => `i:Inst${i}`).join(",");
+    expect(decodeShareWatches(`#follow=&watch=${many}`)).toHaveLength(
+      MAX_SHARED_WATCHES,
+    );
+  });
+});
