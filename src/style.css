@@ -1739,7 +1739,7 @@ body #vg-tooltip-element h2 {
   font: 500 1rem/1.25 var(--font-serif);
 }
 
-body #vg-tooltip-element td.key {
+body #vg-tooltip-element table tr td.key {
   padding-right: var(--spacing-sm, 8px);
   color: var(--color-on-surface-muted);
   font-weight: 400;
@@ -1747,6 +1747,6 @@ body #vg-tooltip-element td.key {
   vertical-align: top;
 }
 
-body #vg-tooltip-element td.value {
+body #vg-tooltip-element table tr td.value {
   color: var(--color-on-surface);
 }
