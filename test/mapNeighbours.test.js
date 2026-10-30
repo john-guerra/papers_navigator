@@ -13,6 +13,15 @@ const data = [
   { id: "x", x: 0, y: 1 },
   { id: "c", x: 10, y: 10 },
   { id: "d", x: 9, y: 10 },
+  // Fillers, so c's map rank (10) is beyond the reach max(3k, 10%) = 6 at k = 2
+  ...[
+    [6, 0],
+    [0, 6],
+    [6, 1],
+    [1, 6],
+    [7, 2],
+    [2, 7],
+  ].map(([x, y], i) => ({ id: `f${i}`, x, y })),
 ];
 const table = {
   a: [
@@ -143,8 +152,9 @@ describe("BrushableScatterPlot neighbours (#102)", () => {
     expect(widget.view.signal("nnIds")).toEqual(["a", "c", "b"]);
     expect(widget.neighbours).toMatchObject({
       pinned: "a",
+      reach: 6,
       neighbours: [
-        { id: "c", missing: true, mapRank: 4 },
+        { id: "c", missing: true, mapRank: 10 },
         { id: "b", missing: false, mapRank: 1 },
       ],
       falseNeighbours: ["x"],

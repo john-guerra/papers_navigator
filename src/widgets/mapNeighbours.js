@@ -104,6 +104,8 @@ export function attachNeighbours(
       focus: shown.focus,
       pinned: state.pinned,
       k: state.k,
+      // Map rank up to which a neighbour counts as close on the map (lib/neighbours.js)
+      reach: current.reach ?? null,
       neighbours: state.pinned != null ? current.neighbours : [],
       falseNeighbours: state.pinned != null ? current.falseNeighbours : [],
     }),

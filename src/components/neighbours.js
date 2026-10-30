@@ -27,7 +27,7 @@ export function neighboursControl(store) {
   };
   sync();
   store.addEventListener("input", sync);
-  return html`<div class="animation-control neighbours-control">
+  const el = html`<div class="animation-control neighbours-control">
     <label class="animation-toggle">${input} Nearest neighbours on hover</label>
     <div class="animation-choice">
       <span class="animation-label" id="neighbours-k">Neighbours</span>
@@ -44,6 +44,9 @@ export function neighboursControl(store) {
       map. Click a point to pin them.
     </p>
   </div>`;
+  /** Stops following the store (pages call it on invalidation). */
+  el.dispose = () => store.removeEventListener("input", sync);
+  return el;
 }
 
 /**
@@ -68,7 +71,7 @@ export function neighboursPanel({ paperOf, href, onOpen, onClose }) {
     };
     return a;
   };
-  el.show = ({ pinned, k, neighbours = [] } = {}) => {
+  el.show = ({ pinned, reach, neighbours = [] } = {}) => {
     const focus = pinned != null ? paperOf(pinned) : null;
     el.hidden = !focus;
     if (!focus) return el.replaceChildren();
@@ -87,8 +90,8 @@ export function neighboursPanel({ paperOf, href, onOpen, onClose }) {
         ${close}
       </div>`,
       html`<p class="neighbours-summary">
-        ${near} of ${neighbours.length} also among its ${k} nearest on the map;
-        dashed lines: far on the map
+        ${near} of ${neighbours.length} close on the map (within its ${reach}
+        nearest); dashed lines: farther away
       </p>`,
       html`<ol class="neighbours-list">
         ${neighbours.map((d) => {

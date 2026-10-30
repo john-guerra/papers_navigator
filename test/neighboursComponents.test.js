@@ -35,6 +35,16 @@ describe("neighboursControl", () => {
     expect(store.value.enabled).toBe(false);
     el.remove();
   });
+
+  it("dispose stops following the store (no listener left per re-render)", () => {
+    const store = createNeighbourSettings({ storage: memoryStorage() });
+    const el = neighboursControl(store);
+    el.dispose();
+    store.set({ k: 15 });
+    expect(
+      el.querySelector("button[data-value='15']").getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
 });
 
 describe("neighboursPanel", () => {
@@ -67,6 +77,7 @@ describe("neighboursPanel", () => {
     el.show({
       pinned: "a",
       k: 10,
+      reach: 30,
       neighbours: [
         { id: "b", similarity: 0.82, mapRank: 2, missing: false },
         { id: "c", similarity: 0.71, mapRank: 87, missing: true },
@@ -75,7 +86,9 @@ describe("neighboursPanel", () => {
     expect(el.hidden).toBe(false);
     expect(el.textContent).toContain("Nearest neighbours of");
     expect(el.textContent).toContain("Paper a");
-    expect(el.textContent).toContain("1 of 2 also among its 10 nearest");
+    expect(el.textContent.replace(/\s+/g, " ")).toContain(
+      "1 of 2 close on the map (within its 30 nearest)",
+    );
     const items = [...el.querySelectorAll("li")];
     expect(
       items.map((li) => li.textContent.replace(/\s+/g, " ").trim()),

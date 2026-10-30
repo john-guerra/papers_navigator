@@ -70,7 +70,10 @@ export function animationControl(store, { hasTopics = true } = {}) {
   sync();
   store.addEventListener("input", sync);
 
-  return html`<div class="animation-control">
+  const el = html`<div class="animation-control">
     ${enabled.el}${align.el}${filters.el}${hasTopics ? motion.el : ""}${speed.el}
   </div>`;
+  /** Stops following the store (pages call it on invalidation). */
+  el.dispose = () => store.removeEventListener("input", sync);
+  return el;
 }

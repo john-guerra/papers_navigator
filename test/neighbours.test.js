@@ -5,7 +5,9 @@ import {
   createNeighbourSettings,
   NEIGHBOURS_KEY,
   mapOrder,
+  missingReach,
   missingShare,
+  shouldUnpinOnEscape,
   topK,
 } from "../src/lib/neighbours.js";
 
@@ -128,13 +130,34 @@ describe("classifyNeighbours", () => {
     { id: "b", similarity: 0.7 },
   ];
 
-  it("marks a true neighbour missing when it isn't among the k nearest on the map", () => {
-    const { neighbours } = classifyNeighbours("f", similar, positions, 3);
+  it("marks a true neighbour missing when its map rank is beyond `reach`", () => {
+    const { neighbours, reach } = classifyNeighbours(
+      "f",
+      similar,
+      positions,
+      3,
+      { reach: 3 },
+    );
+    expect(reach).toBe(3);
     expect(neighbours).toEqual([
       { id: "a", similarity: 0.9, mapRank: 1, missing: false },
       { id: "c", similarity: 0.8, mapRank: 5, missing: true },
       { id: "b", similarity: 0.7, mapRank: 2, missing: false },
     ]);
+  });
+
+  it("by default reach is max(3k, 10% of the papers on the map)", () => {
+    // 6 papers, k = 1: reach 3, so c (map #5) is missing; k = 2: reach 6, nothing is
+    expect(classifyNeighbours("f", similar, positions, 1).reach).toBe(3);
+    expect(
+      classifyNeighbours("f", similar, positions, 2).neighbours.some(
+        (d) => d.missing,
+      ),
+    ).toBe(false);
+    expect(missingReach(10, 283)).toBe(30);
+    expect(missingReach(10, 488)).toBe(49);
+    expect(missingReach(15, 488)).toBe(49);
+    expect(missingReach(15, 100)).toBe(45);
   });
 
   it("false neighbours: among the k nearest on the map but not true neighbours", () => {
@@ -171,8 +194,28 @@ describe("missingShare", () => {
       (id) => similar[id].map((n) => ({ id: n, similarity: 1 })),
       positions,
       1,
+      { reach: 1 },
     );
     expect(share).toBeCloseTo(2 / 3, 6);
+  });
+});
+
+describe("shouldUnpinOnEscape", () => {
+  const key = (k, handled = false) => ({ key: k, defaultPrevented: handled });
+  it("Esc unpins only when no upper layer (details, Options) took it", () => {
+    expect(shouldUnpinOnEscape(key("Escape"), { detailOpen: false })).toBe(
+      true,
+    );
+    expect(shouldUnpinOnEscape(key("Escape"), { detailOpen: true })).toBe(
+      false,
+    );
+    // The Options drawer marks the Esc it used to close itself
+    expect(
+      shouldUnpinOnEscape(key("Escape", true), { detailOpen: false }),
+    ).toBe(false);
+    expect(shouldUnpinOnEscape(key("Enter"), { detailOpen: false })).toBe(
+      false,
+    );
   });
 });
 

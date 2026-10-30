@@ -72,12 +72,25 @@ export function mapOrder(positions, id) {
 }
 
 /**
- * Splits `focus`'s first `k` true neighbours on the map (`similar`: {id, similarity}, most similar
- * first; those not in `positions` are skipped) into preserved ones (among the k nearest on the map)
- * and missing ones, with each one's rank by map distance (1 = nearest); `falseNeighbours` are the
- * k nearest on the map that aren't true neighbours.
+ * How far down the map ranking a true neighbour may sit and still count as close on the map:
+ * max(3k, 10% of the `n` papers on the map). The strict "within the k nearest" leaves most
+ * neighbours dashed (UMAP ~64% at k=10), which hides the real tears; this scales with filters.
  */
-export function classifyNeighbours(focus, similar, positions, k) {
+export const missingReach = (k, n) => Math.max(3 * k, Math.ceil(0.1 * n));
+
+/**
+ * Splits `focus`'s first `k` true neighbours on the map (`similar`: {id, similarity}, most similar
+ * first; those not in `positions` are skipped) into preserved ones (map rank within `reach`,
+ * default missingReach) and missing ones, with each one's rank by map distance (1 = nearest);
+ * `falseNeighbours` are the k nearest on the map that aren't true neighbours.
+ */
+export function classifyNeighbours(
+  focus,
+  similar,
+  positions,
+  k,
+  { reach = missingReach(k, positions.size) } = {},
+) {
   const order = mapOrder(positions, focus);
   const rank = new Map(order.map((id, i) => [id, i + 1]));
   const neighbours = similar
@@ -87,10 +100,11 @@ export function classifyNeighbours(focus, similar, positions, k) {
       id,
       similarity,
       mapRank: rank.get(id),
-      missing: rank.get(id) > k,
+      missing: rank.get(id) > reach,
     }));
   const trueIds = new Set(neighbours.map((d) => d.id));
   return {
+    reach,
     neighbours,
     falseNeighbours: order.slice(0, k).filter((id) => !trueIds.has(id)),
   };
@@ -100,16 +114,29 @@ export function classifyNeighbours(focus, similar, positions, k) {
  * The average share of each paper's k true neighbours that are missing on the map (0 = the map
  * keeps every neighbourhood). `similar(id)` gives the true neighbours among `positions`.
  */
-export function missingShare(similar, positions, k) {
+export function missingShare(similar, positions, k, options) {
   let total = 0;
   for (const id of positions.keys()) {
-    const { neighbours } = classifyNeighbours(id, similar(id), positions, k);
+    const { neighbours } = classifyNeighbours(
+      id,
+      similar(id),
+      positions,
+      k,
+      options,
+    );
     total += neighbours.length
       ? neighbours.filter((d) => d.missing).length / neighbours.length
       : 0;
   }
   return positions.size ? total / positions.size : 0;
 }
+
+/**
+ * Esc closes the topmost layer only: an open paper details panel, then the Options drawer (which
+ * calls preventDefault on the Esc it used), then the neighbour pin.
+ */
+export const shouldUnpinOnEscape = (event, { detailOpen }) =>
+  event.key === "Escape" && !event.defaultPrevented && !detailOpen;
 
 /** Options → Advanced (#102): show neighbours on hover, and how many; remembered per device. */
 export const NEIGHBOURS_KEY = "papersNavigator:neighbours";
