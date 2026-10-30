@@ -50,3 +50,11 @@ describe("PapersList", () => {
     expect(list.textContent).toContain("1 more");
   });
 });
+
+describe("PapersList row ids", () => {
+  it("marks each row with its paper id so the map can scroll to it", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const el = PapersList([{ id: "p1", title: "T" }], { tz: "US/Eastern" });
+    expect(el.querySelector('[data-paper-id="p1"]')).not.toBeNull();
+  });
+});

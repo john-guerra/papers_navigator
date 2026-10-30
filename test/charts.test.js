@@ -155,3 +155,17 @@ describe("scatterSpec color title", () => {
     expect(spec.encoding.color.title).toBe("Similarity");
   });
 });
+
+describe("selectionFromChart", () => {
+  it("keeps the brushed papers when a point is clicked (no hidden clicked-point mode)", async () => {
+    const { selectionFromChart } = await import("../src/widgets/brushableScatterPlot.js");
+    const drag = { x: [1, 11], y: [1, 11] };
+    const value = selectionFromChart({ drag, click: { id: ["b"] } }, data);
+    expect(value.brushed.map((d) => d.id)).toEqual(["b", "c"]);
+    expect(value.clicked.map((d) => d.id)).toEqual(["b"]);
+  });
+  it("clears clicked when the click selection is empty", async () => {
+    const { selectionFromChart } = await import("../src/widgets/brushableScatterPlot.js");
+    expect(selectionFromChart({ drag: null, click: null }, data).clicked).toEqual([]);
+  });
+});

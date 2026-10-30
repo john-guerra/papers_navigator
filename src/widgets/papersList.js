@@ -21,7 +21,7 @@ function renderPaper(p, { tz, actions, preamble }) {
     .filter(Boolean)
     .join(" · ");
   const when = paperWhen(p, tz);
-  return html`<div class="paper">
+  return html`<div class="paper" data-paper-id=${p.id}>
     <div class="paper-title">
       ${AWARD_EMOJI[p.award] ?? ""}<a
         class="title"
