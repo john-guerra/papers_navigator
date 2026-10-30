@@ -1620,3 +1620,43 @@ details.missing > summary {
   align-items: center;
   gap: var(--spacing-xs, 4px);
 }
+
+/* #26 — recommended papers in My Papers (rows like the related papers in details) */
+.recommended-papers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recommended-paper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--spacing-sm, 8px);
+  padding: var(--spacing-sm, 8px) 0;
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.recommended-open {
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  font-family: var(--font-serif);
+}
+
+.recommended-meta,
+.recommended-why {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+@media (max-width: 576px) {
+  .recommended-dismiss {
+    min-height: 44px;
+  }
+}
+
+.recommended-paper .follow-toggle {
+  margin-left: 0;
+}
