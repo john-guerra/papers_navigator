@@ -227,7 +227,7 @@ def test_run_adds_labels_without_changing_anything_else(tmp_path):
     stripped = [{k: v for k, v in p.items() if k not in ("shortLabel", "shortLabelSource")} for p in out]
     assert json.dumps(stripped, ensure_ascii=False).encode() == before
     meta = json.loads((conf / "data" / "shortLabels.json").read_text())
-    assert meta["counts"] == {"title": 1, "llm": 0, "keyphrase": 2}
+    assert meta["counts"] == {"title": 1, "llm": 0, "keyphrase": 2, "manual": 0}
 
 
 def test_run_uses_the_llm_for_papers_without_a_tool_name(tmp_path):
@@ -457,3 +457,27 @@ def test_sentence_case_uses_the_papers_own_deliberate_spelling():
     # a Title Case title is not a deliberate spelling
     glyphs = {"title": "Uncertainty Glyphs for Weather", "abstract": "We design glyphs."}
     assert sl.sentence_case("Uncertainty Glyphs", {}, glyphs) == "Uncertainty glyphs"
+
+
+# --- manual overrides (config shortLabels.labelOverrides) -----------------------------------
+
+
+def test_label_overrides_win_and_are_recorded_as_manual(tmp_path):
+    client = SlowClient()
+    papers = [dict(p) for p in PARALLEL[:3]]
+    embeddings = hash_encoder([sl.paper_text(p) for p in papers])
+    config = {"name": "C", "shortLabels": {"labelOverrides": {"q1": "Quantum circuits", "nope": "Ignored"}}}
+    meta = sl.add_short_labels(papers, embeddings, config, client, hash_encoder, cache_root=tmp_path)
+    assert papers[1]["shortLabel"] == "Quantum circuits"
+    assert papers[1]["shortLabelSource"] == "manual"
+    assert meta["labels"]["q1"]["label"] == "Quantum circuits"
+    assert meta["labels"]["q1"]["source"] == "manual"
+    assert meta["counts"]["manual"] == 1
+    # others untouched
+    assert papers[0]["shortLabel"] == "Topic 0" and papers[0]["shortLabelSource"] == "llm"
+
+
+def test_label_overrides_are_cleaned_and_bounded():
+    assert sl.clean_override("  Quantum   circuits ") == "Quantum circuits"
+    assert sl.clean_override("") is None
+    assert sl.clean_override("x" * 200) is None

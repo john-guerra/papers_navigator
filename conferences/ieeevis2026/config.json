@@ -25,7 +25,16 @@
     "enabled": true,
     "model": "google/gemma-4-e4b",
     "baseUrl": "http://localhost:1234/v1",
-    "weakLabels": ["Byte Dance", "Noise Signal", "Image-based vision", "Design Algorithm", "Agentic System", "Foundation Models", "Model Interpretation", "Learning Experience", "Learning Review", "Cognitive Skin", "Time Installation", "Surface Substance", "Novice Interaction"]
+    "weakLabels": ["Byte Dance", "Noise Signal", "Image-based vision", "Design Algorithm", "Agentic System", "Foundation Models", "Model Interpretation", "Learning Experience", "Learning Review", "Cognitive Skin", "Time Installation", "Surface Substance", "Novice Interaction"],
+    "labelOverrides": {
+      "88ac885c-eced-46ef-80ce-ca8a1dacad1a": "Uncertainty graphics",
+      "57666a76-d0fa-46cd-8914-0fad28dae84f": "Quantum circuits",
+      "eeb1a91c-5761-4ea7-8b0b-55e185123f87": "Image generation",
+      "0ba8821b-a917-4cf6-9f63-34c62fd9fd7b": "Vision models",
+      "47c1a9c5-88ae-47ff-8cc6-c2d4fcac5d78": "VLM decisions",
+      "ef649821-38c9-4cb5-9496-fd8edabdeaf6": "Care teams",
+      "ece53f3e-93ca-45b7-982a-bfdfc1932dac": "Vis pedagogy"
+    }
   },
   "deployDir": "papersNavigator/ieeevis2026",
   "legacyDirs": ["ieeevis2026Papers"],

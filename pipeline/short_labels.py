@@ -545,6 +545,15 @@ def _stored_llm(entry, paper, model) -> dict:
     return {k: v for k, v in llm.items() if k in PROMPTS} if isinstance(llm, dict) else {PROMPT_VERSION: llm}
 
 
+def clean_override(label):
+    """A hand-written label from config (shortLabels.labelOverrides): trimmed, single-spaced,
+    1–60 characters; None if unusable."""
+    if not isinstance(label, str):
+        return None
+    label = " ".join(label.split())
+    return label if 0 < len(label) <= 60 else None
+
+
 def add_short_labels(
     papers, embeddings, config, client=None, encoder=None, cache_root=CACHE_ROOT, concurrency=1, store=None
 ):
@@ -617,6 +626,11 @@ def add_short_labels(
         else:
             paper["shortLabel"], paper["shortLabelSource"] = sentence_case(keyphrase, forms, paper), "keyphrase"
     merge_near_duplicates(papers)
+    # Hand-fixed labels (config shortLabels.labelOverrides: id → label) win over everything
+    overrides = {k: clean_override(v) for k, v in (opts.get("labelOverrides") or {}).items()}
+    for paper in papers:
+        if overrides.get(paper["id"]):
+            paper["shortLabel"], paper["shortLabelSource"] = overrides[paper["id"]], "manual"
     for paper, name in zip(papers, names):
         entry = {"label": paper["shortLabel"], "source": paper["shortLabelSource"]}
         if not name and v2[paper["id"]] is not MISSING:
@@ -625,7 +639,7 @@ def add_short_labels(
                 raws[REFINE_VERSION] = v3[paper["id"]]
             entry.update(llm=raws, promptVersion=chosen[paper["id"]][1], model=model, inputHash=input_hash(paper))
         labels[paper["id"]] = entry
-    counts = {s: sum(p["shortLabelSource"] == s for p in papers) for s in ("title", "llm", "keyphrase")}
+    counts = {s: sum(p["shortLabelSource"] == s for p in papers) for s in ("title", "llm", "keyphrase", "manual")}
     asked = any("llm" in e for e in labels.values())
     return {
         "model": model if asked else None,
