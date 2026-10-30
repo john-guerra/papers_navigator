@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rankBySimilarity, toMatrix } from "../src/lib/search.js";
+import { lazyLoader, rankBySimilarity, toMatrix } from "../src/lib/search.js";
 import { applyProjection } from "../src/lib/projections.js";
 
 describe("toMatrix", () => {
@@ -43,5 +43,21 @@ describe("applyProjection", () => {
     expect(papers).toEqual([{ id: "a", x: 5, y: 6 }]);
     expect(missing).toBe(1);
     expect(input[0]).toEqual({ id: "a", x: 0, y: 0 });
+  });
+});
+
+describe("lazyLoader (#70)", () => {
+  it("loads once, on the first call, and retries after a failure", async () => {
+    let calls = 0;
+    const load = lazyLoader(async () => {
+      calls++;
+      if (calls === 1) throw new Error("offline");
+      return "matrix";
+    });
+    expect(calls).toBe(0);
+    await expect(load()).rejects.toThrow("offline");
+    expect(await load()).toBe("matrix");
+    expect(await load()).toBe("matrix");
+    expect(calls).toBe(2);
   });
 });

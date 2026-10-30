@@ -1,7 +1,7 @@
 import { html } from "htl";
 import { dayKey, formatDay, formatTime } from "../lib/time.js";
 
-function renderItem(p, { tz, onUnfollow }) {
+function renderItem(p, { tz, onUnfollow, onDetails }) {
   const unfollow = html`<button
     class="unfollow"
     title="Remove from My Papers"
@@ -10,10 +10,16 @@ function renderItem(p, { tz, onUnfollow }) {
     ✕
   </button>`;
   unfollow.onclick = () => onUnfollow?.(p.id);
-  return html`<li class="itinerary-item">
+  // Details (#70): the same panel as on Explore
+  const details = onDetails
+    ? html`<button class="btn-text paper-details-open">Details</button>`
+    : "";
+  if (details) details.onclick = () => onDetails(p);
+  return html`<li class="itinerary-item" data-paper-id=${p.id}>
     <span class="time">${p.start ? formatTime(p.start, tz) : "—"}</span>
     <a href=${p.url} target="_blank" rel="noopener">${p.title}</a>
-    ${p.reason ? html`<span class="reason">${p.reason}</span>` : ""} ${unfollow}
+    ${p.reason ? html`<span class="reason">${p.reason}</span>` : ""} ${details}
+    ${unfollow}
   </li>`;
 }
 
@@ -77,11 +83,11 @@ function renderSlot(slot, options) {
  */
 export function renderItinerary(
   { days, unscheduled },
-  { tz, onUnfollow, now = new Date(), state = {} } = {},
+  { tz, onUnfollow, onDetails, now = new Date(), state = {} } = {},
 ) {
   // `state` survives re-renders (selected day, open slots) when the caller keeps it
   state.open ??= new Set();
-  const options = { tz, onUnfollow, state };
+  const options = { tz, onUnfollow, onDetails, state };
   const today = dayKey(now, tz);
   const has = (date) => days.some((d) => d.date === date);
   let selected = has(state.day)

@@ -113,3 +113,38 @@ describe("renderPaperDetail update (#66 review)", () => {
     );
   });
 });
+
+describe("renderPaperDetail with related papers still loading (#70)", () => {
+  const options = (related) => ({
+    tz: "US/Eastern",
+    related,
+    inMyPapers: () => false,
+    onToggle() {},
+    onOpen() {},
+    onClose() {},
+  });
+  it("shows a loading note, then the related papers when they arrive", async () => {
+    let resolve;
+    const el = renderPaperDetail(
+      { id: "a", title: "A" },
+      options(new Promise((r) => (resolve = r))),
+    );
+    expect(el.querySelector(".related-section").textContent).toContain(
+      "Loading related papers",
+    );
+    resolve([{ id: "b", title: "B", score: 0.5 }]);
+    await new Promise((r) => setTimeout(r));
+    expect(el.querySelectorAll(".related-paper")).toHaveLength(1);
+    expect(el.textContent).not.toContain("Loading");
+  });
+  it("says related papers are unavailable when the embeddings can't load (offline)", async () => {
+    const el = renderPaperDetail(
+      { id: "a", title: "A" },
+      options(Promise.reject(new Error("offline"))),
+    );
+    await new Promise((r) => setTimeout(r));
+    expect(el.querySelector(".related-section").textContent).toContain(
+      "unavailable",
+    );
+  });
+});

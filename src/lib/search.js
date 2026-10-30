@@ -60,3 +60,18 @@ export function relatedPapers(
     .filter((p) => p.id !== id)
     .slice(0, k);
 }
+
+/**
+ * `load` run once, on the first call (e.g. the embeddings on My Papers, only when a panel or
+ * recommendations need them); a failed load (offline) is retried on the next call.
+ */
+export function lazyLoader(load) {
+  let promise = null;
+  return () =>
+    (promise ??= Promise.resolve()
+      .then(load)
+      .catch((error) => {
+        promise = null;
+        throw error;
+      }));
+}

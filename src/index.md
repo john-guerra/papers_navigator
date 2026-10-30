@@ -12,7 +12,8 @@ import { createResearchStore, createVectorCache, programFingerprint, rankByMaxSi
 import { myResearch } from "./components/myResearch.js";
 import { topicWatch } from "./components/topicWatch.js";
 import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
-import { renderPaperDetail } from "./components/paperDetail.js";
+import { createPaperRoute } from "./components/paperRoute.js";
+import { paperPanel } from "./components/paperPanel.js";
 import { followToggles } from "./components/followToggles.js";
 const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
   const scores = papers.map((d) => d.score).filter((s) => s != null);
@@ -648,71 +649,24 @@ papersList.update();
 ```
 
 ```js
-// Paper details (#22) and related papers (#23): ?paper=<shortId> is the source of truth, so a
-// details view can be shared or reloaded, and Back closes it
-const paperParam = Generators.observe((notify) => {
-  const read = () => notify(new URLSearchParams(location.search).get("paper"));
-  read();
-  addEventListener("popstate", read);
-  addEventListener("paperchange", read);
-  return () => {
-    removeEventListener("popstate", read);
-    removeEventListener("paperchange", read);
-  };
-});
-// history.state.paperDetail = how many details views were pushed (related papers stack), so
-// Close goes back past all of them and returns focus to the Details button that opened it
-let detailOpener = null;
-const openPaper = (key) => {
-  if (!history.state?.paperDetail) detailOpener = document.activeElement?.closest("[data-paper-id]")?.dataset.paperId ?? null;
-  const url = new URL(location.href);
-  url.searchParams.set("paper", key);
-  history.pushState({ paperDetail: (history.state?.paperDetail ?? 0) + 1 }, "", url);
-  dispatchEvent(new Event("paperchange"));
-};
-const closePaper = () => {
-  // the list may have re-rendered meanwhile: find the opener's row again by paper id
-  const opener = detailOpener;
-  detailOpener = null;
-  if (opener) setTimeout(() => document.querySelector(`[data-paper-id="${CSS.escape(opener)}"] .paper-details-open`)?.focus(), 150);
-  const depth = history.state?.paperDetail;
-  if (depth) return history.go(-depth);
-  const url = new URL(location.href);
-  url.searchParams.delete("paper");
-  history.replaceState(null, "", url);
-  dispatchEvent(new Event("paperchange"));
-};
+// Paper details (#22) and related papers (#23): ?paper=<shortId> is the source of truth
+// (shared with My Papers, #70); Close goes back past related papers and returns focus
+const paperRoute = createPaperRoute({ resolveId: (key) => papers.find((p) => p.shortId === key || p.id === key)?.id });
+invalidation.then(() => paperRoute.stop());
+const paperParam = Generators.input(paperRoute);
+const openPaper = (key) => paperRoute.open(key);
 const embeddingMatrix = toMatrix(embeddingsBuffer, papers.length);
 ```
 
 ```js
-const detailPaper = paperParam ? papers.find((p) => p.shortId === paperParam || p.id === paperParam) : null;
-const paperDetail = detailPaper
-  ? renderPaperDetail(detailPaper, {
-      tz,
-      related: relatedPapers(detailPaper.id, embeddingMatrix, papers),
-      // reads the store, not `followed`, so toggling doesn't rebuild the panel (see the next cell)
-      inMyPapers: (id) => store.value.some((d) => d.id === id),
-      onToggle: (p) => {
-        if (store.value.some((d) => d.id === p.id)) {
-          const undo = store.remove([p.id]);
-          showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
-        } else {
-          const undo = addWithUndo(store, [p], "★ Added by hand");
-          showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
-        }
-      },
-      onOpen: (id) => openPaper(papers.find((p) => p.id === id)?.shortId ?? id),
-      onClose: closePaper,
-    })
-  : html`<span></span>`;
-if (detailPaper) {
-  const onKey = (event) => event.key === "Escape" && closePaper();
-  addEventListener("keydown", onKey);
-  invalidation.then(() => removeEventListener("keydown", onKey));
-  // after Framework attaches the panel
-  requestAnimationFrame(() => paperDetail.querySelector(".paper-detail-close")?.focus());
-}
+const paperDetail = paperPanel(paperParam, {
+  papers,
+  tz,
+  store,
+  route: paperRoute,
+  related: (paper) => relatedPapers(paper.id, embeddingMatrix, papers),
+});
+invalidation.then(paperDetail.dispose);
 ```
 
 ```js

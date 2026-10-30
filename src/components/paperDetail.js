@@ -36,6 +36,44 @@ export function renderPaperDetail(
   ]
     .filter(Boolean)
     .join(" · ");
+  const relatedList = (papers) =>
+    papers.length
+      ? html`<h3>Related papers</h3>
+          <ul class="related-papers">
+            ${papers.map((p) => {
+              const open = html`<button class="btn-text related-open">
+                ${p.title}
+              </button>`;
+              open.onclick = () => onOpen(p.id);
+              return html`<li class="related-paper">
+                ${open}
+                <span class="related-meta"
+                  >${[p.room && `📍 ${p.room}`, paperWhen(p, tz), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
+                >
+                ${toggle(p)}
+              </li>`;
+            })}
+          </ul>`
+      : "";
+  // `related` may be a Promise (My Papers loads the embeddings only when needed, #70)
+  const relatedSection = html`<section class="related-section"></section>`;
+  if (typeof related?.then === "function") {
+    relatedSection.append(
+      html`<h3>Related papers</h3>
+        <p class="muted">Loading related papers…</p>`,
+    );
+    related.then(
+      (papers) => relatedSection.replaceChildren(relatedList(papers)),
+      () =>
+        relatedSection.replaceChildren(
+          html`<h3>Related papers</h3>
+            <p class="muted">
+              Related papers are unavailable: the paper embeddings couldn't load
+              (offline before they were saved on this device?).
+            </p>`,
+        ),
+    );
+  } else relatedSection.append(relatedList(related));
   const el = html`<aside
     class="paper-detail"
     role="dialog"
@@ -54,26 +92,7 @@ export function renderPaperDetail(
       ${(paper.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
     </p>
     ${paper.abstract ? html`<div class="paper-detail-abstract">${paper.abstract}</div>` : ""}
-    ${
-      related.length
-        ? html`<h3>Related papers</h3>
-            <ul class="related-papers">
-              ${related.map((p) => {
-                const open = html`<button class="btn-text related-open">
-                  ${p.title}
-                </button>`;
-                open.onclick = () => onOpen(p.id);
-                return html`<li class="related-paper">
-                  ${open}
-                  <span class="related-meta"
-                    >${[p.room && `📍 ${p.room}`, paperWhen(p, tz), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
-                  >
-                  ${toggle(p)}
-                </li>`;
-              })}
-            </ul>`
-        : ""
-    }
+    ${relatedSection}
   </aside>`;
   // Refresh the My Papers toggles in place (keeps the panel's scroll and focus)
   el.update = update;
