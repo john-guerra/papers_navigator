@@ -15,6 +15,11 @@
   "listingUrl": "https://ieeevis.org/year/2026/program/content/",
   "fetcher": "ieeevis",
   "projections": ["umap", "tsne", "pca"],
+  "clusters": {
+    "minClusterSize": 12,
+    "minSamples": 3,
+    "stopWords": ["visualization", "visualizations", "visualisation", "visual", "data", "research", "vis", "ieee", "2026", "tbd", "participants"]
+  },
   "deployDir": "papersNavigator/ieeevis2026",
   "legacyDirs": ["ieeevis2026Papers"],
   "siteUrl": "https://johnguerra.co/viz/papersNavigator/ieeevis2026/",

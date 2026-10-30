@@ -2,7 +2,7 @@
 
 Usage: python -m pipeline.embed --conference ieeevis2026
 Reads  conferences/<id>/data/papers.raw.json
-Writes conferences/<id>/data/{papers.json, embeddings.bin, projections/<method>.json}
+Writes conferences/<id>/data/{papers.json, embeddings.bin, projections/<method>.json, clusters.json}
 """
 
 import argparse
@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
+from pipeline.clusters import add_clusters, report, write_clusters
 from pipeline.normalize import unify_keywords
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -87,7 +88,11 @@ def run(conference_id: str, root: Path = ROOT, encoder=None, reducers=None) -> N
         p["affiliations"] = ", ".join(
             sorted({a["affiliation"] for a in p.get("authors") or [] if a.get("affiliation")})
         )
+    # Topic clusters on the default projection (pipeline/clusters.py)
+    info = add_clusters(papers, default, config.get("clusters"))
     (data_dir / "papers.json").write_text(json.dumps(papers, ensure_ascii=False))
+    write_clusters(info, data_dir)
+    report(papers, info)
     print(f"wrote {len(papers)} papers, embeddings {matrix.shape}")
 
 
