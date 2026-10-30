@@ -1,3 +1,5 @@
+import { normalizeRule } from "./rules.js";
+
 const PREFIX = "#follow=";
 const VALID_ID = /^[A-Za-z0-9_-]+$/;
 
@@ -23,47 +25,50 @@ export function encodeShareHash(shortIds, rules = []) {
   );
 }
 
-/** Short ids from a location hash; anything malformed is dropped. */
+/** More than any real list (QR codes stop at 100); bounds work on a hostile link. */
+export const MAX_SHARED_PAPERS = 2000;
+
+/** Short ids from a location hash; anything malformed is dropped, at most MAX_SHARED_PAPERS. */
 export function decodeShareHash(hash) {
   if (!hash?.startsWith(PREFIX)) return [];
   return hash
     .slice(PREFIX.length)
-    .split("&")[0]
-    .split(".")
+    .split("&", 1)[0]
+    .split(".", MAX_SHARED_PAPERS)
     .filter((id) => VALID_ID.test(id));
 }
 
 /**
- * Watch rules ({type, value}) from a share hash: malformed entries and duplicates (same type,
- * case-insensitive name) are dropped, at most MAX_SHARED_WATCHES. Only person/institution
- * rules travel in links; topic rules (#24) and exceptions stay on the device.
+ * Watch rules ({type, value}) from a share hash: malformed entries and duplicates (by rule id,
+ * so case and accents are ignored) are dropped, at most MAX_SHARED_WATCHES. Only
+ * person/institution rules travel in links; topic rules (#24) and exceptions stay on the device.
+ * The hash is attacker-controllable, so work is bounded: entries scanned are capped and parsing
+ * stops once enough rules are collected.
  */
 export function decodeShareWatches(hash) {
   if (!hash?.startsWith(PREFIX) || !hash.includes(WATCH)) return [];
-  return hash
+  const entries = hash
     .slice(hash.indexOf(WATCH) + WATCH.length)
-    .split("&")[0]
-    .split(",")
-    .map((entry) => {
-      const [code, encoded] = [entry.slice(0, 1), entry.slice(2)];
-      if (entry[1] !== ":" || !WATCH_TYPES[code] || !encoded) return null;
-      try {
-        const value = decodeURIComponent(encoded).trim();
-        return value ? { type: WATCH_TYPES[code], value } : null;
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean)
-    .filter(
-      (rule, i, all) =>
-        all.findIndex(
-          (r) =>
-            r.type === rule.type &&
-            r.value.toLowerCase() === rule.value.toLowerCase(),
-        ) === i,
-    )
-    .slice(0, MAX_SHARED_WATCHES);
+    .split("&", 1)[0]
+    .split(",", MAX_SHARED_WATCHES * 4);
+  const rules = [];
+  const seen = new Set();
+  for (const entry of entries) {
+    if (rules.length >= MAX_SHARED_WATCHES) break;
+    const code = entry.slice(0, 1);
+    if (entry[1] !== ":" || !WATCH_TYPES[code]) continue;
+    let value;
+    try {
+      value = decodeURIComponent(entry.slice(2)).trim();
+    } catch {
+      continue;
+    }
+    const rule = normalizeRule({ type: WATCH_TYPES[code], value });
+    if (!rule || seen.has(rule.id)) continue;
+    seen.add(rule.id);
+    rules.push({ type: rule.type, value: rule.value });
+  }
+  return rules;
 }
 
 /**
