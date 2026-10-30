@@ -270,7 +270,9 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 ```
 
 ```js
-const mapWidth = Generators.width(document.getElementById("explore-map"));
+// Measured on the controls (same column, always visible): hiding the map on phones must not
+// change the width, which would redraw the map and drop its selection
+const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // Survive re-runs: the paper last scrolled to, and how far the list is expanded
 const lastScrolled = { id: null };
 const listState = { key: null, shown: 100 };

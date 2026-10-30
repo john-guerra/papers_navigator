@@ -708,7 +708,8 @@ a.navbar-brand {
   }
 
   /* The map never captures touches (page scroll wins) unless "Select region" is on */
-  .explore-map .brushable-scatterplot {
+  .explore-map .brushable-scatterplot,
+  .explore-map .brushable-histogram {
     pointer-events: none;
   }
 
@@ -777,10 +778,6 @@ a.navbar-brand {
   line-clamp: 4;
 }
 
-.paper:focus-within .paper-authors,
-.paper:focus-within .paper-abstract {
-  display: block;
-}
 
 .papers-more {
   color: var(--color-on-surface-muted);
