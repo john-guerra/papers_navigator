@@ -67,7 +67,7 @@ export function topicWatch(
       b.setAttribute("aria-pressed", String(b.dataset.level === chosen)),
     );
     const change =
-      current && p.added != null
+      current && (p.added || p.dropped)
         ? ` Compared with what you watch now: +${p.added}, −${p.dropped}.`
         : "";
     summary.textContent =

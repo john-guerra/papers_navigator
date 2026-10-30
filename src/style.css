@@ -1381,6 +1381,12 @@ details.missing > summary {
   align-items: center;
 }
 
+@media (max-width: 576px) {
+  .topic-watch button {
+    min-height: 44px;
+  }
+}
+
 .watching-actions {
   display: flex;
   flex-wrap: wrap;
