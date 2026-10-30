@@ -14,8 +14,11 @@ export default {
 <meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
 <meta name="twitter:card" content="summary_large_image">
 <script type="module">
-  // Highlight the current page in the navbar ("/index" and "/" are the same page)
-  const page = (path) => (path.endsWith("/index") ? path.slice(0, -5) : path);
+  // Highlight the current page in the navbar ("/index", "/index.html" and "/" are the same page)
+  const page = (path) => {
+    for (const suffix of ["/index.html", "/index"]) if (path.endsWith(suffix)) return path.slice(0, -suffix.length + 1);
+    return path;
+  };
   for (const a of document.querySelectorAll(".navbar-links a"))
     if (page(new URL(a.href).pathname) === page(location.pathname)) a.setAttribute("aria-current", "page");
 </script>`,
@@ -34,5 +37,7 @@ export default {
 </nav>`,
   footer: `Built by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a> · Papers Navigator`,
   search: false,
+  // johnguerra.co (Apache) serves my-papers.html, not /my-papers
+  cleanUrls: false,
   style: "style.css",
 };

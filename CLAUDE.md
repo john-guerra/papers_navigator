@@ -35,6 +35,7 @@ scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John fi
 - `htl` is pinned to 0.3.1 (1.0.0's exports break Framework's resolver). The empty root `tsconfig.json` exists because vega 6 packages extend `../../tsconfig.json`.
 - Inputs (`@observablehq/inputs`) only emit `input` once attached to the document — append widgets to `document.body` in jsdom tests.
 - Framework caches data-loader output in `src/.observablehq/cache/` and only re-runs a loader when the loader file changes. After re-running the pipeline or editing `config.json`, `rm -rf src/.observablehq/cache/data` or the site serves stale data.
+- `observablehq.config.js` `head`/`header` are JS template literals: a backslash in them (e.g. a regex) is silently eaten, so inline scripts there must avoid backslashes. `cleanUrls: false` because johnguerra.co (Apache) serves `my-papers.html`, not `/my-papers`.
 - Vega-Lite interval brushes: drive them in tests with `view.signal("drag_x", …)`/`drag_y`, not `drag`.
 
 ## Product docs
