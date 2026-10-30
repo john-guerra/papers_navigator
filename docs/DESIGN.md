@@ -25,6 +25,9 @@ colors:
   viz-similarity-1: "#d5958c" # weakest still-matching paper
   viz-similarity-2: "#b14f45"
   viz-similarity-3: "#75201a" # strongest match
+  viz-reliability-1: "#a3b0dc" # most reliable paper (map neighborhood preserved)
+  viz-reliability-2: "#5f74bf"
+  viz-reliability-3: "#28377a" # least reliable; also the distortion overlay fill
   viz-dim: "#e1ddd8" # filtered-out / outside brush
   viz-neutral: "#605954" # points when no query and no color-by
   viz-followed-ring: "#241e1a" # "in My Papers" ring
@@ -49,6 +52,9 @@ colors:
   dark-viz-similarity-1: "#8f4e44"
   dark-viz-similarity-2: "#d67161"
   dark-viz-similarity-3: "#ffa99a"
+  dark-viz-reliability-1: "#3d4a80"
+  dark-viz-reliability-2: "#6f84cf"
+  dark-viz-reliability-3: "#b4c3ff"
   dark-viz-dim: "#3b3734"
   dark-viz-followed-ring: "#eeebe5"
   dark-viz-cat-1: "#3987e5"
@@ -413,6 +419,9 @@ The map is the overview (principle 3). Rules:
 - **Size** may echo similarity subtly (radius ~2–5px); never encode a second variable with size (so the current "Size by" option goes away).
 - **Relevance levels** (Strong / Good / Weak / All) are cut points on the similarity score (search: Good 0.30, Strong halfway from Good to the best match, Weak = ⅔ of Good, i.e. 0.20; loosely related papers that Good leaves out); how they're derived from the score distribution is left to the relevance-control issue. The ramp's light end starts at the Good cut.
 - **"Color by" a category** (type, room, session) is optional and replaces similarity. Scatterplots can only keep **three** categorical hues distinguishable for color-blind readers (validated: `viz-cat-1..3`), so: the three largest categories (or the ones the user picks in the legend) get `viz-cat-1..3`, everything else is `viz-cat-other`. Color follows the category, never its rank: a filter must not repaint survivors.
+- **Reliability** (#84, Advanced): once the Advanced panel has measured the projection on the map, "Color by: Reliability" shows each paper's local quality score (trustworthiness by default; continuity, steadiness or cohesiveness selectable; k from the quality table) on the indigo **reliability ramp** `viz-reliability-1 → 3`. Unlike similarity, the ramp **darkens toward the least reliable papers** (in dark mode: brightens), because those are what the reader should notice; its hue keeps it apart from similarity and from `viz-dim`. Domain: the projection's 5th percentile to its maximum (lower values clamp). Legend title names the metric and k ("Reliability (trustworthiness, k=10)"); the tooltip adds "Reliability 0.83".
+- **Distortion overlay** (#84, Options → Advanced toggle): behind the points, a light grid of `viz-reliability-3` whose opacity (0–0.35) grows where the Gaussian-kernel average of nearby papers' scores (8px cells, 20px bandwidth) falls below the projection's lower quartile, strongest at its 5th percentile; blank elsewhere and far from any paper. It never takes pointer events, never moves the scales, and adds a "▪ Shaded: least reliable areas" key next to "◯ In My Papers". Both appear only once computed for the current projection (precomputed or live) and follow k and the metric.
+- Palettes validated with the dataviz validator: reliability ramp single hue, monotone, light end 2.0:1 on `background`, dark end 2.2:1 on `dark-background`.
 - **Topic labels** (clusters, US2.3): ink text on a halo of `background` at each topic's center, on by default ("Topic labels" toggle); a label that would overlap a larger topic's is left out. They add no hue; "Color by: Topic" follows the 3 + Other rule.
 - **In My Papers** = a 1.5px `viz-followed-ring` ring around the point, always on, independent of color-by. Same meaning as the follow toggle.
 - **Brush / map region:** points outside are `viz-dim`; the region becomes a chip ("Map region ✕").

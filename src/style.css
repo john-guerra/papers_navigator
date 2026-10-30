@@ -50,6 +50,9 @@
   --color-viz-similarity-1: #d5958c;
   --color-viz-similarity-2: #b14f45;
   --color-viz-similarity-3: #75201a;
+  --color-viz-reliability-1: #a3b0dc;
+  --color-viz-reliability-2: #5f74bf;
+  --color-viz-reliability-3: #28377a;
   --color-viz-dim: #e1ddd8;
   --color-viz-neutral: #605954;
   --color-viz-followed-ring: #241e1a;
@@ -134,6 +137,9 @@
   --color-viz-similarity-1: #8f4e44;
   --color-viz-similarity-2: #d67161;
   --color-viz-similarity-3: #ffa99a;
+  --color-viz-reliability-1: #3d4a80;
+  --color-viz-reliability-2: #6f84cf;
+  --color-viz-reliability-3: #b4c3ff;
   --color-viz-dim: #3b3734;
   /* DESIGN.md defines no dark-viz-neutral; muted ink is the light value's role */
   --color-viz-neutral: #aeaaa4;
@@ -165,6 +171,9 @@
     --color-viz-similarity-1: #8f4e44;
     --color-viz-similarity-2: #d67161;
     --color-viz-similarity-3: #ffa99a;
+    --color-viz-reliability-1: #3d4a80;
+    --color-viz-reliability-2: #6f84cf;
+    --color-viz-reliability-3: #b4c3ff;
     --color-viz-dim: #3b3734;
     /* DESIGN.md defines no dark-viz-neutral; muted ink is the light value's role */
     --color-viz-neutral: #aeaaa4;
@@ -1318,6 +1327,14 @@ details.missing > summary {
   border: 1.5px solid var(--color-viz-followed-ring);
   border-radius: 50%;
   box-sizing: border-box;
+}
+
+/* #84 — distortion overlay key: the overlay's fill at its strongest */
+.map-legend-note .overlay-swatch {
+  width: 12px;
+  height: 12px;
+  background: var(--color-viz-reliability-3);
+  opacity: 0.4;
 }
 
 /* #6 — Watch toggle in the facet popovers */

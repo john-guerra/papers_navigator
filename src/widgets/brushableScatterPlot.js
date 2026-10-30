@@ -36,6 +36,15 @@ export function similarityRange() {
   ];
 }
 
+/** DESIGN.md reliability ramp (#84), most to least reliable: it darkens where the map misleads. */
+export function reliabilityRange() {
+  return [
+    token("color-viz-reliability-1", "#a3b0dc"),
+    token("color-viz-reliability-2", "#5f74bf"),
+    token("color-viz-reliability-3", "#28377a"),
+  ];
+}
+
 /** The `n` most common values of `field` (ties alphabetical) — the categories that get a hue. */
 export function topCategories(data, field, n = 3) {
   const counts = new Map();
@@ -127,6 +136,8 @@ export function scatterSpec(
     labels = null,
     labelSize = 11,
     scoreDomain = null,
+    colorRange = null,
+    overlay = null,
     size = null,
     sizeRange = [12, 80],
     tooltip = [id],
@@ -155,7 +166,7 @@ export function scatterSpec(
           range: [...palette.slice(0, highlighted.length), palette[3]],
         }
       : {
-          range: similarityRange(),
+          range: colorRange ?? similarityRange(),
           // DESIGN.md: the ramp's light end starts at the Good cut
           ...(scoreDomain && { domain: scoreDomain, clamp: true }),
         };
@@ -262,7 +273,34 @@ export function scatterSpec(
         text({ fill: token("color-on-surface", "#241e1a") }),
       ]
     : [];
-  const layers = [points, ...(rings ? [rings] : []), ...textLayers];
+  // Distortion overlay (#84): cells {x, x2, y, y2, distortion} inside the points' extent (so
+  // the scales don't change), behind the points, never under the pointer
+  const shade = overlay?.length && {
+    data: { values: overlay },
+    mark: {
+      type: "rect",
+      interactive: false,
+      fill: token("color-viz-reliability-3", "#28377a"),
+    },
+    encoding: {
+      ...position,
+      x2: { field: "x2" },
+      y2: { field: "y2" },
+      opacity: {
+        field: "distortion",
+        type: "quantitative",
+        scale: { domain: [0, 1], range: [0, 0.35] },
+        legend: null,
+      },
+      tooltip: null,
+    },
+  };
+  const layers = [
+    ...(shade ? [shade] : []),
+    points,
+    ...(rings ? [rings] : []),
+    ...textLayers,
+  ];
 
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
