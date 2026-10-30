@@ -10,7 +10,10 @@ import { facetValues } from "./lib/filters.js";
 import { renderWatching } from "./components/watching.js";
 import { showToast } from "./components/toast.js";
 import { groupIntoSlots, nowNext, scheduleSummary } from "./lib/schedule.js";
-import { startTopicRefresh } from "./lib/researchTopics.js";
+import { afterFirstPaint, startTopicRefresh } from "./lib/researchTopics.js";
+import { createDismissedStore, recommendPapers, recommendReason } from "./lib/recommend.js";
+import { addWithUndo } from "./lib/selection.js";
+import { renderRecommended } from "./components/recommended.js";
 import { getEmbedder } from "./lib/embedder.js";
 import { lazyLoader, relatedPapers, toMatrix } from "./lib/search.js";
 import { createPaperRoute } from "./components/paperRoute.js";
@@ -280,6 +283,10 @@ ${missing.length ? html`<details class="missing" open><summary>⚠️ ${missing.
 
 ${watchingSection}
 
+## Recommended papers
+
+${recommendedSection}
+
 ## All my papers
 
 <div class="my-papers-tools">${searchInput} ${sortInput}</div>
@@ -430,4 +437,75 @@ invalidation.then(paperDetail.dispose);
 ```js
 followed;
 paperDetail.update?.();
+```
+
+```js
+// Recommended papers (#26): the embeddings load after first paint (never before), then papers
+// like yours are ranked against My Papers; dismissals stay on this device
+const dismissedStore = createDismissedStore(conference.id);
+const dismissed = Generators.input(dismissedStore);
+const recommendState = { shown: 10, focus: null, key: null, retry: null };
+// Created once: the cell below redraws it only when the recommendations change (`now` ticks)
+const recommendedSection = html`<div></div>`;
+const recommendMatrix = Generators.observe((notify) => {
+  // Also "Try again" after a failed load (offline): lazyLoader retries a failed load
+  const load = () => {
+    notify({ status: "loading" });
+    loadMatrix().then(
+      (matrix) => notify({ status: "ready", matrix }),
+      () => notify({ status: "error" }),
+    );
+  };
+  recommendState.retry = load;
+  afterFirstPaint(load);
+});
+```
+
+```js
+// Only the current program: papers no longer in it neither get recommended nor recommend, and
+// papers already over aren't recommended
+const recommendations = !items.length
+  ? { status: "empty" }
+  : recommendMatrix.status !== "ready"
+    ? recommendMatrix
+    : { status: "ready", recs: recommendPapers(items.map((d) => d.id), recommendMatrix.matrix, papers, { exclude: new Set(dismissed), now }) };
+const drawRecommended = () => {
+  recommendedSection.replaceChildren(
+    renderRecommended(recommendations, {
+      tz,
+      shown: recommendState.shown,
+      onShowMore: (n) => {
+        recommendState.shown = n;
+        drawRecommended();
+      },
+      onOpen: (p) => openPaper(p),
+      onRetry: () => recommendState.retry?.(),
+      onAdd: (p) => {
+        recommendState.focus = recommendations.recs.indexOf(p);
+        const undo = addWithUndo(store, [p], recommendReason(p.because));
+        showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
+      },
+      onDismiss: (p) => {
+        recommendState.focus = recommendations.recs.indexOf(p);
+        const undo = dismissedStore.dismiss(p.id);
+        showToast("Dismissed from recommendations", { actionLabel: "Undo", onAction: undo });
+      },
+    }),
+  );
+};
+const recommendKey = `${recommendations.status}:${(recommendations.recs ?? []).map((p) => p.id).join()}`;
+if (recommendKey !== recommendState.key) {
+  recommendState.key = recommendKey;
+  drawRecommended();
+}
+// After Add or Dismiss the row is gone: keep the keyboard on the row that took its place
+if (recommendState.focus != null) {
+  const index = recommendState.focus;
+  recommendState.focus = null;
+  // once Framework has put the new section on the page
+  requestAnimationFrame(() => {
+    const rows = recommendedSection.querySelectorAll(".recommended-paper");
+    rows[Math.min(index, rows.length - 1)]?.querySelector(".follow-toggle")?.focus();
+  });
+}
 ```

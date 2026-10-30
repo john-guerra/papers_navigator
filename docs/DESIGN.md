@@ -389,6 +389,7 @@ Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Th
 - **Two things stay visibly separate:** _matching papers_ (temporary, what you see) and _My Papers_ (persistent, what you keep). Every control acts on exactly one of them, and its label says which.
 - **Three ways into My Papers:** the follow toggle on one paper; **Watch** on a person/institution, or "Watch this research topic" on a search (a rule, kept in sync after re-scrapes); **Add N** for exactly the listed papers. No bulk remove on Explore.
 - **Research topics** (#24): "Watch this research topic" sits under the relevance control and opens an inline preview (no dialog): Strong / Good with the count in the whole program (all types, not just the matching papers), how many would join My Papers, and the papers just in and just out. The rule keeps the score cut of the chosen level at save time, plus its matches, so My Papers shows them without the language model; pages re-evaluate them in the background after first paint (skipped with Save-Data, then a quiet note says matches are pending). The Watching section shows each rule's count and where its papers fall (papers per day, busiest session).
+- **Recommended papers** (#26, US11.3): a My Papers section ranking papers not in My Papers by their highest similarity to any paper in it (max, not mean: a list mixes interests and the mean favors generic papers between them). Each row says why ("✨ Like _title_", opening that paper's details) and offers "Add to My Papers" (reason "✨ Like _title_") and "Dismiss" (Undo toast; kept on this device, not in exports or share links). Top 10, then "Show more". Computed after first paint from the precomputed embeddings, never the language model.
 - **Composition is a visible chain:** query → relevance → facets → map region → list. The list header count equals the list. Adding an author or institution facet while a query is active switches relevance to _All_ (decided in issue #1), and says so in the toast.
 - **Feedback within 100 ms** for every click (state change in place); toasts for anything that changed My Papers.
 - **Undo over confirm** (principle 5). Removal of one paper: toast with Undo. Remove a rule: inline choice "Remove rule only / Remove rule and its 12 papers". Replace (share link, import): inline confirm showing what will be lost, plus a one-level backup.
@@ -419,16 +420,17 @@ The map is the overview (principle 3). Rules:
 
 Emoji are welcome as **meaning markers**, a small fixed set, always followed by text, never alone and never decorative.
 
-| Marker | Meaning                           |
-| ------ | --------------------------------- |
-| 📍     | room                              |
-| 👥     | reason: friend (watched person)   |
-| 🏫     | reason: institution               |
-| 🔍     | reason: research topic            |
-| ★      | reason: added by hand             |
-| ⚠      | schedule conflict                 |
-| 🏆     | award                             |
-| 🆕     | new since the last program update |
+| Marker | Meaning                                                                        |
+| ------ | ------------------------------------------------------------------------------ |
+| 📍     | room                                                                           |
+| 👥     | reason: friend (watched person)                                                |
+| 🏫     | reason: institution                                                            |
+| 🔍     | reason: research topic                                                         |
+| ★      | reason: added by hand                                                          |
+| ✨     | reason: recommended ("✨ Like _title of the most similar paper in My Papers_") |
+| ⚠      | schedule conflict                                                              |
+| 🏆     | award                                                                          |
+| 🆕     | new since the last program update                                              |
 
 Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No hand-drawn complex SVG in the app.
 
