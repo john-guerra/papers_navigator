@@ -639,16 +639,37 @@ a.navbar-brand {
   color: var(--color-on-surface-muted);
 }
 
+/* Explore: controls + map on the left, the list on the right; stacked below 1100px; on phones
+   the list comes right after the controls and the map hides behind "Show map" (#13) */
 .explore-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
-  gap: var(--spacing-xl);
+  grid-template-areas:
+    "controls list"
+    "map list";
+  grid-template-rows: auto 1fr;
+  gap: var(--spacing-sm) var(--spacing-xl);
   align-items: start;
 }
 
-.explore-map,
-.explore-list {
+.explore-controls {
+  grid-area: controls;
   min-width: 0;
+}
+
+.explore-map {
+  grid-area: map;
+  min-width: 0;
+}
+
+.explore-list {
+  grid-area: list;
+  min-width: 0;
+}
+
+.map-toggle,
+.select-region {
+  display: none;
 }
 
 /* Vega map: legend and title in the app's type */
@@ -661,6 +682,41 @@ a.navbar-brand {
 @media (max-width: 1100px) {
   .explore-layout {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "controls" "map" "list";
+    grid-template-rows: auto;
+  }
+}
+
+@media (max-width: 576px) {
+  .explore-layout {
+    grid-template-areas: "controls" "list" "map";
+  }
+
+  .explore-map {
+    display: none;
+  }
+
+  .explore-layout.show-map .explore-map {
+    display: block;
+  }
+
+  .map-toggle,
+  .select-region {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  /* The map never captures touches (page scroll wins) unless "Select region" is on */
+  .explore-map .brushable-scatterplot,
+  .explore-map .brushable-histogram {
+    pointer-events: none;
+  }
+
+  .select-mode .explore-map .brushable-scatterplot {
+    pointer-events: auto;
+    touch-action: none;
+    outline: 2px solid var(--color-focus);
   }
 }
 
@@ -722,10 +778,6 @@ a.navbar-brand {
   line-clamp: 4;
 }
 
-.paper:focus-within .paper-authors,
-.paper:focus-within .paper-abstract {
-  display: block;
-}
 
 .papers-more {
   color: var(--color-on-surface-muted);
@@ -804,26 +856,6 @@ a.navbar-brand {
   display: flex;
   width: 100%;
   margin-top: var(--spacing-lg);
-}
-
-/* Where to go? */
-.where-intro .min-score {
-  width: 4rem;
-}
-
-.where-section > summary h3 {
-  display: inline-block;
-  margin: var(--spacing-xs) 0;
-}
-
-.where-day,
-.where-group {
-  margin-left: var(--spacing-lg);
-}
-
-.where-paper {
-  margin-left: var(--spacing-xl);
-  font: var(--typography-body-sm);
 }
 
 /* ==========================================================================
@@ -1327,4 +1359,22 @@ details.missing > summary {
   padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
   border-radius: var(--rounded-sm, 4px);
   background: var(--color-surface-sunken);
+}
+
+/* #13 — "More" expands a paper row in place */
+.paper.expanded .paper-authors,
+.paper.expanded .paper-abstract {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.paper-more {
+  margin-top: var(--spacing-xs, 4px);
+}
+
+@media (max-width: 576px) {
+  .paper-more {
+    min-height: 44px;
+  }
 }

@@ -21,7 +21,7 @@ function renderPaper(p, { tz, actions, preamble }) {
     .filter(Boolean)
     .join(" · ");
   const when = paperWhen(p, tz);
-  return html`<div class="paper" data-paper-id=${p.id}>
+  const row = html`<div class="paper" data-paper-id=${p.id}>
     <div class="paper-title">
       ${AWARD_EMOJI[p.award] ?? ""}<a
         class="title"
@@ -40,6 +40,19 @@ function renderPaper(p, { tz, actions, preamble }) {
     </div>
     ${p.abstract ? html`<div class="paper-abstract">${p.abstract}</div>` : ""}
   </div>`;
+  // Authors and abstract are clamped; "More" expands the row in place (no inner scrolling)
+  if (p.abstract || authors.length > 160) {
+    const more = html`<button class="btn-text paper-more" aria-expanded="false">
+      More
+    </button>`;
+    more.onclick = () => {
+      const expanded = row.classList.toggle("expanded");
+      more.textContent = expanded ? "Less" : "More";
+      more.setAttribute("aria-expanded", String(expanded));
+    };
+    row.append(more);
+  }
+  return row;
 }
 
 /**
