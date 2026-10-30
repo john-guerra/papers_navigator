@@ -5,7 +5,10 @@ toc: false
 
 ```js
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
-import { createMyPapers, createRulesStore } from "./lib/rules.js";
+import { createMyPapers, createRulesStore, filterByReason, reasonOptions } from "./lib/rules.js";
+import { facetValues } from "./lib/filters.js";
+import { renderWatching } from "./components/watching.js";
+import { showToast } from "./components/toast.js";
 import { groupIntoSlots, nowNext } from "./lib/schedule.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
@@ -27,7 +30,10 @@ const followedStore = createFollowedStore(conference.id);
 const rulesStore = createRulesStore(conference.id);
 const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
 const followed = Generators.input(store);
+const rulesState = Generators.input(rulesStore);
 invalidation.then(bindMyPapersBadge(store));
+// Survives re-renders: the reason filter's choice (#7)
+const reasonState = { key: "all" };
 // Debug: ?now=2026-11-10T15:14:00Z pretends it is that moment (and freezes the clock)
 const nowParam = new URLSearchParams(location.search).get("now");
 // Survives re-renders: selected day and open slots of the itinerary
@@ -46,7 +52,21 @@ const now = Generators.observe((notify) => {
 
 ```js
 const { items, missing } = resolveFollowed(followed, papers);
-const schedule = groupIntoSlots(items, tz);
+// Reason filter (#7, US5.5): the itinerary and the list show papers kept for one reason
+const reasonKeys = new Set(["all", "manual", ...rulesState.rules.map((r) => r.id)]);
+if (!reasonKeys.has(reasonState.key)) reasonState.key = "all";
+const reasonInput = Inputs.select(reasonOptions(items, rulesState.rules), {
+  label: "Show",
+  format: (d) => d.label,
+  value: reasonOptions(items, rulesState.rules).find((d) => d.key === reasonState.key),
+});
+const reasonChoice = Generators.input(reasonInput);
+```
+
+```js
+reasonState.key = reasonChoice.key;
+const shownItems = filterByReason(items, reasonChoice.key);
+const schedule = groupIntoSlots(shownItems, tz);
 ```
 
 ```js
@@ -85,7 +105,8 @@ if (shared.ids.length || shared.unknown.length) {
 display(banner);
 ```
 
-<div class="my-papers-tools">${viewInput} ${shareButton} ${exportButton} ${importInput}</div>
+<div class="my-papers-tools">${viewInput} ${reasonInput} ${shareButton} ${exportButton} ${importInput}</div>
+${newNotice}
 <div>${sharePanel}</div>
 
 ```js
@@ -147,7 +168,11 @@ importInput.querySelector("input").onchange = async (event) => {
 <div>${importStatus}</div>
 
 ```js
-const unfollow = (id) => store.remove([id]);
+// Removing shows Undo, which restores exactly what was removed (#5)
+const unfollow = (id) => {
+  const undo = store.remove([id]);
+  showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
+};
 if (viewMode === "Now / Next") {
   display(
     current
@@ -162,7 +187,9 @@ if (viewMode === "Itinerary" || !current) {
 
 ${missing.length ? html`<details class="missing" open><summary>⚠️ ${missing.length} followed papers are no longer in the program</summary><ul>${missing.map((m) => html`<li><code>${m.id}</code> — ${m.reason} <button onclick=${() => store.remove([m.id])}>Remove</button></li>`)}</ul></details>` : ""}
 
-## All followed papers
+${watchingSection}
+
+## All my papers
 
 <div class="my-papers-tools">${searchInput} ${sortInput}</div>
 
@@ -187,20 +214,61 @@ const sortBy = Generators.input(sortInput);
 const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
 const text = (p) =>
   [p.title, p.authorNames, p.affiliations, p.reason, p.sessionName, p.room].join(" ").toLowerCase();
-const searched = items.filter((p) => terms.every((term) => text(p).includes(term)));
+const searched = shownItems.filter((p) => terms.every((term) => text(p).includes(term)));
 const key = (p) => (sortBy === "start" ? (p.start ?? p.sessionStart ?? "~") : (p[sortBy] ?? "~"));
 display(
   PapersList(
     [...searched].sort((a, b) => d3.ascending(key(a), key(b))),
     {
       tz,
-      preamble: (p) => html`<strong>Reason:</strong> ${p.reason} · <strong>Added:</strong> ${new Date(p.addedOn).toLocaleDateString()}`,
+      preamble: (p) =>
+        html`${p.new ? html`<span class="new-badge">New</span> ` : ""}${(p.reasons ?? [p.reason]).map((r) => html`<span class="reason-chip">${r}</span> `)}· Added ${new Date(p.addedOn).toLocaleDateString()}`,
       actions: (p) => {
-        const button = html`<button class="btn-follow following">★ Unfollow</button>`;
-        button.onclick = () => store.remove([p.id]);
+        const button = html`<button class="follow-toggle" aria-pressed="true" title="In My Papers — remove"><span class="ring" aria-hidden="true"></span>Remove</button>`;
+        button.onclick = () => unfollow(p.id);
         return button;
       },
     },
   ),
+);
+```
+
+```js
+// "New since your last visit": papers a watch rule picked up after a program update (#7)
+const newCount = items.filter((d) => d.new).length;
+const newNotice = newCount
+  ? (() => {
+      const seen = html`<button class="btn-text">Mark as seen</button>`;
+      seen.onclick = () => store.markSeen();
+      return html`<p class="new-notice"><span class="new-badge">New</span> ${newCount} ${newCount === 1 ? "paper" : "papers"} joined My Papers through your watch rules since your last visit. ${seen}</p>`;
+    })()
+  : html`<span></span>`;
+```
+
+```js
+// Watching (#7): manage friends and institutions whose papers stay in My Papers
+const watchingSection = renderWatching(
+  {
+    rules: rulesState.rules,
+    countFor: (id) => items.filter((d) => d.ruleIds?.includes(id)).length,
+    names: {
+      author: facetValues(papers, "authors").map((d) => d.value),
+      affiliation: facetValues(papers, "affiliations").map((d) => d.value),
+    },
+  },
+  {
+    onAdd: (rule) => {
+      const saved = store.watch(rule);
+      const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
+      showToast(`Watching ${rule.value} · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`, {
+        actionLabel: "Undo",
+        onAction: () => store.unwatch([saved.id]),
+      });
+    },
+    onRemove: (id, { keepPapers }) => {
+      store.unwatch([id], { keepPapers });
+      showToast(keepPapers ? "Stopped watching; its papers stay in My Papers" : "Stopped watching and removed its papers");
+    },
+  },
 );
 ```

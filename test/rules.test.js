@@ -375,3 +375,67 @@ describe("createMyPapers remove → undo", () => {
     expect(rules.value.exceptions).not.toContain("p1");
   });
 });
+
+describe("resolveFollowed keeps My Papers fields", () => {
+  it("passes reasons, ruleIds, manual and new through to the items", () => {
+    const { items } = resolveFollowed(
+      [
+        {
+          id: "p1",
+          reason: "a · b",
+          reasons: ["a", "b"],
+          addedOn: "x",
+          ruleIds: ["r"],
+          manual: false,
+          new: true,
+        },
+      ],
+      [{ id: "p1", title: "T" }],
+    );
+    expect(items[0]).toMatchObject({
+      title: "T",
+      reasons: ["a", "b"],
+      ruleIds: ["r"],
+      manual: false,
+      new: true,
+    });
+  });
+});
+
+describe("reason filter", () => {
+  const items = [
+    { id: "1", manual: true, ruleIds: [] },
+    { id: "2", manual: false, ruleIds: ["affiliation:neu"] },
+    { id: "3", manual: true, ruleIds: ["affiliation:neu", "author:ann"] },
+  ];
+  const rules = [
+    {
+      id: "affiliation:neu",
+      type: "affiliation",
+      value: "Northeastern University",
+    },
+    { id: "author:ann", type: "author", value: "Ann" },
+  ];
+  it("offers All, Added by hand and one option per rule, with counts", async () => {
+    const { reasonOptions } = await import("../src/lib/rules.js");
+    expect(reasonOptions(items, rules)).toEqual([
+      { key: "all", label: "All reasons (3)" },
+      { key: "manual", label: "★ Added by hand (2)" },
+      { key: "affiliation:neu", label: "🏫 Northeastern University (2)" },
+      { key: "author:ann", label: "👥 Friend: Ann (1)" },
+    ]);
+  });
+  it("filters items by the chosen reason", async () => {
+    const { filterByReason } = await import("../src/lib/rules.js");
+    expect(filterByReason(items, "all").map((d) => d.id)).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
+    expect(filterByReason(items, "manual").map((d) => d.id)).toEqual([
+      "1",
+      "3",
+    ]);
+    expect(filterByReason(items, "author:ann").map((d) => d.id)).toEqual(["3"]);
+  });
+});

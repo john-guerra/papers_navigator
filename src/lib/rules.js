@@ -339,3 +339,23 @@ export function createMyPapers({ followed, rules, papers, scoresFor }) {
   });
   return myPapers;
 }
+
+/** Reason filter options for My Papers: All, Added by hand, and one per watch rule, with counts. */
+export function reasonOptions(items, rules) {
+  const count = (key) => filterByReason(items, key).length;
+  return [
+    { key: "all", label: `All reasons (${items.length})` },
+    { key: "manual", label: `★ Added by hand (${count("manual")})` },
+    ...rules.map((rule) => ({
+      key: rule.id,
+      label: `${ruleReason(rule)} (${count(rule.id)})`,
+    })),
+  ];
+}
+
+/** Items kept for a reason key ("all", "manual" or a rule id). */
+export function filterByReason(items, key) {
+  if (key === "all") return items;
+  if (key === "manual") return items.filter((d) => d.manual);
+  return items.filter((d) => d.ruleIds?.includes(key));
+}
