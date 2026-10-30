@@ -227,7 +227,7 @@ const unfollow = (id) => {
 if (viewMode === "Now / Next") {
   display(
     current
-      ? renderNowNext(current, { tz })
+      ? renderNowNext(current, { tz, empty: !items.length })
       : html`<p class="muted">The conference is not in session right now. Here is your itinerary.</p>`,
   );
 }
