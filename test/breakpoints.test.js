@@ -4,6 +4,7 @@ import {
   COARSE_QUERY,
   PHONE_QUERY,
   STACKED_QUERY,
+  TWO_COLUMN_QUERY,
   matches,
 } from "../src/lib/breakpoints.js";
 
@@ -19,6 +20,7 @@ describe("breakpoints (DESIGN.md → Layout)", () => {
     expect(PHONE_QUERY).toBe("(max-width: 639.98px)");
     expect(STACKED_QUERY).toBe("(max-width: 1023.98px)");
     expect(COARSE_QUERY).toBe("(pointer: coarse)");
+    expect(TWO_COLUMN_QUERY).toBe("not all and (max-width: 1023.98px)");
   });
 
   it("matches() is false without matchMedia and asks it otherwise", () => {

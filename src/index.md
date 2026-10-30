@@ -41,7 +41,7 @@ import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
-import { PHONE_QUERY, STACKED_QUERY } from "./lib/breakpoints.js";
+import { PHONE_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY } from "./lib/breakpoints.js";
 import { mapSize, watchStickyViewport } from "./lib/mapSize.js";
 import { conferenceZone } from "./lib/time.js";
 ```
@@ -94,9 +94,11 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 <section id="explore-map" class="explore-map">
   ${selectRegionButton}
   <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
+  <div class="map-stage">
   ${mapInput}
   <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
   ${neighboursCard}
+  </div>
 </section>
 <section class="explore-list">
   ${addBar}
@@ -625,13 +627,16 @@ const map = Generators.input(mapInput);
 ```
 
 ```js
-// Nearest neighbours (#102): the card under the map lists the pinned paper's neighbours
+// Nearest neighbours (#102): the card lists the pinned paper's neighbours, floating over the
+// sticky map's corner on desktop (#114), under the map on stacked layouts
 const neighboursCard = neighboursPanel({
+  floating: matchMedia(TWO_COLUMN_QUERY),
   paperOf: (id) => papers.find((p) => p.id === id),
   href: (p) => paperRoute.href(p.shortId ?? p.id),
   onOpen: (p) => openPaper(p.shortId ?? p.id),
   onClose: () => mapState.map?.unpinNeighbours(),
 });
+invalidation.then(neighboursCard.dispose);
 ```
 
 ```js
@@ -640,6 +645,8 @@ const neighboursCard = neighboursPanel({
 // one source (the nearest point), so the card and the list never disagree in dense areas. A
 // click also re-renders the list, so wait a frame and use the list that is actually on the page.
 {
+  // The floating card fits the map (#114): height caps, collapsed by default on short maps
+  neighboursCard.fit(mapH);
   const sync = (event) => {
     neighbourState.pinned = mapInput.neighbours.pinned;
     neighboursCard.show(mapInput.neighbours);

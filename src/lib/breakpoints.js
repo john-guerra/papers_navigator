@@ -13,6 +13,8 @@ export const TABLET_MAX = 1023.98;
 export const PHONE_QUERY = `(max-width: ${PHONE_MAX}px)`;
 /** Phones and tablets (< 1024px): Explore stacks controls, map and list. */
 export const STACKED_QUERY = `(max-width: ${TABLET_MAX}px)`;
+/** Desktop (≥ 1024px): Explore's two columns with the sticky map. */
+export const TWO_COLUMN_QUERY = `not all and ${STACKED_QUERY}`;
 /** Touch screens, whatever their width: hit targets grow to 44px (DESIGN.md → Accessibility). */
 export const COARSE_QUERY = "(pointer: coarse)";
 
