@@ -31,7 +31,7 @@ export default {
     onclick="const nav = this.closest('nav'); nav.classList.toggle('open'); this.setAttribute('aria-expanded', nav.classList.contains('open'))">☰</button>
   <div id="navbar-links" class="navbar-links">
     <a href="./">Explore</a>
-    <a href="./my-papers">My Papers</a>
+    <a href="./my-papers">My Papers <span class="badge-my-papers" hidden></span></a>
   </div>
   <button class="navbar-options" aria-controls="filters-panel" aria-expanded="false" hidden>⚙ Options</button>
 </nav>`,

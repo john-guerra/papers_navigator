@@ -1214,3 +1214,36 @@ details.missing > summary {
     transition: none;
   }
 }
+
+/* #10 — navbar My Papers badge and the map's "In My Papers" ring legend */
+.badge-my-papers {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: var(--rounded-full, 999px);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: var(--typography-label-sm, 600 0.75rem/1.4 sans-serif);
+  text-align: center;
+}
+
+.badge-my-papers[hidden] {
+  display: none;
+}
+
+.map-legend-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-md);
+}
+
+.map-legend-note .ring {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--color-viz-followed-ring);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
