@@ -115,10 +115,13 @@ export function scatterSpec(
         };
 
   const visible = {
-    and: [{ param: "drag", empty: true }, "datum.score >= levelCut"],
+    and: [
+      { param: "drag", empty: true },
+      "levelCut == null || datum.score >= levelCut",
+    ],
   };
   // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
-  const levelCut = { name: "levelCut", value: 0 };
+  const levelCut = { name: "levelCut", value: null };
   const position = {
     x: { field: x, type: "quantitative", axis: null, scale: { zero: false } },
     y: { field: y, type: "quantitative", axis: null, scale: { zero: false } },

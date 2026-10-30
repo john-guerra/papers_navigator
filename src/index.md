@@ -341,7 +341,8 @@ const map = Generators.input(mapInput);
 
 ```js
 // Points below the chosen relevance level are drawn in viz-dim, live (no redraw)
-mapInput.view.signal("levelCut", hasQuery && relevance !== "all" ? cuts[relevance] : 0).runAsync();
+// null = no cut ("All"): cosine scores can be negative, so 0 would dim some papers
+mapInput.view.signal("levelCut", hasQuery && relevance !== "all" ? cuts[relevance] : null).runAsync();
 // Rings follow My Papers live without redrawing the map (a redraw would drop the brush)
 mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 ```

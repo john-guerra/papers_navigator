@@ -205,7 +205,7 @@ describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories"
     const spec = scatterSpec(data, { color: "type", ringIds: ["b"] });
     expect(spec.params).toEqual([
       { name: "mine", value: ["b"] },
-      { name: "levelCut", value: 0 },
+      { name: "levelCut", value: null },
     ]);
     expect(spec.layer).toHaveLength(2);
     const [points, rings] = spec.layer;
@@ -235,13 +235,17 @@ describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories"
     });
     const color = spec.encoding.color;
     expect(color.condition.test).toEqual({
-      and: [{ param: "drag", empty: true }, "datum.score >= levelCut"],
+      and: [
+        { param: "drag", empty: true },
+        "levelCut == null || datum.score >= levelCut",
+      ],
     });
     expect(color.condition.field).toBe("score");
     expect(color.value).toBe("#e1ddd8");
+    // null = "All": cosine scores can be negative and must not be dimmed
     expect(spec.params.find((p) => p.name === "levelCut")).toEqual({
       name: "levelCut",
-      value: 0,
+      value: null,
     });
     // neutral (no color field): same rule, single colour
     const neutral = scatterSpec(data).encoding.color;
