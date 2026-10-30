@@ -40,7 +40,12 @@ describe("PapersList", () => {
         }),
       preamble: (p) => `reason ${p.id}`,
     });
-    expect(list.querySelectorAll("button")).toHaveLength(2);
+    // one injected action per paper (rows may also have a "More" toggle)
+    expect(
+      [...list.querySelectorAll("button")].filter((b) =>
+        b.textContent.startsWith("x"),
+      ),
+    ).toHaveLength(2);
     expect(list.textContent).toContain("reason b");
   });
 
@@ -117,5 +122,37 @@ describe("PapersList showThrough", () => {
     expect(el.querySelectorAll(".paper")).toHaveLength(6);
     expect(counts.at(-1)).toBe(6);
     expect(el.showThrough("missing")).toBeNull();
+  });
+});
+
+describe("PapersList More toggle", () => {
+  it("expands a clamped paper in place and collapses it again", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const el = PapersList(
+      [
+        {
+          id: "p",
+          title: "T",
+          abstract: "Long abstract",
+          authors: [{ name: "A" }],
+        },
+      ],
+      { tz: "US/Eastern" },
+    );
+    const row = el.querySelector(".paper");
+    const more = row.querySelector(".paper-more");
+    expect(more.textContent.trim()).toBe("More");
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    more.click();
+    expect(row.classList.contains("expanded")).toBe(true);
+    expect(more.textContent.trim()).toBe("Less");
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    more.click();
+    expect(row.classList.contains("expanded")).toBe(false);
+  });
+  it("has no More toggle when there is nothing to expand", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const el = PapersList([{ id: "p", title: "T" }], { tz: "US/Eastern" });
+    expect(el.querySelector(".paper-more")).toBeNull();
   });
 });

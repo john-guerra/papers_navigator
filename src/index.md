@@ -20,8 +20,6 @@ import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
-import { whereToGo } from "./lib/whereToGo.js";
-import { renderWhereToGo } from "./components/whereToGo.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
 ```
 
@@ -48,11 +46,14 @@ const typeLabels = typeNames(papers, conference.typeNames);
 <p class="lede">Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning. Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p>
 
 <div id="explore" class="explore-layout">
-<section id="explore-map" class="explore-map">
+<section class="explore-controls">
   <div class="search-row">${queryInput}</div>
   ${facetsInput}
   ${chipsRow}
-  <div class="map-controls">${liveSearchInput}</div>
+  <div class="map-controls">${liveSearchInput}${mapToggle}</div>
+</section>
+<section id="explore-map" class="explore-map">
+  ${selectRegionButton}
   ${mapInput}
   <div class="map-controls">${colorByInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span></div>
   ${scoreRangeInput ?? ""}
@@ -62,7 +63,6 @@ const typeLabels = typeNames(papers, conference.typeNames);
   </details>
 </section>
 <section class="explore-list">
-  ${whereToGoSection}
   ${addBar}
   ${papersList}
 </section>
@@ -247,6 +247,29 @@ const colorBy = Generators.input(colorByInput);
 ```
 
 ```js
+// Phones (DESIGN.md → Mobile): list first, the map behind a toggle; the map never hijacks
+// scrolling — "Select region" turns brushing on for one selection, then off again.
+const mapToggle = html`<button class="btn-secondary map-toggle" aria-controls="explore-map" aria-expanded="false">Show map</button>`;
+mapToggle.onclick = () => {
+  const shown = layout.classList.toggle("show-map");
+  mapToggle.textContent = shown ? "Hide map" : "Show map";
+  mapToggle.setAttribute("aria-expanded", String(shown));
+};
+const selectRegionButton = html`<button class="btn-secondary select-region" aria-pressed="false">Select region</button>`;
+const setSelectMode = (on) => {
+  layout.classList.toggle("select-mode", on);
+  selectRegionButton.setAttribute("aria-pressed", String(on));
+  selectRegionButton.textContent = on ? "Drag on the map to select…" : "Select region";
+};
+selectRegionButton.onclick = () => setSelectMode(!layout.classList.contains("select-mode"));
+```
+
+```js
+// Leave "Select region" mode after one selection (the brush changed)
+if (layout.classList.contains("select-mode") && map.brushed.length < positioned.length) setSelectMode(false);
+```
+
+```js
 const mapWidth = Generators.width(document.getElementById("explore-map"));
 // Survive re-runs: the paper last scrolled to, and how far the list is expanded
 const lastScrolled = { id: null };
@@ -367,20 +390,6 @@ const chipsRow = renderChips(chips, {
       setTimeout(() => row.classList.remove("flash"), 1500);
     });
 }
-```
-
-```js
-const minScoreInput = html`<input type="number" class="min-score" min="0" max="100" step="1" value="30">`;
-const minScore = Generators.input(minScoreInput);
-```
-
-```js
-const whereToGoSection = hasQuery
-  ? html`<h2>Where to go?</h2>
-      <p class="where-intro">For your query <i>${query}</i>, with a min score of ${minScoreInput}% you should go to:</p>
-      ${renderWhereToGo(whereToGo(map.brushed, { minScore: minScore / 100, tz }), { tz })}`
-  : html`<h2>Where to go?</h2>
-      <p class="where-intro">Search for a topic to see which rooms and sessions to attend each day.</p>`;
 ```
 
 ```js
