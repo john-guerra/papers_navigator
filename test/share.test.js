@@ -113,3 +113,49 @@ describe("decodeShareWatches limits (#49 review)", () => {
     );
   });
 });
+
+describe("decodeShareWatches with hostile input", () => {
+  it("stays fast on a huge hash and dedupes like rule ids (accents ignored)", async () => {
+    const { decodeShareWatches, MAX_SHARED_WATCHES } =
+      await import("../src/lib/share.js");
+    const huge =
+      "#follow=&watch=" +
+      Array.from({ length: 200_000 }, (_, i) => `a:N${i}`).join(",");
+    const t0 = performance.now();
+    const rules = decodeShareWatches(huge);
+    expect(performance.now() - t0).toBeLessThan(200);
+    expect(rules).toHaveLength(MAX_SHARED_WATCHES);
+    expect(
+      decodeShareWatches("#follow=&watch=a:Jos%C3%A9,a:Jose").map(
+        (r) => r.value,
+      ),
+    ).toEqual(["José"]);
+  });
+});
+
+describe("decodeShareHash with hostile input", () => {
+  it("caps the number of paper ids read from a link", async () => {
+    const { decodeShareHash, MAX_SHARED_PAPERS } =
+      await import("../src/lib/share.js");
+    const huge =
+      "#follow=" + Array.from({ length: 50_000 }, (_, i) => `id${i}`).join(".");
+    expect(decodeShareHash(huge)).toHaveLength(MAX_SHARED_PAPERS);
+  });
+});
+
+describe("share link length caps", () => {
+  it("drops overlong watch names and paper ids", async () => {
+    const { decodeShareWatches, decodeShareHash } =
+      await import("../src/lib/share.js");
+    const long = "x".repeat(201);
+    expect(
+      decodeShareWatches(`#follow=&watch=a:${long},a:Ann`).map((r) => r.value),
+    ).toEqual(["Ann"]);
+    expect(
+      decodeShareWatches(`#follow=&watch=a:${"%C3%A9".repeat(201)}`),
+    ).toEqual([]);
+    expect(decodeShareHash(`#follow=${"a".repeat(65)}.abc12345`)).toEqual([
+      "abc12345",
+    ]);
+  });
+});
