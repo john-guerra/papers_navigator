@@ -13,7 +13,10 @@ import { facetStrip } from "./widgets/facetStrip.js";
 import { BrushableScatterPlot } from "./widgets/brushableScatterPlot.js";
 import { BrushableHistogram } from "./widgets/brushableHistogram.js";
 import { PapersList } from "./widgets/papersList.js";
-import { addToFollowed } from "./components/addToFollowed.js";
+import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
+import { showToast } from "./components/toast.js";
+import { renderAddBar } from "./components/addBar.js";
+import { renderChips } from "./components/chips.js";
 import { whereToGo } from "./lib/whereToGo.js";
 import { renderWhereToGo } from "./components/whereToGo.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
@@ -35,17 +38,17 @@ const typeLabels = typeNames(papers, conference.typeNames);
 
 <h1>${conference.name} Papers</h1>
 
-<p class="lede">Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning. Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and follow the ones you want to attend. Your list lives in <a href="./my-papers">My Papers</a> (${followed.length} followed).</p>
+<p class="lede">Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning. Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p>
 
 <div id="explore" class="explore-layout">
 <section id="explore-map" class="explore-map">
   <div class="search-row">${queryInput}</div>
   ${facetsInput}
+  ${chipsRow}
   <div class="map-controls">${liveSearchInput}</div>
   ${mapInput}
   <div class="map-controls">${colorByInput}${sizeByInput}</div>
   ${scoreRangeInput ?? ""}
-  <div class="follow-actions">${followActions}</div>
   <details class="navio-summary">
     <summary>Summary of the current selection (navio)</summary>
     ${navioSummary}
@@ -53,8 +56,7 @@ const typeLabels = typeNames(papers, conference.typeNames);
 </section>
 <section class="explore-list">
   ${whereToGoSection}
-  <h2>Selected papers</h2>
-  ${maxPapersInput}
+  ${addBar}
   ${papersList}
 </section>
 <aside id="filters-panel" class="filters-panel" aria-label="Map options">
@@ -219,9 +221,16 @@ const sizeBy = Generators.input(sizeByInput);
 
 ```js
 const mapWidth = Generators.width(document.getElementById("explore-map"));
+// Survive re-runs: the paper last scrolled to, and how far the list is expanded
+const lastScrolled = { id: null };
+const listState = { key: null, shown: 100 };
+// Bumped by the "Map region ✕" chip: redraws the map without its brush
+const mapReset = Mutable(0);
+const resetMap = () => ++mapReset.value;
 ```
 
 ```js
+mapReset; // redraw (clearing the brush) when the map-region chip is cleared
 const positioned = applyProjection(filtered, projections[projection]).papers;
 const hasQuery = Boolean(query?.trim()) && modelStatus === "ready";
 // Similarity only exists after a search; until then one neutral color
@@ -253,32 +262,74 @@ const scoreRange = scoreRangeInput ? Generators.input(scoreRangeInput) : null;
 ```
 
 ```js
-const maxPapersInput = Inputs.range([10, 500], { label: "Max papers to list", step: 10, value: 100 });
-const maxPapers = Generators.input(maxPapersInput);
-```
-
-```js
 const inRange = scoreRange
   ? map.brushed.filter((d) => d.score >= scoreRange[0] && d.score <= scoreRange[1])
   : map.brushed;
-const selected = map.clicked.length ? map.clicked : inRange;
+// The list is exactly the matching papers: query, relevance, facets and map region
+const selected = inRange;
 ```
 
 ```js
-const filtersActive =
-  authors.length || affiliations.length || keywords.length || sessions.length || !sameSet(types, defaultTypes);
-const filterReason = [
-  authors.length && `🧑🏼‍🔬 Authors: ${authors.join(", ")}`,
-  affiliations.length && `🏫 Institutions: ${affiliations.join(", ")}`,
-  types.length && `Types: ${types.map((t) => typeLabels.get(t)).join(", ")}`,
-  keywords.length && `Keywords: ${keywords.join(", ")}`,
-  sessions.length && `Sessions: ${sessions.join(", ")}`,
-]
-  .filter(Boolean)
-  .join(" ");
-const followActions = html`${addToFollowed(store, map.brushed.length < positioned.length ? map.brushed : [], { label: "Map selection", reason: "By scatterplot selection" })}
-  ${hasQuery ? addToFollowed(store, inRange, { label: "Search results in score range", reason: `🔍 ${query}` }) : ""}
-  ${filtersActive ? addToFollowed(store, filtered, { label: "Filtered papers", reason: filterReason }) : ""}`;
+// Three ways into My Papers (DESIGN.md): this is "Add N", bound to exactly the listed papers
+const regionActive = map.brushed.length < positioned.length;
+const addReason = selectionReason({
+  query: hasQuery ? query : null,
+  authors,
+  affiliations,
+  keywords,
+  sessions,
+  types,
+  defaultTypes,
+  typeLabel: (t) => typeLabels.get(t) ?? t,
+  region: regionActive,
+});
+// With nothing narrowing the list, one click would add the whole program: ask to narrow first
+const narrowed =
+  hasQuery || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || !sameSet(types, defaultTypes);
+const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))), {
+  disabledHint: narrowed ? null : "Search, filter or select a map region to add papers in bulk",
+  onAdd: (fresh) => {
+    const undo = addWithUndo(store, fresh, addReason);
+    showToast(`Added ${fresh.length} to My Papers`, { actionLabel: "Undo", onAction: undo });
+  },
+});
+const clearQuery = () => {
+  queryInput.querySelector("input").value = "";
+  queryInput.value = "";
+  queryInput.dispatchEvent(new Event("input", { bubbles: true }));
+};
+const chips = [
+  hasQuery && { label: "Search", value: query, onClear: clearQuery },
+  regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
+].filter(Boolean);
+const chipsRow = renderChips(chips, {
+  onClearAll:
+    chips.length > 1
+      ? () => {
+          clearQuery();
+          resetMap();
+        }
+      : null,
+});
+```
+
+```js
+// Clicking a point on the map scrolls the list to that paper (no hidden "clicked" mode).
+// Vega keeps the click selected, so only scroll when the clicked paper changes. A click also
+// re-renders the list, so wait a frame and use the list that is actually on the page.
+{
+  const id = map.clicked[0]?.id ?? null;
+  const changed = id !== lastScrolled.id;
+  lastScrolled.id = id;
+  if (changed && id)
+    requestAnimationFrame(() => {
+      const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
+      if (!row?.isConnected) return;
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.classList.add("flash");
+      setTimeout(() => row.classList.remove("flash"), 1500);
+    });
+}
 ```
 
 ```js
@@ -303,19 +354,32 @@ const navioSummary = NavioWidget(
 ```
 
 ```js
-const followedIds = new Set(followed.map((d) => d.id));
 const ordered = hasQuery ? selected : [...selected].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
+// Keep "Show more" expansion while only My Papers changes; reset it when the matches change
+const listKey = ordered.map((p) => p.id).join();
+if (listKey !== listState.key) Object.assign(listState, { key: listKey, shown: 100 });
 const papersList = PapersList(ordered, {
+  max: 100,
+  shown: listState.shown,
+  onShow: (n) => (listState.shown = n),
   tz,
-  max: maxPapers,
-  header: `${selected.length} papers${map.clicked.length ? " (clicked)" : ""}`,
+  header: "",
   preamble: (p) => (p.score != null ? `🔍 ${(p.score * 100).toFixed(1)}%` : ""),
   actions: (p) => {
-    const following = followedIds.has(p.id);
-    const button = html`<button class="btn-follow ${following ? "following" : ""}">${following ? "★ Following" : "☆ Follow"}</button>`;
-    button.onclick = () =>
-      following ? store.remove([p.id]) : store.add([p], hasQuery ? `🔍 ${query}` : "Picked from list");
-    return button;
+    const entry = followed.find((d) => d.id === p.id);
+    const toggle = html`<button class="follow-toggle" aria-pressed=${entry ? "true" : "false"}
+      title=${entry ? "In My Papers — remove" : "Add to My Papers"}>
+      <span class="ring" aria-hidden="true"></span>${entry ? "In My Papers" : "Add to My Papers"}</button>`;
+    toggle.onclick = () => {
+      if (entry) {
+        store.remove([p.id]);
+        showToast("Removed from My Papers", { actionLabel: "Undo", onAction: () => store.merge([entry]) });
+      } else {
+        const undo = addWithUndo(store, [p], hasQuery ? `★ ${query}` : "★ Added by hand");
+        showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
+      }
+    };
+    return toggle;
   },
 });
 ```

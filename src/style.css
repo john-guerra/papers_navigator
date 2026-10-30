@@ -620,8 +620,7 @@ a.navbar-brand {
   align-items: center;
 }
 
-.map-controls,
-.follow-actions {
+.map-controls {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-lg);
@@ -638,13 +637,6 @@ a.navbar-brand {
   width: auto;
   margin-right: var(--spacing-sm);
   color: var(--color-on-surface-muted);
-}
-
-.add-to-followed {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  align-items: center;
 }
 
 .explore-layout {
@@ -1078,4 +1070,147 @@ details.session.alternative .conflict {
 
 details.missing > summary {
   color: var(--color-on-surface);
+}
+
+/* #8 — add bar, chips row, toast, follow toggle (DESIGN.md → Components) */
+.btn-primary {
+  min-height: 36px;
+  padding: 0 var(--spacing-md, 12px);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--rounded-sm, 4px);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: var(--typography-label-md);
+  cursor: pointer;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.btn-primary:disabled {
+  border-color: var(--color-outline);
+  background: var(--color-surface-sunken);
+  color: var(--color-on-surface-muted);
+  cursor: default;
+}
+
+.add-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  margin: 0 0 var(--spacing-md, 12px);
+}
+
+.add-bar-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
+.add-bar-note {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+  margin: var(--spacing-xs, 4px) 0;
+}
+
+.chips:empty {
+  display: none;
+}
+
+.chip-label {
+  color: var(--color-on-surface-muted);
+}
+
+.chip button {
+  min-height: 0;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--color-on-surface-muted);
+  cursor: pointer;
+}
+
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: var(--spacing-lg, 16px);
+  z-index: 40;
+  transform: translateX(-50%);
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md, 12px);
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  border-radius: var(--rounded-sm, 4px);
+  background: var(--color-on-surface);
+  color: var(--color-background);
+  font: var(--typography-label-md);
+  box-shadow: var(--elevation-1, 0 2px 8px rgb(0 0 0 / 0.2));
+}
+
+.toast-action {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.follow-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  margin-left: var(--spacing-sm, 8px);
+  padding: 0 10px 0 4px;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-full, 999px);
+  background: var(--color-background);
+  color: var(--color-on-surface);
+  font: var(--typography-label-md);
+  vertical-align: 0.1em;
+  cursor: pointer;
+}
+
+.follow-toggle .ring {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--color-on-surface-muted);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.follow-toggle[aria-pressed="true"] .ring {
+  border-color: var(--color-viz-followed-ring);
+  background: radial-gradient(var(--color-primary) 0 3px, transparent 3.5px);
+}
+
+@media (max-width: 576px) {
+  .follow-toggle {
+    min-height: 44px;
+  }
+}
+
+.paper.flash {
+  background: var(--color-primary-container);
+  transition: background 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paper.flash {
+    transition: none;
+  }
 }

@@ -111,9 +111,25 @@ export function scatterSpec(
 }
 
 /**
+ * Widget value from the chart's selections: `brushed` = points in the interval brush (all
+ * without one), `clicked` = the clicked points. A click never changes `brushed`, so the page
+ * decides what a click does (e.g. scroll to that paper) without a hidden mode.
+ */
+export function selectionFromChart(
+  { drag, click } = {},
+  data,
+  { x = "x", y = "y", id = "id" } = {},
+) {
+  const ids = click?.[id];
+  return {
+    brushed: brushFilter(data, drag, { x, y }),
+    clicked: ids ? data.filter((d) => ids.includes(d[id])) : [],
+  };
+}
+
+/**
  * Brushable scatterplot reactive widget, ported from @john-guerra/brushable-scatterplot.
  * `.value = {brushed, clicked}`: brushed points (all when no brush) and clicked points.
- * Clicking an already clicked point opens its `url`.
  */
 export async function BrushableScatterPlot(data, options = {}) {
   const { x = "x", y = "y", id = "id", renderer = "canvas" } = options;
@@ -126,25 +142,10 @@ export async function BrushableScatterPlot(data, options = {}) {
   target.view = chart.view;
 
   let value = { brushed: data, clicked: [] };
-  let previousClicked = [];
 
   chart.addEventListener("input", (event) => {
     event.stopPropagation();
-    const { drag, click } = chart.value;
-    let brushed = brushFilter(data, drag, { x, y });
-    let clicked = value.clicked;
-    if (click?.[id]) {
-      clicked = data.filter((d) => click[id].includes(d[id]));
-      const ids = clicked.map((d) => d[id]);
-      const again = clicked.find((d) => previousClicked.includes(d[id]));
-      if (again?.url) window.open(again.url, "_blank");
-      previousClicked = ids;
-      brushed = data;
-    } else if (!click) {
-      clicked = [];
-      previousClicked = [];
-    }
-    value = { brushed, clicked };
+    value = selectionFromChart(chart.value, data, { x, y, id });
     target.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
