@@ -103,7 +103,12 @@
     0 12px 32px -12px rgb(36 30 26 / 0.28), 0 2px 6px -2px rgb(36 30 26 / 0.12);
   --motion-duration: 160ms;
   --motion-ease: ease-out;
-  --gutter: var(--spacing-2xl);
+  /* max(): phones in landscape keep content out of the notch (viewport-fit=cover, see the head) */
+  --gutter: max(
+    var(--spacing-2xl),
+    env(safe-area-inset-left),
+    env(safe-area-inset-right)
+  );
 
   /* Framework's variables, mapped onto the tokens */
   --serif: var(--font-serif);
@@ -188,7 +193,11 @@
 
 @media (max-width: 639.98px) {
   :root {
-    --gutter: var(--spacing-lg);
+    --gutter: max(
+      var(--spacing-lg),
+      env(safe-area-inset-left),
+      env(safe-area-inset-right)
+    );
   }
 }
 
@@ -652,7 +661,6 @@ a.navbar-brand {
   margin-left: auto;
 }
 
-.navbar-toggler,
 .navbar-options {
   min-height: 34px;
   padding: 0 12px;
@@ -664,7 +672,6 @@ a.navbar-brand {
   cursor: pointer;
 }
 
-.navbar-toggler:hover,
 .navbar-options:hover {
   background: var(--color-surface-hover);
 }
@@ -676,8 +683,13 @@ a.navbar-brand {
   color: var(--color-background);
 }
 
-.navbar-toggler {
+/* Phone bottom tab bar (DESIGN.md → Nav bar): the same four pages, in thumb reach */
+.tabbar {
   display: none;
+}
+
+:root {
+  --tabbar-height: 56px;
 }
 
 @media (max-width: 639.98px) {
@@ -690,45 +702,75 @@ a.navbar-brand {
     text-overflow: ellipsis;
   }
 
-  .navbar-toggler {
-    display: block;
-    order: -1;
-    min-width: var(--spacing-touch);
-    min-height: var(--spacing-touch);
-  }
-
   .navbar-options {
     min-height: var(--spacing-touch);
   }
 
-  /* Links collapse into a dropdown under the header (a floating layer) */
+  /* The top links move to the bottom tab bar */
   .navbar-links {
     display: none;
-    position: absolute;
-    top: 100%;
-    left: calc(-1 * var(--gutter));
-    right: calc(-1 * var(--gutter));
-    flex-direction: column;
-    gap: 0;
-    padding: var(--spacing-xs) var(--gutter);
+  }
+
+  /* Fixed to the viewport (the header has no transform); in the header's stacking context
+     (z-index 2), so the details panel, the Options drawer and the Filters sheet, which lift
+     <main> above the header, cover it */
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    box-sizing: border-box;
+    min-height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
     background: var(--color-surface);
-    border-bottom: 1px solid var(--color-outline);
-    box-shadow: var(--elevation-1);
+    border-top: 1px solid var(--color-outline);
+    font: var(--typography-label-md);
   }
 
-  .navbar.open .navbar-links {
+  .tabbar a[href] {
     display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tabbar-height);
+    padding: 0 var(--spacing-xs);
+    color: var(--color-on-surface-muted);
+    text-align: center;
+    text-decoration: none;
   }
 
-  .navbar-links a[href] {
-    min-height: var(--spacing-touch);
+  .tabbar a[href]:hover {
+    color: var(--color-on-surface);
   }
 
-  .navbar-links a[aria-current="page"] {
-    box-shadow: none;
-    text-decoration: underline 2px;
-    text-underline-offset: 0.3em;
+  /* Current page: ink text with a 2px ink bar on the top edge (the nav's underline, flipped) */
+  .tabbar a[aria-current="page"] {
+    color: var(--color-on-surface);
+    box-shadow: inset 0 2px 0 var(--color-on-surface);
   }
+
+  .tabbar a:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* Nothing hides behind the tab bar: the page's end, toasts */
+  body {
+    padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  }
+
+  /* (body > beats the base .toast-region rule further down) */
+  body > .toast-region {
+    bottom: calc(
+      var(--tabbar-height) + env(safe-area-inset-bottom) + var(--spacing-lg)
+    );
+  }
+}
+
+/* The Filters sheet (facetStrip, z-index 50 inside <main>) covers the header and the tab bar */
+#observablehq-main:has(.fs-sheet-open) {
+  z-index: 3;
 }
 
 /* ==========================================================================
@@ -789,6 +831,22 @@ a.navbar-brand {
   min-width: 0;
 }
 
+/* Two columns (desktop): the map stays in view under the nav while the list scrolls
+   (DESIGN.md → Layout). The map's height is computed to fit (src/lib/mapSize.js); the max-height
+   only guards very short windows, where the map area scrolls instead of running off-screen.
+   The 4px padding keeps focus rings inside the scroll box. */
+.explore-map {
+  position: sticky;
+  top: calc(var(--observablehq-header-height) + var(--spacing-md));
+  box-sizing: border-box;
+  max-height: calc(
+    100vh - var(--observablehq-header-height) - 2 * var(--spacing-md)
+  );
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--spacing-xs));
+  padding-inline: var(--spacing-xs);
+}
+
 .explore-list {
   grid-area: list;
   min-width: 0;
@@ -811,6 +869,15 @@ a.navbar-brand {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "controls" "map" "list";
     grid-template-rows: auto;
+  }
+
+  /* Stacked: the map scrolls with the page, above the list */
+  .explore-map {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    margin-inline: 0;
+    padding-inline: 0;
   }
 }
 
@@ -1018,6 +1085,36 @@ a.navbar-brand {
 
 .import input {
   display: none;
+}
+
+/* Desktop: the itinerary and the list on the left, list tools / Watching / Recommended in a side
+   column separated by a hairline (DESIGN.md → Layout); src/components/myPapersLayout.js moves
+   the sections, stacked layouts keep one column */
+.my-papers-layout.has-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: var(--spacing-2xl);
+  align-items: start;
+}
+
+.mp-main,
+.mp-side {
+  min-width: 0;
+}
+
+.mp-side {
+  padding-left: var(--spacing-2xl);
+  border-left: 1px solid var(--color-outline);
+}
+
+.mp-side:empty {
+  display: none;
+}
+
+@media (max-width: 1023.98px) {
+  .my-papers-layout.has-side {
+    display: block;
+  }
 }
 
 /* Day tabs: like the nav tabs, ink underline on the selected day */

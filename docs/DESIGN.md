@@ -147,6 +147,11 @@ components:
     padding: 0 28px
   nav-tab-active:
     textColor: "{colors.on-surface}"
+  tab-bar:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface-muted}"
+    typography: "{typography.label-md}"
+    height: 56px
   badge-my-papers:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
@@ -330,10 +335,11 @@ Tokens are in the front matter. Rules:
 
 - **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (AGENTS.md). Stylesheets write them as `(max-width: 639.98px)` and `(max-width: 1023.98px)` (no other widths; a test checks), JS uses `PHONE_QUERY` / `STACKED_QUERY` from `src/lib/breakpoints.js`. Explore stacks controls, map and list below 1024px; phone-only changes (Filters sheet, Select region, 16px gutter) start below 640px.
 - **Gutters:** 28px desktop, 16px phone. Spacing comes from the 4px scale in the tokens; don't invent values.
-- **Explore, desktop:** nav (56px) → controls band (search + relevance, then the facet strip) → body split **7fr map / 5fr list**, separated by a hairline. The map is sticky and fills the viewport height; the list scrolls.
+- **Explore, desktop:** nav (56px) → controls band (search + relevance, then the facet strip) → body split **7fr map / 5fr list**, separated by a hairline. The map is sticky (under the nav, 12px gap) and fits the viewport height; the list scrolls. Only on this two-column layout: below 1024px the map scrolls with the page, above the list. The map's height comes from `src/lib/mapSize.js` (3/4 of its width, 320–620px, and never taller than the viewport minus the nav, title and controls); when the column is still taller than the viewport (a pinned Nearest neighbours card under the map, or a window too short for the 240px minimum), the map column scrolls on its own and the page keeps scrolling the list.
 - **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **map** (visible by default, "Hide map" tucks it away; decision 8) → list. The map never captures page scrolling (see Mobile & At the venue).
-- **My Papers, phone:** title + conference time → Now / Itinerary segmented control → content. A bottom tab bar (Explore · My Papers) with the badge.
-- **My Papers, desktop:** itinerary by day (tabs) with slots as rows; rules and list tools in a side column.
+- **Phone navigation:** below 640px the nav's links move to a **bottom tab bar** on every page (see Nav bar); the top bar keeps the brand and ⚙ Options. Pages leave room for it (`body` padding, toasts above it).
+- **My Papers, phone and tablet:** title → Now / Next · Itinerary segmented control and Show filter → list tools (Share, Export, Import) → Now / Next or the itinerary → Watching → Recommended papers → All my papers, one column.
+- **My Papers, desktop:** two columns, separated by a hairline. **Main** (fluid): the segmented control and Show filter, the itinerary by day (tabs) with slots as rows (or Now / Next), then All my papers. **Side column** (300–360px): list tools (Share / Send to my phone, Export JSON, Import JSON, Restore previous list), Watching (the rules), Recommended papers ✨. The sections move between columns in the DOM (`src/components/myPapersLayout.js`), not with CSS `order`, so reading and focus order match the screen.
 - No horizontal page scroll at any width. Rows of sibling controls use flex/grid with `gap`, never margins between inline elements.
 
 ## Elevation & Depth
@@ -356,7 +362,8 @@ The page is flat paper. Structure comes from hairlines (`outline`) and whitespac
 
 Visual specs; tokens in the front matter. Behavior in _Interaction & State_.
 
-- **Nav bar.** Brand (Newsreader) + conference name in `label-caps` muted; tabs Explore · My Papers · Researchers · About with **badge-my-papers** showing the list size on every page (US4.4). Active tab: ink text with a 2px ink underline.
+- **Nav bar.** Brand (Newsreader) + conference name in `label-caps` muted; tabs Explore · My Papers · Researchers · About with **badge-my-papers** showing the list size on every page (US4.4). Active tab: ink text with a 2px ink underline (`aria-current="page"`).
+- **Tab bar (phones).** Below 640px, the nav's four links (Explore · My Papers · Researchers · About, same badge) sit in a bar fixed to the bottom of the screen: `surface`, `outline` hairline on top, four equal cells, each a 56px-tall target, padded by `env(safe-area-inset-*)` (the head adds `viewport-fit=cover`). Current page: ink text with a 2px ink bar on the top edge. It replaces the ☰ menu (gone). Floating layers that cover the page (details panel, Options drawer, Filters sheet) also cover the tab bar.
 - **Search field.** Newsreader italic, underline only, an example search as the placeholder. While the model loads: disabled with "Loading the language model…" as the placeholder, never a spinner over the map; if it fails, "Search unavailable: …" (text, no marker).
 - **Relevance control.** Segmented control _Strong n · Good n · Weak n · All n_ with counts; selected segment is `primary`. Replaces the score histogram in the default UI (the histogram may live in an advanced view).
 - **Facet strip.** A row of **facet buttons** under the search: `Type: Main tracks ▾ · Author ▾ · Institution ▾ · Keyword ▾ · Session ▾ │ Clear all` (a Day facet is optional, builder's call). A facet with a value shows it in the button ("Institution: Northeastern +1") on `surface-sunken`, with a ✕ that clears that facet, so **an active facet button is the chip for that facet**; the open facet is inverted (ink background). Each opens a **popover**: a search input (underline), a `label-caps` header ("Among matching papers"), rows of _checkbox · name · scent bar · count · row action (Watch)_, and a footer ("Show all 513"). Counts are crossfilter-style (computed with every other constraint applied). On phones the strip collapses into one "Filters (n)" button opening a bottom sheet with the facets stacked. The facet strip is a reactive widget; its API is specified in its own issue, not here.
