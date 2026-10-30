@@ -35,6 +35,7 @@ import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
+import { startExploreUrl } from "./components/exploreUrl.js";
 ```
 
 ```js
@@ -61,6 +62,11 @@ const researchVectorCache = createVectorCache(conference.id);
 const typeLabels = typeNames(papers, conference.typeNames);
 // Topic clusters (#25) exist only if the pipeline computed them for this conference
 const hasTopics = papers.some((p) => p.clusterLabel);
+// The view (search, filters, options) lives in the URL (#92): read once here, kept in step below
+const { start: urlStart, explicitQuery, sync: urlSync } = startExploreUrl({ papers, conference, typeLabels, hasTopics });
+invalidation.then(urlSync.stop);
+// A link that names a search shows that search, not your "My research" ranking
+if (explicitQuery && researchStore.value.active) researchStore.set({ active: false });
 ```
 
 <h1>${conference.name} Papers</h1>
@@ -156,7 +162,7 @@ const exampleChips = html`${(conference.exampleQueries ?? []).map((q, i) => {
 ```js
 const queryPlaceholder = "Describe what you are looking for, e.g. LLM agents for scientific visualization";
 // Ranking by My research (#27) when the page left off: no default search in the box
-const queryInput = Inputs.text({ placeholder: queryPlaceholder, value: researchStore.value.active ? "" : (conference.defaultQuery ?? "") });
+const queryInput = Inputs.text({ placeholder: queryPlaceholder, value: researchStore.value.active ? "" : urlStart.query });
 // Search is always live (#12), debounced so typing doesn't recompute on every keystroke
 const query = Generators.observe((notify) => {
   let timer;
@@ -305,7 +311,7 @@ const facetsInput = facetStrip(papers, {
     ...(hasTopics ? [facet("topics", "Topic")] : []),
     facet("sessions", "Session"),
   ],
-  value: { types: defaultTypes },
+  value: urlStart.facets,
   // Watch a person or institution: a standing rule whose papers are always in My Papers (#6)
   rowAction: (facetId, value) => {
     const type = { authors: "author", affiliations: "affiliation" }[facetId];
@@ -383,7 +389,7 @@ advancedDr.addEventListener("toggle", async () => {
 const projectionInput = Inputs.select([...conference.projections, ...Object.keys(liveProjections)], {
   label: "Projection",
   format: formatProjection,
-  value: Object.keys(liveProjections).at(-1),
+  value: Object.keys(liveProjections).at(-1) ?? urlStart.projection,
 });
 const projection = Generators.input(projectionInput);
 ```
@@ -391,14 +397,14 @@ const projection = Generators.input(projectionInput);
 ```js
 const colorByInput = Inputs.select(new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"], ...(hasTopics ? [["Topic", "clusterLabel"]] : []), ...(liveClusters ? [["Cluster (live)", "liveCluster"]] : [])]), {
   label: "Color by",
-  value: liveClusters ? "liveCluster" : undefined,
+  value: liveClusters ? "liveCluster" : urlStart.color,
 });
 const colorBy = Generators.input(colorByInput);
 ```
 
 ```js
 // Topic labels at the cluster centers (#25), on by default
-const topicLabelsInput = hasTopics ? Inputs.toggle({ label: "Topic labels", value: true }) : null;
+const topicLabelsInput = hasTopics ? Inputs.toggle({ label: "Topic labels", value: urlStart.labels }) : null;
 const showTopics = topicLabelsInput ? Generators.input(topicLabelsInput) : false;
 ```
 
@@ -407,11 +413,14 @@ const showTopics = topicLabelsInput ? Generators.input(topicLabelsInput) : false
 // "Hide map" tucks it away. It never hijacks scrolling: "Select region" turns brushing on for
 // one selection, then off again.
 const mapToggle = html`<button class="btn-secondary map-toggle" aria-controls="explore-map" aria-expanded="true">Hide map</button>`;
-mapToggle.onclick = () => {
-  const hidden = layout.classList.toggle("hide-map");
+const setMapHidden = (hidden) => {
+  layout.classList.toggle("hide-map", hidden);
   mapToggle.textContent = hidden ? "Show map" : "Hide map";
   mapToggle.setAttribute("aria-expanded", String(!hidden));
+  urlSync.update({ map: !hidden });
 };
+mapToggle.onclick = () => setMapHidden(!layout.classList.contains("hide-map"));
+setMapHidden(!urlSync.state.map);
 const selectRegionButton = html`<button class="btn-secondary select-region" aria-pressed="false">Select region</button>`;
 const setSelectMode = (on) => {
   layout.classList.toggle("select-mode", on);
@@ -439,7 +448,8 @@ const scrollToPaper = (id) => {
   row.classList.add("flash");
   setTimeout(() => row.classList.remove("flash"), 1500);
 };
-const relevanceState = { level: "good", people: 0 };
+// From the URL (#92); people picked in the link don't count as "just added" (no switch to All)
+const relevanceState = { level: urlStart.level, people: urlStart.facets.authors.length + urlStart.facets.affiliations.length };
 const topicWatchState = { open: false };
 const researchPanelState = { open: false };
 const listState = { key: null, shown: 100 };
@@ -458,7 +468,10 @@ const theme = Generators.observe((notify) => {
 });
 // Bumped by the "Map region ✕" chip: redraws the map without its brush
 const mapReset = Mutable(0);
-const resetMap = () => ++mapReset.value;
+const resetMap = () => {
+  urlSync.update({ region: null });
+  ++mapReset.value;
+};
 ```
 
 ```js
@@ -503,7 +516,24 @@ const mapInput = await BrushableScatterPlot(positioned, {
   height: Math.min(620, Math.max(320, mapWidth * 0.75)),
   title: `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,
 });
+// The map region survives redraws (filters, theme, width) and comes from the URL at load (#92);
+// a region drawn on another projection doesn't apply
+if (urlSync.state.region?.projection === projection) await mapInput.setRegion(urlSync.state.region);
 const map = Generators.input(mapInput);
+```
+
+```js
+// Explore's view → URL (#92): replaceState (no history entry per change); ?paper= is kept
+map; // the map region changed
+urlSync.update({
+  query,
+  level: relevanceInput ? relevance : relevanceState.level,
+  facets: facetSelection,
+  color: colorBy,
+  projection,
+  labels: topicLabelsInput ? showTopics : true,
+  region: ((r) => r && { projection, ...r })(mapInput.region()),
+});
 ```
 
 ```js

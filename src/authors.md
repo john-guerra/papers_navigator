@@ -54,6 +54,8 @@ const authorRoute = createAuthorRoute();
 invalidation.then(() => authorRoute.stop());
 invalidation.then(authorRoute.intercept(document.body));
 const authorParam = Generators.input(authorRoute);
+// The index's search is ?q= (#92): a reload or a shared link keeps it
+indexState.query = authorRoute.query;
 // Paper details: the same panel and ?paper=<shortId> as on Explore and My Papers
 const paperRoute = createPaperRoute({ resolveId: (key) => papers.find((p) => p.shortId === key || p.id === key)?.id });
 invalidation.then(() => paperRoute.stop());
@@ -65,7 +67,7 @@ const openPaper = (p) => paperRoute.open(p.shortId ?? p.id);
 const inMyPapers = (id) => store.value.some((d) => d.id === id);
 const author = authorParam ? findAuthor(authorIndex, authorParam) : null;
 const authorView = !authorParam
-  ? renderAuthorIndex(authorIndex, { state: indexState })
+  ? renderAuthorIndex(authorIndex, { state: indexState, onQuery: authorRoute.setQuery })
   : !author
     ? renderAuthorNotFound(authorParam)
     : renderAuthorProfile(author, {

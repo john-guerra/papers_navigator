@@ -400,6 +400,35 @@ export async function BrushableScatterPlot(data, options = {}) {
     return best;
   };
 
+  /** The brush in data units, {x: [x0, x1], y: [y0, y1]}, or null without one. */
+  target.region = () => {
+    const drag = chart.value?.drag;
+    return drag?.[x] && drag?.[y] ? { x: [...drag[x]], y: [...drag[y]] } : null;
+  };
+
+  /**
+   * Draws the brush over a region in data units (e.g. from the URL, #92): sets the brush's pixel
+   * signals, so the rectangle shows and the selection follows, as if dragged. Vega-Lite names
+   * them `drag_x`/`drag_y`, or `drag_x_1`/`drag_y_1` when the fields are also called x and y.
+   */
+  target.setRegion = (region) => {
+    const { view } = chart;
+    const pixel = (channel) => {
+      try {
+        view.signal(`drag_${channel}_1`);
+        return `drag_${channel}_1`;
+      } catch {
+        return `drag_${channel}`;
+      }
+    };
+    const sx = view.scale("x");
+    const sy = view.scale("y");
+    return view
+      .signal(pixel("x"), region.x.map(sx))
+      .signal(pixel("y"), region.y.map(sy))
+      .runAsync();
+  };
+
   attachNearestTooltip(target, {
     view: chart.view,
     pointAt: target.pointAt,
