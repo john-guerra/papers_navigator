@@ -273,6 +273,8 @@ export function createMiniMap({
   let size = null;
   let resolveReady;
   el.ready = new Promise((resolve) => (resolveReady = resolve));
+  // The Vega view on screen (a theme change replaces it)
+  Object.defineProperty(el, "view", { get: () => state.view });
 
   // Nearest point to the pointer (pixels), within HIT_RADIUS: the dots are small
   const nearest = (event) => {
@@ -286,8 +288,12 @@ export function createMiniMap({
     let best = null;
     let bestD = HIT_RADIUS ** 2;
     for (const d of placed) {
-      const dx = sx(d.x) - px;
-      const dy = sy(d.y) - py;
+      const x = sx(d.x);
+      const y = sy(d.y);
+      // Only points drawn in the frame (the rest are clipped)
+      if (x < 0 || x > size.width || y < 0 || y > size.height) continue;
+      const dx = x - px;
+      const dy = y - py;
       const dist = dx * dx + dy * dy;
       if (dist <= bestD) {
         bestD = dist;
@@ -314,6 +320,8 @@ export function createMiniMap({
       import("vega-lite"),
     ]);
     if (state.disposed) return;
+    // A tween in progress drove the old view: stop it and draw where it was going
+    stopMotion();
     const spec = miniMapSpec(placed, {
       focusId,
       relatedIds,
@@ -341,12 +349,24 @@ export function createMiniMap({
         (el.nextElementSibling.hidden = true);
     });
 
+  const target = () =>
+    state.hover != null
+      ? domainIncluding(base, center, positions.get(state.hover))
+      : base;
+  const stopMotion = () => {
+    if (state.frame == null) return;
+    cancelFrame(state.frame);
+    state.frame = null;
+    state.domain = target();
+  };
+
   // One frame loop for the zoom tween and the pulse
   function animate({ from, to, tween, pulse }) {
     cancelFrame(state.frame);
     const { view } = state;
     const start = performance.now();
     const step = () => {
+      if (view !== state.view) return; // rebuilt or finalized meanwhile
       const t = performance.now() - start;
       const p = tween ? Math.min(1, t / tween) : 1;
       state.domain = p < 1 ? interpolateDomain(from, to, ease(p)) : to;
@@ -369,7 +389,7 @@ export function createMiniMap({
     const motion = miniMapMotion(animation());
     animate({
       from: state.domain,
-      to: next ? domainIncluding(base, center, positions.get(next)) : base,
+      to: target(),
       tween: motion.tween,
       pulse: next ? motion.pulse : 0,
     });
@@ -385,7 +405,7 @@ export function createMiniMap({
 
   el.dispose = () => {
     state.disposed = true;
-    cancelFrame(state.frame);
+    stopMotion();
     removeEventListener("themechange", redraw);
     media?.removeEventListener?.("change", redraw);
     state.view?.finalize();

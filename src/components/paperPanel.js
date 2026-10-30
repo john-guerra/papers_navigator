@@ -20,7 +20,7 @@ const deviceAnimation = () => (deviceSettings ??= createAnimationSettings());
  * animation settings say (`animation`, a store with `.value`; read from this device by default).
  *
  * `el.update()` refreshes the toggles in place; `el.highlight(id | null)` shows a paper on the
- * mini-map; `el.dispose()` stops listening to Esc and stops the mini-map.
+ * mini-map; `el.refreshMiniMap(key)` redraws it when the map's positions change (a new key); `el.dispose()` stops listening to Esc and stops the mini-map.
  */
 export function paperPanel(
   key,
@@ -44,7 +44,11 @@ export function paperPanel(
     : null;
   if (!paper) {
     const empty = html`<span></span>`;
-    empty.update = empty.dispose = empty.highlight = () => {};
+    empty.update =
+      empty.dispose =
+      empty.highlight =
+      empty.refreshMiniMap =
+        () => {};
     return empty;
   }
   // reads the store (not a reactive copy), so toggling doesn't rebuild the panel
@@ -84,6 +88,16 @@ export function paperPanel(
   });
   const onKey = (event) => event.key === "Escape" && route.close();
   addEventListener("keydown", onKey);
+  // The map's positions changed (`key`: e.g. projection and alignment): redraw the mini-map.
+  // The first key is the one it was drawn with.
+  const refreshDetail = el.refreshMiniMap;
+  let mapKey;
+  el.refreshMiniMap = (key) => {
+    const first = mapKey === undefined;
+    if (key === mapKey) return;
+    mapKey = key;
+    if (!first) refreshDetail();
+  };
   const disposeDetail = el.dispose;
   el.dispose = () => {
     removeEventListener("keydown", onKey);

@@ -40,11 +40,13 @@ export function renderPaperDetail(
     .join(" · ");
   // The mini-map (#101), once the related papers are known
   let mini = null;
+  let shownRelated = null;
   let disposed = false;
   const highlight = (id) => mini?.highlight(id);
   const relatedList = (papers) => {
     if (!papers.length) return "";
     mini = !disposed && miniMap ? miniMap(papers) : null;
+    shownRelated = papers;
     const list = html`<ul class="related-papers">
       ${papers.map((p) => {
         const open = html`<button class="btn-text related-open">
@@ -128,6 +130,16 @@ export function renderPaperDetail(
   el.update = update;
   // Show a paper on the mini-map from elsewhere (My Papers' recommended rows), null to reset
   el.highlight = highlight;
+  // Redraw only the mini-map (Explore: the projection changed while the panel is open)
+  el.refreshMiniMap = () => {
+    if (disposed || !mini || !shownRelated) return;
+    const next = miniMap(shownRelated);
+    const old = mini;
+    if (next) old.replaceWith(next);
+    else old.hidden = true;
+    old.dispose?.();
+    if (next) mini = next;
+  };
   el.dispose = () => {
     disposed = true;
     mini?.dispose?.();

@@ -947,3 +947,8 @@ invalidation.then(paperDetail.dispose);
 followed;
 paperDetail.update?.();
 ```
+
+```js
+// The projection (or alignment) changed with details open: the mini-map follows the map (#101)
+paperDetail.refreshMiniMap(projectionKey);
+```

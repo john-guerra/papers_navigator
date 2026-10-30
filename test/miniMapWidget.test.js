@@ -196,6 +196,28 @@ describe("createMiniMap highlight and click (#101)", () => {
     onOpen.mockClear();
     at(10, 10);
     expect(onOpen).not.toHaveBeenCalled();
+    // a point clipped outside the frame can't be clicked
+    expect(view.scale("x")(40)).toBeGreaterThan(320);
+    at(40, 10);
+    expect(onOpen).not.toHaveBeenCalled();
+    el.dispose();
+    el.remove();
+  });
+  it("a theme change mid-tween stops driving the old view and draws where it was going", async () => {
+    const el = make({ animation: () => ({ enabled: true, speed: "slow" }) });
+    const old = await el.ready;
+    const finalize = vi.spyOn(old, "finalize");
+    el.highlight("far");
+    const runs = vi.spyOn(old, "runAsync");
+    dispatchEvent(new CustomEvent("themechange", { detail: "dark" }));
+    await vi.waitFor(() => expect(el.view).not.toBe(old));
+    expect(finalize).toHaveBeenCalled();
+    const count = runs.mock.calls.length;
+    await new Promise((r) => setTimeout(r, 100));
+    expect(runs.mock.calls.length).toBe(count);
+    // the new view starts at the tween's destination
+    await el.view.runAsync();
+    expect(inside(el.view, [40, 10])).toBe(true);
     el.dispose();
     el.remove();
   });
@@ -262,6 +284,16 @@ describe("renderPaperDetail with a mini-map (#101)", () => {
     el.dispose();
     expect(mini.dispose).toHaveBeenCalled();
     el.remove();
+  });
+  it("redraws only the mini-map on refresh, disposing the old one", () => {
+    const made = [];
+    const el = render({ miniMap: () => (made.push(fakeMini()), made.at(-1)) });
+    el.refreshMiniMap();
+    expect(made).toHaveLength(2);
+    expect(made[0].dispose).toHaveBeenCalled();
+    expect(el.querySelector(".fake-mini")).toBe(made[1]);
+    el.highlight("n1");
+    expect(made[1].highlight).toHaveBeenLastCalledWith("n1");
   });
   it("waits for related papers that load later, and skips the mini-map once closed", async () => {
     const factory = vi.fn(fakeMini);
