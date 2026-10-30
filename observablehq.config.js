@@ -19,6 +19,10 @@ export default {
     const theme = localStorage.getItem("papersNavigator:theme");
     if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   } catch (error) {}
+  // Offline after first load (#15): src/sw.js, copied to dist/sw.js by npm run build.
+  // Relative URL: the site lives in a subfolder. (No sw.js in npm run dev: it fails quietly.)
+  if ("serviceWorker" in navigator)
+    addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
 </script>
 <script type="module">
   // Highlight the current page in the navbar ("/index", "/index.html" and "/" are the same page)
