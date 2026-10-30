@@ -766,6 +766,24 @@ a.navbar-brand {
       var(--tabbar-height) + env(safe-area-inset-bottom) + var(--spacing-lg)
     );
   }
+
+  /* ...unless a layer that covers the tab bar is open: then the usual offset (#114) */
+  body:has(.filters-open, .paper-detail, .fs-sheet-open) > .toast-region {
+    bottom: var(--spacing-lg);
+  }
+}
+
+/* Print: no navigation chrome or floating layers on paper (#114) */
+@media print {
+  .tabbar,
+  .navbar-options,
+  .neighbours-panel {
+    display: none !important;
+  }
+
+  body {
+    padding-bottom: 0;
+  }
 }
 
 /* The Filters sheet (facetStrip, z-index 50 inside <main>) covers the header and the tab bar */
@@ -1828,6 +1846,129 @@ details.missing > summary {
   margin-top: var(--spacing-md);
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--color-outline);
+}
+
+/* Desktop (#114): the card floats over the sticky map's bottom-right corner instead of making the
+   map column taller than the viewport. The stage overlaps it with the chart in one grid cell, so
+   it stays inside the map and covers (and takes the pointer from) only its own box; its height
+   is capped at the map's (--map-height, set by the page). */
+.map-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.map-stage > * {
+  grid-column: 1;
+}
+
+.map-stage > .brushable-scatterplot {
+  grid-row: 1;
+}
+
+.map-stage > .map-controls {
+  grid-row: 2;
+}
+
+.neighbours-panel.is-floating {
+  grid-row: 1;
+  align-self: end;
+  justify-self: end;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(280px, calc(100% - 2 * var(--spacing-md)));
+  max-height: calc(var(--map-height, 320px) - 2 * var(--spacing-md));
+  overflow-y: auto;
+  margin: var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-md);
+  border-top: none;
+  border-radius: var(--rounded-md);
+  background: var(--color-surface);
+  box-shadow: var(--elevation-1);
+}
+
+/* Compact type: titles still wrap (never truncated), at body-sm */
+/* The title wraps around the buttons (floated) instead of squeezing beside them */
+.neighbours-panel.is-floating .neighbours-header {
+  display: block;
+}
+
+.neighbours-panel.is-floating .neighbours-header {
+  position: relative;
+}
+
+.neighbours-panel.is-floating .neighbours-buttons {
+  position: absolute;
+  top: 0;
+  right: calc(-1 * var(--spacing-sm));
+}
+
+/* A float at the start of the heading keeps its first line clear of the buttons */
+.neighbours-panel.is-floating .neighbours-header h3::before {
+  content: "";
+  float: right;
+  width: 64px;
+  height: 32px;
+}
+
+@media (pointer: coarse) {
+  .neighbours-panel.is-floating .neighbours-header h3::before {
+    width: 88px;
+    height: var(--spacing-touch);
+  }
+}
+
+.neighbours-panel.is-floating :is(.neighbours-close, .neighbours-collapse) {
+  min-width: 32px;
+  min-height: 32px;
+}
+
+@media (pointer: coarse) {
+  .neighbours-panel.is-floating :is(.neighbours-close, .neighbours-collapse) {
+    min-width: var(--spacing-touch);
+    min-height: var(--spacing-touch);
+  }
+}
+
+.neighbours-panel.is-floating .neighbours-header h3,
+.neighbours-panel.is-floating .neighbours-header h3 .neighbours-title,
+.neighbours-panel.is-floating .neighbours-list {
+  font: var(--typography-body-sm);
+}
+
+.neighbours-panel.is-floating .neighbours-title {
+  font-family: var(--font-serif);
+}
+
+.neighbours-panel.is-floating .neighbours-meta {
+  white-space: normal;
+}
+
+.neighbours-buttons {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.neighbours-collapse {
+  min-width: var(--spacing-touch);
+  min-height: var(--spacing-touch);
+  font-size: 1rem;
+}
+
+.neighbours-more {
+  margin-top: var(--spacing-xs);
+}
+
+@media (pointer: coarse) {
+  .neighbours-more {
+    min-height: var(--spacing-touch);
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .map-stage {
+    display: block;
+  }
 }
 
 .neighbours-header {

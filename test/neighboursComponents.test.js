@@ -104,3 +104,98 @@ describe("neighboursPanel", () => {
     el.remove();
   });
 });
+
+describe("neighboursPanel, floating over the sticky map (desktop, #114)", () => {
+  const papers = new Map(
+    Array.from({ length: 12 }, (_, i) => [
+      `p${i}`,
+      { id: `p${i}`, title: `Paper ${i}` },
+    ]),
+  );
+  const state = (pinned = "p0", k = 10) => ({
+    pinned,
+    k,
+    reach: 30,
+    neighbours: Array.from({ length: k }, (_, i) => ({
+      id: `p${i + 1}`,
+      similarity: 0.8 - i / 100,
+      mapRank: i + 2,
+      missing: false,
+    })),
+  });
+  const fakeMedia = (matches) => {
+    const listeners = new Set();
+    return {
+      matches,
+      addEventListener: (type, f) => listeners.add(f),
+      removeEventListener: (type, f) => listeners.delete(f),
+      set(value) {
+        this.matches = value;
+        for (const f of listeners) f();
+      },
+    };
+  };
+  const setup = (floating) => {
+    const media = fakeMedia(floating);
+    const el = neighboursPanel({
+      paperOf: (id) => papers.get(id),
+      href: (p) => `?paper=${p.id}`,
+      onOpen: () => {},
+      onClose: () => {},
+      floating: media,
+    });
+    document.body.append(el);
+    return { el, media };
+  };
+  const shown = (el) => el.querySelectorAll(".neighbours-list li").length;
+  const button = (el, text) =>
+    [...el.querySelectorAll("button")].find((b) =>
+      b.textContent.includes(text),
+    );
+
+  it("shows the top 5 and 'Show all 10' expands the list", () => {
+    const { el } = setup(true);
+    el.show(state());
+    expect(el.classList.contains("is-floating")).toBe(true);
+    expect(shown(el)).toBe(5);
+    button(el, "Show all 10").click();
+    expect(shown(el)).toBe(10);
+    // a redraw with the same pin keeps it expanded; a new pin starts at 5 again
+    el.show(state());
+    expect(shown(el)).toBe(10);
+    el.show(state("p3"));
+    expect(shown(el)).toBe(5);
+    el.remove();
+  });
+
+  it("collapses to its header and back, and stays collapsed across pins", () => {
+    const { el } = setup(true);
+    el.show(state());
+    const toggle = el.querySelector(".neighbours-collapse");
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    toggle.click();
+    expect(shown(el)).toBe(0);
+    expect(el.querySelector(".neighbours-close")).not.toBeNull();
+    expect(
+      el.querySelector(".neighbours-collapse").getAttribute("aria-expanded"),
+    ).toBe("false");
+    el.show(state("p4"));
+    expect(shown(el)).toBe(0);
+    el.querySelector(".neighbours-collapse").click();
+    expect(shown(el)).toBe(5);
+    el.remove();
+  });
+
+  it("stacked layouts keep the full list under the map, without the toggle", () => {
+    const { el, media } = setup(false);
+    el.show(state());
+    expect(el.classList.contains("is-floating")).toBe(false);
+    expect(shown(el)).toBe(10);
+    expect(el.querySelector(".neighbours-collapse")).toBeNull();
+    expect(button(el, "Show all")).toBeUndefined();
+    media.set(true); // widened past 1024px: redrawn as the floating card
+    expect(el.classList.contains("is-floating")).toBe(true);
+    expect(shown(el)).toBe(5);
+    el.remove();
+  });
+});
