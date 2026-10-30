@@ -10,6 +10,7 @@ export default {
     { name: "Explore", path: "/" },
     { name: "My Papers", path: "/my-papers" },
     { name: "Researchers", path: "/authors" },
+    { name: "About", path: "/about" },
   ],
   head: `<meta property="og:title" content="${conference.name} Papers Navigator">
 <meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
@@ -48,10 +49,11 @@ export default {
     <a href="./">Explore</a>
     <a href="./my-papers">My Papers <span class="badge-my-papers" hidden></span></a>
     <a href="./authors">Researchers</a>
+    <a href="./about">About</a>
   </div>
   <button class="navbar-options" aria-controls="filters-panel" aria-expanded="false" hidden>⚙ Options</button>
 </nav>`,
-  footer: `Built by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a> · Papers Navigator`,
+  footer: `Built by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a> · Papers Navigator · <a href="./about#privacy">About &amp; privacy</a>`,
   search: false,
   // johnguerra.co (Apache) serves my-papers.html, not /my-papers
   cleanUrls: false,
