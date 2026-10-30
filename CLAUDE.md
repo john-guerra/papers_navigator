@@ -50,7 +50,7 @@ scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John fi
 - Only pick issues labelled `agent-ready`. `needs-decision` means John hasn't decided yet — don't implement it.
 - Claim an issue before starting: assign it / comment that you're on it, and add `in-progress`. One agent per issue.
 - One issue = one branch `issue-<number>-<slug>` in its own git worktree (Claude Code: `EnterWorktree`; otherwise `git worktree add ../papersNavigator-<number> -b issue-<number>-<slug>`). Run `npm install` in the worktree.
-- Base branch: `main` once Stage 1 is merged; until then `stage1-explore-mypapers`.
+- Base branch: `main` (Stage 1 merged 2026-10-29). Live site: https://johnguerra.co/viz/papersNavigator/ieeevis2026/ — deploy only with John's go-ahead.
 - TDD; before opening a PR run `npm test`, `.venv/bin/pytest pipeline`, `npm run lint`, `npm run build`, and check UI changes in Chrome at 1600×1000 and 400×860. PR body says `Closes #<n>` (template in `.github/`).
 - Avoid parallel edits to the same hot files: `src/index.md` and `src/style.css` are shared by most UI issues — keep changes there small and move logic into `src/lib/`, `src/components/`, `src/widgets/`. Regenerating `conferences/*/data/` (binary, large diffs) is its own issue; never in a feature PR.
 - Comments/PRs written on GitHub on John's behalf start with "Claude (<model-and-version>) in behalf of John".
