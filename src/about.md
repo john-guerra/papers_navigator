@@ -109,7 +109,7 @@ The browser also keeps a copy of the site's files and of the search model (Cache
 
 ### Who your browser talks to, and why
 
-- **johnguerra.co**, the web server that hosts this site, delivers its pages and data. Like any web server it may keep standard access logs (IP address, browser, page address, time). Page addresses include an open paper (<code>?paper=…</code>) or researcher (<code>?name=…</code>) when you open or reload such a link; your searches, list and abstracts are never put in a page address that reaches the server.
+- **johnguerra.co**, the web server that hosts this site, delivers its pages and data. Like any web server it may keep standard access logs (IP address, browser, page address, time). Page addresses include an open paper (<code>?paper=…</code>) or researcher (<code>?name=…</code>) when you open or reload such a link. Searches and filters can appear in the page address so you can share a view; the part after <code>#</code> is never sent to the server. Your list and abstracts never go in a page address that reaches the server.
 - **Hugging Face** (huggingface.co and its download servers) delivers the search model files (about 23 MB) the first time you open Explore; after that the browser reuses its saved copy. My Papers also loads it in the background only if you watch research topics (and not when your device asks to save data). Only the model is downloaded: your words are never sent.
 - **The conference website** (${sourceHost}) and other sites only when you follow a link, such as a paper's Conference page ↗, a PDF or a video.
 
@@ -132,7 +132,7 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 ### Search by meaning
 
 1. Type what you are looking for in plain words, for example ${conference.exampleQueries?.slice(0, 3).map((q) => `“${q}”`).join(", ") ?? "a topic"}. Or tap one of the example searches in the introduction under the title.
-2. Results are ranked by meaning, not keywords: a paper can match without using your exact words. The search box says "Loading search model…" until the model is ready (the first visit downloads it).
+2. Results are ranked by meaning, not keywords: a paper can match without using your exact words. The search box says "⏳ Loading the language model…" until the model is ready (the first visit downloads it).
 3. Pick how close a match must be with **Strong · Good · Weak · All**; each shows how many papers it includes. **Good** is the default.
 
 ### Filter the program
@@ -146,7 +146,7 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 
 Every dot is a paper; similar papers sit close together.
 
-- **Hover or tap** a dot for its title, type, room and time; **click** it to open its details.
+- **Hover or tap** a dot for its title, authors, type, session and topic (and similarity after a search); **click** it to open its details.
 - **Select a region** to keep only the papers inside it: drag on the map on a laptop. On a phone the map never captures scrolling, so tap **Select region** first, then drag. The region becomes a chip ("Map region ✕").
 - **Color by** Similarity (after a search, darker = closer), Type, Room, Session or Topic.
 - **Topic labels** name the groups of similar papers; turn them off with the toggle under the map.
@@ -212,7 +212,7 @@ My Papers is your personal list and schedule. Everything happens in your browser
 - **Watching** lists your watches with how many papers each brings and where they fall in the week. Add one with **Watch a friend or an institution**; **Stop watching** asks whether to keep or remove its papers.
 - **Recommended papers** (✨) are papers similar to the ones in your list. **Add to My Papers**, or **Dismiss** the ones you don't want. They are computed in your browser.
 - **New** flags papers that joined your list through your watches after a program update; **Mark as seen** clears the flag.
-- **All my papers** at the bottom has a search box and **Sort by** (time, room, date added, title, reason).
+- **All my papers** at the bottom has a search box and **Sort by** (Time, Room, Added on, Title, Reason).
 
 ### Share, export and import
 
