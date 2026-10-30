@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   QR_MAX_PAPERS,
   renderShareBanner,
@@ -42,5 +42,58 @@ describe("renderShareDialog", () => {
       "too many papers for a QR code",
     );
     expect(el.querySelector("input").value).toBe("https://x.test/#follow=a");
+  });
+});
+
+describe("renderShareBanner safe Replace", () => {
+  it("says how many you already have and asks inline before replacing", () => {
+    const onReplace = vi.fn();
+    const el = renderShareBanner(
+      { ids: ["a", "b"], unknown: [], already: 1, current: 14 },
+      { onMerge: noop, onReplace, onIgnore: noop },
+    );
+    expect(el.textContent.replace(/\s+/g, " ")).toContain("you already have 1");
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Replace")
+      .click();
+    expect(onReplace).not.toHaveBeenCalled();
+    const text = el.textContent.replace(/\s+/g, " ");
+    expect(text).toContain("Replace your 14 papers with these 2?");
+    const labels = [...el.querySelectorAll("button")].map((b) => b.textContent);
+    expect(labels).toEqual(["Yes, replace", "Cancel"]);
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Cancel")
+      .click();
+    expect(
+      [...el.querySelectorAll("button")].map((b) => b.textContent),
+    ).toEqual(["Merge", "Replace", "Ignore"]);
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Replace")
+      .click();
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Yes, replace")
+      .click();
+    expect(onReplace).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("renderShareBanner with watched papers", () => {
+  it("says Replace only affects papers added by hand, and focuses Replace after Cancel", () => {
+    const el = renderShareBanner(
+      { ids: ["a", "b"], unknown: [], already: 0, current: 5, watched: 20 },
+      { onMerge: noop, onReplace: noop, onIgnore: noop },
+    );
+    document.body.append(el);
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Replace")
+      .click();
+    expect(el.textContent.replace(/\s+/g, " ")).toContain(
+      "Replace your 5 papers added by hand with these 2? (The 20 papers from your watches stay.)",
+    );
+    [...el.querySelectorAll("button")]
+      .find((b) => b.textContent === "Cancel")
+      .click();
+    expect(document.activeElement.textContent).toBe("Replace");
+    el.remove();
   });
 });

@@ -175,3 +175,39 @@ describe("followed import", () => {
     expect(Number.isNaN(Date.parse(store.value[0].addedOn))).toBe(false);
   });
 });
+
+describe("replace keeps a backup and returns an undo", () => {
+  it("replace saves the previous list under :backup and undo restores it", () => {
+    const storage = memoryStorage();
+    const store = createFollowedStore("conf", storage);
+    store.add(
+      [{ id: "a" }, { id: "b" }],
+      "mine",
+      new Date("2026-10-30T00:00:00Z"),
+    );
+    const before = structuredClone(store.value);
+    const undo = store.replace([
+      { id: "x", reason: "📱 shared", addedOn: "2026-10-30T01:00:00Z" },
+    ]);
+    expect(store.value.map((d) => d.id)).toEqual(["x"]);
+    expect(
+      JSON.parse(storage.getItem("papersNavigator:conf:followed:backup")),
+    ).toEqual(before);
+    undo();
+    expect(store.value).toEqual(before);
+  });
+
+  it("importJSON with replace also returns an undo", () => {
+    const store = createFollowedStore("conf", memoryStorage());
+    store.add([{ id: "a" }], "mine");
+    const undo = store.importJSON(
+      JSON.stringify([
+        { id: "z", reason: "r", addedOn: "2026-10-30T00:00:00Z" },
+      ]),
+      { replace: true },
+    );
+    expect(store.value.map((d) => d.id)).toEqual(["z"]);
+    undo();
+    expect(store.value.map((d) => d.id)).toEqual(["a"]);
+  });
+});

@@ -38,7 +38,7 @@ export function renderShareDialog(url, { count = 0 } = {}) {
 
 /** Banner offering to merge or replace the local list with papers from a share link. */
 export function renderShareBanner(
-  { ids, unknown },
+  { ids, unknown, already = 0, current = 0, watched = 0 },
   { onMerge, onReplace, onIgnore },
 ) {
   const button = (label, fn) => {
@@ -46,21 +46,48 @@ export function renderShareBanner(
     b.onclick = fn;
     return b;
   };
+  const papers = (n) => `${n} ${n === 1 ? "paper" : "papers"}`;
   if (!ids.length) {
     // Never offer Replace here: it would wipe the list with nothing
     return html`<div class="share-banner">
-      📱 This link shares ${unknown.length}
-      ${unknown.length === 1 ? "paper" : "papers"}, but none of them are in the
+      📱 This link shares ${papers(unknown.length)}, but none of them are in the
       current program. ${button("Dismiss", onIgnore)}
     </div>`;
   }
-  return html`<div class="share-banner">
-    📱
-    <strong
-      >${ids.length} ${ids.length === 1 ? "paper" : "papers"} shared with
-      you</strong
-    >${unknown.length ? ` (${unknown.length} not in the program)` : ""}.
-    ${button("Merge", onMerge)} ${button("Replace", onReplace)}
-    ${button("Ignore", onIgnore)}
-  </div>`;
+  const banner = html`<div class="share-banner"></div>`;
+  const summary = () =>
+    html`📱
+      <strong>${papers(ids.length)} shared with you</strong
+      >${unknown.length ? ` (${unknown.length} not in the program)` : ""}${already ? `; you already have ${already}` : ""}. `;
+  let replaceButton;
+  const showChoices = () => {
+    replaceButton = button("Replace", showConfirm);
+    banner.replaceChildren(
+      summary(),
+      button("Merge", onMerge),
+      " ",
+      replaceButton,
+      " ",
+      button("Ignore", onIgnore),
+    );
+  };
+  // Inline confirm (DESIGN.md): say what will be lost before replacing. Replace only touches
+  // papers added by hand; papers kept by watch rules stay.
+  const showConfirm = () => {
+    const yes = button("Yes, replace", onReplace);
+    const what = watched ? `${papers(current)} added by hand` : papers(current);
+    banner.replaceChildren(
+      html`📱 Replace your ${what} with these
+      ${ids.length}?${watched ? ` (The ${papers(watched)} from your watches stay.)` : ""} `,
+      yes,
+      " ",
+      button("Cancel", () => {
+        showChoices();
+        replaceButton.focus?.();
+      }),
+    );
+    yes.focus?.();
+  };
+  showChoices();
+  return banner;
 }

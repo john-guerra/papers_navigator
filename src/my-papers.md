@@ -98,12 +98,28 @@ if (shared.ids.length || shared.unknown.length) {
     clearHash();
     banner.replaceChildren();
   };
+  // Replace only touches papers added by hand (watch rules stay); it asks inline first and
+  // keeps a backup, so it can be undone (#4)
+  const mine = new Set(followedStore.value.map((d) => d.id));
   banner.append(
-    renderShareBanner(shared, {
-      onMerge: () => (followedStore.merge(sharedReason()), done()),
-      onReplace: () => (followedStore.replace(sharedReason()), done()),
-      onIgnore: done,
-    }),
+    renderShareBanner(
+      {
+        ...shared,
+        // "already" counts all of My Papers (watched too); Replace only touches hand-added ones
+        already: shared.ids.filter((id) => store.has(id)).length,
+        current: mine.size,
+        watched: store.value.filter((d) => !d.manual).length,
+      },
+      {
+        onMerge: () => (followedStore.merge(sharedReason()), done()),
+        onReplace: () => {
+          const undo = followedStore.replace(sharedReason());
+          done();
+          showToast(`Replaced your list with ${shared.ids.length} shared papers`, { actionLabel: "Undo", onAction: undo });
+        },
+        onIgnore: done,
+      },
+    ),
   );
 }
 display(banner);
@@ -153,19 +169,29 @@ importInput.querySelector("input").onchange = async (event) => {
   const run = (replace) => {
     try {
       const before = followedStore.value.length;
-      followedStore.importJSON(text, { replace });
+      const undo = followedStore.importJSON(text, { replace });
       importStatus.textContent = replace
         ? `Replaced your list with ${followedStore.value.length} papers.`
         : `Added ${followedStore.value.length - before} papers (${store.value.length} total in My Papers).`;
+      if (replace) showToast("Replaced your list from the file", { actionLabel: "Undo", onAction: undo });
     } catch (error) {
       importStatus.textContent = error.message;
     }
   };
   const merge = html`<button>Merge into my list</button>`;
   const replace = html`<button>Replace my list</button>`;
+  const choices = () => importStatus.replaceChildren(`Import “${file.name}”: `, merge, " ", replace);
   merge.onclick = () => run(false);
-  replace.onclick = () => run(true);
-  importStatus.replaceChildren(`Import “${file.name}”: `, merge, " ", replace);
+  // Inline confirm before replacing (no native dialog)
+  replace.onclick = () => {
+    const yes = html`<button>Yes, replace</button>`;
+    const cancel = html`<button>Cancel</button>`;
+    yes.onclick = () => run(true);
+    cancel.onclick = choices;
+    importStatus.replaceChildren(`Replace your ${followedStore.value.length} papers with the ones in “${file.name}”? `, yes, " ", cancel);
+    yes.focus();
+  };
+  choices();
 };
 ```
 
