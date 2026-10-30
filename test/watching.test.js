@@ -34,6 +34,13 @@ describe("renderWatching", () => {
     expect(text).toContain("22 papers");
   });
 
+  it("links a watched friend to their researcher profile (#78)", () => {
+    const { el } = setup();
+    const link = el.querySelector('[data-rule="author:ann"] a.author-link');
+    expect(link.getAttribute("href")).toBe("./authors.html?name=Ann");
+    expect(el.querySelector('[data-rule="affiliation:neu"] a')).toBeNull();
+  });
+
   it("asks inline whether to keep or remove the rule's papers when you stop watching", () => {
     const { el, onRemove } = setup();
     el.querySelector('[data-rule="author:ann"] .stop-watching').click();

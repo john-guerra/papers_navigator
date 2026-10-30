@@ -101,6 +101,21 @@ describe("pageKey", () => {
     expect(pageKey(at("./my-papers.html?now=2026-11-10T15:14:00Z#p=1"))).toBe(
       at("./my-papers.html"),
     );
+    // every profile (?name=…) is the one cached Researchers page (#78)
+    expect(pageKey(at("./authors.html?name=Ann+Lee"))).toBe(
+      at("./authors.html"),
+    );
+  });
+});
+
+describe("precached pages", () => {
+  it("include the Researchers page, so profiles work offline after one visit (#78)", () => {
+    const list = source.match(/const PRECACHE_PAGES = (\[[^\]]*\]);/)[1];
+    expect(JSON.parse(list)).toEqual([
+      "./",
+      "./my-papers.html",
+      "./authors.html",
+    ]);
   });
 });
 

@@ -29,6 +29,7 @@ import { bindMyPapersBadge } from "./components/badge.js";
 import { relevanceControl } from "./widgets/relevanceControl.js";
 import { themeControl } from "./components/themeControl.js";
 import { PapersList } from "./widgets/papersList.js";
+import { authorUrl } from "./lib/authors.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
@@ -682,6 +683,7 @@ const papersList = PapersList(ordered, {
   onShow: (n) => (listState.shown = n),
   tz,
   header: "",
+  authorHref: authorUrl,
   // My research with several abstracts: which one the paper is closest to
   preamble: (p) =>
     p.score == null ? "" : `🔍 ${(p.score * 100).toFixed(1)}%${researchAbstracts.length > 1 ? ` · abstract ${p.abstractIndex + 1}` : ""}`,

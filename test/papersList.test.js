@@ -49,6 +49,19 @@ describe("PapersList", () => {
     expect(list.textContent).toContain("reason b");
   });
 
+  it("links author names with authorHref, keeping affiliations as text (#78)", () => {
+    const plain = PapersList(papers, { tz: "US/Eastern" });
+    expect(plain.querySelector(".paper-authors a")).toBeNull();
+    const list = PapersList(papers, {
+      tz: "US/Eastern",
+      authorHref: (name) => `./authors.html?name=${name}`,
+    });
+    const link = list.querySelector(".paper-authors a.author-link");
+    expect(link.getAttribute("href")).toBe("./authors.html?name=Ann");
+    expect(link.textContent).toBe("Ann");
+    expect(list.querySelector(".paper-authors").textContent).toBe("Ann (MIT)");
+  });
+
   it("caps the number of rendered papers", () => {
     const list = PapersList(papers, { tz: "US/Eastern", max: 1 });
     expect(list.querySelectorAll(".paper")).toHaveLength(1);

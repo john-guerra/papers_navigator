@@ -13,7 +13,18 @@ export function paperWhen(p, tz) {
   return iso ? `${formatDay(dayKey(iso, tz))} ${formatTime(iso, tz)}` : "";
 }
 
-function renderPaper(p, { tz, actions, preamble }) {
+/**
+ * "Ann (MIT), Bo (ETH)": each name links to `authorHref(name)` when given (a researcher's
+ * profile, #78), with its affiliation as plain text after it.
+ */
+export function authorsLine(authors = [], authorHref) {
+  return authors.map(
+    (a, i) =>
+      html`${i ? ", " : ""}${authorHref ? html`<a class="author-link" href=${authorHref(a.name)}>${a.name}</a>` : a.name}${a.affiliation ? ` (${a.affiliation})` : ""}`,
+  );
+}
+
+function renderPaper(p, { tz, actions, preamble, authorHref }) {
   const authors = (p.authors ?? [])
     .map((a) => (a.affiliation ? `${a.name} (${a.affiliation})` : a.name))
     .join(", ");
@@ -33,7 +44,7 @@ function renderPaper(p, { tz, actions, preamble }) {
       ${actions ? actions(p) : ""}
     </div>
     ${preamble ? html`<div class="paper-preamble">${preamble(p)}</div>` : ""}
-    <div class="paper-authors">${authors}</div>
+    <div class="paper-authors">${authorsLine(p.authors, authorHref)}</div>
     <div class="paper-where">
       ${where}${when ? ` · 🕰️ ${when}` : ""}
       ${(p.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
@@ -58,6 +69,7 @@ function renderPaper(p, { tz, actions, preamble }) {
 /**
  * List of papers with title link, authors (affiliations), type, session, room, time in
  * the conference timezone, public links and abstract. Ported from @john-guerra/papers-list.
+ * `authorHref(name)`, if given, makes each author name a link (e.g. to their profile).
  */
 export function PapersList(
   papers,
@@ -65,6 +77,7 @@ export function PapersList(
     tz,
     actions,
     preamble,
+    authorHref,
     header,
     max = 100,
     shown: initial = max,
@@ -80,7 +93,11 @@ export function PapersList(
   const reveal = (count) => {
     list.querySelector(".papers-more")?.remove();
     const batch = papers.slice(shown, shown + count);
-    list.append(...batch.map((p) => renderPaper(p, { tz, actions, preamble })));
+    list.append(
+      ...batch.map((p) =>
+        renderPaper(p, { tz, actions, preamble, authorHref }),
+      ),
+    );
     shown += batch.length;
     const rest = papers.length - shown;
     if (rest > 0) {

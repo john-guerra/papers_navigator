@@ -21,6 +21,7 @@ import { paperPanel } from "./components/paperPanel.js";
 import { renderItinerary } from "./components/itinerary.js";
 import { renderNowNext } from "./components/nowNext.js";
 import { PapersList } from "./widgets/papersList.js";
+import { authorUrl } from "./lib/authors.js";
 import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
 import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
@@ -319,6 +320,7 @@ display(
     [...searched].sort((a, b) => d3.ascending(key(a), key(b))),
     {
       tz,
+      authorHref: authorUrl,
       preamble: (p) =>
         html`${p.new ? html`<span class="new-badge">New</span> ` : ""}${(p.reasons ?? [p.reason]).map((r) => html`<span class="reason-chip">${r}</span> `)}· Added ${new Date(p.addedOn).toLocaleDateString()}`,
       actions: (p) => {
