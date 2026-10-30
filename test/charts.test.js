@@ -159,6 +159,70 @@ describe("scatterSpec reliability (#84)", () => {
     expect(widget.value.brushed).toHaveLength(3);
   });
 
+  it("clips the overlay to the plot", () => {
+    const overlay = [{ x: 0, x2: 5, y: 0, y2: 5, distortion: 0.8 }];
+    expect(scatterSpec(data, { overlay }).layer[0].mark.clip).toBe(true);
+  });
+
+  it("keeps the overlay out during a tween and fades it in as it settles", async () => {
+    const overlay = [{ x: 0, x2: 5, y: 0, y2: 5, distortion: 0.8 }];
+    const before = await BrushableScatterPlot(
+      data.map((d) => ({ ...d, x: d.x * 2 })),
+      { renderer: "svg" },
+    );
+    const after = await BrushableScatterPlot(data, {
+      renderer: "svg",
+      overlay,
+      from: before,
+      animate: { duration: 400 },
+    });
+    await after.stop();
+    // In the real view: no cells mid-motion, all of them once it has settled
+    const rects = () => {
+      let n = 0;
+      const walk = (node) => {
+        if (
+          node.marktype === "rect" &&
+          node.role === "mark" &&
+          !node.name?.includes("brush")
+        )
+          n += node.items.length;
+        (node.items ?? []).forEach(walk);
+      };
+      walk(after.view.scenegraph().root);
+      return n;
+    };
+    await after.view.signal("tm", 100).runAsync();
+    expect(rects()).toBe(0);
+    await after.view.signal("tm", 400).runAsync();
+    expect(rects()).toBe(1);
+    const spec = scatterSpec(data, {
+      overlay,
+      transition: {
+        duration: 400,
+        total: 400,
+        xDomain: [
+          [0, 20],
+          [0, 10],
+        ],
+        yDomain: [
+          [0, 10],
+          [0, 10],
+        ],
+        motion: new Map(),
+        exits: [],
+        stageStart: () => 0,
+      },
+    });
+    const [shade] = spec.layer;
+    expect(shade.transform[0]).toEqual({ filter: "tm >= 300" });
+    expect(shade.transform[1].calculate).toContain("datum.distortion * 0.35");
+    expect(shade.encoding.opacity).toMatchObject({
+      field: "__so",
+      scale: null,
+    });
+  });
+
   it("has no overlay layer without cells", () => {
     expect(scatterSpec(data, { overlay: [] }).layer).toBeUndefined();
   });

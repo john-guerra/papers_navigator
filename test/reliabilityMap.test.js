@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { reliabilityMapOptions } from "../src/components/reliabilityMap.js";
+import {
+  gridBuilds,
+  reliabilityMapOptions,
+} from "../src/components/reliabilityMap.js";
 
 const everyPaper = Array.from({ length: 20 }, (_, i) => ({
   id: `p${i}`,
@@ -55,5 +58,32 @@ describe("reliabilityMapOptions", () => {
       expect(c.x2).toBeLessThanOrEqual(2 + 1e-9);
       expect(c.y2).toBeLessThanOrEqual(3 + 1e-9);
     }
+  });
+
+  it("reuses the grid on an unrelated redraw and rebuilds it when the inputs change", () => {
+    const on = { ...reliability, overlay: true };
+    const ownScores = { ...scores };
+    const options = (extra = {}) =>
+      reliabilityMapOptions({
+        ...base,
+        scores: ownScores,
+        reliability: on,
+        cacheKey: ["umap", true],
+        // fresh objects each redraw, as the page makes them
+        shown: everyPaper.map((p) => ({ ...p })),
+        ...extra,
+      });
+    const start = gridBuilds.count;
+    const first = options({ colorBy: "typeLabel" }).overlay;
+    expect(gridBuilds.count).toBe(start + 1);
+    // Color, search, theme or My Papers changed: same grid, not rebuilt
+    expect(options({ colorBy: "reliability" }).overlay).toBe(first);
+    expect(gridBuilds.count).toBe(start + 1);
+    // A filter, a size, a projection or new scores (k, metric) rebuild it
+    options({ shown: everyPaper.slice(0, 10) });
+    options({ width: 300 });
+    options({ cacheKey: ["tsne", true] });
+    reliabilityMapOptions({ ...base, reliability: on, scores: { ...scores } });
+    expect(gridBuilds.count).toBe(start + 5);
   });
 });

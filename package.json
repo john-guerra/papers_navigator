@@ -9,7 +9,8 @@
     "test": "vitest run",
     "dev": "observable preview",
     "build": "observable build && node scripts/buildSw.js && node scripts/copyStatic.js",
-    "lint": "eslint src test scripts"
+    "lint": "eslint src test scripts",
+    "fonts": "node scripts/fonts.js"
   },
   "repository": {
     "type": "git",
@@ -43,6 +44,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "@fontsource-variable/source-sans-3": "^5.3.1",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",

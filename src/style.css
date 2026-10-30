@@ -1577,6 +1577,36 @@ details.missing > summary {
   font: var(--typography-label-md);
 }
 
+/* Options → Animation (#82): switches, then Motion / Speed segmented controls */
+.animation-control {
+  display: grid;
+  gap: var(--spacing-sm, 8px);
+  justify-items: start;
+}
+
+.animation-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  font: var(--typography-body-sm);
+}
+
+.animation-toggle:has(input:disabled) {
+  color: var(--color-on-surface-muted);
+}
+
+.animation-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+}
+
+.animation-label {
+  min-width: 4rem;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-md);
+}
+
 /* In Map options the "Appearance" heading already names the control */
 .filters-panel .theme-label {
   display: none;
