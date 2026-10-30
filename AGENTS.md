@@ -35,7 +35,7 @@ scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John fi
 
 ## Gotchas
 
-- John's npm widgets (`multi-auto-select`, `navio`, `vega-selected`) have a UMD `main`/`browser` field; import their ES builds explicitly (`…/dist/*.es(m).js`).
+- John's npm widgets (`multi-auto-select`, `navio`, `vega-selected`) have a UMD `main`/`browser` field; import their ES builds explicitly (`…/dist/*.es(m).js`). Exception: `smart-labels` has an `exports` map (its "import" condition is the ES build) that blocks deep paths, so import it bare.
 - `htl` is pinned to 0.3.1 (1.0.0's exports break Framework's resolver). The empty root `tsconfig.json` exists because vega 6 packages extend `../../tsconfig.json`.
 - Inputs (`@observablehq/inputs`) only emit `input` once attached to the document — append widgets to `document.body` in jsdom tests.
 - Framework caches data-loader output in `src/.observablehq/cache/` and only re-runs a loader when the loader file changes. After re-running the pipeline or editing `config.json`, `rm -rf src/.observablehq/cache/data` or the site serves stale data.

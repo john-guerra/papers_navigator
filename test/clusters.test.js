@@ -3,6 +3,7 @@ import { clusterLabels } from "../src/lib/clusters.js";
 import { applyFilters, filterAccessor } from "../src/lib/filters.js";
 import {
   cullLabels,
+  wrapLabel,
   scatterSpec,
 } from "../src/widgets/brushableScatterPlot.js";
 
@@ -51,6 +52,26 @@ describe("topics filter", () => {
   });
 });
 
+describe("wrapLabel", () => {
+  it("breaks topic labels after each comma, then at about 18 characters", () => {
+    expect(wrapLabel("Topological, dimensionality reduction")).toEqual([
+      "Topological,",
+      "dimensionality",
+      "reduction",
+    ]);
+    expect(wrapLabel("Graph, semantic, spatial")).toEqual([
+      "Graph,",
+      "semantic,",
+      "spatial",
+    ]);
+    expect(wrapLabel("Uncertainty")).toEqual(["Uncertainty"]);
+    expect(wrapLabel("Visual analytics for climate data")).toEqual([
+      "Visual analytics",
+      "for climate data",
+    ]);
+  });
+});
+
 describe("cullLabels", () => {
   const box = {
     width: 200,
@@ -91,11 +112,16 @@ describe("scatterSpec topic labels", () => {
     const texts = spec.layer.filter((l) => l.mark.type === "text");
     expect(texts).toHaveLength(2);
     const [halo, ink] = texts;
-    expect(halo.data.values).toEqual([{ text: "Topic 0", x: 5, y: 5 }]);
+    expect(halo.data.values).toEqual([
+      { text: "Topic 0", lines: ["Topic 0"], n: 1, x: 5, y: 5 },
+    ]);
     // halo in the page background, ink in on-surface (jsdom: the fallbacks)
     expect(halo.mark.stroke).toBe("#fcf9f3");
     expect(ink.mark.fill).toBe("#241e1a");
-    expect(ink.encoding.text.field).toBe("text");
+    expect(ink.encoding.text.field).toBe("lines");
+    // DESIGN.md: Newsreader medium; a block of n lines moves up by (n - 1) half lines
+    expect(ink.mark.fontWeight).toBe(500);
+    expect(ink.mark.dy.expr).toMatch(/datum.n - 1/);
     // points keep the selections
     expect(spec.layer[0].params.map((d) => d.name)).toEqual(["drag", "click"]);
     expect(spec.params.map((d) => d.name)).toContain("levelCut");

@@ -2,6 +2,8 @@
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import { attachNearestTooltip } from "./nearestTooltip.js";
 import { attachNeighbours } from "./mapNeighbours.js";
+import { attachPaperLabels, legendBoxes } from "./paperLabels.js";
+import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import {
   domainAt,
   easeExpr,
@@ -64,14 +66,50 @@ export function topCategories(data, field, n = 3) {
 }
 
 /**
+ * A topic label's lines: split after each ", " (topics are "a, b, c" keyword lists), then
+ * words wrapped to about `max` characters per line. A single long word keeps its own line.
+ */
+export function wrapLabel(text, max = 18) {
+  const parts = String(text ?? "").split(", ");
+  const lines = [];
+  parts.forEach((part, i) => {
+    const words = `${part}${i < parts.length - 1 ? "," : ""}`.split(" ");
+    let line = "";
+    for (const word of words) {
+      if (line && line.length + 1 + word.length > max) {
+        lines.push(line);
+        line = word;
+      } else line = line ? `${line} ${word}` : word;
+    }
+    if (line) lines.push(line);
+  });
+  return lines;
+}
+
+/** Topic label line height in px (DESIGN.md: 1.1). */
+export const topicLineHeight = (fontSize) => Math.round(fontSize * 1.1);
+
+/**
+ * The box [x0, y0, x1, y1] of a topic label centered on (cx, cy) px: its wrapped lines
+ * (wrapLabel) at `fontSize`, about 0.55em per character, `gap` px clear around it.
+ */
+export function topicLabelBox(cx, cy, text, fontSize, gap = 2) {
+  const lines = wrapLabel(text);
+  const w = Math.max(...lines.map((l) => l.length)) * fontSize * 0.55 + 2 * gap;
+  const h =
+    fontSize * 1.2 + topicLineHeight(fontSize) * (lines.length - 1) + 2 * gap;
+  return [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
+}
+
+/**
  * Labels that fit without overlapping, in priority order (pass the largest topics first):
- * each label's box is estimated from its text length at `fontSize` and placed with the same
+ * each label's box (topicLabelBox: wrapped lines at `fontSize`) is placed with the same
  * linear mapping as the map (domain → [padding, size - padding]); a label overlapping one
  * already kept is dropped. `{text, x, y}` in data units.
  */
 export function cullLabels(
   labels,
-  { width, height, xDomain, yDomain, fontSize = 11, padding = 10, gap = 2 },
+  { width, height, xDomain, yDomain, fontSize = 15, padding = 10, gap = 2 },
 ) {
   const scale =
     ([d0, d1], size) =>
@@ -82,11 +120,13 @@ export function cullLabels(
   const kept = [];
   const boxes = [];
   for (const label of labels) {
-    const w = label.text.length * fontSize * 0.55 + 2 * gap;
-    const h = fontSize * 1.2 + 2 * gap;
-    const cx = sx(label.x);
-    const cy = height - sy(label.y);
-    const box = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
+    const box = topicLabelBox(
+      sx(label.x),
+      height - sy(label.y),
+      label.text,
+      fontSize,
+      gap,
+    );
     const overlaps = boxes.some(
       (b) => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3],
     );
@@ -165,7 +205,7 @@ export function scatterSpec(
     categories,
     ringIds = null,
     labels = null,
-    labelSize = 11,
+    labelSize = 15,
     scoreDomain = null,
     colorRange = null,
     legendLabels = null,
@@ -323,15 +363,20 @@ export function scatterSpec(
   };
 
   const shown = visibleLabels(data, labels, { x, y, width, height, labelSize });
+  // Each topic label as its wrapped lines (wrapLabel) and their count, which centers the block
+  const lineRows = (l) => {
+    const lines = wrapLabel(l.text);
+    return { text: l.text, lines, n: lines.length };
+  };
   const labelRows = [
     ...(shown ?? []).map((l) => ({
-      text: l.text,
+      ...lineRows(l),
       [x]: l.x,
       [y]: l.y,
       ...(transition && { __old: 0, __s: transition.stageStart(l.cluster) }),
     })),
     ...(transition && shown?.length ? transition.fromLabels : []).map((l) => ({
-      text: l.text,
+      ...lineRows(l),
       [x]: l.x,
       [y]: l.y,
       __old: 1,
@@ -341,16 +386,20 @@ export function scatterSpec(
   const text = (mark) => ({
     data: { values: labelRows },
     ...(tween && { transform: tween.labelTransform }),
+    // DESIGN.md: Newsreader medium, centered lines; Vega draws the first line at y and the
+    // rest below it, so each label moves up by half its extra lines
     mark: {
       type: "text",
       fontSize: labelSize,
-      fontWeight: 600,
-      font: token("font-sans", "sans-serif"),
+      fontWeight: 500,
+      font: token("font-serif", "serif"),
+      lineHeight: topicLineHeight(labelSize),
+      dy: { expr: `-(datum.n - 1) * ${topicLineHeight(labelSize) / 2}` },
       ...mark,
     },
     encoding: {
       ...position,
-      text: { field: "text" },
+      text: { field: "lines" },
       ...(tween && { opacity: tween.opacity("__lo") }),
       tooltip: null,
     },
@@ -795,7 +844,7 @@ function legendFor({
 export function visibleLabels(
   data,
   labels,
-  { x = "x", y = "y", width, height, labelSize = 11 },
+  { x = "x", y = "y", width, height, labelSize = 15 },
 ) {
   return labels?.length && typeof width === "number" && data.length
     ? cullLabels(labels, {
@@ -1152,7 +1201,8 @@ export async function BrushableScatterPlot(data, options = {}) {
           ),
       )
       .signal("queryHover", -1)
-      .runAsync();
+      .runAsync()
+      .then(() => target.paperLabels?.schedule());
   };
   /** The index of the query marker within `radius` px of a screen position, or -1. */
   target.queryAt = (clientX, clientY, radius = 14) => {
@@ -1219,6 +1269,78 @@ export async function BrushableScatterPlot(data, options = {}) {
         ? (event) => target.queryAt(event.clientX, event.clientY) >= 0
         : null,
     });
+
+  // Short paper labels (#99): `paperLabels` = {label, enabled, emphasis}; an overlay drawn when
+  // the motion settles and redrawn (debounced) when the brush, relevance cut, pin or query changes
+  if (options.paperLabels) {
+    const labelSize = options.labelSize ?? 15;
+    const topics =
+      visibleLabels(data, options.labels, {
+        x,
+        y,
+        width: options.width,
+        height: options.height,
+        labelSize,
+      }) ?? [];
+    // A text box centered on (cx, cy), `em` px per character at `size` px, 3 px clear around it
+    const box = (cx, cy, text, size, em = 0.6) =>
+      textBox({
+        x: cx,
+        y: cy,
+        width: estimateWidth(text, size) * (em / 0.55),
+        height: size * 1.2,
+        margin: 3,
+      });
+    const labels = attachPaperLabels(target, {
+      ...options.paperLabels,
+      view: chart.view,
+      data,
+      x,
+      y,
+      id,
+      // DESIGN.md: a quieter tier than the topic labels: small sans in muted ink
+      font: token("font-sans", "sans-serif"),
+      fill: token("color-on-surface-muted", "#605954"),
+      halo: token("color-background", "#fcf9f3"),
+      leader: token("color-on-surface-muted", "#605954"),
+      moving: () => Boolean(transition) && tm < transition.total,
+      brush: () => target.brush(),
+      levelCut: () => chart.view.signal("levelCut"),
+      pinned: () => target.neighbours?.pinned ?? null,
+      focusIds: () => {
+        const n = target.neighbours;
+        return n?.pinned != null
+          ? [n.pinned, ...n.neighbours.map((d) => d.id)]
+          : null;
+      },
+      // The pinned paper's neighbour percentages take labels out of the budget (blocking their
+      // boxes would leave a dense cluster with no labels at all)
+      reserved: () =>
+        target.neighbours?.pinned != null
+          ? target.neighbours.neighbours.length
+          : 0,
+      // Everything else drawn as text or on top: topic labels (their wrapped lines), the query
+      // marker and its label, and the legend
+      obstacles: (toPixel) => [
+        ...topics.map((l) =>
+          topicLabelBox(...toPixel([l.x, l.y]), l.text, labelSize, 3),
+        ),
+        ...markers.flatMap((m) => {
+          const [px, py] = toPixel([m.x, m.y]);
+          return [
+            [px - 10, py - 10, px + 10, py + 10],
+            box(px, py - 15, m.label, 12, 0.65),
+          ];
+        }),
+        ...legendBoxes(chart.view),
+      ],
+    });
+    target.paperLabels = labels;
+    target.finished.then(labels.schedule);
+    target.addEventListener("input", labels.schedule);
+    target.addEventListener("neighbours", labels.schedule);
+    chart.view.addSignalListener("levelCut", labels.schedule);
+  }
 
   Object.defineProperty(target, "value", {
     get: () => value,

@@ -43,7 +43,8 @@ import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
-import { PHONE_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY } from "./lib/breakpoints.js";
+import { PHONE_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
+import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
 import { mapSize, watchStickyViewport } from "./lib/mapSize.js";
 import { conferenceZone } from "./lib/time.js";
 ```
@@ -101,7 +102,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
   <div class="map-stage">
   ${mapInput}
   <p id="query-live" class="sr-only" aria-live="polite"></p>
-  <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
+  <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}${paperLabelsInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
   ${neighboursCard}
   </div>
 </section>
@@ -422,6 +423,8 @@ const animationStore = createAnimationSettings();
 const neighbourStore = createNeighbourSettings();
 const neighbourIndex = createNeighbourIndex(toMatrix(embeddingsBuffer, papers.length), papers.map((p) => p.id), { dims: embeddingsBuffer.byteLength / 4 / papers.length });
 const neighbourState = { pinned: null };
+// Short paper labels on the map (#99): per device, on by default except on phones (too dense)
+const paperLabelStore = createPaperLabelSettings({ phone: matchesMedia(PHONE_QUERY) });
 ```
 
 ```js
@@ -498,6 +501,9 @@ const colorBy = Generators.input(colorByInput);
 // Topic labels at the cluster centers (#25), on by default
 const topicLabelsInput = hasTopics ? Inputs.toggle({ label: "Topic labels", value: urlStart.labels }) : null;
 const showTopics = topicLabelsInput ? Generators.input(topicLabelsInput) : false;
+// Paper labels (#99): toggled live on the map on screen (no redraw, so the brush stays)
+const paperLabelsInput = Inputs.toggle({ label: "Paper labels", value: paperLabelStore.value });
+paperLabelsInput.addEventListener("input", () => paperLabelStore.set(paperLabelsInput.value));
 ```
 
 ```js
@@ -614,7 +620,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   ringIds: store.value.map((d) => d.id),
   // Largest topics first: a label that would overlap a bigger topic's is left out
   labels: showTopics ? clusterLabels(positioned) : null,
-  labelSize: mapWidth < 500 ? 10 : 11,
+  labelSize: mapWidth < 500 ? 13 : 15,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
   scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
   // DESIGN.md → Legend: the ramp says "less / more similar", not scores
@@ -643,6 +649,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   neighbours: ((shownIds) => ({ similar: (id, k) => neighbourIndex.nearest(id, k, shownIds), ...neighbourStore.value, pinned: neighbourState.pinned }))(new Set(positioned.map((p) => p.id))),
   // Where the search / My research lands (#100), placed below with placeQuery
   query: true,
+  // Short paper labels (#99); on/off and the emphasized papers update live (cells below)
+  paperLabels: { label: "shortLabel", enabled: paperLabelStore.value },
 });
 // A run superseded while the map was being built never shows it: stop its motion and keep
 // mapState pointing at the map on screen
@@ -659,8 +667,20 @@ const map = Generators.input(mapInput);
 {
   const markers = queryMarkers({ vectors: rankingVectors, matrix: toMatrix(embeddingsBuffer, papers.length), papers, shown: positioned, query: query ?? "", research: researchMode, weakCut: rankingVectors ? cutsFor(scored.map((d) => d.score)).weak : -Infinity });
   mapInput.placeQuery(markers);
+  // Paper labels (#99) always show (where they fit) for the query's nearest paper and the top
+  // Strong matches
+  mapInput.paperLabels?.update({ emphasis: emphasisIds(positioned, { strongCut: hasQuery ? cutsFor(scored.map((d) => d.score)).strong : null, markers }) });
   const live = document.getElementById("query-live");
   if (live && live.textContent !== queryAnnouncement(markers)) live.textContent = queryAnnouncement(markers);
+}
+```
+
+```js
+// Paper labels (#99) on/off follows the store on the map on screen
+{
+  const onPaperLabels = () => mapInput.paperLabels?.update({ enabled: paperLabelStore.value });
+  paperLabelStore.addEventListener("input", onPaperLabels);
+  invalidation.then(() => paperLabelStore.removeEventListener("input", onPaperLabels));
 }
 ```
 
