@@ -11,6 +11,7 @@ const {
   strategyFor,
   pageKey,
   assetRefs,
+  cssAssetRefs,
   cacheName,
   isStaleCache,
   freshRequest,
@@ -39,6 +40,16 @@ describe("strategyFor", () => {
       "./_observablehq/stdlib/inputs.f7bf0e12.css",
     ])
       expect(strategyFor(at(path), scope), path).toBe("cache-first");
+  });
+
+  it("uses cache-first for the self-hosted fonts (#91; unhashed, but one cache per deploy)", () => {
+    expect(
+      strategyFor(
+        at("./_file/fonts/newsreader-latin-opsz-normal.woff2"),
+        scope,
+      ),
+    ).toBe("cache-first");
+    expect(strategyFor(at("./fonts/x.woff2"), scope)).toBe("network-first");
   });
 
   it("doesn't cache-first unhashed assets (npm run dev serves them)", () => {
@@ -109,12 +120,13 @@ describe("pageKey", () => {
 });
 
 describe("precached pages", () => {
-  it("include the Researchers page, so profiles work offline after one visit (#78)", () => {
+  it("include the Researchers and About pages, so they work offline after one visit (#78, #88)", () => {
     const list = source.match(/const PRECACHE_PAGES = (\[[^\]]*\]);/)[1];
-    expect(JSON.parse(list)).toEqual([
+    expect(JSON.parse(list.replace(/,\s*\]$/, "]"))).toEqual([
       "./",
       "./my-papers.html",
       "./authors.html",
+      "./about.html",
     ]);
   });
 });
@@ -135,6 +147,42 @@ registerFile("./data/papers.json", {"name":"./data/papers.json","mimeType":"appl
       at("./_observablehq/client.6dc3f8d1.js"),
       at("./_import/lib/rules.3e2d316f.js"),
       at("./_file/data/papers.943aaa37.json"),
+    ]);
+  });
+});
+
+describe("cssAssetRefs", () => {
+  it("finds the fonts a built stylesheet names, relative to the stylesheet (#91)", () => {
+    const cssUrl = at("./_file/fonts/fonts.2d7cdded.css");
+    const css = `@font-face { src: url("./newsreader-latin-opsz-normal.woff2") format("woff2"); }
+@font-face { src: url(./source-sans-3-latin-wght-normal.woff2) format("woff2"); }
+@font-face { src: url("https://example.com/x.woff2"); }`;
+    expect(cssAssetRefs(css, cssUrl, scope)).toEqual([
+      at("./_file/fonts/newsreader-latin-opsz-normal.woff2"),
+      at("./_file/fonts/source-sans-3-latin-wght-normal.woff2"),
+    ]);
+  });
+
+  it("precaches only the latin subsets; the rest are cached on first use (#91)", () => {
+    const cssUrl = at("./_file/fonts/fonts.2d7cdded.css");
+    const css = [
+      "newsreader-latin-opsz-normal",
+      "newsreader-latin-ext-opsz-normal",
+      "newsreader-vietnamese-opsz-italic",
+      "source-sans-3-greek-wght-normal",
+      "source-sans-3-latin-wght-normal",
+    ]
+      .map((f) => `@font-face { src: url("./${f}.woff2"); }`)
+      .join("\n");
+    expect(
+      strategyFor(
+        at("./_file/fonts/newsreader-latin-ext-opsz-normal.woff2"),
+        scope,
+      ),
+    ).toBe("cache-first");
+    expect(cssAssetRefs(css, cssUrl, scope)).toEqual([
+      at("./_file/fonts/newsreader-latin-opsz-normal.woff2"),
+      at("./_file/fonts/source-sans-3-latin-wght-normal.woff2"),
     ]);
   });
 });
@@ -166,10 +214,10 @@ describe("freshRequest", () => {
 describe("build id (scripts/buildSw.js)", () => {
   it("stamps the build id into VERSION, so each deploy gets a new cache", () => {
     const stamped = stampVersion(source, "abc123");
-    expect(stamped).toContain('const VERSION = "v2-abc123";');
+    expect(stamped).toContain('const VERSION = "v4-abc123";');
     const built = { URL, Request };
     vm.runInNewContext(stamped, built);
-    expect(built.cacheName(scope)).toBe(`papersNavigator-v2-abc123:${scope}`);
+    expect(built.cacheName(scope)).toBe(`papersNavigator-v4-abc123:${scope}`);
     expect(built.isStaleCache(cacheName(scope), scope)).toBe(true);
   });
 

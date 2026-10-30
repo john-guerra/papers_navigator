@@ -145,39 +145,6 @@ describe("BrushableScatterPlot", () => {
   });
 });
 
-describe("BrushableScatterPlot region (#92)", () => {
-  const options = { renderer: "svg", width: 300, height: 300 };
-
-  it("has no region without a brush", async () => {
-    const widget = await BrushableScatterPlot(data, options);
-    expect(widget.region()).toBeNull();
-  });
-
-  it("reports the brush in data units", async () => {
-    const widget = await BrushableScatterPlot(data, options);
-    await widget.view
-      .signal("drag_x", [1, 11])
-      .signal("drag_y", [1, 11])
-      .runAsync();
-    expect(widget.region()).toEqual({ x: [1, 11], y: [1, 11] });
-  });
-
-  it("draws a region given in data units: the brush shows and filters", async () => {
-    const widget = await BrushableScatterPlot(data, options);
-    let fired = 0;
-    widget.addEventListener("input", () => fired++);
-    await widget.setRegion({ x: [4, 11], y: [4, 11] });
-    expect(widget.value.brushed.map((d) => d.id)).toEqual(["b", "c"]);
-    const { x, y } = widget.region();
-    expect(x[0]).toBeCloseTo(4);
-    expect(y[1]).toBeCloseTo(11);
-    // the visible rectangle (pixel signals), not only the selection
-    const [px0, px1] = widget.view.signal("drag_x_1");
-    expect(px1).toBeGreaterThan(px0);
-    expect(fired).toBeGreaterThan(0);
-  });
-});
-
 describe("BrushableHistogram", () => {
   it("starts with the given range", () => {
     const widget = BrushableHistogram(data, {

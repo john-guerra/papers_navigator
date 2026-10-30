@@ -12,15 +12,18 @@
 // - The self-hosted ONNX runtime WASM (_node/onnxruntime-web@<version>/*.wasm, 14-27 MB,
 //   #21): not touched. Transformers.js keeps its own copy in Cache Storage
 //   (useWasmCache), so caching it here too would store it twice.
-// - Other origins (the Transformers.js model, Google Fonts): not touched.
+// - The self-hosted fonts (_file/fonts/*.woff2, #91): cache-first although unhashed (each
+//   deploy gets a fresh cache). Only the latin subsets are precached (from the url()s of
+//   the stylesheets pages link); the others are cached when a page first renders them.
+// - Other origins (the Transformers.js model): not touched.
 //
 // The pure helpers at the top are tested in test/sw.test.js (loaded with node:vm).
 
 /* global ServiceWorkerGlobalScope */
-// Bump the "v2" when the caching rules change; `npm run build` (scripts/buildSw.js)
+// Bump the "v4" when the caching rules change; `npm run build` (scripts/buildSw.js)
 // appends a build id, so every deploy installs a new worker that re-precaches and
 // drops the previous deploy's cache.
-const VERSION = "v2";
+const VERSION = "v4";
 const CACHE_PREFIX = "papersNavigator-";
 const ASSET_DIRS = [
   "_file",
@@ -30,7 +33,12 @@ const ASSET_DIRS = [
   "_observablehq",
   "_duckdb",
 ];
-const PRECACHE_PAGES = ["./", "./my-papers.html", "./authors.html"];
+const PRECACHE_PAGES = [
+  "./",
+  "./my-papers.html",
+  "./authors.html",
+  "./about.html",
+];
 const NETWORK_TIMEOUT_MS = 4000;
 
 /** "cache-first" | "network-first" | "none" (let the browser handle it). */
@@ -45,7 +53,7 @@ function strategyFor(url, scope, method = "GET") {
   if (
     parts.length > 1 &&
     ASSET_DIRS.includes(parts[0]) &&
-    isHashed(parts.at(-1))
+    (isHashed(parts.at(-1)) || parts.at(-1).endsWith(".woff2"))
   )
     return "cache-first";
   return "network-first";
@@ -73,6 +81,22 @@ function assetRefs(html, pageUrl, scope) {
   )) {
     const url = new URL(match[1] ?? match[2], pageUrl).href;
     if (strategyFor(url, scope) === "cache-first") refs.add(url);
+  }
+  return [...refs];
+}
+
+/**
+ * Fonts worth precaching from a built stylesheet's url()s (#91): only the latin subsets, which
+ * every page paints. latin-ext, vietnamese and greek are cached on first use (cache-first), so
+ * phones keep the unicode-range savings.
+ */
+function cssAssetRefs(css, cssUrl, scope) {
+  const refs = new Set();
+  for (const match of css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) {
+    const url = new URL(match[1], cssUrl).href;
+    if (strategyFor(url, scope) !== "cache-first") continue;
+    if (url.endsWith(".woff2") && !/-latin-(?!ext-)/.test(url)) continue;
+    refs.add(url);
   }
   return [...refs];
 }
@@ -114,9 +138,19 @@ if (
     if (!response.ok || response.redirected) return;
     const html = await response.clone().text();
     await cache.put(pageKey(url), response);
+    const precache = async (ref) => {
+      if (!(await cache.match(ref))) await cache.add(ref).catch(() => {});
+    };
     await Promise.all(
       assetRefs(html, url, scope).map(async (ref) => {
-        if (!(await cache.match(ref))) await cache.add(ref).catch(() => {});
+        await precache(ref);
+        // The fonts a stylesheet names (#91), so pages keep their type offline.
+        if (!ref.endsWith(".css")) return;
+        const css = await cache.match(ref);
+        if (css)
+          await Promise.all(
+            cssAssetRefs(await css.text(), ref, scope).map(precache),
+          );
       }),
     );
   };

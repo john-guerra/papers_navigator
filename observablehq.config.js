@@ -10,8 +10,10 @@ export default {
     { name: "Explore", path: "/" },
     { name: "My Papers", path: "/my-papers" },
     { name: "Researchers", path: "/authors" },
+    { name: "About", path: "/about" },
   ],
-  head: `<meta property="og:title" content="${conference.name} Papers Navigator">
+  head: `<link rel="stylesheet" href="./fonts/fonts.css">
+<meta property="og:title" content="${conference.name} Papers Navigator">
 <meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -48,17 +50,16 @@ export default {
     <a href="./">Explore</a>
     <a href="./my-papers">My Papers <span class="badge-my-papers" hidden></span></a>
     <a href="./authors">Researchers</a>
+    <a href="./about">About</a>
   </div>
   <button class="navbar-options" aria-controls="filters-panel" aria-expanded="false" hidden>⚙ Options</button>
 </nav>`,
-  footer: `Built by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a> · Papers Navigator`,
+  footer: `Built by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a> · Papers Navigator · <a href="./about#privacy">About &amp; privacy</a>`,
   search: false,
   // johnguerra.co (Apache) serves my-papers.html, not /my-papers
   cleanUrls: false,
   style: "style.css",
-  // DESIGN.md fonts (replaces Framework's default Source Serif 4; Framework adds the
-  // preconnect): Newsreader 400–500 roman + italic with optical sizes, Source Sans 3 400–600.
-  globalStylesheets: [
-    "https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..500;1,6..72,400..500&family=Source+Sans+3:wght@400..600&display=swap",
-  ],
+  // No Google Fonts (#91): the DESIGN.md fonts are self-hosted, linked from the head. An
+  // empty list also drops Framework's default Source Serif 4 from Google.
+  globalStylesheets: [],
 };
