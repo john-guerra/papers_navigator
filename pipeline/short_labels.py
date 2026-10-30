@@ -23,7 +23,9 @@ import argparse
 import hashlib
 import json
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -230,9 +232,12 @@ def llm_label(paper, client, cache_root, conference="the IEEE VIS conference", m
         replies.append(client.complete(system + STRICT_SUFFIX, user_prompt(paper)))
         label = normalize_label(replies[1])
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
+    # write-then-rename: an interrupted run never leaves a half-written cache file
+    tmp = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
+    tmp.write_text(
         json.dumps({"label": label, "replies": replies, "model": model, "promptVersion": PROMPT_VERSION}, ensure_ascii=False)
     )
+    tmp.replace(path)
     return label
 
 
@@ -357,16 +362,29 @@ def keyphrase_labels(papers, embeddings, encoder=None, stop_words=()) -> list[st
 # --- The pipeline step --------------------------------------------------------------------
 
 
-def add_short_labels(papers, embeddings, config, client=None, encoder=None, cache_root=CACHE_ROOT):
-    """Sets `shortLabel` / `shortLabelSource` on each paper; returns the metadata dict."""
+def add_short_labels(papers, embeddings, config, client=None, encoder=None, cache_root=CACHE_ROOT, concurrency=1):
+    """Sets `shortLabel` / `shortLabelSource` on each paper; returns the metadata dict.
+
+    LLM requests run `concurrency` at a time (each cached as soon as it finishes); labels are
+    assigned in paper order, so the output doesn't depend on which request finishes first."""
     opts = {**DEFAULTS, **(config.get("shortLabels") or {})}
     conference = config.get("name") or config.get("id") or "the conference"
     model = client.model if client else opts["model"]
     stop_words = (config.get("clusters") or {}).get("stopWords", [])
     fallback = keyphrase_labels(papers, embeddings, encoder, stop_words=stop_words)
-    for paper, keyphrase in zip(papers, fallback):
-        name = title_tool_name(paper)
-        label = None if name else llm_label(paper, client, cache_root, conference, model=model)
+    names = [title_tool_name(p) for p in papers]
+    todo = [p for p, name in zip(papers, names) if not name]
+
+    def label_of(paper):
+        return llm_label(paper, client, cache_root, conference, model=model)
+
+    if concurrency > 1 and client is not None:
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            llm = dict(zip((p["id"] for p in todo), pool.map(label_of, todo)))
+    else:
+        llm = {p["id"]: label_of(p) for p in todo}
+    for paper, name, keyphrase in zip(papers, names, fallback):
+        label = None if name else llm[paper["id"]]
         paper["shortLabel"], paper["shortLabelSource"] = (
             (name, "title") if name else (label, "llm") if label else (keyphrase, "keyphrase")
         )
@@ -387,7 +405,9 @@ def read_embeddings(path: Path, n: int, dims: int = DIMS) -> np.ndarray:
     return np.fromfile(path, dtype="<f4").reshape(n, dims)
 
 
-def run(conference_id, root=ROOT, llm=None, client=None, encoder=None, cache_root=CACHE_ROOT, dims=DIMS):
+def run(
+    conference_id, root=ROOT, llm=None, client=None, encoder=None, cache_root=CACHE_ROOT, dims=DIMS, concurrency=4
+):
     conf_dir = Path(root) / "conferences" / conference_id
     config = json.loads((conf_dir / "config.json").read_text())
     opts = {**DEFAULTS, **(config.get("shortLabels") or {})}
@@ -403,7 +423,7 @@ def run(conference_id, root=ROOT, llm=None, client=None, encoder=None, cache_roo
             print(f"LM Studio not reachable at {opts['baseUrl']} with {opts['model']}: cached labels + keyphrases")
             client = None
     started = time.time()
-    meta = add_short_labels(papers, embeddings, config, client, encoder, cache_root)
+    meta = add_short_labels(papers, embeddings, config, client, encoder, cache_root, concurrency)
     if client is None and meta["counts"]["llm"]:  # cache-only run that found cached replies
         meta.update(model=opts["model"])
     (data_dir / "papers.json").write_text(json.dumps(papers, ensure_ascii=False))
@@ -418,5 +438,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--conference", default="ieeevis2026")
     parser.add_argument("--llm", choices=["lmstudio"], default=None)
+    parser.add_argument("--concurrency", type=int, default=4, help="parallel LLM requests (default 4)")
     args = parser.parse_args()
-    run(args.conference, llm=args.llm)
+    run(args.conference, llm=args.llm, concurrency=args.concurrency)

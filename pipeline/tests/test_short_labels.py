@@ -1,5 +1,7 @@
 import hashlib
 import json
+import threading
+import time
 
 import numpy as np
 import pytest
@@ -231,7 +233,10 @@ def test_run_adds_labels_without_changing_anything_else(tmp_path):
 def test_run_uses_the_llm_for_papers_without_a_tool_name(tmp_path):
     conf = make_conference(tmp_path, KP_PAPERS)
     client = FakeClient(["Uncertainty Glyphs", "Visualization", "Study", "Agent Charts"])
-    sl.run("testconf", root=tmp_path, encoder=hash_encoder, cache_root=tmp_path / "cache", dims=64, client=client)
+    sl.run(
+        "testconf", root=tmp_path, encoder=hash_encoder, cache_root=tmp_path / "cache", dims=64, client=client,
+        concurrency=1,  # FakeClient answers in call order
+    )
     out = json.loads((conf / "data" / "papers.json").read_text())
     assert [(p["shortLabel"], p["shortLabelSource"]) for p in out] == [
         ("Uncertainty Glyphs", "llm"),
@@ -247,6 +252,42 @@ def test_run_does_nothing_when_disabled(tmp_path):
     before = (conf / "data" / "papers.json").read_bytes()
     assert sl.run("testconf", root=tmp_path, encoder=hash_encoder, cache_root=tmp_path / "cache", dims=64) is None
     assert (conf / "data" / "papers.json").read_bytes() == before
+
+
+class SlowClient:
+    """Answers from the title; later papers answer first, so completion order != paper order."""
+
+    model = "fake/model"
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.active = self.peak = 0
+
+    def complete(self, system, user):
+        title = user.splitlines()[0].removeprefix("Title: ")
+        with self.lock:
+            self.active += 1
+            self.peak = max(self.peak, self.active)
+        time.sleep(0.05 * (len(PARALLEL) - int(title.split()[-1])))
+        with self.lock:
+            self.active -= 1
+        return f"Topic {title.split()[-1]}"
+
+
+PARALLEL = [{"id": f"q{i}", "title": f"Paper number {i}", "abstract": "Some words here."} for i in range(8)]
+
+
+def test_concurrent_llm_requests_keep_paper_order_and_cache_each(tmp_path):
+    client = SlowClient()
+    papers = [dict(p) for p in PARALLEL]
+    embeddings = hash_encoder([sl.paper_text(p) for p in papers])
+    sl.add_short_labels(
+        papers, embeddings, {"name": "C"}, client, hash_encoder, cache_root=tmp_path, concurrency=4
+    )
+    assert [p["shortLabel"] for p in papers] == [f"Topic {i}" for i in range(8)]
+    assert client.peak > 1
+    assert len(list(tmp_path.rglob("q*.json"))) == 8
+    assert not list(tmp_path.rglob("*.tmp"))
 
 
 # --- cache paths (paper ids are scraped, so untrusted) -------------------------------------
