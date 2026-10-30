@@ -120,12 +120,13 @@ describe("pageKey", () => {
 });
 
 describe("precached pages", () => {
-  it("include the Researchers page, so profiles work offline after one visit (#78)", () => {
+  it("include the Researchers and About pages, so they work offline after one visit (#78, #88)", () => {
     const list = source.match(/const PRECACHE_PAGES = (\[[^\]]*\]);/)[1];
-    expect(JSON.parse(list)).toEqual([
+    expect(JSON.parse(list.replace(/,\s*\]$/, "]"))).toEqual([
       "./",
       "./my-papers.html",
       "./authors.html",
+      "./about.html",
     ]);
   });
 });
