@@ -80,6 +80,7 @@ export function scatterSpec(
     colorScheme = null,
     categories,
     ringIds = null,
+    scoreDomain = null,
     size = null,
     sizeRange = [12, 80],
     tooltip = [id],
@@ -107,43 +108,49 @@ export function scatterSpec(
           domain: [...highlighted, OTHER],
           range: [...palette.slice(0, highlighted.length), palette[3]],
         }
-      : { range: similarityRange() };
+      : {
+          range: similarityRange(),
+          // DESIGN.md: the ramp's light end starts at the Good cut
+          ...(scoreDomain && { domain: scoreDomain, clamp: true }),
+        };
 
+  const visible = {
+    and: [{ param: "drag", empty: true }, "datum.score >= levelCut"],
+  };
+  // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
+  const levelCut = { name: "levelCut", value: 0 };
   const position = {
     x: { field: x, type: "quantitative", axis: null, scale: { zero: false } },
     y: { field: y, type: "quantitative", axis: null, scale: { zero: false } },
   };
   const points = {
-    mark: {
-      type: "point",
-      filled: true,
-      color: token("color-viz-neutral", "#605954"),
-    },
+    mark: { type: "point", filled: true, opacity: 0.75 },
     params: [
       { name: "drag", select: { type: "interval", encodings: ["x", "y"] } },
       { name: "click", select: { type: "point", fields: [id], on: "click" } },
     ],
     encoding: {
       ...position,
-      opacity: {
-        condition: { param: "drag", empty: true, value: 0.75 },
-        value: 0.12,
+      // Outside the brush or below the relevance level (levelCut): viz-dim (DESIGN.md)
+      color: {
+        condition: color
+          ? {
+              test: visible,
+              field: highlighted ? "__color" : color,
+              type: highlighted ? "nominal" : colorType,
+              title: colorTitle,
+              scale: colorScale,
+              legend: {
+                orient: "bottom",
+                columns: colorType === "quantitative" ? undefined : 4,
+                ...(highlighted && {
+                  labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
+                }),
+              },
+            }
+          : { test: visible, value: token("color-viz-neutral", "#605954") },
+        value: token("color-viz-dim", "#e1ddd8"),
       },
-      ...(color && {
-        color: {
-          field: highlighted ? "__color" : color,
-          type: highlighted ? "nominal" : colorType,
-          title: colorTitle,
-          scale: colorScale,
-          legend: {
-            orient: "bottom",
-            columns: colorType === "quantitative" ? undefined : 4,
-            ...(highlighted && {
-              labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
-            }),
-          },
-        },
-      }),
       ...(size && {
         size: {
           field: size,
@@ -174,8 +181,11 @@ export function scatterSpec(
     title,
     data: { values },
     ...(rings
-      ? { params: [{ name: "mine", value: ringIds }], layer: [points, rings] }
-      : points),
+      ? {
+          params: [{ name: "mine", value: ringIds }, levelCut],
+          layer: [points, rings],
+        }
+      : { ...points, params: [...points.params, levelCut] }),
     // Transparent so the page's paper shows through (Vega defaults to white)
     // and the title/legend take the page's ink and sans font (both themes).
     config: {
@@ -224,8 +234,18 @@ export async function BrushableScatterPlot(data, options = {}) {
 
   let value = { brushed: data, clicked: [] };
 
+  // vega-selected emits input on any signal change (e.g. levelCut, mine): forward only real
+  // selection changes, or pages that set those signals from the map's value would loop
+  const selectionKey = () => {
+    const { drag, click } = chart.value ?? {};
+    return JSON.stringify([drag?.[x], drag?.[y], click?.[id]]);
+  };
+  let lastKey = selectionKey();
   chart.addEventListener("input", (event) => {
     event.stopPropagation();
+    const key = selectionKey();
+    if (key === lastKey) return;
+    lastKey = key;
     value = selectionFromChart(chart.value, data, { x, y, id });
     target.dispatchEvent(new Event("input", { bubbles: true }));
   });
