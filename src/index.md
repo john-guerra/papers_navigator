@@ -8,15 +8,14 @@ import { createFollowedStore } from "./lib/followed.js";
 import { defaultScoreRange, rankBySimilarity, toMatrix } from "./lib/search.js";
 import { getEmbedder } from "./lib/embedder.js";
 import { applyProjection } from "./lib/projections.js";
-import { applyFilters, facetValues, typeNames } from "./lib/filters.js";
-import { scentedCheckbox } from "./widgets/scentedCheckbox.js";
+import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
+import { facetStrip } from "./widgets/facetStrip.js";
 import { BrushableScatterPlot } from "./widgets/brushableScatterPlot.js";
 import { BrushableHistogram } from "./widgets/brushableHistogram.js";
 import { PapersList } from "./widgets/papersList.js";
 import { addToFollowed } from "./components/addToFollowed.js";
 import { whereToGo } from "./lib/whereToGo.js";
 import { renderWhereToGo } from "./components/whereToGo.js";
-import MultiAutoSelect from "multi-auto-select/dist/MultiAutoSelect.esm.js";
 import { NavioWidget } from "navio/dist/navio.esm.js";
 ```
 
@@ -41,6 +40,7 @@ const typeLabels = typeNames(papers, conference.typeNames);
 <div id="explore" class="explore-layout">
 <section id="explore-map" class="explore-map">
   <div class="search-row">${queryInput}</div>
+  ${facetsInput}
   <div class="map-controls">${liveSearchInput}</div>
   ${mapInput}
   <div class="map-controls">${colorByInput}${sizeByInput}</div>
@@ -57,13 +57,8 @@ const typeLabels = typeNames(papers, conference.typeNames);
   ${maxPapersInput}
   ${papersList}
 </section>
-<aside id="filters-panel" class="filters-panel" aria-label="Options">
-  <div class="filters-header"><h2>Options</h2>${filtersClose}</div>
-  ${typesInput}
-  ${authorsInput}
-  ${affiliationsInput}
-  ${keywordsInput}
-  ${sessionsInput}
+<aside id="filters-panel" class="filters-panel" aria-label="Map options">
+  <div class="filters-header"><h2>Map options</h2>${filtersClose}</div>
   <h3>Dimensionality reduction</h3>
   ${projectionInput}
   ${filtersDone}
@@ -71,8 +66,8 @@ const typeLabels = typeNames(papers, conference.typeNames);
 </div>
 
 ```js
-// Options (filters, projection) live in an offcanvas sidebar on the right, as in the
-// CHI 2026 explorer, opened from the navbar's Options button; closed by default.
+// Map view settings (projection) live in an offcanvas sidebar on the right, opened from
+// the navbar's Options button; closed by default. Filters are the facet strip (#35).
 const layout = document.getElementById("explore");
 const filtersOpenKey = `papersNavigator:${conference.id}:filtersOpen`;
 const filtersToggle = document.querySelector(".navbar-options");
@@ -180,33 +175,28 @@ const scored = await (async () => {
 ```
 
 ```js
+// Facet strip (#35): crossfilter-style counts; facet ids are applyFilters' option names.
+const sameSet = (a, b) => a.length === b.length && a.every((v) => b.includes(v));
 const defaultTypes = (conference.defaultTypes ?? []).filter((t) => typeLabels.has(t));
-const typesInput = scentedCheckbox(facetValues(papers, "type"), {
-  label: "Type",
-  format: (v) => typeLabels.get(v),
-  value: defaultTypes,
+const mainTracks = (values) =>
+  defaultTypes.length && sameSet(values, defaultTypes) ? (conference.defaultTypesLabel ?? "Main tracks") : null;
+const facet = (id, label, options) => ({ id, label, accessor: filterAccessor(id), ...options });
+const facetsInput = facetStrip(papers, {
+  facets: [
+    facet("types", "Type", { format: (v) => typeLabels.get(v) ?? v, search: false, summary: mainTracks }),
+    facet("authors", "Author"),
+    facet("affiliations", "Institution"),
+    facet("keywords", "Keyword"),
+    facet("sessions", "Session"),
+  ],
+  value: { types: defaultTypes },
+  rowAction: null, // Watch arrives in #6
 });
-const types = Generators.input(typesInput);
-const authorsInput = MultiAutoSelect(facetValues(papers, "authors").map((d) => d.value), {
-  label: "Authors",
-  placeholder: "Type an author",
-});
-const authors = Generators.input(authorsInput);
-const affiliationsInput = MultiAutoSelect(
-  facetValues(papers, "affiliations").map((d) => d.value),
-  { label: "Institutions", placeholder: "Type an institution" },
-);
-const affiliations = Generators.input(affiliationsInput);
-const keywordsInput = MultiAutoSelect(facetValues(papers, "keywords").map((d) => d.value), {
-  label: "Keywords",
-  placeholder: "Type a keyword",
-});
-const keywords = Generators.input(keywordsInput);
-const sessionsInput = MultiAutoSelect(facetValues(papers, "sessionName").map((d) => d.value), {
-  label: "Sessions",
-  placeholder: "Type a session",
-});
-const sessions = Generators.input(sessionsInput);
+const facetSelection = Generators.input(facetsInput);
+```
+
+```js
+const { types, authors, affiliations, keywords, sessions } = facetSelection;
 ```
 
 ```js
@@ -275,7 +265,6 @@ const selected = map.clicked.length ? map.clicked : inRange;
 ```
 
 ```js
-const sameSet = (a, b) => a.length === b.length && a.every((v) => b.includes(v));
 const filtersActive =
   authors.length || affiliations.length || keywords.length || sessions.length || !sameSet(types, defaultTypes);
 const filterReason = [

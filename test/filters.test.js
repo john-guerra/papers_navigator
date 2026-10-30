@@ -93,3 +93,12 @@ describe("typeNames", () => {
     expect(names.get("panel")).toBe("panel");
   });
 });
+
+describe("filterAccessor", () => {
+  it("returns a paper's values for a filter name, as applyFilters sees them", async () => {
+    const { filterAccessor } = await import("../src/lib/filters.js");
+    expect(filterAccessor("affiliations")(papers[1])).toEqual(["Northeastern", "MIT"]);
+    expect(filterAccessor("sessions")(papers[2])).toEqual([]);
+    expect(filterAccessor("types")(papers[0])).toEqual(["full"]);
+  });
+});
