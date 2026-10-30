@@ -37,6 +37,22 @@ scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John fi
 - Framework caches data-loader output in `src/.observablehq/cache/` and only re-runs a loader when the loader file changes. After re-running the pipeline or editing `config.json`, `rm -rf src/.observablehq/cache/data` or the site serves stale data.
 - Vega-Lite interval brushes: drive them in tests with `view.signal("drag_x", …)`/`drag_y`, not `drag`.
 
+## Product docs
+
+- PRD (what to build, user stories with IDs): `docs/prd/2026-10-29-papers-navigator-prd.md`
+- Selection/list redesign proposal and independent review: `docs/prd/2026-10-29-selection-redesign.md`, `docs/prd/2026-10-29-review.md`
+
+## Workflow (issues, several agents in parallel)
+
+- Work is tracked as GitHub issues in `john-guerra/papers_navigator`; each references PRD story IDs and has acceptance criteria. Milestones = release stages; labels `area:*`, `P0`–`P2`.
+- Only pick issues labelled `agent-ready`. `needs-decision` means John hasn't decided yet — don't implement it.
+- Claim an issue before starting: assign it / comment that you're on it, and add `in-progress`. One agent per issue.
+- One issue = one branch `issue-<number>-<slug>` in its own git worktree (Claude Code: `EnterWorktree`; otherwise `git worktree add ../papersNavigator-<number> -b issue-<number>-<slug>`). Run `npm install` in the worktree.
+- Base branch: `main` once Stage 1 is merged; until then `stage1-explore-mypapers`.
+- TDD; before opening a PR run `npm test`, `.venv/bin/pytest pipeline`, `npm run lint`, `npm run build`, and check UI changes in Chrome at 1600×1000 and 400×860. PR body says `Closes #<n>` (template in `.github/`).
+- Avoid parallel edits to the same hot files: `src/index.md` and `src/style.css` are shared by most UI issues — keep changes there small and move logic into `src/lib/`, `src/components/`, `src/widgets/`. Regenerating `conferences/*/data/` (binary, large diffs) is its own issue; never in a feature PR.
+- Comments/PRs written on GitHub on John's behalf start with "Claude (<model-and-version>) in behalf of John".
+
 ## Reference material (not committed)
 
 - Previous implementations: `/Users/aguerra/workspace/chi2026_papers`, `/Users/aguerra/workspace/ieeevis2025_papers`.
