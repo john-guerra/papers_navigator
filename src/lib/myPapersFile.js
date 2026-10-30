@@ -1,3 +1,5 @@
+import { isEntry } from "./followed.js";
+
 /** My Papers export format v2: hand-added papers, watch rules and exceptions together (#49). */
 export function exportMyPapers({ followed, rules = [], exceptions = [] }) {
   return JSON.stringify({ version: 2, followed, rules, exceptions }, null, 2);
@@ -9,6 +11,9 @@ export function exportMyPapers({ followed, rules = [], exceptions = [] }) {
  */
 export function parseMyPapersFile(text) {
   const data = JSON.parse(text);
+  const papers = Array.isArray(data) ? data : data?.followed;
+  if (Array.isArray(papers) && !papers.every(isEntry))
+    throw new Error("Some papers in this file are missing their id.");
   if (Array.isArray(data)) return { followed: data, rules: [], exceptions: [] };
   if (data && Array.isArray(data.followed))
     return {

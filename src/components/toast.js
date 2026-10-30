@@ -8,7 +8,7 @@ let current;
  */
 export function showToast(
   message,
-  { actionLabel, onAction, duration = 10_000 } = {},
+  { actionLabel, onAction, duration = 10_000, focusAction = false } = {},
 ) {
   let region = document.querySelector(".toast-region");
   if (!region) {
@@ -33,6 +33,7 @@ export function showToast(
     toast.append(action);
   }
   region.append(toast);
+  if (focusAction) toast.querySelector(".toast-action")?.focus();
   const timer = setTimeout(dismiss, duration);
   current = { toast, dismiss };
   return dismiss;

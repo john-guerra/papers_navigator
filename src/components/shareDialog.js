@@ -44,7 +44,14 @@ export function renderShareDialog(url, { count = 0 } = {}) {
 
 /** Banner offering to merge or replace the local list with papers from a share link. */
 export function renderShareBanner(
-  { ids, unknown, already = 0, current = 0, watched = 0, watches = [] },
+  {
+    ids,
+    unknown,
+    already = 0,
+    current: currentCount = 0,
+    watched: watchedCount = 0,
+    watches = [],
+  },
   { onMerge, onReplace, onIgnore },
 ) {
   const button = (label, fn) => {
@@ -91,7 +98,11 @@ export function renderShareBanner(
   };
   // Inline confirm (DESIGN.md): say what will be lost before replacing. Replace only touches
   // papers added by hand; papers kept by watch rules stay.
+  // Counts may be functions so they're read when Replace is clicked (the list may have changed)
+  const read = (v) => (typeof v === "function" ? v() : v);
   const showConfirm = () => {
+    const current = read(currentCount);
+    const watched = read(watchedCount);
     const yes = button("Yes, replace", onReplace);
     const what = watched ? `${papers(current)} added by hand` : papers(current);
     banner.replaceChildren(
