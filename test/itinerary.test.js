@@ -72,6 +72,14 @@ describe("renderItinerary", () => {
   });
 });
 
+describe("renderItinerary empty", () => {
+  it("points to Explore without saying follow", () => {
+    const el = renderItinerary(groupIntoSlots([], TZ), { tz: TZ });
+    expect(el.textContent).toContain("Add papers in Explore");
+    expect(el.textContent.toLowerCase()).not.toContain("follow");
+  });
+});
+
 describe("renderNowNext", () => {
   it("shows the current room, the next talk and later slots", () => {
     const result = nowNext(schedule.days, new Date(at(10, "10:05")), TZ);
@@ -88,6 +96,42 @@ describe("renderNowNext", () => {
     const result = nowNext(schedule.days, new Date(at(10, "12:00")), TZ);
     expect(renderNowNext(result, { tz: TZ }).textContent).toContain(
       "Nothing of yours right now",
+    );
+  });
+
+  it("pluralizes conflicts on later slots", () => {
+    const overlapping = (n) =>
+      groupIntoSlots(
+        Array.from({ length: n }, (_, i) =>
+          item(`p${i}`, `s${i}`, `Room ${i}`, 10, "13:00", "14:30", "13:00"),
+        ),
+        TZ,
+      ).days;
+    const text = (n) =>
+      renderNowNext(nowNext(overlapping(n), new Date(at(10, "12:00")), TZ), {
+        tz: TZ,
+      }).textContent.replace(/\s+/g, " ");
+    expect(text(2)).toContain("⚠ 1 conflict");
+    expect(text(2)).not.toContain("conflicts");
+    expect(text(3)).toContain("⚠ 2 conflicts");
+  });
+
+  it("points to Explore when My Papers is empty on a conference day", () => {
+    const conferenceDays = ["2026-11-10", "2026-11-11"];
+    const state = nowNext([], new Date(at(10, "12:00")), TZ, {
+      conferenceDays,
+    });
+    expect(state.status).toBe("nothing-today");
+    const el = renderNowNext(state, { tz: TZ, empty: true });
+    const text = el.textContent.replace(/\s+/g, " ");
+    expect(text).toContain("Nothing in My Papers yet");
+    expect(text).toContain("add papers in Explore");
+    expect(text).not.toContain("Nothing more of yours");
+    expect(text).not.toContain("Nothing of yours today");
+    expect(el.querySelector("a").getAttribute("href")).toBe("./");
+    // Not empty, nothing left: the usual message
+    expect(renderNowNext(state, { tz: TZ }).textContent).toContain(
+      "Nothing more of yours at this conference",
     );
   });
 });
