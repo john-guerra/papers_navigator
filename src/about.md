@@ -267,7 +267,7 @@ Papers Navigator stands on open-source projects and open data. Thank you to thei
 ## Credits and feedback
 
 - Written by Claude (Anthropic's AI assistant) on behalf of <a href="https://johnguerra.co" target="_blank" rel="noopener">John Alexis Guerra Gómez</a>, who designs and directs the project. This page and the app's code were written the same way.
-- Source code: <a href="https://github.com/john-guerra/papers_navigator" target="_blank" rel="noopener">github.com/john-guerra/papers_navigator</a>.
+- Source code: <a href="https://github.com/john-guerra/papers_navigator" target="_blank" rel="noopener">github.com/john-guerra/papers_navigator</a>, under the <a href="https://github.com/john-guerra/papers_navigator/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>. The bundled fonts, DruidJS and the vendored zadu-js files keep their own licenses (listed above).
 - Found a problem or have an idea? <a href="https://github.com/john-guerra/papers_navigator/issues" target="_blank" rel="noopener">Open an issue on GitHub</a>.
 - This site isn't affiliated with ${conference.name}; for the official program, see ${sourceLink()}.
 
