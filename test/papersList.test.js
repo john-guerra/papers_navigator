@@ -77,3 +77,45 @@ describe("PapersList show more", () => {
     expect(el.querySelector(".papers-more")).toBeNull();
   });
 });
+
+describe("PapersList keeps its expansion", () => {
+  it("starts with `shown` rows and reports each Show more, so pages can restore it after a re-render", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const papers = Array.from({ length: 5 }, (_, i) => ({
+      id: `p${i}`,
+      title: `T${i}`,
+    }));
+    const counts = [];
+    const el = PapersList(papers, {
+      tz: "US/Eastern",
+      max: 2,
+      shown: 4,
+      onShow: (n) => counts.push(n),
+    });
+    expect(el.querySelectorAll(".paper")).toHaveLength(4);
+    el.querySelector(".papers-more button").click();
+    expect(el.querySelectorAll(".paper")).toHaveLength(5);
+    expect(counts).toEqual([5]);
+  });
+});
+
+describe("PapersList showThrough", () => {
+  it("expands the list until a given paper is rendered and returns its row", async () => {
+    const { PapersList } = await import("../src/widgets/papersList.js");
+    const papers = Array.from({ length: 7 }, (_, i) => ({
+      id: `p${i}`,
+      title: `T${i}`,
+    }));
+    const counts = [];
+    const el = PapersList(papers, {
+      tz: "US/Eastern",
+      max: 2,
+      onShow: (n) => counts.push(n),
+    });
+    const row = el.showThrough("p4");
+    expect(row.dataset.paperId).toBe("p4");
+    expect(el.querySelectorAll(".paper")).toHaveLength(6);
+    expect(counts.at(-1)).toBe(6);
+    expect(el.showThrough("missing")).toBeNull();
+  });
+});

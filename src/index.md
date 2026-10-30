@@ -221,8 +221,9 @@ const sizeBy = Generators.input(sizeByInput);
 
 ```js
 const mapWidth = Generators.width(document.getElementById("explore-map"));
-// Survives re-runs of the click-to-scroll cell
+// Survive re-runs: the paper last scrolled to, and how far the list is expanded
 const lastScrolled = { id: null };
+const listState = { key: null, shown: 100 };
 // Bumped by the "Map region ✕" chip: redraws the map without its brush
 const mapReset = Mutable(0);
 const resetMap = () => ++mapReset.value;
@@ -319,7 +320,7 @@ const chipsRow = renderChips(chips, {
   const id = map.clicked[0]?.id ?? null;
   const changed = id !== lastScrolled.id;
   lastScrolled.id = id;
-  const row = changed && id && document.querySelector(`.explore-list [data-paper-id="${CSS.escape(id)}"]`);
+  const row = changed && id ? papersList.showThrough(id) : null;
   if (row) {
     row.scrollIntoView({ behavior: "smooth", block: "center" });
     row.classList.add("flash");
@@ -351,7 +352,13 @@ const navioSummary = NavioWidget(
 
 ```js
 const ordered = hasQuery ? selected : [...selected].sort((a, b) => d3.ascending(a.start ?? a.sessionStart ?? "~", b.start ?? b.sessionStart ?? "~"));
+// Keep "Show more" expansion while only My Papers changes; reset it when the matches change
+const listKey = ordered.map((p) => p.id).join();
+if (listKey !== listState.key) Object.assign(listState, { key: listKey, shown: 100 });
 const papersList = PapersList(ordered, {
+  max: 100,
+  shown: listState.shown,
+  onShow: (n) => (listState.shown = n),
   tz,
   header: "",
   preamble: (p) => (p.score != null ? `🔍 ${(p.score * 100).toFixed(1)}%` : ""),
