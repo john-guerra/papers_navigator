@@ -16,18 +16,20 @@ import { ascending, descending, max } from "d3-array";
  *   sort: "count" (default), "alpha", or a comparator over { value, label, count }
  *   summary(values) → button text for the selection, or null for the default
  * rowAction(facetId, value) → HTMLElement | null, rendered at the end of each row
+ * defaultValue: what Clear all goes back to (default: nothing picked); it hides there
  */
 export function facetStrip(
   data,
   {
     facets = [],
     value = {},
+    defaultValue = {},
     rowAction = null,
     limit = 50,
     header = "Among matching papers",
     clearAllLabel = "Clear all",
     sheetLabel = "Filters",
-    phoneQuery = "(max-width: 576px)",
+    phoneQuery = "(max-width: 639.98px)",
   } = {},
 ) {
   injectStyle();
@@ -278,7 +280,12 @@ export function facetStrip(
     const n = facets.filter((f) => state[f.id].length).length;
     sheetToggle.textContent = `${sheetLabel} (${n})`;
     root.classList.toggle("fs-has-active", n > 0);
-    clearAll.hidden = n === 0;
+    const initial = normalize(defaultValue, facets);
+    clearAll.hidden = facets.every(
+      (f) =>
+        state[f.id].length === initial[f.id].length &&
+        state[f.id].every((v) => initial[f.id].includes(v)),
+    );
   }
 
   function setOpen(id) {
@@ -315,7 +322,7 @@ export function facetStrip(
     setSheet(!root.classList.contains("fs-sheet-open"));
   sheetDone.onclick = () => setSheet(false);
   clearAll.onclick = () => {
-    state = normalize({}, facets);
+    state = normalize(defaultValue, facets);
     changed();
   };
   root.addEventListener("keydown", (event) => {
@@ -402,7 +409,7 @@ const CSS = `
   --fs-primary: var(--color-primary, #903129);
   --fs-on-primary: var(--color-on-primary, #fbf8f1);
   --fs-focus: var(--color-focus, #1f74bf);
-  --fs-shadow: 0 12px 32px -12px rgb(36 30 26 / 0.28), 0 2px 6px -2px rgb(36 30 26 / 0.12);
+  --fs-shadow: var(--elevation-1, 0 12px 32px -12px rgb(36 30 26 / 0.28), 0 2px 6px -2px rgb(36 30 26 / 0.12));
   font-family: var(--font-sans, "Source Sans 3", system-ui, sans-serif);
   font-size: 0.8125rem;
   font-weight: 500;
@@ -525,7 +532,7 @@ const CSS = `
 .fs-footer { padding: 4px 12px 0; }
 .fs-show-all { border: none; background: none; padding: 4px 0; color: var(--fs-primary); }
 .fs-show-all[hidden] { display: none; }
-@media (max-width: 576px) {
+@media (max-width: 639.98px) {
   .fs-sheet-toggle {
     display: inline-flex;
     align-items: center;

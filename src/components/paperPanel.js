@@ -16,6 +16,7 @@ export function paperPanel(
   {
     papers,
     tz,
+    tzLabel,
     store,
     route,
     related = () => [],
@@ -36,6 +37,7 @@ export function paperPanel(
   const inMyPapers = (id) => store.value.some((d) => d.id === id);
   const el = renderPaperDetail(paper, {
     tz,
+    tzLabel,
     related: related(paper),
     inMyPapers,
     onToggle: (p) => {

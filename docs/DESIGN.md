@@ -56,6 +56,7 @@ colors:
   dark-viz-reliability-2: "#6f84cf"
   dark-viz-reliability-3: "#b4c3ff"
   dark-viz-dim: "#3b3734"
+  dark-viz-neutral: "#aeaaa4"
   dark-viz-followed-ring: "#eeebe5"
   dark-viz-cat-1: "#3987e5"
   dark-viz-cat-2: "#d95926"
@@ -169,6 +170,27 @@ components:
   relevance-segment-selected:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
+  segmented-control: # Now / Next · Itinerary, Appearance, Motion, Speed: like the relevance control
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.sm}"
+    height: 36px
+    padding: 0 12px
+  select:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.label-md}"
+    rounded: "{rounded.sm}"
+    height: 34px
+    padding: 0 28px 0 10px
+  checkbox:
+    backgroundColor: "{colors.background}"
+    rounded: "{rounded.sm}"
+    size: 16px
+  checkbox-checked:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
   chip:
     backgroundColor: "{colors.background}"
     textColor: "{colors.on-surface}"
@@ -211,9 +233,11 @@ components:
     typography: "{typography.label-md}"
   follow-toggle:
     backgroundColor: "{colors.background}"
-    textColor: "{colors.primary}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.label-md}"
     rounded: "{rounded.full}"
-    size: 28px
+    height: 28px
+    padding: 0 10px 0 4px
   popover:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface}"
@@ -304,7 +328,7 @@ Tokens are in the front matter. Rules:
 
 ## Layout
 
-- **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (AGENTS.md).
+- **Breakpoints:** phone `< 640px`, tablet `640–1023px`, desktop `≥ 1024px`. Test at 400×860 and 1600×1000 (AGENTS.md). Stylesheets write them as `(max-width: 639.98px)` and `(max-width: 1023.98px)` (no other widths; a test checks), JS uses `PHONE_QUERY` / `STACKED_QUERY` from `src/lib/breakpoints.js`. Explore stacks controls, map and list below 1024px; phone-only changes (Filters sheet, Select region, 16px gutter) start below 640px.
 - **Gutters:** 28px desktop, 16px phone. Spacing comes from the 4px scale in the tokens; don't invent values.
 - **Explore, desktop:** nav (56px) → controls band (search + relevance, then the facet strip) → body split **7fr map / 5fr list**, separated by a hairline. The map is sticky and fills the viewport height; the list scrolls.
 - **Explore, phone:** nav → search → relevance → one "Filters (n)" button → chips → **map** (visible by default, "Hide map" tucks it away; decision 8) → list. The map never captures page scrolling (see Mobile & At the venue).
@@ -317,7 +341,7 @@ Tokens are in the front matter. Rules:
 The page is flat paper. Structure comes from hairlines (`outline`) and whitespace, not boxes or shadows.
 
 - **Level 0** (everything on the page): no shadow.
-- **Level 1** (floating layers only: popovers, autocomplete, bottom sheets, toasts): `0 12px 32px -12px rgb(36 30 26 / .28), 0 2px 6px -2px rgb(36 30 26 / .12)`.
+- **Level 1** (floating layers only: popovers, autocomplete, bottom sheets, toasts): `0 12px 32px -12px rgb(36 30 26 / .28), 0 2px 6px -2px rgb(36 30 26 / .12)`; in dark, `0 12px 32px -12px rgb(0 0 0 / .6), 0 2px 6px -2px rgb(0 0 0 / .4)`. Use `var(--elevation-1)`, never a hand-written shadow, so dark gets its own.
 - The Now card is distinguished by a 1.5px ink border, not a shadow.
 - No glassmorphism, no blur.
 
@@ -333,14 +357,17 @@ The page is flat paper. Structure comes from hairlines (`outline`) and whitespac
 Visual specs; tokens in the front matter. Behavior in _Interaction & State_.
 
 - **Nav bar.** Brand (Newsreader) + conference name in `label-caps` muted; tabs Explore · My Papers · Researchers · About with **badge-my-papers** showing the list size on every page (US4.4). Active tab: ink text with a 2px ink underline.
-- **Search field.** Newsreader italic, underline only, placeholder hint in muted sans on the right ("ranked by meaning"). While the model loads: disabled with "Loading search model…" in the hint, never a spinner over the map.
-- **Relevance control.** Segmented control _Strong n · Good n · All n_ with counts; selected segment is `primary`. Replaces the score histogram in the default UI (the histogram may live in an advanced view).
+- **Search field.** Newsreader italic, underline only, an example search as the placeholder. While the model loads: disabled with "Loading the language model…" as the placeholder, never a spinner over the map; if it fails, "Search unavailable: …" (text, no marker).
+- **Relevance control.** Segmented control _Strong n · Good n · Weak n · All n_ with counts; selected segment is `primary`. Replaces the score histogram in the default UI (the histogram may live in an advanced view).
 - **Facet strip.** A row of **facet buttons** under the search: `Type: Main tracks ▾ · Author ▾ · Institution ▾ · Keyword ▾ · Session ▾ │ Clear all` (a Day facet is optional, builder's call). A facet with a value shows it in the button ("Institution: Northeastern +1") on `surface-sunken`, with a ✕ that clears that facet, so **an active facet button is the chip for that facet**; the open facet is inverted (ink background). Each opens a **popover**: a search input (underline), a `label-caps` header ("Among matching papers"), rows of _checkbox · name · scent bar · count · row action (Watch)_, and a footer ("Show all 513"). Counts are crossfilter-style (computed with every other constraint applied). On phones the strip collapses into one "Filters (n)" button opening a bottom sheet with the facets stacked. The facet strip is a reactive widget; its API is specified in its own issue, not here.
-- **Chips.** For constraints not in the facet strip (topic query, map region): label in muted + value in ink + ✕. Pill, transparent with an `outline` border. Followed by "Clear all" as a text button.
+- **Chips.** For constraints not in the facet strip (topic query, map region): label in muted + value in ink + ✕. Pill, transparent with an `outline` border. Followed by "Clear all" as a text button. **Clear all** here empties the search (like its chip's ✕; the default search is for first visits only) and the map region; the facet strip's Clear all goes back to Main tracks and hides there. After both, the fragment is just `#q=`.
+- **Segmented control.** A row of buttons in one `outline` box, the selected one `primary` (`aria-pressed`, in a labelled `role="group"`): the relevance control, My Papers' _Now / Next · Itinerary_, Appearance, Motion and Speed. Use it instead of radios when there are 2–4 options; `src/widgets/segmentedControl.js` is the reactive widget (`.value` + `input`).
+- **Select.** A native `<select>` (keyboard, screen readers and the platform's option list stay) drawn like a secondary button: `surface`, muted outline, `rounded.sm`, 34px, a muted chevron on the right. For 5+ options or dynamic lists (Color by, Projection, Show: reasons, Sort by, Watch type). The label sits beside it in muted `label-md`.
+- **Checkbox.** A native checkbox drawn as a 16px box with a muted outline; checked = `primary` fill with an `on-primary` check. Its label is part of the hit area (Topic labels, Animation switches, Advanced options).
 - **Buttons.** One **primary** per view (e.g. "Add 96 to My Papers"). **Secondary** for alternatives (Export, Share). **Text** buttons for tertiary actions (Clear all, Undo, Show all). Destructive actions are never primary-colored until the inline confirm step.
-- **Follow toggle.** A 28px circle (44px hit area on phones): empty ring = not in My Papers; ink ring with an oxblood dot = in My Papers. Same mark as the map ring. Tooltip/label: "Add to My Papers" / "In My Papers — remove".
-- **Paper row.** Title (`title-paper`), authors (`body-sm`, muted, matched names highlighted on `surface-sunken`), meta line (`meta`: type · **room** · day, time ET), follow toggle and score on the right. Separated by hairlines. Clicking the title expands the row in place (abstract, affiliations, award, links: preprint, supplemental, conference page), US8.1. A separate details view with its own URL and related papers is Stage 2 (US8.2–8.3); on phones it becomes a sheet.
-- **Map options.** A small secondary button in the map's top-right corner ("Options") opens a popover with view settings only: Projection (UMAP / t-SNE / PCA) and Color by (Similarity / Type / Room / Session). Filters never live here.
+- **Follow toggle.** A labelled pill (28px tall, 44px on phones; `outline` border): a 14px ring mark + the label. Empty muted ring + "Add to My Papers" = not in My Papers; ink ring with an oxblood dot + "In My Papers" (`aria-pressed`, tooltip "In My Papers — remove") = in My Papers. Same mark as the map ring. In My Papers' own lists it reads "Remove".
+- **Paper row.** Title (`title-paper`), authors (`body-sm`, muted, matched names highlighted on `surface-sunken`), meta line (`meta`: award (🏆 Best paper / 🏅 Honorable mention) · type · session · 📍 **room** · day, time ET, e.g. "Tue Nov 10 10:00 ET"), follow toggle, "Conference page ↗" (muted `meta`, sans, smaller than the toggle) and the score ("54%", muted `meta`, tabular; "54% · abstract 2" with several My research abstracts) at the right end, after the title. Separated by hairlines. Clicking the title expands the row in place (abstract, affiliations, award, links: preprint, supplemental, conference page), US8.1. A separate details view with its own URL and related papers is Stage 2 (US8.2–8.3); on phones it becomes a sheet.
+- **Map options.** "⚙ Options" in the nav bar (Explore only) opens a right-side drawer titled "Map options" with view settings only, in groups: Dimensionality reduction (UMAP / t-SNE / PCA), Animation, Appearance, Advanced (live projections, clusters and quality; the navio summary). Color by, Topic labels and Hide map sit under the map itself. Close ✕ / Done, Esc or a tap outside closes it; its open state is remembered per browser. Filters never live here.
 - **Options → Animation** (#82). A group in the Options drawer, after Dimensionality reduction: switches _Animate the map_, _Align projections_, _Animate filter changes_, then segmented controls _Motion: All at once · By topic_ (only when the conference has topics) and _Speed: Slow · Normal · Fast_. While _Animate the map_ is off, the options that only shape motion are disabled (alignment still applies). Remembered per browser (`papersNavigator:animation`); only explicit choices are stored.
 - **Add bar.** Above the list: "Matching papers n" (headline italic) + primary "Add N to My Papers" + muted note "k already there". When all are in: disabled "✓ All n in My Papers".
 - **Toast.** Bottom-center, inverted (ink background). Always carries Undo when it reports a change: "Added 96 · Undo". Lives 10 s; never stacks more than one.
@@ -349,7 +376,7 @@ Visual specs; tokens in the front matter. Behavior in _Interaction & State_.
 - **Slot row (itinerary / Next).** Time (tabular, ink) · room (Newsreader) + session (muted) · count of my papers. Hairline separated.
 - **Conflict note.** `primary-container` background: "⚠ Also now: America center · How can I do this myself? · 1 of yours". Shows its own time range when it differs.
 - **Researchers index** (#78). `authors.html`: an underline search over names and institutions (accent-insensitive), a muted count line ("1,455 researchers in the program, most papers first"), then hairline rows _name (`title-paper`, links to the profile) · institutions (muted) · "3 papers" (`meta`)_, 100 at a time with "Show n more". On phones the institutions wrap under the name.
-- **Researcher profile** (#78). `authors.html?name=<name>`: "← All researchers", the name (`display`), affiliations as listed (with counts when more than one; when they differ beyond case, accents and punctuation, the muted note "Listed with 2 affiliations: this may be more than one person with the same name"), then the actions **Watch** (secondary; "Watching" when the author rule exists) and the primary "Add N to My Papers" ("✓ All n in My Papers" when all are in; reason "👤 _Name_"). Sections: _When they present_ ("3 papers · Tue 2 talks · Thu 1 poster", then "NEXT Tue Nov 10 10:00 EST · 📍 Room · _title_", or NOW while one is on), _Topics_ (map topics and keywords as chips with counts), _Co-authors_ (links to their profiles, shared-paper counts), _Papers_ (paper rows with the follow toggle; the title opens the details, "Conference page ↗" opens the conference site). A paper that overlaps something in My Papers (other session) gets a conflict note in its row: "⚠ Same time as “_title_” in My Papers". An unknown name says so and links to the index.
+- **Researcher profile** (#78). `authors.html?name=<name>`: "← All researchers", the name (`display`), affiliations as listed (with counts when more than one; when they differ beyond case, accents and punctuation, the muted note "Listed with 2 affiliations: this may be more than one person with the same name"), then the actions **Watch** (secondary; "Watching" when the author rule exists) and the primary "Add N to My Papers" ("✓ All n in My Papers" when all are in; reason "👤 _Name_"). Sections: _When they present_ ("3 papers · Tue 2 talks · Thu 1 poster", then "NEXT Tue Nov 10 10:00 ET · 📍 Room · _title_", or NOW while one is on), _Topics_ (map topics and keywords as chips with counts), _Co-authors_ (links to their profiles, shared-paper counts), _Papers_ (paper rows with the follow toggle; the title opens the details, "Conference page ↗" opens the conference site). A paper that overlaps something in My Papers (other session) gets a conflict note in its row: "⚠ Same time as “_title_” in My Papers". An unknown name says so and links to the index.
 - **About page** (#88). `about.html`: the project, the privacy policy and a tutorial by task (Explore, My Papers, Researchers), with an "On this page" contents list of anchors; running text at 70ch, headings in Newsreader. Conference facts (name, dates, program website) come from the config. Its privacy claims must match the code: the localStorage list is `STORAGE_ITEMS` in `src/lib/about.js`, and a test fails when the app writes a key it doesn't list. The footer links to it as "About & privacy".
 - **Empty states** say what to do next, in one sentence and one action: "Nothing of yours right now. Next: 10:00, Essex north."
 
@@ -394,7 +421,7 @@ UI copy uses these terms and only these (PRD §4). Sentence case everywhere.
 | **Now / Next**                | what's on for you at the current conference time                                                   | live                                                       |
 | **Strong / Good / Weak / All** | relevance levels of a search (a research topic is watched at Strong, Good or Weak)                | score range, threshold                                     |
 
-Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Thu Nov 12`, always with "ET" (from config) in headers.
+Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Thu Nov 12`, always with "ET" (from config) in headers. The zone is written "ET", never "EST"/"EDT": `conferenceZone()` / `formatWhen()` in `src/lib/time.js` ("Tue Nov 10 10:00 ET"): the config's `timezoneLabel` if set, else the zone's generic code ("ET"), else its short abbreviation ("GMT+1", never "Germany Time").
 
 ## Interaction & State
 
@@ -408,7 +435,7 @@ Counts use the noun correctly ("1 paper", "2 papers"). Times: `08:24`, days: `Th
 - **Feedback within 100 ms** for every click (state change in place); toasts for anything that changed My Papers.
 - **Undo over confirm** (principle 5). Removal of one paper: toast with Undo. Remove a rule: inline choice "Remove rule only / Remove rule and its 12 papers". Replace (share link, import): inline confirm showing what will be lost, plus a one-level backup.
 - **Hover is never required.** Anything shown on hover is also reachable by tap/focus.
-- **URL reflects shareable state** (query, facets, open paper) so a view can be linked. Explore's view (#92) lives in the URL **fragment**, which never reaches the server's logs or other sites through Referer: `#q=…&level=…&type=…&author=…&inst=…&kw=…&session=…&topic=…&color=…&proj=…&labels=0&map=0&region=x0,x1,y0,y1`. A facet repeats its key per value (names contain commas); defaults are left out, so a fresh visit has a bare URL. Because the default view has a search and Main tracks, a cleared search is `q=` and all types is `type=`. `level` is written only with a search; `region` only with its projection (data units, 3 decimals), and only in the default projection or an aligned one (Align projections, the default), so it means the same on any device. It is written with replaceState as the view changes (no history entry per keystroke) and read once at load. Back/Forward belong to paper details (`?paper=`, a public id, so a query param); after one, the page writes its view back onto that entry. A link that differs only in its fragment, pasted into the address bar, reloads the page from that link. The map region stays across redraws (filters, Color by, theme) until it's cleared or the projection changes. The Researchers search is `authors.html#q=…`. **Never in a URL:** "My research" abstracts (a link with a search turns My research off on that device, which keeps its abstracts), Appearance and other per-device settings, the Options drawer's open state, live projections and clusters (computed in this browser). A bare Explore URL (e.g. the nav link) starts fresh: the URL is the only place this state is kept. The `#follow=…&watch=…` share link (My Papers) uses the same fragment, and handling it removes only its own keys.
+- **URL reflects shareable state** (query, facets, open paper) so a view can be linked. Explore's view (#92) lives in the URL **fragment**, which never reaches the server's logs or other sites through Referer: `#q=…&level=…&type=…&author=…&inst=…&kw=…&session=…&topic=…&color=…&proj=…&labels=0&map=0&region=x0,x1,y0,y1`. A facet repeats its key per value (names contain commas); defaults are left out, so a fresh visit has a bare URL. Because the default view has a search and Main tracks, a cleared search is `q=` and all types is `type=`. `level` is written only with a search; `region` only with its projection (data units, 3 decimals), and only in the default projection or an aligned one (Align projections, the default), so it means the same on any device. It is written with replaceState as the view changes (no history entry per keystroke) and read once at load. Back/Forward belong to paper details (`?paper=`, a public id, so a query param); after one, the page writes its view back onto that entry. A link that differs only in its fragment, pasted into the address bar, reloads the page from that link if the fragment has one of the page's own keys (an in-page anchor such as `#privacy` doesn't). A link is attacker-controllable: at load the fragment keeps only the page's keys and the share keys (`follow`, `watch`), and one over 4 KB is dropped. Writes stay under 4 KB too: the region goes first, then facet values (with a console warning). Paper title links (`?paper=`) never carry the fragment, so copying one doesn't share your search and filters. The map region stays across redraws (filters, Color by, theme) until it's cleared or the projection changes. The Researchers search is `authors.html#q=…`. **Never in a URL:** "My research" abstracts (a link with a search pauses My research on that device, which keeps its abstracts; a toast "My research paused · Resume" brings it back), Appearance and other per-device settings, the Options drawer's open state, live projections and clusters (computed in this browser). A bare Explore URL (e.g. the nav link) starts fresh: the URL is the only place this state is kept. The `#follow=…&watch=…` share link (My Papers) uses the same fragment, and handling it removes only its own keys.
 - **Loading:** map renders from static data first; search shows its loading state; nothing jumps when the model arrives.
 - **Motion:** 120–200 ms ease-out for popovers, sheets and toasts; no decorative animation; respect `prefers-reduced-motion`. The one longer motion is the **map animation** (#82), which carries meaning (where papers and topics go): see _Map animation_ under Data Visualization.
 
@@ -429,7 +456,8 @@ The map is the overview (principle 3). Rules:
 - **Brush / map region:** points outside are `viz-dim`; the region becomes a chip ("Map region ✕"). It survives filter, search, color and theme changes; switching projections clears it (its coordinates mean nothing in another projection).
 - **Map animation** (#82, object constancy): switching projections moves each paper from where it was to where it goes, cubic ease-in-out, the scale domain easing with it so the frame never jumps. Projections are first **aligned** (orthogonal Procrustes: rotation or reflection, uniform scale, translation) to the default projection, so the motion shows real differences, not an arbitrary spin; every projection aligns to the same reference so switching back and forth is stable. _By topic_ (default) stages the motion one topic at a time, largest first and unclustered papers last, each stage one Speed step long (Slow 1200 · Normal 700 · Fast 400 ms) with overlap, at most 3 steps in total; topic labels fade out at the start and back in at their new centers as each topic lands. Filter changes animate in one step: leaving papers fade out where they were, entering ones fade in at their positions. Off by default under `prefers-reduced-motion` (the user can turn it on); a redraw mid-motion continues from where the points are.
 - **Hover** a point: tooltip with title, type, room, day/time. **Click**: open that paper's details (desktop: scroll to/expand it in the list; phone: details sheet). No hidden "clicked point" mode.
-- **Legend** always visible in a corner on `surface`: the ramp with "less / more similar" (or the categories), plus "◯ in My Papers".
+- **Nearest neighbours** (#102): hovering near a point (the tooltip's 24 px radius) previews its k true neighbours (cosine in the embedding, among the papers on the map; k = 10 or 15 in Options → Advanced, "Nearest neighbours on hover", both remembered per device): 1px ink lines from the paper to each neighbour, the paper in a 2.5px ink ring, each neighbour labelled with its similarity ("72%", muted on a background halo), every other point `viz-dim`. A neighbour whose rank by map distance is beyond max(3k, 10% of the papers on the map) is a **missing neighbour** (far on the map; the cut scales with filters, and the strict "within the k nearest" would dash most lines): its line is dashed (4/3), so the distinction never rests on color; a paper among the k nearest on the map that is not a true neighbour is a **false neighbour**: dotted muted ring. No new hue: ink and muted ink only. **Click or tap** pins it and scrolls the list to that same paper (the nearest point is the one source for both); a card under the map lists the neighbours with similarity and map-distance rank ("66% similar · map #43 (far)") and "7 of 10 close on the map (within its 30 nearest)", each title opening the details. **Esc** closes the topmost layer only: paper details, then the Options drawer, then the pin; the card's ✕ or a click on empty map space also unpins. The pin survives redraws (filters, search, projections) while the paper is on the map, and is not in the URL (a passing look; `?paper=` shares a paper). Keyboard focus on a paper row previews its neighbours. Marks never take pointer events and never change the brush; mid-animation they stay hidden and fade in as the motion settles. Live and aligned projections use the drawn coordinates.
+- **Legend** always visible in the map's top-right corner on `surface` (`outline` border, `rounded.md`, 8px padding): a horizontal ramp labelled only at its ends, "less similar / more similar" (Reliability: "less reliable / more reliable"; exact values are in the tooltip), or the categories (3 + Other). "◯ In My Papers" sits under the map.
 - **Scent bars** in facet lists: 4px bars in `primary` on an `outline` track, with the count as text beside them.
 - Charts follow the same tokens; no chart library defaults (Vega/Plot default schemes must be overridden).
 - Palettes were validated with the dataviz palette validator (CVD ΔE ≥ 9.2 for the three categorical slots, all pairs, both themes; sequential ramp monotone, single hue). Light `viz-cat-3` is 2.7:1 on paper, so categories always come with a legend.
@@ -447,16 +475,18 @@ Emoji are welcome as **meaning markers**, a small fixed set, always followed by 
 | ★      | reason: added by hand                                                          |
 | 👤     | reason: added from an author (Author filter, "Add N" on a researcher profile) |
 | ✨     | reason: recommended ("✨ Like _title of the most similar paper in My Papers_") |
-| ⚠      | schedule conflict                                                              |
-| 🏆     | award                                                                          |
+| ⚠      | schedule conflict (only; errors and warnings are plain text)                   |
+| 🏆     | award: best paper ("🏆 Best paper")                                            |
+| 🏅     | award: honorable mention ("🏅 Honorable mention")                              |
+| 📱     | shared from a link (the share banner; reason "📱 shared")                      |
 | 🆕     | new since the last program update                                              |
 
-Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No hand-drawn complex SVG in the app.
+Buttons carry no emoji ("Export JSON", "Share list", "Copy link"), except a marker that names the button's meaning ("🔍 Watch this research topic"). Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No hand-drawn complex SVG in the app.
 
 ## Mobile & At the venue
 
 - **Phone layout is designed, not shrunk:** on Explore the map shows right after search, filters and relevance, then the list; Now first on My Papers during conference hours.
-- **Hit targets ≥ 44px**; primary controls in the bottom half of the screen when possible (bottom tab bar, sheets).
+- **Hit targets ≥ 44px** on touch screens (`@media (pointer: coarse)`, plus phone widths), without growing the desktop layout: small controls keep their look and extend their hit area (chip ✕, toast Undo); primary controls in the bottom half of the screen when possible (bottom tab bar, sheets).
 - **The Now card answers "where do I go" in two seconds:** room name is the largest text on screen.
 - **Sharing on a phone** uses `navigator.share` when available ("Share list"); the QR code is for laptops ("Send to my phone").
 - **Works after first load on weak Wi-Fi** (US6.3): My Papers must not depend on the embedding model.
@@ -470,6 +500,7 @@ Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No
 - Never color alone: similarity has a legend and per-paper score text; My Papers has a ring + toggle state + label; conflicts have ⚠ + text.
 - The map has a text equivalent: the list is the accessible view of the same data.
 - Respect `prefers-reduced-motion` and `prefers-color-scheme`.
+- Forced colors (Windows High Contrast): custom-drawn controls whose state lives in backgrounds or gradients (checkbox check, select chevron) fall back to `appearance: auto`.
 
 ## Building UI: reactive widgets
 
@@ -493,7 +524,7 @@ We prefer **[reactive widgets](https://reactivewidgets.org)** for every interact
 Decided by John:
 
 1. Visual direction **A · Proceedings** (over Instrument and Atlas).
-2. Filters as a **facet strip**, replacing the "Options" filter drawer; "Options" survives only as the map's view-settings popover.
+2. Filters as a **facet strip**, replacing the "Options" filter drawer; "Options" survives only for view settings, as the nav-level "Map options" drawer (Appearance, Animation, Advanced).
 3. UI pieces are **reactive widgets**, independent and token-styled; the facet strip's API lives in its own issue; widgets become npm packages once proven.
 4. Emoji are fine as a fixed set of meaning markers.
 5. Phone map: region selection through an explicit "Select region" mode.

@@ -43,6 +43,7 @@ export function reliabilityMapOptions({
       colorTitle: reliability.label,
       colorRange: reliabilityRange().reverse(),
       scoreDomain: domain,
+      legendLabels: ["less reliable", "more reliable"],
     });
   if (reliability.overlay && shown.length && typeof width === "number") {
     const key = JSON.stringify([

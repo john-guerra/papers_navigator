@@ -1,14 +1,7 @@
 import { html } from "htl";
-import { authorsLine, paperWhen } from "../widgets/papersList.js";
+import { AWARDS, authorsLine, paperWhen } from "../widgets/papersList.js";
 import { authorUrl } from "../lib/authors.js";
 import { followToggles } from "./followToggles.js";
-
-const AWARDS = {
-  best: "🏆 Best paper",
-  honorable: "🏅 Honorable mention",
-  BEST_PAPER: "🏆 Best paper",
-  HONORABLE_MENTION: "🏅 Honorable mention",
-};
 
 /**
  * Paper details (#22) with related papers (#23): everything about one paper, its links, the
@@ -18,6 +11,7 @@ export function renderPaperDetail(
   paper,
   {
     tz,
+    tzLabel,
     related = [],
     inMyPapers,
     onToggle,
@@ -38,7 +32,7 @@ export function renderPaperDetail(
     paper.typeLabel ?? paper.type,
     paper.sessionName,
     paper.room && `📍 ${paper.room}`,
-    paperWhen(paper, tz),
+    paperWhen(paper, tz, tzLabel),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -54,7 +48,7 @@ export function renderPaperDetail(
               return html`<li class="related-paper">
                 ${open}
                 <span class="related-meta"
-                  >${[p.room && `📍 ${p.room}`, paperWhen(p, tz), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
+                  >${[p.room && `📍 ${p.room}`, paperWhen(p, tz, tzLabel), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
                 >
                 ${toggle(p)}
               </li>`;
@@ -83,7 +77,7 @@ export function renderPaperDetail(
   const el = html`<aside
     class="paper-detail"
     role="dialog"
-    aria-label=${`Details: ${paper.title}`}
+    aria-label=${`Paper: ${paper.title}`}
   >
     <div class="paper-detail-header">
       ${close}
@@ -97,7 +91,7 @@ export function renderPaperDetail(
     </p>
     <p class="paper-detail-where">${where}</p>
     <p class="paper-detail-links">
-      ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page</a>` : ""}
+      ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page ↗</a>` : ""}
       ${(paper.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
     </p>
     ${paper.abstract ? html`<div class="paper-detail-abstract">${paper.abstract}</div>` : ""}

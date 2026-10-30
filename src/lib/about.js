@@ -16,7 +16,7 @@ export const STORAGE_ITEMS = [
   },
   {
     key: "papersNavigator:<id>:rules",
-    what: "Your watches (people, institutions, research topics) and their cached matches",
+    what: "Your watches (researchers, institutions, research topics) and their cached matches",
   },
   {
     key: "papersNavigator:<id>:research",
@@ -37,6 +37,10 @@ export const STORAGE_ITEMS = [
   {
     key: "papersNavigator:animation",
     what: "Your map animation choices (Options → Animation)",
+  },
+  {
+    key: "papersNavigator:neighbours",
+    what: "Your nearest neighbours choices (Options → Advanced)",
   },
   {
     key: "papersNavigator:theme",

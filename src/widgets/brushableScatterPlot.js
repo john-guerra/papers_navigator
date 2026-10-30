@@ -1,6 +1,7 @@
 // The npm "main" is a UMD bundle; import the ES build explicitly.
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import { attachNearestTooltip } from "./nearestTooltip.js";
+import { attachNeighbours } from "./mapNeighbours.js";
 import {
   domainAt,
   easeExpr,
@@ -119,6 +120,8 @@ function categoryRange() {
 /**
  * Vega-Lite spec for the map. DESIGN.md → Data Visualization:
  * - quantitative color (similarity) uses the sequential ramp;
+ * - the legend sits in the top-right corner on `surface` (DESIGN.md → Legend); a ramp is labelled
+ *   only at its ends, with `legendLabels` ([low, high], e.g. ["less similar", "more similar"]);
  * - categorical color highlights at most 3 `categories` (pass them from the whole program so
  *   filtering never repaints survivors; default: top 3 of `data`), everything else is Other;
  * - points outside the brush are dimmed;
@@ -149,6 +152,7 @@ export function scatterSpec(
     labelSize = 11,
     scoreDomain = null,
     colorRange = null,
+    legendLabels = null,
     overlay = null,
     size = null,
     sizeRange = [12, 80],
@@ -157,6 +161,7 @@ export function scatterSpec(
     height = 500,
     title,
     transition = null,
+    neighbours = false,
   } = {},
 ) {
   const categorical = color && colorType !== "quantitative";
@@ -164,8 +169,12 @@ export function scatterSpec(
     categorical && !colorScheme
       ? (categories ?? topCategories(data, color)).slice(0, 3)
       : null;
+  // Size echoing the color field gets its own copy: Vega-Lite merges two legends on one field
+  // into a symbol legend, and the color ramp's legend must stay a gradient (DESIGN.md → Legend)
+  const sizeCopy = size && size === color;
   const decorate = (d) => ({
     ...d,
+    ...(sizeCopy && { __size: d[size] }),
     ...(highlighted && {
       __color: highlighted.includes(d[color]) ? d[color] : OTHER,
     }),
@@ -173,7 +182,7 @@ export function scatterSpec(
   });
   // Copies whenever fields are added (Vega's formulas write on the objects it is given)
   const values =
-    highlighted || transition
+    highlighted || transition || sizeCopy
       ? [...data, ...(transition?.exits ?? [])].map(decorate)
       : data;
   const tween = transition && tweenParts(transition, { x, y });
@@ -195,6 +204,12 @@ export function scatterSpec(
     and: [
       { param: "drag", empty: true },
       "levelCut == null || datum.score >= levelCut",
+      // Nearest neighbours shown (#102): only the paper and its neighbours keep their color
+      ...(neighbours
+        ? [
+            `length(nnIds) == 0 || indexof(nnIds, datum[${JSON.stringify(id)}]) >= 0`,
+          ]
+        : []),
     ],
   };
   // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
@@ -239,20 +254,21 @@ export function scatterSpec(
               type: highlighted ? "nominal" : colorType,
               title: colorTitle,
               scale: colorScale,
-              legend: {
-                orient: "bottom",
-                columns: colorType === "quantitative" ? undefined : 4,
-                ...(highlighted && {
-                  labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
-                }),
-              },
+              legend: legendFor({
+                data,
+                color,
+                quantitative: colorType === "quantitative",
+                scoreDomain,
+                legendLabels,
+                highlighted,
+              }),
             }
           : { test: visible, value: token("color-viz-neutral", "#605954") },
         value: token("color-viz-dim", "#e1ddd8"),
       },
       ...(size && {
         size: {
-          field: size,
+          field: sizeCopy ? "__size" : size,
           type: "quantitative",
           scale: {
             range: sizeRange,
@@ -364,11 +380,14 @@ export function scatterSpec(
       tooltip: null,
     },
   };
+  const nn = neighbours ? neighbourLayers({ scale, tween, transition }) : null;
   const layers = [
     ...(shade ? [shade] : []),
     points,
+    ...(nn ? nn.below : []),
     ...(rings ? [rings] : []),
     ...textLayers,
+    ...(nn ? nn.above : []),
   ];
 
   return {
@@ -377,11 +396,13 @@ export function scatterSpec(
     height,
     title,
     data: { values },
+    ...(nn && { datasets: { [NEIGHBOURS_DATA]: [] } }),
     ...(tween && { transform: tween.transform }),
     ...(layers.length > 1
       ? {
           params: [
             ...(rings ? [{ name: "mine", value: ringIds }] : []),
+            ...(nn ? [{ name: "nnIds", value: [] }] : []),
             levelCut,
             ...(tween?.params ?? []),
           ],
@@ -398,12 +419,192 @@ export function scatterSpec(
       view: { stroke: null },
       font: token("font-sans", "sans-serif"),
       title: { color: token("color-on-surface", "#241e1a"), fontWeight: 500 },
+      // DESIGN.md → Legend: always visible in a corner on `surface`
       legend: {
+        orient: "top-right",
+        offset: 8,
+        padding: 8,
+        cornerRadius: parseFloat(token("rounded-md", "6px")) || 6,
+        fillColor: token("color-surface", "#fffdfa"),
+        strokeColor: token("color-outline", "#d8d3cc"),
         titleColor: token("color-on-surface", "#241e1a"),
+        titleFontWeight: 500,
         labelColor: token("color-on-surface-muted", "#605954"),
+        labelLimit: 160,
+        symbolOpacity: 1,
       },
     },
   };
+}
+
+// Named dataset of the neighbour marks (#102), replaced with view.change (no redraw)
+const NEIGHBOURS_DATA = "nn";
+
+/**
+ * Nearest-neighbour marks (#102), all from the `nn` dataset (rows {kind, fx, fy, nx, ny, label}:
+ * the focus paper at fx/fy, the other paper at nx/ny) and never under the pointer:
+ * - lines from the paper to each true neighbour, ink; dashed for a **missing** neighbour (far on
+ *   the map), so the difference never rests on color alone;
+ * - a thick ink ring on the paper, a dotted muted ring on each **false** neighbour (close on the
+ *   map, not similar);
+ * - each neighbour's similarity as a small label on a background halo.
+ * Mid-motion (#82) the rows describe the final layout, so they stay hidden and fade in as the
+ * motion settles.
+ */
+function neighbourLayers({ scale, tween, transition }) {
+  const fade = (opacity) =>
+    tween
+      ? {
+          expr: `${opacity} * clamp((tm - ${0.85 * transition.total}) / ${0.15 * transition.total}, 0, 1)`,
+        }
+      : opacity;
+  const at = (xf, yf) => ({
+    x: {
+      field: xf,
+      type: "quantitative",
+      axis: null,
+      scale: { ...scale, ...tween?.xScale },
+    },
+    y: {
+      field: yf,
+      type: "quantitative",
+      axis: null,
+      scale: { ...scale, ...tween?.yScale },
+    },
+  });
+  const layer = (kinds, mark, encoding) => ({
+    data: { name: NEIGHBOURS_DATA },
+    transform: [{ filter: { field: "kind", oneOf: kinds } }],
+    mark: { interactive: false, clip: true, ...mark },
+    encoding: { tooltip: null, ...encoding },
+  });
+  const ink = token("color-on-surface", "#241e1a");
+  const muted = token("color-on-surface-muted", "#605954");
+  const background = token("color-background", "#fcf9f3");
+  const label = (mark) =>
+    layer(
+      ["preserved", "missing"],
+      {
+        type: "text",
+        dy: -9,
+        fontSize: 10,
+        font: token("font-sans", "sans-serif"),
+        opacity: fade(1),
+        ...mark,
+      },
+      { ...at("nx", "ny"), text: { field: "label" } },
+    );
+  return {
+    below: [
+      layer(
+        ["preserved", "missing"],
+        { type: "rule", strokeWidth: 1, color: ink, opacity: fade(0.55) },
+        {
+          ...at("fx", "fy"),
+          x2: { field: "nx" },
+          y2: { field: "ny" },
+          strokeDash: {
+            condition: { test: "datum.kind === 'missing'", value: [4, 3] },
+            value: [1, 0],
+          },
+        },
+      ),
+      layer(
+        ["false"],
+        {
+          type: "point",
+          filled: false,
+          size: 170,
+          strokeWidth: 1.25,
+          strokeDash: [2, 2],
+          color: muted,
+          opacity: fade(1),
+        },
+        at("nx", "ny"),
+      ),
+      layer(
+        ["focus"],
+        {
+          type: "point",
+          filled: false,
+          size: 220,
+          strokeWidth: 2.5,
+          color: ink,
+          opacity: fade(1),
+        },
+        at("nx", "ny"),
+      ),
+    ],
+    above: [
+      label({
+        fill: background,
+        stroke: background,
+        strokeWidth: 3,
+        strokeJoin: "round",
+      }),
+      label({ fill: muted }),
+    ],
+  };
+}
+
+/**
+ * Rows for the `nn` dataset from a classification (lib/neighbours.js classifyNeighbours):
+ * `position(id)` is where a paper is drawn.
+ */
+export function neighbourRows(
+  focus,
+  { neighbours, falseNeighbours },
+  position,
+) {
+  const [fx, fy] = position(focus);
+  const row = (kind, id, label = null) => {
+    const [nx, ny] = position(id);
+    return { kind, fx, fy, nx, ny, label };
+  };
+  return [
+    row("focus", focus),
+    ...neighbours.map((d) =>
+      row(
+        d.missing ? "missing" : "preserved",
+        d.id,
+        `${Math.round(d.similarity * 100)}%`,
+      ),
+    ),
+    ...falseNeighbours.map((id) => row("false", id)),
+  ];
+}
+
+/**
+ * The color legend: a ramp labelled only at its two ends with `legendLabels` (its numbers mean
+ * little to readers; the tooltip has the exact score), or the 3 + Other categories.
+ */
+function legendFor({
+  data,
+  color,
+  quantitative,
+  scoreDomain,
+  legendLabels,
+  highlighted,
+}) {
+  if (quantitative) {
+    const ends =
+      scoreDomain ??
+      extent(data.map((d) => d[color]).filter((v) => Number.isFinite(v)));
+    return legendLabels && ends.every(Number.isFinite) && ends[0] < ends[1]
+      ? {
+          type: "gradient",
+          direction: "horizontal",
+          gradientLength: 120,
+          values: ends,
+          labelExpr: `datum.index === 0 ? ${JSON.stringify(legendLabels[0])} : ${JSON.stringify(legendLabels[1])}`,
+        }
+      : { type: "gradient", direction: "horizontal", gradientLength: 120 };
+  }
+  return highlighted
+    ? {
+        labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
+      }
+    : {};
 }
 
 /** Topic labels that fit (cullLabels) at the scales `data` gets, or `labels` as given. */
@@ -735,6 +936,19 @@ export async function BrushableScatterPlot(data, options = {}) {
     pointAt: target.pointAt,
     entries: tooltip,
   });
+
+  // Nearest neighbours on hover / click (#102): `neighbours` = {similar, k, enabled, pinned}
+  if (options.neighbours)
+    attachNeighbours(target, {
+      ...options.neighbours,
+      view: chart.view,
+      data,
+      x,
+      y,
+      id,
+      pointAt: target.pointAt,
+      rows: neighbourRows,
+    });
 
   Object.defineProperty(target, "value", {
     get: () => value,

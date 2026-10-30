@@ -18,6 +18,7 @@ import { paperPanel } from "./components/paperPanel.js";
 import { watchButton } from "./components/watchButton.js";
 import { showToast } from "./components/toast.js";
 import { bindMyPapersBadge } from "./components/badge.js";
+import { conferenceZone } from "./lib/time.js";
 ```
 
 ```js
@@ -29,10 +30,8 @@ const embeddingsFile = FileAttachment("data/embeddings.bin");
 
 ```js
 const tz = conference.timezone;
-// "EST": the conference timezone's short name during the conference
-const tzLabel = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" })
-  .formatToParts(new Date(`${conference.days?.[0] ?? "2026-01-01"}T12:00:00Z`))
-  .find((d) => d.type === "timeZoneName")?.value ?? "";
+// "ET" (config timezoneLabel, else from the zone; DESIGN.md → Vocabulary)
+const tzLabel = conferenceZone(conference);
 const followedStore = createFollowedStore(conference.id);
 const rulesStore = createRulesStore(conference.id);
 const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
@@ -93,6 +92,7 @@ const authorView = !authorParam
         detailsHref: (p) => paperRoute.href(p.shortId ?? p.id),
         // Watch = an author rule (#5): their papers stay in My Papers, also after program updates
         watch: watchButton({ type: "author", value: author.name }, {
+          variant: "secondary",
           rules: rulesStore,
           onWatch: (rule) => {
             const saved = store.watch(rule);
@@ -127,6 +127,7 @@ authorView.update?.();
 const paperDetail = paperPanel(paperParam, {
   papers,
   tz,
+  tzLabel,
   store,
   route: paperRoute,
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),

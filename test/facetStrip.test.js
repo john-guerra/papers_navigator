@@ -110,6 +110,21 @@ describe("facetStrip value/input contract", () => {
     expect(widget.value).toEqual({ type: [], author: [] });
     expect(widget.querySelector(".fs-clear-all").hidden).toBe(true);
   });
+
+  it("Clear all goes back to defaultValue, and hides there (#104)", () => {
+    const widget = make({
+      value: { type: ["full", "short"] },
+      defaultValue: { type: ["full", "short"] },
+    });
+    const clear = widget.querySelector(".fs-clear-all");
+    expect(clear.hidden).toBe(true);
+    widget.value = { type: [], author: ["Ann"] };
+    widget.dispatchEvent(new Event("input"));
+    expect(clear.hidden).toBe(false);
+    clear.click();
+    expect(widget.value).toEqual({ type: ["full", "short"], author: [] });
+    expect(clear.hidden).toBe(true);
+  });
 });
 
 describe("facetStrip counts", () => {
