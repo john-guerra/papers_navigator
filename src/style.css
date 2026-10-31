@@ -2614,3 +2614,45 @@ body #vg-tooltip-element table tr td.value {
   color: var(--color-on-surface-muted);
   font-size: 10px;
 }
+
+/* #144 — phone split screen: on phones tall enough, the map section sticks under the nav (the top
+   half) and the list scrolls below it (the bottom half). The map's controls row (Color by,
+   labels) moves above the map and slides under the nav once stuck, so the map keeps its height;
+   the list header sticks right under the map. Heights come from src/lib/splitLayout.js.
+   "Hide map" gives the list the whole screen again. Last, so it wins over the stacked rules. */
+@media (max-width: 639.98px) and (min-height: 600px) {
+  .explore-layout:not(.hide-map) .explore-map {
+    position: sticky;
+    top: calc(
+      var(--observablehq-header-height) - var(--map-controls-height, 0px)
+    );
+    z-index: 2;
+    background: var(--color-background);
+    box-shadow: 0 1px 0 var(--color-outline);
+  }
+
+  .explore-layout:not(.hide-map) .map-stage {
+    display: grid;
+  }
+
+  .explore-layout:not(.hide-map) .map-stage > .map-controls {
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .explore-layout:not(.hide-map) .map-stage > .brushable-scatterplot,
+  .explore-layout:not(.hide-map) .map-stage > .neighbours-panel.is-floating {
+    grid-row: 2;
+  }
+
+  .explore-layout:not(.hide-map) .add-bar {
+    top: calc(var(--observablehq-header-height) + var(--split-map-height, 0px));
+  }
+
+  :root:has(#observablehq-main .explore-layout:not(.hide-map)) {
+    scroll-padding-top: calc(
+      var(--observablehq-header-height) + var(--split-map-height, 0px) +
+        var(--list-header-height, 0px) + var(--spacing-sm)
+    );
+  }
+}

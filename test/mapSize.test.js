@@ -140,3 +140,37 @@ describe("watchStickyViewport", () => {
     expect(seen).toEqual([null, 640]);
   });
 });
+
+describe("phone split screen (#144)", () => {
+  it("gives the map 45% of what the nav and tab bar leave, 220–420px", async () => {
+    const { splitMapHeight, SPLIT_CHROME } =
+      await import("../src/lib/mapSize.js");
+    expect(mapSize(380, { splitHeight: 860 })).toEqual([
+      360,
+      Math.round((860 - SPLIT_CHROME) * 0.45),
+    ]);
+    expect(splitMapHeight(600)).toBe(220);
+    expect(splitMapHeight(2000)).toBe(420);
+  });
+
+  it("reads the height when the split starts or the phone turns, never on resize", async () => {
+    const { watchPhoneSplit } = await import("../src/lib/mapSize.js");
+    const query = Object.assign(new EventTarget(), { matches: true });
+    const win = Object.assign(new EventTarget(), {
+      innerHeight: 860,
+      matchMedia: () => query,
+    });
+    const seen = [];
+    const stop = watchPhoneSplit((v) => seen.push(v), { query: "q", win });
+    expect(seen).toEqual([860]);
+    win.innerHeight = 700; // toolbar or keyboard
+    win.dispatchEvent(new Event("resize"));
+    expect(seen).toEqual([860]);
+    win.dispatchEvent(new Event("orientationchange"));
+    expect(seen).toEqual([860, 700]);
+    query.matches = false;
+    query.dispatchEvent(new Event("change"));
+    expect(seen).toEqual([860, 700, null]);
+    stop();
+  });
+});

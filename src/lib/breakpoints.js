@@ -15,6 +15,11 @@ export const PHONE_QUERY = `(max-width: ${PHONE_MAX}px)`;
 export const STACKED_QUERY = `(max-width: ${TABLET_MAX}px)`;
 /** Desktop (≥ 1024px): Explore's two columns with the sticky map. */
 export const TWO_COLUMN_QUERY = `not all and ${STACKED_QUERY}`;
+/**
+ * Phones tall enough to split the screen (#144): the map sticks in the top half, the list scrolls
+ * in the bottom half. Shorter (landscape) phones keep the stacked layout.
+ */
+export const SPLIT_QUERY = `${PHONE_QUERY} and (min-height: 600px)`;
 /** Touch screens, whatever their width: hit targets grow to 44px (DESIGN.md → Accessibility). */
 export const COARSE_QUERY = "(pointer: coarse)";
 

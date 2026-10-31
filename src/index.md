@@ -46,9 +46,10 @@ import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
-import { PHONE_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
+import { PHONE_QUERY, SPLIT_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
+import { watchSplitMap } from "./lib/splitLayout.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
-import { controlsHeight, mapSize, watchStickyViewport } from "./lib/mapSize.js";
+import { controlsHeight, mapSize, watchPhoneSplit, watchStickyViewport } from "./lib/mapSize.js";
 import { stickyListHeader } from "./lib/stickyList.js";
 import { conferenceZone } from "./lib/time.js";
 // Explicit, so the page uses the same d3 as the widgets (node_modules) instead of a second copy
@@ -585,6 +586,8 @@ const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // controls' height is read when the map is built anyway (below), never watched: a chip appearing
 // mid-drag must not rebuild the map and drop the brush (#143 review)
 const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
+// Phones tall enough (#144): the map sticks in the top half, the list scrolls below (null otherwise)
+const phoneSplit = Generators.observe((notify) => watchPhoneSplit(notify, { query: SPLIT_QUERY }));
 const scrollToPaper = (id) => {
   const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
   if (!row?.isConnected) return;
@@ -636,7 +639,7 @@ const positioned = withReliability(withLiveClusters(applyProjection(filtered, al
 const everyPaper = applyProjection(papers, aligned).papers;
 mapState.everyPaper = everyPaper;
 // Side column (#142): with the controls (search, facets, relevance) when both fit, else the map alone
-const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")) });
+const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")), splitHeight: phoneSplit });
 layout.classList.toggle("side-fits", Boolean(sideFits));
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared
@@ -748,7 +751,8 @@ const showQueryMarker = Generators.input(queryMarkerStore);
 // Nearest neighbours (#102): the card lists the pinned paper's neighbours, floating over the
 // sticky map's corner on desktop (#114), under the map on stacked layouts
 const neighboursCard = neighboursPanel({
-  floating: matchMedia(TWO_COLUMN_QUERY),
+  // Floating over the map wherever the map stays in view: desktop, and the phone split (#144)
+  floating: matchMedia(`${TWO_COLUMN_QUERY}, ${SPLIT_QUERY}`),
   paperOf: (id) => papers.find((p) => p.id === id),
   href: (p) => paperRoute.href(p.shortId ?? p.id),
   onOpen: (p) => openPaper(p.shortId ?? p.id),
@@ -946,6 +950,16 @@ listHeader.refresh();
 ```
 
 ```js
+// Phone split (#144): the heights the sticky map section and the list header need, re-measured
+// with each map
+mapInput;
+if (phoneSplit != null) {
+  const stop = watchSplitMap(document.getElementById("explore-map"));
+  invalidation.then(stop);
+}
+```
+
+```js
 // Brushing and linking (#136): scrolling or pointing at the list rings that paper on the map.
 // Pointing at a row also previews its neighbours (#140).
 // Only where the map stays beside the list (desktop); stacked, it has scrolled away
@@ -973,7 +987,13 @@ listHeader.refresh();
       const keyboardRow = list.contains(focused) && focused.matches(":focus-visible") ? focused.closest("[data-paper-id]")?.dataset.paperId : null;
       mapInput.previewNeighbours(keyboardRow ?? null);
     }
-  }, { enabled: () => !matchesMedia(STACKED_QUERY), start: listFocusState.active });
+  }, {
+    // Wherever the map stays beside or above the list: desktop, and the phone split (#144), whose
+    // reading line sits in the list's half
+    enabled: () => (!matchesMedia(STACKED_QUERY) || matchesMedia(SPLIT_QUERY)) && !layout.classList.contains("hide-map"),
+    line: () => (matchesMedia(SPLIT_QUERY) ? 0.72 : 0.4),
+    start: listFocusState.active,
+  });
   if (!listFocusState.active) mark(null);
   listFocusState.tracker = tracker;
   // A click on the map pins a paper and scrolls the list to it: that paper keeps the ring
