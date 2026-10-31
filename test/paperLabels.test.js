@@ -185,6 +185,12 @@ describe("labelFilter", () => {
       "c",
     ]);
   });
+
+  it("keeps only the keyword matches while the map highlights them", () => {
+    expect(ids(labelFilter({ matchIds: ["c", "a"] }))).toEqual(["a", "c"]);
+    expect(ids(labelFilter({ matchIds: [] }))).toEqual([]);
+    expect(ids(labelFilter({ matchIds: null }))).toEqual(["a", "b", "c"]);
+  });
 });
 
 describe("emphasisIds", () => {

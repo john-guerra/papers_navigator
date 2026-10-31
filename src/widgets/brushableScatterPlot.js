@@ -101,11 +101,40 @@ export function topicLabelBox(cx, cy, text, fontSize, gap = 2) {
   return [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
 }
 
+// The shift that moves the span [lo, hi] inside [min, max]; centered when it can't fit
+const shiftInto = (lo, hi, min, max) =>
+  hi - lo > max - min
+    ? (min + max) / 2 - (lo + hi) / 2
+    : lo < min
+      ? min - lo
+      : hi > max
+        ? max - hi
+        : 0;
+
+/**
+ * A topic label anchored at (cx, cy) px, kept inside a `width` × `height` plot (#125): the pixel
+ * shift {dx, dy} that keeps its wrapped box (topicLabelBox, no gap) `margin` px inside every edge
+ * (centered on an axis it can't fit), and the shifted box.
+ */
+export function fitTopicLabel(
+  cx,
+  cy,
+  text,
+  fontSize,
+  { width, height, margin = 4 },
+) {
+  const [x0, y0, x1, y1] = topicLabelBox(cx, cy, text, fontSize, 0);
+  const dx = shiftInto(x0, x1, margin, width - margin);
+  const dy = shiftInto(y0, y1, margin, height - margin);
+  return { dx, dy, box: [x0 + dx, y0 + dy, x1 + dx, y1 + dy] };
+}
+
 /**
  * Labels that fit without overlapping, in priority order (pass the largest topics first):
  * each label's box (topicLabelBox: wrapped lines at `fontSize`) is placed with the same
- * linear mapping as the map (domain → [padding, size - padding]); a label overlapping one
- * already kept is dropped. `{text, x, y}` in data units.
+ * linear mapping as the map (domain → [padding, size - padding]) and shifted inside the plot
+ * (fitTopicLabel); a label overlapping one already kept is dropped. `{text, x, y}` in data
+ * units; each kept label comes back with its pixel shift `dx`, `dy`.
  */
 export function cullLabels(
   labels,
@@ -120,19 +149,19 @@ export function cullLabels(
   const kept = [];
   const boxes = [];
   for (const label of labels) {
-    const box = topicLabelBox(
-      sx(label.x),
-      height - sy(label.y),
-      label.text,
-      fontSize,
-      gap,
-    );
+    const cx = sx(label.x);
+    const cy = height - sy(label.y);
+    const { dx, dy } = fitTopicLabel(cx, cy, label.text, fontSize, {
+      width,
+      height,
+    });
+    const box = topicLabelBox(cx + dx, cy + dy, label.text, fontSize, gap);
     const overlaps = boxes.some(
       (b) => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3],
     );
     if (overlaps) continue;
     boxes.push(box);
-    kept.push(label);
+    kept.push({ ...label, dx, dy });
   }
   return kept;
 }
@@ -180,7 +209,8 @@ function categoryRange() {
  *   only at its ends, with `legendLabels` ([low, high], e.g. ["less similar", "more similar"]);
  * - categorical color highlights at most 3 `categories` (pass them from the whole program so
  *   filtering never repaints survivors; default: top 3 of `data`), everything else is Other;
- * - points outside the brush are dimmed;
+ * - points outside the brush are dimmed; with `matches`, so are those not in the `matchIds`
+ *   param (keyword matches, #125; null = none dimmed), set with `highlightMatches(ids)`;
  * - with `ringIds`, those papers get a ring (In My Papers) on a layer of their own, so it shows
  *   regardless of color; the ids live in the `mine` param, so pages update them with
  *   `view.signal("mine", ids)` without redrawing (which would lose the brush);
@@ -219,6 +249,7 @@ export function scatterSpec(
     transition = null,
     neighbours = false,
     query = false,
+    matches = false,
   } = {},
 ) {
   const categorical = color && colorType !== "quantitative";
@@ -267,10 +298,18 @@ export function scatterSpec(
             `length(nnIds) == 0 || indexof(nnIds, datum[${JSON.stringify(id)}]) >= 0`,
           ]
         : []),
+      // Keyword matches (#125): only they keep their color; null = no keyword search
+      ...(matches
+        ? [
+            `matchIds == null || indexof(matchIds, datum[${JSON.stringify(id)}]) >= 0`,
+          ]
+        : []),
     ],
   };
   // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
   const levelCut = { name: "levelCut", value: null };
+  // The keyword matches' ids (#125), updated with highlightMatches (no redraw)
+  const matchParams = matches ? [{ name: "matchIds", value: null }] : [];
   // nice: false + padding in pixels, so cullLabels can mirror the scales exactly
   const scale = { zero: false, nice: false, padding: 10 };
   // Explicit domains (#112): the points' extent, or the tween's eased one. Every layer shares
@@ -366,7 +405,14 @@ export function scatterSpec(
   // Each topic label as its wrapped lines (wrapLabel) and their count, which centers the block
   const lineRows = (l) => {
     const lines = wrapLabel(l.text);
-    return { text: l.text, lines, n: lines.length };
+    return {
+      text: l.text,
+      lines,
+      n: lines.length,
+      // Shifted inside the plot near its edges (fitTopicLabel, #125)
+      __dx: l.dx ?? 0,
+      __dy: l.dy ?? 0,
+    };
   };
   const labelRows = [
     ...(shown ?? []).map((l) => ({
@@ -387,14 +433,18 @@ export function scatterSpec(
     data: { values: labelRows },
     ...(tween && { transform: tween.labelTransform }),
     // DESIGN.md: Newsreader medium, centered lines; Vega draws the first line at y and the
-    // rest below it, so each label moves up by half its extra lines
+    // rest below it, so each label moves up by half its extra lines (and by its shift inside
+    // the plot, #125)
     mark: {
       type: "text",
       fontSize: labelSize,
       fontWeight: 500,
       font: token("font-serif", "serif"),
       lineHeight: topicLineHeight(labelSize),
-      dy: { expr: `-(datum.n - 1) * ${topicLineHeight(labelSize) / 2}` },
+      dx: { expr: "datum.__dx" },
+      dy: {
+        expr: `datum.__dy - (datum.n - 1) * ${topicLineHeight(labelSize) / 2}`,
+      },
       ...mark,
     },
     encoding: {
@@ -479,13 +529,19 @@ export function scatterSpec(
             ...(nn ? [{ name: "nnIds", value: [] }] : []),
             ...(q ? [{ name: "queryHover", value: -1 }] : []),
             levelCut,
+            ...matchParams,
             ...(tween?.params ?? []),
           ],
           layer: layers,
         }
       : {
           ...points,
-          params: [...points.params, levelCut, ...(tween?.params ?? [])],
+          params: [
+            ...points.params,
+            levelCut,
+            ...matchParams,
+            ...(tween?.params ?? []),
+          ],
         }),
     // Transparent so the page's paper shows through (Vega defaults to white)
     // and the title/legend take the page's ink and sans font (both themes).
@@ -1306,6 +1362,7 @@ export async function BrushableScatterPlot(data, options = {}) {
       moving: () => Boolean(transition) && tm < transition.total,
       brush: () => target.brush(),
       levelCut: () => chart.view.signal("levelCut"),
+      matchIds: () => (options.matches ? chart.view.signal("matchIds") : null),
       pinned: () => target.neighbours?.pinned ?? null,
       focusIds: () => {
         const n = target.neighbours;
@@ -1322,9 +1379,17 @@ export async function BrushableScatterPlot(data, options = {}) {
       // Everything else drawn as text or on top: topic labels (their wrapped lines), the query
       // marker and its label, and the legend
       obstacles: (toPixel) => [
-        ...topics.map((l) =>
-          topicLabelBox(...toPixel([l.x, l.y]), l.text, labelSize, 3),
-        ),
+        ...topics.map((l) => {
+          const [px, py] = toPixel([l.x, l.y]);
+          // Where it is drawn: shifted inside the plot (fitTopicLabel, #125)
+          return topicLabelBox(
+            px + (l.dx ?? 0),
+            py + (l.dy ?? 0),
+            l.text,
+            labelSize,
+            3,
+          );
+        }),
         ...markers.flatMap((m) => {
           const [px, py] = toPixel([m.x, m.y]);
           return [
@@ -1341,6 +1406,18 @@ export async function BrushableScatterPlot(data, options = {}) {
     target.addEventListener("neighbours", labels.schedule);
     chart.view.addSignalListener("levelCut", labels.schedule);
   }
+
+  /**
+   * Keyword matches (#125, needs `matches`): only papers with these ids keep their color, the
+   * rest are viz-dim; null shows every paper. A signal, so the map isn't redrawn.
+   */
+  target.highlightMatches = (ids = null) => {
+    if (!options.matches) return Promise.resolve();
+    return chart.view
+      .signal("matchIds", ids)
+      .runAsync()
+      .then(() => target.paperLabels?.schedule());
+  };
 
   Object.defineProperty(target, "value", {
     get: () => value,

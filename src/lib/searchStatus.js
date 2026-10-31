@@ -86,6 +86,34 @@ export function searchMode({ modelStatus, query = "", research = false }) {
   return hasQuery && !research ? "keyword" : "none";
 }
 
+/**
+ * What the map shows of the ranking (#125): in keyword mode, `ids` of the keyword `matches`
+ * (the rest are dimmed, like papers below the relevance level) and the `note` shown instead of
+ * the similarity ramp ("12 keyword matches"); otherwise null for both (similarity colors the map).
+ */
+export function mapMatches({ mode, matches = [], id = "id" }) {
+  if (mode !== "keyword") return { ids: null, note: null };
+  const n = matches.length;
+  return {
+    ids: matches.map((d) => d[id]),
+    note: n
+      ? `${n} keyword ${n === 1 ? "match" : "matches"}`
+      : "No keyword matches",
+  };
+}
+
+/**
+ * Resolves at an idle moment, at most `timeout` ms from now (requestIdleCallback), or after
+ * `timeout` ms where the browser has no requestIdleCallback (Safari).
+ */
+export function whenIdle({ win = globalThis, timeout = 1500 } = {}) {
+  return new Promise((resolve) =>
+    win.requestIdleCallback
+      ? win.requestIdleCallback(() => resolve(), { timeout })
+      : win.setTimeout(() => resolve(), timeout),
+  );
+}
+
 /** The one-line status by the search box (DESIGN.md → Loading); null once the model is ready. */
 export function searchStatusLine({ modelStatus, mode, offline = false }) {
   const state = modelState(modelStatus);

@@ -137,6 +137,7 @@ export function attachPaperLabels(
     moving = () => false,
     brush = () => null,
     levelCut = () => null,
+    matchIds = () => null,
     pinned = () => null,
     focusIds = () => null,
     obstacles = () => [],
@@ -220,6 +221,7 @@ export function attachPaperLabels(
     const allowed = labelFilter({
       brush: brush(),
       levelCut: levelCut(),
+      matchIds: matchIds(),
       focusIds: focusIds(),
       x,
       y,
