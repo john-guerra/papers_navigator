@@ -925,6 +925,7 @@ const chipsRow = renderChips(chips, {
 
 ```js
 // Brushing and linking (#136): scrolling or pointing at the list rings that paper on the map.
+// Pointing at a row also previews its neighbours (#140).
 // Only where the map stays beside the list (desktop); stacked, it has scrolled away
 {
   const list = document.querySelector(".explore-list");
@@ -933,10 +934,14 @@ const chipsRow = renderChips(chips, {
     if (id != null) list.querySelector(`[data-paper-id="${CSS.escape(id)}"]`)?.classList.add("in-focus");
   };
   // A map redrawn mid-reading (projection, colors, filters) picks the focus up again at once
-  const tracker = trackListFocus(list, (id) => {
+  const tracker = trackListFocus(list, (id, source) => {
     listFocusState.active = id != null;
     mapInput.focusPaper(id);
     mark(id);
+    // Pointing at a row previews its neighbours, like hovering its dot (#140); the reading line
+    // doesn't (the map would dim on every scroll) and clears a pointer's preview
+    if (source === "pointer" && neighbourStore.value.enabled) mapInput.previewNeighbours(id);
+    else if (source === "line") mapInput.previewNeighbours(null);
   }, { enabled: () => !matchesMedia(STACKED_QUERY), start: listFocusState.active });
   if (!listFocusState.active) mark(null);
   listFocusState.tracker = tracker;
