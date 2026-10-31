@@ -254,6 +254,14 @@ a[href]:hover {
   text-decoration: none;
 }
 
+/* #138 — `hidden` always hides. Any display in this stylesheet beats the UA's [hidden] rule, so
+   elements toggled with .hidden kept showing: the empty neighbours card drew as a 4px strip over
+   the map, My research's actions row stayed beside its confirm row, Forget showed with nothing
+   saved. */
+[hidden] {
+  display: none !important;
+}
+
 /* Visible focus ring on every interactive element (Accessibility) */
 :focus-visible {
   outline: 2px solid var(--color-focus);
@@ -2467,11 +2475,4 @@ body #vg-tooltip-element table tr td.value {
   margin-top: 3px;
   color: var(--color-on-surface-muted);
   font-size: 10px;
-}
-
-/* #138 — a class's display beats the UA's [hidden] rule: the empty neighbours card drew as a
-   4px strip over the map's bottom-right corner. Last, so it wins over every layout's display */
-.neighbours-panel[hidden],
-.neighbours-panel.is-floating[hidden] {
-  display: none;
 }
