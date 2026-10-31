@@ -48,7 +48,7 @@ import { renderChips } from "./components/chips.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
 import { PHONE_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
-import { mapSize, watchStickySpace } from "./lib/mapSize.js";
+import { controlsHeight, mapSize, watchStickyViewport } from "./lib/mapSize.js";
 import { stickyListHeader } from "./lib/stickyList.js";
 import { conferenceZone } from "./lib/time.js";
 // Explicit, so the page uses the same d3 as the widgets (node_modules) instead of a second copy
@@ -581,10 +581,10 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 // Measured on the controls (same column, always visible): hiding the map on phones must not
 // change the width, which would redraw the map and drop its selection
 const mapWidth = Generators.width(document.querySelector(".explore-controls"));
-// Desktop: the side column (controls + map) is sticky when both fit, else the map alone (#142),
-// so the map fits the viewport height and leaves room for the controls (null on stacked layouts).
-// Open panels (My research, Watch) don't count, so opening one never redraws the map.
-const stickySpace = Generators.observe((notify) => watchStickySpace(notify, { query: STACKED_QUERY, controls: document.querySelector(".explore-controls") }));
+// Desktop: the map is sticky, so it fits the viewport height too (null on stacked layouts). The
+// controls' height is read when the map is built anyway (below), never watched: a chip appearing
+// mid-drag must not rebuild the map and drop the brush (#143 review)
+const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
 const scrollToPaper = (id) => {
   const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
   if (!row?.isConnected) return;
@@ -635,7 +635,8 @@ const positioned = withReliability(withLiveClusters(applyProjection(filtered, al
 // Every paper as drawn on this projection: the distortion overlay and the details mini-map (#101)
 const everyPaper = applyProjection(papers, aligned).papers;
 mapState.everyPaper = everyPaper;
-const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickySpace?.viewportHeight ?? null, controlsHeight: stickySpace?.controlsHeight });
+// Side column (#142): with the controls (search, facets, relevance) when both fit, else the map alone
+const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")) });
 layout.classList.toggle("side-fits", Boolean(sideFits));
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared

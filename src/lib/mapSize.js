@@ -34,7 +34,8 @@ export function mapSize(
   let h = Math.min(620, Math.max(320, width * 0.75));
   if (viewportHeight == null) return [w, Math.round(h)];
   if (controlsHeight != null) {
-    const room = viewportHeight - reserved - SIDE_GAP - controlsHeight;
+    const room =
+      viewportHeight - reserved - SIDE_GAP - controlsHeight - CONTROLS_SLACK;
     if (room >= Math.min(h, fitMin))
       return [w, Math.round(Math.min(h, room)), true];
   }
@@ -44,8 +45,16 @@ export function mapSize(
     : [w, Math.round(h), false];
 }
 
-/** Panels that open for a moment inside the controls; opening one must not redraw the map. */
-export const TRANSIENT_PANELS = ".my-research-panel, .topic-watch-panel";
+/**
+ * What comes and goes inside the controls without a map redraw (#143 review): open panels (My
+ * research, Watch), the chips row (a region chip appears on the first brush event, mid-drag) and
+ * the model status line. They are left out of the measure; CONTROLS_SLACK keeps room for a chips
+ * or status line, and a taller moment (a panel open) just runs past the viewport's bottom.
+ */
+export const TRANSIENT_PANELS =
+  ".my-research-panel, .topic-watch-panel, .chips, .search-status";
+/** Room kept under the measured controls for one chips or status line. */
+export const CONTROLS_SLACK = 48;
 
 /**
  * The controls' height without their open transient panels (in-flow, each on its own line of a
@@ -73,48 +82,20 @@ export function controlsHeight(el, { exclude = TRANSIENT_PANELS } = {}) {
 }
 
 /**
- * The space the sticky side column has to fit: {viewportHeight, controlsHeight}, or null where
- * nothing is sticky (stacked layouts, < 1024px). Calls `notify` only when that changes: the
- * viewport's height at all (on phones the toolbar changes innerHeight while scrolling, which must
- * not redraw the map; stacked, it's null anyway), the controls' by at least `threshold` px.
- * `measure()` reads the controls' height; the ResizeObserver watches `controls`.
+ * The viewport height the sticky map has to fit, or null where the map isn't sticky (stacked
+ * layouts, < 1024px). Calls `notify` only when that value changes: on phones the browser's
+ * toolbar changes innerHeight while scrolling, which must not redraw the map.
  */
-export function watchStickySpace(
-  notify,
-  {
-    query,
-    controls = null,
-    measure = () => controlsHeight(controls),
-    threshold = 8,
-    win = globalThis,
-    ResizeObserver = globalThis.ResizeObserver,
-  },
-) {
+export function watchStickyViewport(notify, { query, win = globalThis }) {
   const stacked = win.matchMedia?.(query);
   let last;
   const update = () => {
-    if (!stacked || stacked.matches) {
-      if (last === null) return;
-      last = null;
-      return notify(null);
-    }
-    const viewportHeight = win.innerHeight;
-    const height = measure();
-    if (
-      last &&
-      last.viewportHeight === viewportHeight &&
-      Math.abs(last.controlsHeight - height) < threshold
-    )
-      return;
-    last = { viewportHeight, controlsHeight: height };
-    notify(last);
+    const value = !stacked || stacked.matches ? null : win.innerHeight;
+    if (value === last) return;
+    last = value;
+    notify(value);
   };
   update();
   win.addEventListener?.("resize", update);
-  const observer = ResizeObserver ? new ResizeObserver(update) : null;
-  if (controls) observer?.observe(controls);
-  return () => {
-    win.removeEventListener?.("resize", update);
-    observer?.disconnect();
-  };
+  return () => win.removeEventListener?.("resize", update);
 }

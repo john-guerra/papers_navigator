@@ -946,10 +946,8 @@ a.navbar-brand {
   gap: var(--spacing-sm);
   box-sizing: border-box;
   min-width: 0;
-  max-height: calc(
-    100vh - var(--observablehq-header-height) - 2 * var(--spacing-md)
-  );
-  overflow-y: auto;
+  /* No scroll box (#143 review): facet popovers float over the list as before, and a classic
+     scrollbar never narrows the controls (whose width sizes the map) */
   margin-inline: calc(-1 * var(--spacing-xs));
   padding-inline: var(--spacing-xs);
 }

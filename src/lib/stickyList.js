@@ -27,6 +27,14 @@ export function stickyListHeader(
 ) {
   let pending = false;
   let height;
+  // After ↑ Top focus sits on the heading; a re-rendered bar replaces it, so refresh puts focus
+  // on the new heading while nothing else took it (#143 review)
+  let headingFocus = false;
+  const doc = list.ownerDocument;
+  const onFocusIn = (event) => {
+    if (!event.target.matches?.(".add-bar-title")) headingFocus = false;
+  };
+  doc?.addEventListener("focusin", onFocusIn);
   const bar = () => list.querySelector(".add-bar");
   const measure = () => {
     const h = Math.round(bar()?.getBoundingClientRect().height ?? 0);
@@ -62,6 +70,7 @@ export function stickyListHeader(
     stop() {
       win.removeEventListener("scroll", schedule);
       win.removeEventListener("resize", schedule);
+      doc?.removeEventListener("focusin", onFocusIn);
       observer?.disconnect();
       root?.style.removeProperty("--list-header-height");
       list.classList.remove("is-scrolled");
@@ -70,6 +79,9 @@ export function stickyListHeader(
       measure();
       observe();
       update();
+      const lost = !doc?.activeElement || doc.activeElement === doc.body;
+      if (headingFocus && lost)
+        list.querySelector(".add-bar-title")?.focus({ preventScroll: true });
     },
     /** Back to the list's top (instantly with reduced motion), focus on its heading. */
     scrollToTop() {
@@ -85,6 +97,7 @@ export function stickyListHeader(
         behavior: reduced ? "instant" : "smooth",
       });
       list.querySelector(".add-bar-title")?.focus({ preventScroll: true });
+      headingFocus = true;
     },
   };
 }

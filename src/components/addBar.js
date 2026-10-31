@@ -36,7 +36,10 @@ export function renderAddBar(
   >
     <span aria-hidden="true">↑</span> Top
   </button>`;
-  title.onclick = top.onclick = () => onTop?.();
+  top.onclick = () => onTop?.();
+  // The title scrolls back only while the header is stuck: before that, the list's top is already
+  // in view and a tap would jump the page (on phones, past the map) (#143 review)
+  title.onclick = () => title.closest(".is-scrolled") && onTop?.();
   const notes = [
     already && !allIn ? `${already} already there` : null,
     disabledHint && !allIn ? disabledHint : null,

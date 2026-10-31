@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import {
+  CONTROLS_SLACK,
   MAP_FIT_MIN_HEIGHT,
   MAP_MIN_HEIGHT,
   MAP_RESERVED_HEIGHT,
   SIDE_GAP,
   controlsHeight,
   mapSize,
-  watchStickySpace,
+  watchStickyViewport,
 } from "../src/lib/mapSize.js";
 
 describe("mapSize", () => {
@@ -32,7 +33,7 @@ describe("mapSize", () => {
 
   // #142: the side column (controls + map) is sticky when both fit in the viewport
   it("shrinks the map so the controls fit above it, and says it fits", () => {
-    const fixed = MAP_RESERVED_HEIGHT + SIDE_GAP;
+    const fixed = MAP_RESERVED_HEIGHT + SIDE_GAP + CONTROLS_SLACK;
     // plenty of room: the usual 620px map, controls and all
     expect(mapSize(900, { viewportHeight: 1400, controlsHeight: 200 })).toEqual(
       [880, 620, true],
@@ -44,7 +45,7 @@ describe("mapSize", () => {
   });
 
   it("keeps a usable map: below the minimum, the controls scroll away instead", () => {
-    const fixed = MAP_RESERVED_HEIGHT + SIDE_GAP;
+    const fixed = MAP_RESERVED_HEIGHT + SIDE_GAP + CONTROLS_SLACK;
     const viewportHeight = MAP_FIT_MIN_HEIGHT + fixed + 199;
     expect(mapSize(900, { viewportHeight, controlsHeight: 200 })).toEqual([
       880,
@@ -88,9 +89,17 @@ describe("controlsHeight", () => {
     ]);
     expect(controlsHeight(el)).toBe(400 - 150 - 16 - 4);
   });
+
+  it("leaves out the chips row and the status line: a region chip mid-drag must not resize the map (#143 review)", () => {
+    const el = fakeControls(300, [
+      { className: "chips", height: 28 },
+      { className: "search-status", height: 20 },
+    ]);
+    expect(controlsHeight(el)).toBe(300 - (28 + 16 + 4) - (20 + 16 + 4));
+  });
 });
 
-describe("watchStickySpace", () => {
+describe("watchStickyViewport", () => {
   const fakeWindow = (stacked) => {
     const listeners = new Set();
     const query = { matches: stacked };
@@ -106,69 +115,28 @@ describe("watchStickySpace", () => {
       listeners,
     };
   };
-  const fakeObserver = () => {
-    const observers = [];
-    class RO {
-      constructor(callback) {
-        this.callback = callback;
-        this.observed = [];
-        observers.push(this);
-      }
-      observe(el) {
-        this.observed.push(el);
-      }
-      disconnect() {
-        this.observed = [];
-      }
-    }
-    return { RO, fire: () => observers.forEach((o) => o.callback()) };
-  };
 
-  it("reports viewport and controls heights on two columns, only on real changes", () => {
+  it("reports the height on the two-column layout, only when it changes", () => {
     const win = fakeWindow(false);
-    const { RO, fire } = fakeObserver();
-    let h = 200;
     const seen = [];
-    const stop = watchStickySpace((v) => seen.push(v), {
-      query: "q",
-      win,
-      ResizeObserver: RO,
-      measure: () => h,
-    });
-    win.resize(); // nothing changed: no redraw
-    h = 205; // under 8px: not worth a redraw
-    fire();
-    h = 240;
-    fire();
+    const stop = watchStickyViewport((v) => seen.push(v), { query: "q", win });
+    win.resize(); // same height: no redraw
     win.innerHeight = 700;
     win.resize();
-    expect(seen).toEqual([
-      { viewportHeight: 900, controlsHeight: 200 },
-      { viewportHeight: 900, controlsHeight: 240 },
-      { viewportHeight: 700, controlsHeight: 240 },
-    ]);
+    expect(seen).toEqual([900, 700]);
     stop();
     expect(win.listeners.size).toBe(0);
   });
 
-  it("is null on stacked layouts, whatever the toolbar or the controls do", () => {
+  it("is null on stacked layouts, whatever the toolbar does to innerHeight", () => {
     const win = fakeWindow(true);
-    const { RO, fire } = fakeObserver();
-    let h = 200;
     const seen = [];
-    watchStickySpace((v) => seen.push(v), {
-      query: "q",
-      win,
-      ResizeObserver: RO,
-      measure: () => h,
-    });
+    watchStickyViewport((v) => seen.push(v), { query: "q", win });
     win.innerHeight = 640;
     win.resize();
-    h = 400;
-    fire();
     expect(seen).toEqual([null]);
     win.query.matches = false; // widened to desktop
     win.resize();
-    expect(seen).toEqual([null, { viewportHeight: 640, controlsHeight: 400 }]);
+    expect(seen).toEqual([null, 640]);
   });
 });

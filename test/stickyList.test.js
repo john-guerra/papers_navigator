@@ -113,18 +113,25 @@ describe("stickyListHeader", () => {
 });
 
 describe("renderAddBar list header (#142)", () => {
-  it("has a ↑ Top button and a clickable title that both go back to the top", () => {
+  it("has a ↑ Top button and a title that both go back to the top (the title only while stuck)", () => {
     const onTop = vi.fn();
     const el = renderAddBar(
       { total: 220, fresh: [{ id: "a" }], already: 3 },
       { onAdd: () => {}, onTop },
     );
+    const list = document.createElement("section");
+    list.className = "explore-list";
+    list.append(el);
     // the Add button stays the first button
     expect(el.querySelector("button").textContent).toContain("Add 1");
     const top = el.querySelector(".add-bar-top");
     expect(top.textContent).toContain("Top");
     expect(top.getAttribute("aria-label")).toBe("Back to the top of the list");
     top.click();
+    // not scrolled yet: the list's top is in view, a title tap does nothing
+    el.querySelector(".add-bar-title").click();
+    expect(onTop).toHaveBeenCalledTimes(1);
+    list.classList.add("is-scrolled");
     el.querySelector(".add-bar-title").click();
     expect(onTop).toHaveBeenCalledTimes(2);
   });
@@ -139,5 +146,46 @@ describe("renderAddBar list header (#142)", () => {
     expect(el.querySelector(".add-bar-notes").textContent).toContain(
       "3 already there",
     );
+  });
+});
+
+describe("stickyListHeader review fixes (#143)", () => {
+  it("puts focus back on the new heading when the bar re-renders after ↑ Top", () => {
+    const list = document.createElement("section");
+    const bar = () => {
+      const el = document.createElement("div");
+      el.className = "add-bar";
+      el.innerHTML =
+        '<h2 class="add-bar-title" tabindex="-1">Matching papers</h2>';
+      return el;
+    };
+    list.append(bar());
+    document.body.append(list);
+    const header = stickyListHeader(list, {
+      offset: () => 56,
+      frame: (cb) => cb(),
+      win: Object.assign(new EventTarget(), {
+        scrollY: 0,
+        scrollTo: () => {},
+        matchMedia: () => ({ matches: true }),
+      }),
+    });
+    header.scrollToTop();
+    expect(document.activeElement.className).toBe("add-bar-title");
+    // the page re-renders the add bar: the focused heading is gone
+    list.replaceChildren(bar());
+    expect(document.activeElement).toBe(document.body);
+    header.refresh();
+    expect(document.activeElement).toBe(list.querySelector(".add-bar-title"));
+    // once the reader moves focus elsewhere, a re-render leaves it alone
+    const other = document.createElement("button");
+    document.body.append(other);
+    other.focus();
+    other.remove();
+    list.replaceChildren(bar());
+    header.refresh();
+    expect(document.activeElement).toBe(document.body);
+    header.stop();
+    list.remove();
   });
 });
