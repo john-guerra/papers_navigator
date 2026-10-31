@@ -917,9 +917,56 @@ a.navbar-brand {
   padding-inline: var(--spacing-xs);
 }
 
+/* #140: when the controls and a map of at least 480px fit in the viewport (mapSize sets
+   .side-fits), the whole side column stays in view instead: search, facets, chips and relevance
+   above the map. Otherwise the wrapper has no box and the layout is the one above. */
+.explore-side {
+  display: contents;
+}
+
+.explore-layout.side-fits {
+  grid-template-areas: "side list";
+  grid-template-rows: auto;
+}
+
+.side-fits .explore-side {
+  grid-area: side;
+  position: sticky;
+  top: calc(var(--observablehq-header-height) + var(--spacing-md));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  box-sizing: border-box;
+  min-width: 0;
+  max-height: calc(
+    100vh - var(--observablehq-header-height) - 2 * var(--spacing-md)
+  );
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--spacing-xs));
+  padding-inline: var(--spacing-xs);
+}
+
+.side-fits .explore-map {
+  position: static;
+  max-height: none;
+  overflow: visible;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+
 .explore-list {
   grid-area: list;
   min-width: 0;
+}
+
+/* Rows scrolled into view (keyboard focus, "scroll to this paper") stay clear of the nav and the
+   sticky list header (#140; its height is measured by src/lib/stickyList.js). The id beats
+   Framework's :root:has(#observablehq-header) rule (an id in :has counts). */
+:root:has(#observablehq-main .explore-list) {
+  scroll-padding-top: calc(
+    var(--observablehq-header-height) + var(--list-header-height, 0px) +
+      var(--spacing-sm)
+  );
 }
 
 /* Phones only: Hide map and Select region share one row above the map */
@@ -935,10 +982,16 @@ a.navbar-brand {
 }
 
 @media (max-width: 1023.98px) {
-  .explore-layout {
+  .explore-layout,
+  .explore-layout.side-fits {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "controls" "map" "list";
     grid-template-rows: auto;
+  }
+
+  /* (mapSize never fits the side column here; this only guards the moment of a resize) */
+  .side-fits .explore-side {
+    display: contents;
   }
 
   /* Stacked: the map scrolls with the page, above the list */
@@ -1490,12 +1543,31 @@ details.missing > summary {
   cursor: default;
 }
 
+/* #140 — the add bar is the list's sticky header, under the nav while the list scrolls. Its
+   background reaches into the list's left gutter (the #136 focus rule passes under it); the
+   hairline shows only while it's stuck (a shadow, so nothing moves). The notes follow it, outside
+   (the wrapper has no box, so the bar sticks within the whole list). */
+.add-bar-group {
+  display: contents;
+}
+
 .add-bar {
+  position: sticky;
+  top: var(--observablehq-header-height);
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: var(--spacing-sm, 8px) var(--spacing-md, 12px);
-  margin: 0 0 var(--spacing-md, 12px);
+  margin: 0 0 0 calc(-1 * var(--spacing-md));
+  /* the right padding keeps room for ↑ Top, so its showing up never re-wraps the bar */
+  padding: var(--spacing-sm) calc(var(--spacing-3xl) + var(--spacing-lg))
+    var(--spacing-sm) var(--spacing-md);
+  background: var(--color-background);
+}
+
+.explore-list.is-scrolled .add-bar {
+  box-shadow: 0 1px 0 var(--color-outline);
 }
 
 .add-bar-title {
@@ -1504,9 +1576,77 @@ details.missing > summary {
   font-style: italic;
 }
 
+.explore-list.is-scrolled .add-bar-title {
+  cursor: pointer;
+}
+
+.add-bar-short,
+.add-bar-top {
+  display: none;
+}
+
+/* ↑ Top: once the reader is past the list's top; at the bar's right end, in its padding */
+.explore-list.is-scrolled .add-bar-top {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: inline-flex;
+  transform: translateY(-50%);
+}
+
+.add-bar-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--spacing-md);
+  margin: 0 0 var(--spacing-sm);
+}
+
 .add-bar-note {
   color: var(--color-on-surface-muted);
   font: var(--typography-body-sm);
+}
+
+/* Phones: one compact line (~44px) above the bottom tab bar: "220 papers", Add, ↑ Top */
+@media (max-width: 639.98px) {
+  .add-bar {
+    flex-wrap: nowrap;
+    gap: var(--spacing-sm);
+    min-height: var(--spacing-touch);
+    padding-block: 0;
+  }
+
+  .add-bar-title {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font: var(--typography-title-paper);
+    font-style: italic;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .add-bar-long {
+    display: none;
+  }
+
+  .add-bar-short {
+    display: inline;
+  }
+
+  .add-bar-button {
+    flex: none;
+  }
+
+  .explore-list.is-scrolled .add-bar-top {
+    min-height: var(--spacing-touch);
+  }
+
+  /* ...and keyboard focus never scrolls a row under the tab bar */
+  :root:has(#observablehq-main .explore-list) {
+    scroll-padding-bottom: calc(
+      var(--tabbar-height) + env(safe-area-inset-bottom)
+    );
+  }
 }
 
 .chips {
