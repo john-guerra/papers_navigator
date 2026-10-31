@@ -81,8 +81,8 @@ describe("scatterSpec color scales", () => {
     expect(spec.encoding.color.condition.type).toBe("quantitative");
     // DESIGN.md similarity ramp (viz-similarity-1..3); no CSS vars in jsdom, so the fallbacks
     expect(spec.encoding.color.condition.scale.range).toEqual([
-      "#d5958c",
-      "#b14f45",
+      "#c37b71",
+      "#a7463d",
       "#75201a",
     ]);
     expect(spec.encoding.color.condition.scale.scheme).toBeUndefined();
@@ -291,20 +291,49 @@ describe("scatterSpec legend (DESIGN.md → Legend)", () => {
       colorTitle: "Similarity",
       scoreDomain: [0.3, 0.9],
       legendLabels: ["less similar", "more similar"],
-      // size echoes the score: its legend must not merge into the ramp's (symbol legend)
-      size: "score",
       width: 300,
       height: 200,
     });
     const { compile } = await import("vega-lite");
     const [legend] = compile(spec).spec.legends;
     expect(legend.fill).toBe("color");
-    expect(legend.size).toBeUndefined();
     const texts = await legendTexts(spec);
     expect(texts).toEqual(
       expect.arrayContaining(["Similarity", "less similar", "more similar"]),
     );
     expect(texts.some((t) => /^\d\.\d$/.test(t))).toBe(false);
+  });
+
+  it("leaves the legend to the tapered bar when size echoes the ramp (#130)", async () => {
+    const { scatterSpec, taperedLegend } =
+      await import("../src/widgets/brushableScatterPlot.js");
+    const options = {
+      color: "score",
+      colorType: "quantitative",
+      colorTitle: "Similarity",
+      scoreDomain: [0.3, 0.9],
+      legendLabels: ["less similar", "more similar"],
+      size: "score",
+      width: 300,
+      height: 200,
+    };
+    expect(taperedLegend(options)).toBe(true);
+    // size spans the ramp's domain, so the bar tapers from the smallest to the largest dot
+    expect(scatterSpec(data, options).encoding.size.scale).toMatchObject({
+      domain: [0.3, 0.9],
+      clamp: true,
+    });
+    const { compile } = await import("vega-lite");
+    // neither a gradient nor a merged symbol legend from Vega
+    expect(compile(scatterSpec(data, options)).spec.legends ?? []).toEqual([]);
+    expect(taperedLegend({ ...options, size: null })).toBe(false);
+    expect(taperedLegend({ ...options, legendLabels: null })).toBe(false);
+    // tied scores collapse the ramp: Vega's plain gradient instead
+    expect(taperedLegend({ ...options, scoreDomain: [0.5, 0.5] })).toBe(false);
+    expect(taperedLegend({ ...options, scoreDomain: null })).toBe(false);
+    expect(
+      taperedLegend({ ...options, color: "room", colorType: "nominal" }),
+    ).toBe(false);
   });
 
   it("falls back to the data's extent without a score domain (e.g. reliability)", async () => {
