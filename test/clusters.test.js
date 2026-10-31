@@ -3,6 +3,8 @@ import { clusterLabels } from "../src/lib/clusters.js";
 import { applyFilters, filterAccessor } from "../src/lib/filters.js";
 import {
   cullLabels,
+  fitTopicLabel,
+  topicLabelBox,
   wrapLabel,
   scatterSpec,
 } from "../src/widgets/brushableScatterPlot.js";
@@ -101,6 +103,88 @@ describe("cullLabels", () => {
   });
 });
 
+describe("fitTopicLabel", () => {
+  const plot = { width: 300, height: 200 };
+  const inside = ([x0, y0, x1, y1], margin = 4) =>
+    x0 >= margin &&
+    y0 >= margin &&
+    x1 <= plot.width - margin &&
+    y1 <= plot.height - margin;
+
+  it("leaves a label well inside the plot where it is", () => {
+    const fit = fitTopicLabel(150, 100, "Uncertainty", 15, plot);
+    expect(fit.dx).toBe(0);
+    expect(fit.dy).toBe(0);
+    expect(fit.box).toEqual(topicLabelBox(150, 100, "Uncertainty", 15, 0));
+  });
+
+  it("shifts a multi-line label inward at the right and bottom edges", () => {
+    // "Volume," / "rendering," / "neural": 3 lines
+    const fit = fitTopicLabel(295, 195, "Volume, rendering, neural", 15, plot);
+    expect(fit.dx).toBeLessThan(0);
+    expect(fit.dy).toBeLessThan(0);
+    expect(inside(fit.box)).toBe(true);
+    // just inside: 4 px from the right and bottom edges
+    expect(fit.box[2]).toBeCloseTo(plot.width - 4);
+    expect(fit.box[3]).toBeCloseTo(plot.height - 4);
+  });
+
+  it("shifts inward at the left and top edges", () => {
+    const fit = fitTopicLabel(
+      2,
+      3,
+      "Topological, dimensionality reduction",
+      13,
+      plot,
+    );
+    expect(fit.dx).toBeGreaterThan(0);
+    expect(fit.dy).toBeGreaterThan(0);
+    expect(inside(fit.box)).toBe(true);
+    expect(fit.box[0]).toBeCloseTo(4);
+    expect(fit.box[1]).toBeCloseTo(4);
+  });
+
+  it("centers a label wider than the plot", () => {
+    const fit = fitTopicLabel(10, 100, "Extraordinarilylongsingleword", 15, {
+      width: 100,
+      height: 200,
+    });
+    expect((fit.box[0] + fit.box[2]) / 2).toBeCloseTo(50);
+  });
+
+  it("honours a custom margin", () => {
+    const fit = fitTopicLabel(295, 100, "Graphs", 15, { ...plot, margin: 10 });
+    expect(fit.box[2]).toBeCloseTo(plot.width - 10);
+  });
+});
+
+describe("cullLabels inside the plot", () => {
+  it("returns each kept label with the pixel shift that keeps it inside", () => {
+    const [edge, middle] = cullLabels(
+      [
+        { text: "Volume, rendering, neural", x: 100, y: 50 },
+        { text: "Middle", x: 50, y: 50 },
+      ],
+      { width: 300, height: 200, xDomain: [0, 100], yDomain: [0, 100] },
+    );
+    expect(edge.dx).toBeLessThan(0);
+    expect(edge.dy).toBe(0);
+    expect(middle).toMatchObject({ text: "Middle", dx: 0, dy: 0 });
+  });
+
+  it("checks overlaps with the shifted boxes", () => {
+    // Clear of the edge label where it was anchored, not where it is drawn (shifted inward)
+    const kept = cullLabels(
+      [
+        { text: "Volume, rendering, neural", x: 100, y: 50 },
+        { text: "Graphs", x: 70, y: 50 },
+      ],
+      { width: 300, height: 200, xDomain: [0, 100], yDomain: [0, 100] },
+    );
+    expect(kept.map((d) => d.text)).toEqual(["Volume, rendering, neural"]);
+  });
+});
+
 describe("scatterSpec topic labels", () => {
   const data = [p("a", 0, 0, 0), p("b", 0, 10, 10)];
   it("draws labels as a halo + ink text layer above the points", () => {
@@ -113,7 +197,15 @@ describe("scatterSpec topic labels", () => {
     expect(texts).toHaveLength(2);
     const [halo, ink] = texts;
     expect(halo.data.values).toEqual([
-      { text: "Topic 0", lines: ["Topic 0"], n: 1, x: 5, y: 5 },
+      {
+        text: "Topic 0",
+        lines: ["Topic 0"],
+        n: 1,
+        x: 5,
+        y: 5,
+        __dx: 0,
+        __dy: 0,
+      },
     ]);
     // halo in the page background, ink in on-surface (jsdom: the fallbacks)
     expect(halo.mark.stroke).toBe("#fcf9f3");
@@ -122,9 +214,23 @@ describe("scatterSpec topic labels", () => {
     // DESIGN.md: Newsreader medium; a block of n lines moves up by (n - 1) half lines
     expect(ink.mark.fontWeight).toBe(500);
     expect(ink.mark.dy.expr).toMatch(/datum.n - 1/);
+    // shifted inside the plot near its edges (fitTopicLabel)
+    expect(ink.mark.dy.expr).toMatch(/datum.__dy/);
+    expect(ink.mark.dx.expr).toBe("datum.__dx");
     // points keep the selections
     expect(spec.layer[0].params.map((d) => d.name)).toEqual(["drag", "click"]);
     expect(spec.params.map((d) => d.name)).toContain("levelCut");
+  });
+
+  it("shifts a label at the plot's edge inward", () => {
+    const spec = scatterSpec(data, {
+      labels: [{ text: "Volume, rendering, neural", x: 10, y: 10 }],
+      width: 400,
+      height: 300,
+    });
+    const [halo] = spec.layer.filter((l) => l.mark.type === "text");
+    expect(halo.data.values[0].__dx).toBeLessThan(0);
+    expect(halo.data.values[0].__dy).toBeGreaterThan(0);
   });
 
   it("has no text layers without labels", () => {

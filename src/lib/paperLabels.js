@@ -122,20 +122,22 @@ export function chooseLabels(
  * Which papers may carry a label, as a predicate on a row: none while labels are off; else the
  * papers drawn in color (DESIGN.md: dimmed points recede, so their labels would add clutter):
  * inside the region selection (`brush`, {x: [lo, hi], y: [lo, hi]} in data units), at or above the
- * relevance cut (`levelCut` on `score`) and, with a pinned paper, only it and its neighbours
- * (`focusIds`).
+ * relevance cut (`levelCut` on `score`), among the keyword matches while the map highlights
+ * them (`matchIds`, #125) and, with a pinned paper, only it and its neighbours (`focusIds`).
  */
 export function labelFilter({
   enabled = true,
   brush = null,
   levelCut = null,
   focusIds = null,
+  matchIds = null,
   x = "x",
   y = "y",
   id = "id",
 } = {}) {
   if (!enabled) return () => false;
   const focus = focusIds?.length ? new Set(focusIds) : null;
+  const matched = matchIds ? new Set(matchIds) : null;
   return (d) =>
     (!brush ||
       (d[x] >= brush.x[0] &&
@@ -143,6 +145,7 @@ export function labelFilter({
         d[y] >= brush.y[0] &&
         d[y] <= brush.y[1])) &&
     (levelCut == null || d.score >= levelCut) &&
+    (!matched || matched.has(d[id])) &&
     (!focus || focus.has(d[id]));
 }
 

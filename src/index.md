@@ -20,7 +20,7 @@ const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
   return scores.length ? [cutsOf(scores).good, Math.max(...scores)] : null;
 };
 import { getEmbedder } from "./lib/embedder.js";
-import { keywordMatches, readyAnnouncement, searchMode, searchStatusLine, watchModel } from "./lib/searchStatus.js";
+import { keywordMatches, mapMatches, readyAnnouncement, searchMode, searchStatusLine, watchModel, whenIdle } from "./lib/searchStatus.js";
 import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
@@ -102,7 +102,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
   <div class="map-stage">
   ${mapInput}
   <p id="query-live" class="sr-only" aria-live="polite"></p>
-  <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}${paperLabelsInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}</div>
+  <div class="map-controls">${colorByInput}${topicLabelsInput ?? ""}${paperLabelsInput}<span class="map-legend-note"><span class="ring" aria-hidden="true"></span> In My Papers</span>${overlayNote}${keywordNote}</div>
   ${neighboursCard}
   </div>
 </section>
@@ -271,7 +271,7 @@ const myResearchInput = myResearch(
 const modelStatus = Generators.observe((notify) => {
   // This cell waits for the data (named here); then a frame and an idle moment to render the list
   void [papers, embeddingsBuffer, projections];
-  const start = new Promise((resolve) => requestAnimationFrame(() => (window.requestIdleCallback ?? setTimeout)(resolve, { timeout: 1500 })));
+  const start = new Promise((resolve) => requestAnimationFrame(() => whenIdle({ timeout: 1500 }).then(resolve)));
   return watchModel({ load: getEmbedder, notify, start });
 });
 ```
@@ -488,6 +488,15 @@ const overlayNote = reliabilityScores && reliabilityState.latest.overlay ? html`
 ```
 
 ```js
+// A search before the model is ready (#120, #125): its keyword matches, kept in this order by
+// the list and highlighted on the map, with a note under it instead of the similarity ramp
+const keywordMatched = rankingMode === "keyword" ? keywordMatches(papersByTime, query) : [];
+const mapMatch = mapMatches({ mode: rankingMode, matches: keywordMatched });
+// The dot is the matches' color only while they are drawn in viz-neutral (no Color by)
+const keywordNote = mapMatch.note ? html`<span class="map-legend-note keyword-note">${colorBy === "score" ? html`<span class="match-dot" aria-hidden="true"></span>` : ""} ${mapMatch.note}</span>` : "";
+```
+
+```js
 const colorOptions = new Map([["Similarity", "score"], ["Type", "typeLabel"], ["Room", "room"], ["Session", "sessionName"], ...(hasTopics ? [["Topic", "clusterLabel"]] : []), ...(liveClusters ? [["Cluster (live)", "liveCluster"]] : []), ...(reliabilityScores ? [["Reliability", "reliability"]] : [])]);
 const colorByInput = Inputs.select(colorOptions, {
   label: "Color by",
@@ -651,6 +660,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   query: true,
   // Short paper labels (#99); on/off and the emphasized papers update live (cells below)
   paperLabels: { label: "shortLabel", enabled: paperLabelStore.value },
+  // Keyword matches before the model is ready (#125), highlighted with highlightMatches below
+  matches: true,
 });
 // A run superseded while the map was being built never shows it: stop its motion and keep
 // mapState pointing at the map on screen
@@ -752,6 +763,8 @@ urlSync.update({
 mapInput.view.signal("levelCut", hasQuery && relevance !== "all" ? cuts[relevance] : null).runAsync();
 // Rings follow My Papers live without redrawing the map (a redraw would drop the brush)
 mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
+// Keyword matches (#125): the rest viz-dim, like papers below the relevance level
+mapInput.highlightMatches(mapMatch.ids);
 ```
 
 ```js
@@ -776,7 +789,7 @@ const relevance = relevanceInput ? Generators.input(relevanceInput) : "all";
 ```js
 if (relevanceInput) relevanceState.level = relevance;
 // Before the model is ready, a search keeps its keyword matches (#120), in this order
-const keywordOrder = rankingMode === "keyword" ? new Map(keywordMatches(papersByTime, query).map((p, i) => [p.id, i])) : null;
+const keywordOrder = rankingMode === "keyword" ? new Map(keywordMatched.map((p, i) => [p.id, i])) : null;
 const inRange = keywordOrder
   ? map.brushed.filter((d) => keywordOrder.has(d.id))
   : relevance === "all" ? map.brushed : map.brushed.filter((d) => d.score >= cuts[relevance]);
