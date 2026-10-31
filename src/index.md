@@ -104,7 +104,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
   ${facetsInput}
   ${chipsRow}
   ${relevanceInput ?? ""}
-  <div class="map-actions">${mapToggle}${selectRegionButton}</div>
+  <div class="map-actions"><span id="map-caption" class="map-caption"></span>${mapToggle}${selectRegionButton}</div>
 </section>
 <section id="explore-map" class="explore-map">
   <div class="map-stage">
@@ -681,7 +681,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   height: mapH,
   // Color by: Reliability and the distortion overlay (#84; the Advanced panel builds them)
   ...mapState.panel?.reliabilityMapOptions({ reliability: reliabilityState.latest, scores: reliabilityScores, colorBy, shown: positioned, everyPaper, cacheKey: [projection, alignProjections], width: mapW, height: mapH }),
-  title: `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,
+  // Phones: the caption sits beside Hide map / Select region instead (#132), one row less
+  title: matchesMedia(PHONE_QUERY) ? undefined : `${positioned.length} papers${hasQuery ? ` by similarity to ${researchMode ? rankingLabel : `“${query}”`}` : ""}`,
   from: previousMap,
   animate: mapAnimation(animationStore.value, { projectionChanged, stageOf: hasTopics ? (d) => d.cluster : null }),
   brush: keptBrush,
@@ -698,6 +699,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
 // mapState pointing at the map on screen
 if (mapRun.superseded) mapInput.stop();
 else Object.assign(mapState, { map: mapInput, shown: projectionKey, reset: mapReset });
+// The phone caption (#132): the map's title, short enough to share the row with its buttons
+if (!mapRun.superseded) document.getElementById("map-caption").textContent = `${positioned.length} papers${hasQuery ? ` · ${researchMode ? "My research" : query}` : ""}`;
 const map = Generators.input(mapInput);
 ```
 
