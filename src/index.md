@@ -933,15 +933,24 @@ const chipsRow = renderChips(chips, {
     for (const row of list.querySelectorAll(".in-focus")) row.classList.remove("in-focus");
     if (id != null) list.querySelector(`[data-paper-id="${CSS.escape(id)}"]`)?.classList.add("in-focus");
   };
+  let pointerPreview = false; // a neighbour preview this cell set for a pointed row (#140)
   // A map redrawn mid-reading (projection, colors, filters) picks the focus up again at once
   const tracker = trackListFocus(list, (id, source) => {
     listFocusState.active = id != null;
     mapInput.focusPaper(id);
     mark(id);
-    // Pointing at a row previews its neighbours, like hovering its dot (#140); the reading line
-    // doesn't (the map would dim on every scroll) and clears a pointer's preview
-    if (source === "pointer" && neighbourStore.value.enabled) mapInput.previewNeighbours(id);
-    else if (source === "line") mapInput.previewNeighbours(null);
+    // Pointing at a row previews its neighbours, like hovering its dot (#140). Any other reason
+    // clears only that preview (never the map's own hover or the keyboard's), and a row that
+    // still has keyboard focus gets its preview back
+    if (source === "pointer" && neighbourStore.value.enabled) {
+      pointerPreview = true;
+      mapInput.previewNeighbours(id);
+    } else if (pointerPreview) {
+      pointerPreview = false;
+      const focused = document.activeElement;
+      const keyboardRow = list.contains(focused) && focused.matches(":focus-visible") ? focused.closest("[data-paper-id]")?.dataset.paperId : null;
+      mapInput.previewNeighbours(keyboardRow ?? null);
+    }
   }, { enabled: () => !matchesMedia(STACKED_QUERY), start: listFocusState.active });
   if (!listFocusState.active) mark(null);
   listFocusState.tracker = tracker;
