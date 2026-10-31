@@ -114,11 +114,15 @@ export function splitMapHeight(viewportHeight) {
   );
 }
 
+/** How long after a turn its resize may still come (iOS sends it after orientationchange). */
+export const TURN_RESIZE_MS = 1000;
+
 /**
  * The phone's height for the split screen (#144), or null where it doesn't split (not a phone, or
  * shorter than `minHeight`). Read when the page becomes a phone layout or the phone turns, never
  * on resize: the browser's toolbar changes innerHeight while scrolling and the on-screen keyboard
- * while typing, and neither may switch the split or redraw the map.
+ * while typing, and neither may switch the split or redraw the map. The one exception is the
+ * first resize within a second of a turn, since iOS Safari turns before it resizes (#146).
  */
 export function watchPhoneSplit(
   notify,
@@ -133,11 +137,28 @@ export function watchPhoneSplit(
     last = value;
     notify(value);
   };
+  let disarm;
+  const afterTurn = () => {
+    clearTimeout(disarm);
+    win.removeEventListener?.("resize", afterTurn);
+    update();
+  };
+  const onTurn = () => {
+    update();
+    clearTimeout(disarm);
+    win.addEventListener?.("resize", afterTurn);
+    disarm = setTimeout(
+      () => win.removeEventListener?.("resize", afterTurn),
+      TURN_RESIZE_MS,
+    );
+  };
   update();
   phone?.addEventListener?.("change", update);
-  win.addEventListener?.("orientationchange", update);
+  win.addEventListener?.("orientationchange", onTurn);
   return () => {
     phone?.removeEventListener?.("change", update);
-    win.removeEventListener?.("orientationchange", update);
+    win.removeEventListener?.("orientationchange", onTurn);
+    win.removeEventListener?.("resize", afterTurn);
+    clearTimeout(disarm);
   };
 }

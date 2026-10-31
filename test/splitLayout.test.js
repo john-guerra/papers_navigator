@@ -49,4 +49,32 @@ describe("watchSplitMap (#144)", () => {
     stop();
     layout.remove();
   });
+
+  it("rechecks stuck when what's above the map changes height without a scroll (#146)", () => {
+    const { layout, section, scrollTo } = fakeLayout();
+    const observed = [];
+    let callback;
+    class FakeObserver {
+      constructor(cb) {
+        callback = cb;
+      }
+      observe(el) {
+        observed.push(el);
+      }
+      disconnect() {}
+    }
+    const stop = watchSplitMap(section, {
+      layout,
+      nav: () => 56,
+      root: document.createElement("div"),
+      frame: (cb) => cb(),
+      ResizeObserver: FakeObserver,
+    });
+    expect(observed).toContain(section.previousElementSibling);
+    scrollTo(444); // a chips row collapses above the map: no scroll event
+    callback();
+    expect(layout.classList.contains("map-stuck")).toBe(true);
+    stop();
+    layout.remove();
+  });
 });

@@ -188,4 +188,42 @@ describe("stickyListHeader review fixes (#143)", () => {
     header.stop();
     list.remove();
   });
+
+  it("leaves focus alone after ↑ Top once the reader clicks somewhere unfocusable (#146)", () => {
+    const list = document.createElement("section");
+    const bar = () => {
+      const el = document.createElement("div");
+      el.className = "add-bar";
+      el.innerHTML =
+        '<h2 class="add-bar-title" tabindex="-1"><span>Matching papers</span></h2>';
+      return el;
+    };
+    list.append(bar());
+    document.body.append(list);
+    const header = stickyListHeader(list, {
+      offset: () => 56,
+      frame: (cb) => cb(),
+      win: Object.assign(new EventTarget(), {
+        scrollY: 0,
+        scrollTo: () => {},
+        matchMedia: () => ({ matches: true }),
+      }),
+    });
+    header.scrollToTop();
+    // a press on the heading's own text keeps it (#147 review)
+    list
+      .querySelector(".add-bar-title span")
+      .dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    list.replaceChildren(bar());
+    header.refresh();
+    expect(document.activeElement).toBe(list.querySelector(".add-bar-title"));
+    // a click on the map or blank page: focus goes to body, no focusin fires
+    document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    document.activeElement.blur();
+    list.replaceChildren(bar());
+    header.refresh();
+    expect(document.activeElement).toBe(document.body);
+    header.stop();
+    list.remove();
+  });
 });
