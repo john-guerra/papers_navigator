@@ -33,7 +33,7 @@ export function stickyListHeader(
   const doc = list.ownerDocument;
   // A click on something unfocusable (the map, blank page) moves focus to body without a focusin
   const onFocusIn = (event) => {
-    if (!event.target.matches?.(".add-bar-title")) headingFocus = false;
+    if (!event.target.closest?.(".add-bar-title")) headingFocus = false;
   };
   doc?.addEventListener("focusin", onFocusIn);
   doc?.addEventListener("pointerdown", onFocusIn);

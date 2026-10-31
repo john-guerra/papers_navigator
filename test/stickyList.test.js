@@ -195,7 +195,7 @@ describe("stickyListHeader review fixes (#143)", () => {
       const el = document.createElement("div");
       el.className = "add-bar";
       el.innerHTML =
-        '<h2 class="add-bar-title" tabindex="-1">Matching papers</h2>';
+        '<h2 class="add-bar-title" tabindex="-1"><span>Matching papers</span></h2>';
       return el;
     };
     list.append(bar());
@@ -210,6 +210,13 @@ describe("stickyListHeader review fixes (#143)", () => {
       }),
     });
     header.scrollToTop();
+    // a press on the heading's own text keeps it (#147 review)
+    list
+      .querySelector(".add-bar-title span")
+      .dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    list.replaceChildren(bar());
+    header.refresh();
+    expect(document.activeElement).toBe(list.querySelector(".add-bar-title"));
     // a click on the map or blank page: focus goes to body, no focusin fires
     document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     document.activeElement.blur();
