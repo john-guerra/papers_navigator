@@ -131,7 +131,10 @@ describe("topicWatch for My research", () => {
       { onSave },
     );
     document.body.append(el);
-    el.querySelector(".topic-watch-open").click();
+    const open = el.querySelector(".topic-watch-open");
+    expect(open.textContent).toBe("🔍 Watch topic");
+    expect(open.title).toBe("Watch as a research topic");
+    open.click();
     expect(el.textContent).toContain("not in share links");
     const name = el.querySelector(".topic-watch-name");
     expect(name.value).toBe("My research");

@@ -277,6 +277,19 @@ select {
   color: var(--color-on-surface-muted);
 }
 
+/* Explore's intro collapses to its first sentence, leaving room for the map */
+details.lede {
+  margin: 0 0 var(--spacing-md, 12px);
+}
+
+details.lede > summary {
+  cursor: pointer;
+}
+
+details.lede > p {
+  margin: var(--spacing-xs, 4px) 0 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -580,6 +593,36 @@ button.unfollow {
   font-style: italic;
 }
 
+/* ✕ inside the field (#128): clears the search; muted, with a 44px hit area */
+.search-row form.has-search-clear {
+  position: relative;
+}
+
+#observablehq-main .search-row form.has-search-clear input[type="text"] {
+  padding-right: 44px;
+}
+
+#observablehq-main .search-row .search-clear {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-on-surface-muted);
+}
+
+#observablehq-main .search-row .search-clear:hover {
+  background: none;
+  color: var(--color-primary);
+}
+
+#observablehq-main .search-row .search-clear[hidden] {
+  display: none;
+}
+
 #observablehq-main .search-row form input[type="text"]::placeholder {
   font: var(--typography-body-md);
 }
@@ -879,8 +922,8 @@ a.navbar-brand {
   min-width: 0;
 }
 
-.map-toggle,
-.select-region {
+/* Phones only: Hide map and Select region share one row above the map */
+.map-actions {
   display: none;
 }
 
@@ -917,11 +960,22 @@ a.navbar-brand {
     display: none;
   }
 
+  .map-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm, 8px);
+    margin: var(--spacing-sm) 0 0;
+  }
+
   .map-toggle,
   .select-region {
     display: inline-flex;
     min-height: 44px;
     align-items: center;
+  }
+
+  .explore-layout.hide-map .select-region {
+    display: none;
   }
 
   /* The map never captures touches (page scroll wins) unless "Select region" is on */
@@ -1088,9 +1142,11 @@ a.navbar-brand {
   margin: 0;
 }
 
-.filters-close,
-.filters-done {
-  min-height: var(--spacing-touch);
+@media (max-width: 639.98px), (pointer: coarse) {
+  .filters-close,
+  .filters-done {
+    min-height: var(--spacing-touch);
+  }
 }
 
 .filters-done {
@@ -1384,8 +1440,8 @@ details.missing > summary {
 
 /* #8 — add bar, chips row, toast, follow toggle (DESIGN.md → Components) */
 .btn-primary {
-  min-height: 36px;
-  padding: 0 var(--spacing-md, 12px);
+  min-height: 34px;
+  padding: 0 14px;
   border: 1px solid var(--color-primary);
   border-radius: var(--rounded-sm, 4px);
   background: var(--color-primary);
@@ -1629,7 +1685,17 @@ details.missing > summary {
   flex-basis: 100%;
 }
 
+/* Beside "My research"; its panel takes its own line under the search */
+.search-row .topic-watch {
+  display: contents;
+}
+
+.search-row :is(.my-research-panel, .topic-watch-panel) {
+  order: 1;
+}
+
 .topic-watch-panel {
+  flex-basis: 100%;
   max-width: 40rem;
   margin: var(--spacing-xs, 4px) 0;
   padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
@@ -1781,7 +1847,7 @@ details.missing > summary {
 }
 
 :is(.relevance-control, .segmented-control) button {
-  min-height: 36px;
+  min-height: 34px;
   padding: 0 var(--spacing-md, 12px);
   border: none;
   border-right: 1px solid var(--color-outline);
@@ -2070,24 +2136,6 @@ details.missing > summary {
 /* In Map options the "Appearance" heading already names the control */
 .filters-panel .theme-label {
   display: none;
-}
-
-/* Phone map hint (Select region + tap to see a paper) */
-.map-hint {
-  display: none;
-  margin: var(--spacing-xs, 4px) 0;
-  color: var(--color-on-surface-muted);
-  font: var(--typography-body-sm);
-}
-
-@media (max-width: 639.98px) {
-  .map-hint {
-    display: block;
-  }
-
-  .select-mode .map-hint {
-    color: var(--color-primary);
-  }
 }
 
 /* #22/#23 — paper details panel with related papers */
