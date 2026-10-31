@@ -945,8 +945,14 @@ const navioSummary = html`<div></div>`;
     navioSummary.dataset.drawn = "true";
     // navio throws on an empty dataset (e.g. Strong with 0 matches)
     if (!rows.length) return navioSummary.replaceChildren(html`<p class="muted">No matching papers to summarize.</p>`);
-    const { NavioWidget } = await import("navio/dist/navio.esm.js");
-    navioSummary.replaceChildren(NavioWidget(rows, { height: 300 }));
+    try {
+      const { NavioWidget } = await import("navio/dist/navio.esm.js");
+      navioSummary.replaceChildren(NavioWidget(rows, { height: 300 }));
+    } catch {
+      // Offline before navio was ever loaded: try again the next time the section opens
+      delete navioSummary.dataset.drawn;
+      navioSummary.replaceChildren(html`<p class="muted">Summary unavailable offline</p>`);
+    }
   };
   // toggle doesn't bubble: listen in the capture phase
   const onToggle = (event) => event.target.matches?.("details.navio-summary") && event.target.open && draw();
