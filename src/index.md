@@ -26,6 +26,7 @@ import { createAligner } from "./lib/procrustes.js";
 import { createQueryMarkerSettings, queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
 import { addSearchClear } from "./components/searchClear.js";
+import { trackListFocus } from "./lib/listFocus.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
 import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
@@ -589,6 +590,7 @@ const scrollToPaper = (id) => {
 // From the URL (#92); people picked in the link don't count as "just added" (no switch to All)
 const relevanceState = { level: urlStart.level, people: urlStart.facets.authors.length + urlStart.facets.affiliations.length };
 const topicWatchState = { open: false };
+const listFocusState = { tracker: null, active: false }; // #136: the list → map focus, across map redraws
 const researchPanelState = { open: false };
 const listState = { key: null, shown: 100 };
 const searchStatusState = { model: null }; // the previous model status, for "Ranked by meaning"
@@ -694,6 +696,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   paperLabels: { label: "shortLabel", enabled: paperLabelStore.value },
   // Keyword matches before the model is ready (#125), highlighted with highlightMatches below
   matches: true,
+  // The paper the list is showing gets a ring (#136), set with focusPaper below
+  focus: true,
 });
 // A run superseded while the map was being built never shows it: stop its motion and keep
 // mapState pointing at the map on screen
@@ -920,6 +924,33 @@ const chipsRow = renderChips(chips, {
 ```
 
 ```js
+// Brushing and linking (#136): scrolling or pointing at the list rings that paper on the map.
+// Only where the map stays beside the list (desktop); stacked, it has scrolled away
+{
+  const list = document.querySelector(".explore-list");
+  const mark = (id) => {
+    for (const row of list.querySelectorAll(".in-focus")) row.classList.remove("in-focus");
+    if (id != null) list.querySelector(`[data-paper-id="${CSS.escape(id)}"]`)?.classList.add("in-focus");
+  };
+  // A map redrawn mid-reading (projection, colors, filters) picks the focus up again at once
+  const tracker = trackListFocus(list, (id) => {
+    listFocusState.active = id != null;
+    mapInput.focusPaper(id);
+    mark(id);
+  }, { enabled: () => !matchesMedia(STACKED_QUERY), start: listFocusState.active });
+  if (!listFocusState.active) mark(null);
+  listFocusState.tracker = tracker;
+  // A click on the map pins a paper and scrolls the list to it: that paper keeps the ring
+  const onPin = (event) => event.detail?.pinned != null && tracker.hold(event.detail.pinned);
+  mapInput.addEventListener("neighbours", onPin);
+  invalidation.then(() => {
+    tracker.stop();
+    mapInput.removeEventListener("neighbours", onPin);
+  });
+}
+```
+
+```js
 // Phones: the chart ignores touches (so the page scrolls), but a tap on a point still shows its
 // paper: find the nearest point to the tap, pin its neighbours (#102) and scroll the list to it;
 // a tap on empty map space unpins
@@ -1003,6 +1034,13 @@ const papersList = PapersList(ordered, {
   actions: (p) => html`<span class="paper-actions">${listToggles.toggle(p)}${conferenceLink(p)}${paperScore(p, researchAbstracts.length > 1 ? `abstract ${p.abstractIndex + 1}` : "")}</span>`,
 });
 papersList.update = listToggles.update;
+```
+
+```js
+// New list rows (relevance, region, filters) on the same map: put the #136 row marker back on
+// the paper in focus, or let the reading line take over if it left the list
+papersList;
+requestAnimationFrame(() => listFocusState.tracker?.refresh());
 ```
 
 ```js
