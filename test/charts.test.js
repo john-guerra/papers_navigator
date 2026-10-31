@@ -229,6 +229,25 @@ describe("scatterSpec reliability (#84)", () => {
 });
 
 describe("BrushableScatterPlot", () => {
+  it("rings the paper in focus in the list, and only papers on the map (#136)", async () => {
+    const widget = await BrushableScatterPlot(
+      [...data, { id: "off", x: NaN, y: NaN }],
+      { focus: true },
+    );
+    expect(widget.view.data("focus")).toEqual([]);
+    await widget.focusPaper(data[1].id);
+    expect(widget.view.data("focus").map(({ x, y }) => ({ x, y }))).toEqual([
+      { x: data[1].x, y: data[1].y },
+    ]);
+    await widget.focusPaper("off");
+    expect(widget.view.data("focus")).toEqual([]);
+    await widget.focusPaper(null);
+    expect(widget.view.data("focus")).toEqual([]);
+    // without the option the map has no focus layer and ignores the call
+    const plain = await BrushableScatterPlot(data);
+    await plain.focusPaper(data[0].id);
+  });
+
   it("renders SVG by default, so its labels stay crisp (#134)", async () => {
     const widget = await BrushableScatterPlot(data);
     expect(widget.querySelector("svg.marks")).not.toBeNull();

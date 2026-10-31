@@ -26,6 +26,7 @@ import { createAligner } from "./lib/procrustes.js";
 import { createQueryMarkerSettings, queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
 import { addSearchClear } from "./components/searchClear.js";
+import { trackListFocus } from "./lib/listFocus.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
 import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
@@ -694,6 +695,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   paperLabels: { label: "shortLabel", enabled: paperLabelStore.value },
   // Keyword matches before the model is ready (#125), highlighted with highlightMatches below
   matches: true,
+  // The paper the list is showing gets a ring (#136), set with focusPaper below
+  focus: true,
 });
 // A run superseded while the map was being built never shows it: stop its motion and keep
 // mapState pointing at the map on screen
@@ -917,6 +920,22 @@ const chipsRow = renderChips(chips, {
         }
       : null,
 });
+```
+
+```js
+// Brushing and linking (#136): scrolling or pointing at the list rings that paper on the map.
+// Only where the map stays beside the list (desktop); stacked, it has scrolled away
+{
+  const list = document.querySelector(".explore-list");
+  // A new map starts without a ring: drop the old row marker too
+  for (const row of list.querySelectorAll(".in-focus")) row.classList.remove("in-focus");
+  const stop = trackListFocus(list, (id) => {
+    mapInput.focusPaper(id);
+    for (const row of list.querySelectorAll(".in-focus")) row.classList.remove("in-focus");
+    if (id != null) list.querySelector(`[data-paper-id="${CSS.escape(id)}"]`)?.classList.add("in-focus");
+  }, { enabled: () => !matchesMedia(STACKED_QUERY) });
+  invalidation.then(stop);
+}
 ```
 
 ```js

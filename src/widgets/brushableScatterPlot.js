@@ -254,6 +254,7 @@ export function scatterSpec(
     transition = null,
     neighbours = false,
     query = false,
+    focus = false,
     matches = false,
   } = {},
 ) {
@@ -517,6 +518,7 @@ export function scatterSpec(
     ? neighbourLayers({ xScale, yScale, tween, transition })
     : null;
   const q = query ? queryLayers({ xScale, yScale, tween, transition }) : null;
+  const f = focus ? focusLayers({ xScale, yScale, tween, transition }) : null;
   const layers = [
     ...(shade ? [shade] : []),
     points,
@@ -526,6 +528,7 @@ export function scatterSpec(
     ...textLayers,
     ...(nn ? nn.above : []),
     ...(q ? q.above : []),
+    ...(f ?? []),
   ];
 
   return {
@@ -534,10 +537,11 @@ export function scatterSpec(
     height,
     title,
     data: { values },
-    ...((nn || q) && {
+    ...((nn || q || f) && {
       datasets: {
         ...(nn && { [NEIGHBOURS_DATA]: [] }),
         ...(q && { [QUERY_DATA]: [] }),
+        ...(f && { [FOCUS_DATA]: [] }),
       },
     }),
     ...(tween && { transform: tween.transform }),
@@ -594,6 +598,8 @@ export function scatterSpec(
 const NEIGHBOURS_DATA = "nn";
 // Named dataset of the query marker (#100), replaced with view.change (no redraw)
 const QUERY_DATA = "query";
+// Named dataset of the paper in focus in the list (#136), replaced with view.change (no redraw)
+const FOCUS_DATA = "focus";
 // Opacity of a query marker placed among barely similar papers (heavy filters)
 const FAINT_OPACITY = 0.4;
 
@@ -857,6 +863,40 @@ function neighbourLayers({ xScale, yScale, tween, transition }) {
     ],
   };
 }
+
+/**
+ * The paper in focus in the list (#136, brushing and linking): a ring in ink around its dot on a
+ * background halo, on top of everything, from the `focus` dataset ({x, y}, at most one row).
+ * Hidden mid-motion and faded in as it settles, like the neighbour marks.
+ */
+function focusLayers({ xScale, yScale, tween, transition }) {
+  const fade = settleFade(tween, transition);
+  const ring = (mark) => ({
+    data: { name: FOCUS_DATA },
+    mark: {
+      type: "point",
+      shape: "circle",
+      filled: false,
+      size: FOCUS_RING_SIZE,
+      interactive: false,
+      clip: true,
+      opacity: fade(1),
+      ...mark,
+    },
+    encoding: {
+      x: { field: "x", type: "quantitative", axis: null, scale: xScale },
+      y: { field: "y", type: "quantitative", axis: null, scale: yScale },
+      tooltip: null,
+    },
+  });
+  return [
+    ring({ color: token("color-background", "#fcf9f3"), strokeWidth: 5 }),
+    ring({ color: token("color-on-surface", "#241e1a"), strokeWidth: 2 }),
+  ];
+}
+
+/** Area (px²) of the focus ring: just outside the largest dot (240 px², DESIGN.md → Size). */
+export const FOCUS_RING_SIZE = 420;
 
 /**
  * Rows for the `nn` dataset from a classification (lib/neighbours.js classifyNeighbours):
@@ -1383,6 +1423,28 @@ export async function BrushableScatterPlot(data, options = {}) {
     });
     return best;
   };
+  // Brushing and linking (#136): `el.focusPaper(id)` rings the paper the list is showing (null
+  // clears it); a paper not on the map draws nothing
+  let focused = null;
+  target.focusPaper = (focusId = null) => {
+    if (!options.focus || focusId === focused) return Promise.resolve();
+    focused = focusId;
+    const d = focusId == null ? null : data.find((row) => row[id] === focusId);
+    const rows =
+      d && Number.isFinite(d[x]) && Number.isFinite(d[y])
+        ? [{ x: d[x], y: d[y] }]
+        : [];
+    return chart.view
+      .change(
+        FOCUS_DATA,
+        chart.view
+          .changeset()
+          .remove(() => true)
+          .insert(rows),
+      )
+      .runAsync();
+  };
+
   if (options.query) {
     const hover = (i) => {
       if (i === hoveredMarker) return;

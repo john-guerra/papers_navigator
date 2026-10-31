@@ -1017,6 +1017,22 @@ a.navbar-brand {
   border-bottom: 1px solid var(--color-outline);
 }
 
+/* #136 — the row ringed on the map (brushing and linking): a thin primary rule in the gutter */
+.explore-list .paper {
+  position: relative;
+}
+
+.explore-list .paper.in-focus::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  content: "";
+}
+
 .paper-title {
   font: var(--typography-title-paper);
   text-wrap: pretty;
