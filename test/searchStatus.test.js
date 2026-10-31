@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   keywordMatches,
+  mapMatches,
   modelState,
   normalizeText,
   queryTerms,
@@ -8,6 +9,7 @@ import {
   searchMode,
   searchStatusLine,
   watchModel,
+  whenIdle,
 } from "../src/lib/searchStatus.js";
 
 const paper = (id, title, extra = {}) => ({
@@ -236,5 +238,50 @@ describe("watchModel", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("mapMatches", () => {
+  const matches = [paper("b", "B"), paper("d", "D")];
+
+  it("highlights the keyword matches on the map, with a note instead of the ramp", () => {
+    expect(mapMatches({ mode: "keyword", matches })).toEqual({
+      ids: ["b", "d"],
+      note: "2 keyword matches",
+    });
+    expect(mapMatches({ mode: "keyword", matches: [matches[0]] }).note).toBe(
+      "1 keyword match",
+    );
+  });
+
+  it("dims every paper when no paper matches", () => {
+    expect(mapMatches({ mode: "keyword", matches: [] })).toEqual({
+      ids: [],
+      note: "No keyword matches",
+    });
+  });
+
+  it("highlights nothing by keyword once ranked by meaning, or without a search", () => {
+    expect(mapMatches({ mode: "semantic", matches })).toEqual({
+      ids: null,
+      note: null,
+    });
+    expect(mapMatches({ mode: "none" })).toEqual({ ids: null, note: null });
+  });
+});
+
+describe("whenIdle", () => {
+  it("waits for an idle moment, at most `timeout` ms", async () => {
+    const requestIdleCallback = vi.fn((fn) => fn());
+    await whenIdle({ win: { requestIdleCallback }, timeout: 1500 });
+    expect(requestIdleCallback).toHaveBeenCalledWith(expect.any(Function), {
+      timeout: 1500,
+    });
+  });
+
+  it("falls back to a timer of `timeout` ms without requestIdleCallback", async () => {
+    const setTimeout = vi.fn((fn) => fn());
+    await whenIdle({ win: { setTimeout }, timeout: 1500 });
+    expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 1500);
   });
 });

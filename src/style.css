@@ -1567,6 +1567,14 @@ details.missing > summary {
   opacity: 0.4;
 }
 
+/* #125 — keyword matches key: the matches' viz-neutral dot (the rest are viz-dim) */
+.map-legend-note .match-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-viz-neutral);
+}
+
 /* #6 — Watch toggle in the facet popovers (a text button); on a profile it's secondary */
 .watch-toggle.btn-text {
   min-height: 0;

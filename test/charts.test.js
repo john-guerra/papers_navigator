@@ -437,6 +437,30 @@ describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories"
     expect(widget.view.signal("levelCut")).toBe(0.5);
   });
 
+  it("with `matches`, dims papers outside the matchIds param (keyword matches, #125)", () => {
+    const spec = scatterSpec(data, { color: "type", matches: true });
+    expect(spec.params).toContainEqual({ name: "matchIds", value: null });
+    expect(spec.encoding.color.condition.test.and).toContain(
+      'matchIds == null || indexof(matchIds, datum["id"]) >= 0',
+    );
+    // without it, no param and no extra test (other maps are unchanged)
+    const plain = scatterSpec(data, { color: "type" });
+    expect(plain.params.map((p) => p.name)).not.toContain("matchIds");
+  });
+
+  it("highlights keyword matches through the matchIds signal without a redraw", async () => {
+    const widget = await BrushableScatterPlot(data, {
+      renderer: "svg",
+      matches: true,
+    });
+    const view = widget.view;
+    await widget.highlightMatches(["a", "c"]);
+    expect(widget.view).toBe(view);
+    expect(view.signal("matchIds")).toEqual(["a", "c"]);
+    await widget.highlightMatches(null);
+    expect(view.signal("matchIds")).toBeNull();
+  });
+
   it("colors only the given categories and groups the rest as Other", async () => {
     const { scatterSpec } =
       await import("../src/widgets/brushableScatterPlot.js");
