@@ -1109,7 +1109,9 @@ export async function BrushableScatterPlot(data, options = {}) {
     x = "x",
     y = "y",
     id = "id",
-    renderer = "canvas",
+    // SVG, not canvas (#134): canvas text gets no font hinting, so the serif topic labels came
+    // out heavier and blurrier than the SVG paper labels beside them; 60 fps either way
+    renderer = "svg",
     tooltip = [id],
     from = null,
     animate = null,

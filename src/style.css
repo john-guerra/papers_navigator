@@ -2208,7 +2208,7 @@ details.missing > summary {
   overflow: hidden;
 }
 
-.mini-map-plot canvas {
+.mini-map-plot :is(canvas, svg.marks) {
   display: block;
 }
 

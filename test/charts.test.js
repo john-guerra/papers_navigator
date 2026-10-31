@@ -229,6 +229,12 @@ describe("scatterSpec reliability (#84)", () => {
 });
 
 describe("BrushableScatterPlot", () => {
+  it("renders SVG by default, so its labels stay crisp (#134)", async () => {
+    const widget = await BrushableScatterPlot(data);
+    expect(widget.querySelector("svg.marks")).not.toBeNull();
+    expect(widget.querySelector("canvas")).toBeNull();
+  });
+
   it("starts with everything brushed and nothing clicked", async () => {
     const widget = await BrushableScatterPlot(data, { renderer: "svg" });
     expect(widget.value.brushed).toHaveLength(3);
