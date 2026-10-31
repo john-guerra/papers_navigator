@@ -11,7 +11,7 @@ import { researchRule, startTopicRefresh, thresholdFor, topicPreview, topicRule 
 import { createResearchStore, createVectorCache, programFingerprint, pruneVectorCache, rankByMaxSimilarity, researchCuts, researchLabel, researchVectors, splitAbstracts } from "./lib/myResearch.js";
 import { myResearch, pauseResearchForLink, researchPausedToast } from "./components/myResearch.js";
 import { topicWatch } from "./components/topicWatch.js";
-import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts, toMatrix } from "./lib/search.js";
+import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts } from "./lib/search.js";
 import { createPaperRoute } from "./components/paperRoute.js";
 import { paperPanel } from "./components/paperPanel.js";
 import { followToggles } from "./components/followToggles.js";
@@ -27,6 +27,7 @@ import { queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
 import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
+import { createLazyEmbeddings } from "./lib/lazyEmbeddings.js";
 import { neighboursControl, neighboursPanel } from "./components/neighbours.js";
 import { applyFilters, filterAccessor, typeNames } from "./lib/filters.js";
 import { clusterLabels } from "./lib/clusters.js";
@@ -41,19 +42,26 @@ import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
-import { NavioWidget } from "navio/dist/navio.esm.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
 import { PHONE_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
 import { mapSize, watchStickyViewport } from "./lib/mapSize.js";
 import { conferenceZone } from "./lib/time.js";
+// Explicit, so the page uses the same d3 as the widgets (node_modules) instead of a second copy
+// from npm (#124: ~100 KB and 35 requests on the first load)
+import * as d3 from "d3";
 ```
 
 ```js
 const conference = FileAttachment("data/conference.json").json();
 const papers = FileAttachment("data/papers.json").json();
 const projections = FileAttachment("data/projections.json").json();
-const embeddingsBuffer = FileAttachment("data/embeddings.bin").arrayBuffer();
+// Not fetched yet: the embeddings load right after the first render or on demand (#124)
+const embeddingsFile = FileAttachment("data/embeddings.bin");
+```
+
+```js
+const embeddings = createLazyEmbeddings(() => embeddingsFile.arrayBuffer(), papers.length);
 ```
 
 ```js
@@ -86,7 +94,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 
 <p class="lede">Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning. Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p>
 
-<div id="explore" class="explore-layout">
+<div id="explore" class="explore-layout" data-sw-after-render>
 <section class="explore-controls">
   <div class="search-row">${queryInput}${myResearchInput}</div>
   <p id="search-status" class="search-status" hidden></p>
@@ -270,8 +278,13 @@ const myResearchInput = myResearch(
 // the program is listed and a search shows keyword matches; a failed load is retried.
 const modelStatus = Generators.observe((notify) => {
   // This cell waits for the data (named here); then a frame and an idle moment to render the list
-  void [papers, embeddingsBuffer, projections];
-  const start = new Promise((resolve) => requestAnimationFrame(() => (window.requestIdleCallback ?? setTimeout)(resolve, { timeout: 1500 })));
+  void [papers, projections];
+  const rendered = new Promise((resolve) => requestAnimationFrame(() => (window.requestIdleCallback ?? setTimeout)(resolve, { timeout: 1500 })));
+  // Then the embeddings (#124: ~750 KB, for neighbours, related papers and the ranking), then
+  // the model; one after the other, so the small file isn't slowed down by the big one
+  const start = rendered.then(() => embeddings.load().catch(() => {}));
+  // The offline service worker registers now (observablehq.config.js), not during the first render
+  start.then(() => dispatchEvent(new Event("papersnavigator:rendered")));
   return watchModel({ load: getEmbedder, notify, start });
 });
 ```
@@ -285,7 +298,7 @@ const topicRefresh = startTopicRefresh({
   rules: rulesStore,
   papers,
   loadEmbedder: getEmbedder,
-  loadMatrix: async () => toMatrix(embeddingsBuffer, papers.length),
+  loadMatrix: async () => (await embeddings.load()).matrix,
   nav: {},
   vectorCache: researchVectorCache,
   onRefresh: ({ updated, ms }) => console.info(`Research topics re-evaluated in ${ms} ms (${updated} updated)`),
@@ -317,6 +330,8 @@ const rankingMode = searchMode({ modelStatus, query, research: researchMode });
 // chunked); null without a ranking. They also place the "★ Your search" marker (#100).
 const rankingVectors = await (async () => {
   if ((!researchMode && !query?.trim()) || modelStatus !== "ready") return null;
+  // Ranking also needs the papers' embeddings: from here on embeddings.matrix is loaded
+  await embeddings.load();
   const embed = await getEmbedder();
   if (researchMode) return researchVectors(embed, researchAbstracts, researchVectorCache);
   return [await embed(query)];
@@ -327,7 +342,7 @@ const rankingVectors = await (async () => {
 // Draw the map right away; scores (color/size) arrive once the model is ready.
 const scored = (() => {
   if (!rankingVectors) return papers.map((p) => ({ ...p, score: null }));
-  const matrix = toMatrix(embeddingsBuffer, papers.length);
+  const { matrix } = embeddings;
   // My research: each paper scored by its closest abstract
   if (researchMode) return rankByMaxSimilarity(rankingVectors, matrix, papers);
   return rankBySimilarity(rankingVectors[0], matrix, papers);
@@ -421,7 +436,8 @@ const animationStore = createAnimationSettings();
 // Nearest neighbours (#102): settings per device; the pin survives redraws (not in the URL:
 // it's a passing look, and ?paper= already shares a paper)
 const neighbourStore = createNeighbourSettings();
-const neighbourIndex = createNeighbourIndex(toMatrix(embeddingsBuffer, papers.length), papers.map((p) => p.id), { dims: embeddingsBuffer.byteLength / 4 / papers.length });
+// No neighbours for the moment between the first render and the embeddings arriving (#124)
+const neighbourIndex = createNeighbourIndex(() => embeddings.matrix, papers.map((p) => p.id), { dims: () => embeddings.dims });
 const neighbourState = { pinned: null };
 // Short paper labels on the map (#99): per device, on by default except on phones (too dense)
 const paperLabelStore = createPaperLabelSettings({ phone: matchesMedia(PHONE_QUERY) });
@@ -454,11 +470,19 @@ advancedDr.addEventListener("toggle", async () => {
   advancedDr.dataset.loaded = "true";
   const loading = html`<p class="muted">Loading…</p>`;
   advancedDr.append(loading);
-  const { advancedPanel } = await import("./components/advancedPanel.js");
+  let advancedPanel, matrix, dims;
+  try {
+    [{ advancedPanel }, { matrix, dims }] = await Promise.all([import("./components/advancedPanel.js"), embeddings.load()]);
+  } catch {
+    // Offline before the embeddings arrived: try again on the next open
+    delete advancedDr.dataset.loaded;
+    loading.remove();
+    return;
+  }
   const panel = advancedPanel({
     papers,
-    embeddings: toMatrix(embeddingsBuffer, papers.length),
-    dims: embeddingsBuffer.byteLength / 4 / papers.length,
+    embeddings: matrix,
+    dims,
     projections,
     currentProjection: () => mapState.projection,
     format: formatProjection,
@@ -665,7 +689,7 @@ const map = Generators.input(mapInput);
 // Faded when few similar papers are visible (best visible match under the Weak cut). Screen
 // readers hear where it lands from the aria-live line by the map (never in the URL).
 {
-  const markers = queryMarkers({ vectors: rankingVectors, matrix: toMatrix(embeddingsBuffer, papers.length), papers, shown: positioned, query: query ?? "", research: researchMode, weakCut: rankingVectors ? cutsFor(scored.map((d) => d.score)).weak : -Infinity });
+  const markers = queryMarkers({ vectors: rankingVectors, matrix: embeddings.matrix, papers, shown: positioned, query: query ?? "", research: researchMode, weakCut: rankingVectors ? cutsFor(scored.map((d) => d.score)).weak : -Infinity });
   mapInput.placeQuery(markers);
   // Paper labels (#99) always show (where they fit) for the query's nearest paper and the top
   // Strong matches
@@ -811,7 +835,7 @@ const topicWatchInput = hasQuery
           const rule = researchMode ? researchRule(name, researchAbstracts, level, cuts, scored) : topicRule(query, level, cuts, scored);
           const previous = rulesState.rules.find((r) => r.id === normalizeRule(rule)?.id);
           // Evaluated against this program now: pages won't re-evaluate it until the program changes
-          const saved = store.watch({ ...rule, program: programFingerprint(papers, toMatrix(embeddingsBuffer, papers.length)) });
+          const saved = store.watch({ ...rule, program: programFingerprint(papers, embeddings.matrix) });
           const n = store.value.filter((d) => d.ruleIds.includes(saved.id)).length;
           showToast(`Watching research topic “${saved.value}” · ${n} ${n === 1 ? "paper" : "papers"} in My Papers`, {
             actionLabel: "Undo",
@@ -899,13 +923,24 @@ const chipsRow = renderChips(chips, {
 ```
 
 ```js
-// navio throws on an empty dataset (e.g. Strong with 0 matches)
-const navioSummary = selected.length
-  ? NavioWidget(
-      selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score })),
-      { height: 300 },
-    )
-  : html`<p class="muted">No matching papers to summarize.</p>`;
+// navio (and the popper.js it brings) loads only when its section in Map options is open (#124)
+const navioSummary = html`<div></div>`;
+{
+  const rows = selected.map(({ typeLabel, room, sessionName, score }) => ({ typeLabel, room, sessionName, score }));
+  const draw = async () => {
+    if (navioSummary.dataset.drawn) return;
+    navioSummary.dataset.drawn = "true";
+    // navio throws on an empty dataset (e.g. Strong with 0 matches)
+    if (!rows.length) return navioSummary.replaceChildren(html`<p class="muted">No matching papers to summarize.</p>`);
+    const { NavioWidget } = await import("navio/dist/navio.esm.js");
+    navioSummary.replaceChildren(NavioWidget(rows, { height: 300 }));
+  };
+  // toggle doesn't bubble: listen in the capture phase
+  const onToggle = (event) => event.target.matches?.("details.navio-summary") && event.target.open && draw();
+  document.addEventListener("toggle", onToggle, true);
+  invalidation.then(() => document.removeEventListener("toggle", onToggle, true));
+  if (document.querySelector("details.navio-summary")?.open) draw();
+}
 ```
 
 ```js
@@ -956,7 +991,15 @@ const paperRoute = createPaperRoute({ resolveId: (key) => papers.find((p) => p.s
 invalidation.then(() => paperRoute.stop());
 const paperParam = Generators.input(paperRoute);
 const openPaper = (key) => paperRoute.open(key);
-const embeddingMatrix = toMatrix(embeddingsBuffer, papers.length);
+```
+
+```js
+// Related papers need the embeddings (#124): an open paper asks for them if they haven't
+// arrived yet (they load right after the first render) and its details redraw when they do
+const embeddingMatrix = Generators.observe((notify) => {
+  notify(embeddings.matrix);
+  if (paperParam && !embeddings.matrix) embeddings.load().then((e) => notify(e.matrix), () => {});
+});
 ```
 
 ```js
@@ -966,7 +1009,7 @@ const paperDetail = paperPanel(paperParam, {
   tzLabel,
   store,
   route: paperRoute,
-  related: (paper) => relatedPapers(paper.id, embeddingMatrix, papers),
+  related: (paper) => (embeddingMatrix ? relatedPapers(paper.id, embeddingMatrix, papers) : []),
   // The mini-map (#101) places papers as the map draws them (projection, alignment)
   mapRows: () => mapState.everyPaper ?? papers,
   animation: animationStore,

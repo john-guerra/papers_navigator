@@ -32,14 +32,21 @@ export function topK(
  * Neighbours by paper id. Each paper's full ranking (every other paper, most similar first) is
  * computed the first time it is asked for and cached (488 papers: ~0.2M multiply-adds, under a
  * millisecond), so restricting to the papers on the map (filters) needs no recomputation.
+ * `matrix` (and `dims`) can be getters for embeddings that load after the first render (#124):
+ * no neighbours until they return a value.
  */
 export function createNeighbourIndex(matrix, ids, { dims = DIMS } = {}) {
+  const getMatrix = typeof matrix === "function" ? matrix : () => matrix;
+  const getDims = typeof dims === "function" ? dims : () => dims;
   const position = new Map(ids.map((id, i) => [id, i]));
   const rows = new Map();
   const ranking = (i) => {
     let row = rows.get(i);
     if (!row) {
-      row = topK(matrix, i, ids.length, { dims, n: ids.length });
+      row = topK(getMatrix(), i, ids.length, {
+        dims: getDims() ?? DIMS,
+        n: ids.length,
+      });
       rows.set(i, row);
     }
     return row;
@@ -48,7 +55,7 @@ export function createNeighbourIndex(matrix, ids, { dims = DIMS } = {}) {
     /** The `k` papers most similar to `id`, as {id, similarity}; only ids in `within` if given. */
     nearest(id, k, within = null) {
       const i = position.get(id);
-      if (i == null) return [];
+      if (i == null || !getMatrix()) return [];
       const out = [];
       for (const { index, similarity } of ranking(i)) {
         if (within && !within.has(ids[index])) continue;
