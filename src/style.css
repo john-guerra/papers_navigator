@@ -963,6 +963,7 @@ a.navbar-brand {
   .map-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--spacing-sm, 8px);
     margin: var(--spacing-sm) 0 0;
   }
@@ -974,8 +975,20 @@ a.navbar-brand {
     align-items: center;
   }
 
-  .explore-layout.hide-map .select-region {
+  .explore-layout.hide-map :is(.select-region, .map-caption) {
     display: none;
+  }
+
+  /* The map's title on phones (#132), beside its buttons; the query is cut with … if long */
+  .map-caption {
+    flex: 1 1 0;
+    /* The count stays readable when "Drag on the map to select…" widens its button */
+    min-width: 9ch;
+    overflow: hidden;
+    color: var(--color-on-surface);
+    font: var(--typography-label-md);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* The map never captures touches (page scroll wins) unless "Select region" is on */
