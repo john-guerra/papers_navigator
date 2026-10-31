@@ -73,7 +73,7 @@ export function trackListFocus(
         const { top, bottom } = row.getBoundingClientRect();
         return { id: row.dataset.paperId, top, bottom };
       }),
-      viewportHeight() * line,
+      viewportHeight() * (typeof line === "function" ? line() : line),
     );
   const update = (force = false) => {
     pending = false;

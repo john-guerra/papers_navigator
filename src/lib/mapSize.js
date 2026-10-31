@@ -28,9 +28,12 @@ export function mapSize(
     reserved = MAP_RESERVED_HEIGHT,
     controlsHeight = null,
     fitMin = MAP_FIT_MIN_HEIGHT,
+    splitHeight = null,
   } = {},
 ) {
   const w = Math.max(260, width - 20);
+  // Phone split screen (#144): the map takes SPLIT_SHARE of what the nav and tab bar leave
+  if (splitHeight != null) return [w, splitMapHeight(splitHeight)];
   let h = Math.min(620, Math.max(320, width * 0.75));
   if (viewportHeight == null) return [w, Math.round(h)];
   if (controlsHeight != null) {
@@ -98,4 +101,43 @@ export function watchStickyViewport(notify, { query, win = globalThis }) {
   update();
   win.addEventListener?.("resize", update);
   return () => win.removeEventListener?.("resize", update);
+}
+
+/** Phone split screen (#144): the nav and the tab bar, then the map's share of the rest. */
+export const SPLIT_CHROME = 112;
+export const SPLIT_SHARE = 0.45;
+
+/** The split map's height for a phone `viewportHeight` tall: 45% of the rest, 220–420px. */
+export function splitMapHeight(viewportHeight) {
+  return Math.round(
+    Math.min(420, Math.max(220, (viewportHeight - SPLIT_CHROME) * SPLIT_SHARE)),
+  );
+}
+
+/**
+ * The phone's height for the split screen (#144), or null where it doesn't split (not a phone, or
+ * shorter than `minHeight`). Read when the page becomes a phone layout or the phone turns, never
+ * on resize: the browser's toolbar changes innerHeight while scrolling and the on-screen keyboard
+ * while typing, and neither may switch the split or redraw the map.
+ */
+export function watchPhoneSplit(
+  notify,
+  { query, minHeight = 600, win = globalThis },
+) {
+  const phone = win.matchMedia?.(query);
+  let last;
+  const update = () => {
+    const height = win.innerHeight;
+    const value = phone?.matches && height >= minHeight ? height : null;
+    if (value === last) return;
+    last = value;
+    notify(value);
+  };
+  update();
+  phone?.addEventListener?.("change", update);
+  win.addEventListener?.("orientationchange", update);
+  return () => {
+    phone?.removeEventListener?.("change", update);
+    win.removeEventListener?.("orientationchange", update);
+  };
 }
