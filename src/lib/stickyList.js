@@ -1,4 +1,4 @@
-// Explore's list header (#140): the add bar ("Matching papers n" + "Add N to My Papers") sticks
+// Explore's list header (#142): the add bar ("Matching papers n" + "Add N to My Papers") sticks
 // under the nav while the list scrolls; once the reader is past the list's top it shows "↑ Top",
 // which (like the title) scrolls back to the list's top, not the page's, and moves focus to the
 // list heading. The page scrolls (not the list), so everything here is in viewport coordinates.

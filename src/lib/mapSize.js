@@ -8,7 +8,7 @@
  * offsets, the chart title and the controls under the map (`reserved`). Stacked layouts pass
  * null: there the map scrolls with the page and only the width counts.
  *
- * #140: with `controlsHeight` (search, facets, chips, relevance above the map) the whole side
+ * #142: with `controlsHeight` (search, facets, chips, relevance above the map) the whole side
  * column can stay in view: the map gives up height so the controls fit above it, down to
  * MAP_FIT_MIN_HEIGHT (or its own width-based height, if smaller). The third value says whether
  * that worked; if not, the map alone is sticky and the controls scroll away, as before.
@@ -16,7 +16,7 @@
 export const MAP_MIN_HEIGHT = 240;
 /** Nav (56) + sticky top and bottom gaps (2 × 12) + chart title/padding + controls row, rounded up. */
 export const MAP_RESERVED_HEIGHT = 170;
-/** The smallest map worth keeping the controls in view for (#140). */
+/** The smallest map worth keeping the controls in view for (#142). */
 export const MAP_FIT_MIN_HEIGHT = 480;
 /** The gap between the controls and the map in the side column (--spacing-sm). */
 export const SIDE_GAP = 8;

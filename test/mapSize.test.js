@@ -30,7 +30,7 @@ describe("mapSize", () => {
     ]);
   });
 
-  // #140: the side column (controls + map) is sticky when both fit in the viewport
+  // #142: the side column (controls + map) is sticky when both fit in the viewport
   it("shrinks the map so the controls fit above it, and says it fits", () => {
     const fixed = MAP_RESERVED_HEIGHT + SIDE_GAP;
     // plenty of room: the usual 620px map, controls and all

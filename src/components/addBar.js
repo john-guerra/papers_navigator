@@ -7,7 +7,7 @@ const papersWord = (n) => (n === 1 ? "paper" : "papers");
  * `disabledHint` turns bulk add off with a reason (e.g. nothing narrows the list, so one click
  * would add the whole program).
  *
- * #140: the bar is Explore's sticky list header. "↑ Top" (shown by CSS once the list has
+ * #142: the bar is Explore's sticky list header. "↑ Top" (shown by CSS once the list has
  * scrolled) and the title call `onTop`; the title is the focus target afterwards (tabindex -1).
  * Phones show the short "n papers" label. The notes sit after the bar, outside it, so the header
  * stays one line; the wrapper is `display: contents`, so the bar sticks within the whole list.

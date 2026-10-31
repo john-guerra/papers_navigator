@@ -581,7 +581,7 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 // Measured on the controls (same column, always visible): hiding the map on phones must not
 // change the width, which would redraw the map and drop its selection
 const mapWidth = Generators.width(document.querySelector(".explore-controls"));
-// Desktop: the side column (controls + map) is sticky when both fit, else the map alone (#140),
+// Desktop: the side column (controls + map) is sticky when both fit, else the map alone (#142),
 // so the map fits the viewport height and leaves room for the controls (null on stacked layouts).
 // Open panels (My research, Watch) don't count, so opening one never redraws the map.
 const stickySpace = Generators.observe((notify) => watchStickySpace(notify, { query: STACKED_QUERY, controls: document.querySelector(".explore-controls") }));
@@ -931,7 +931,7 @@ const chipsRow = renderChips(chips, {
 ```
 
 ```js
-// The add bar is the list's sticky header (#140): "↑ Top" once scrolled, and its height for
+// The add bar is the list's sticky header (#142): "↑ Top" once scrolled, and its height for
 // scroll-padding, so rows scrolled into view stay clear of it
 const listHeader = stickyListHeader(document.querySelector(".explore-list"), {
   offset: () => parseFloat(getComputedStyle(document.querySelector(".explore-list .add-bar") ?? document.body).top) || 0,

@@ -112,7 +112,7 @@ describe("stickyListHeader", () => {
   });
 });
 
-describe("renderAddBar list header (#140)", () => {
+describe("renderAddBar list header (#142)", () => {
   it("has a ↑ Top button and a clickable title that both go back to the top", () => {
     const onTop = vi.fn();
     const el = renderAddBar(
