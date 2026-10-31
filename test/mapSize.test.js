@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   CONTROLS_SLACK,
   MAP_FIT_MIN_HEIGHT,
@@ -154,6 +154,7 @@ describe("phone split screen (#144)", () => {
   });
 
   it("reads the height when the split starts or the phone turns, never on resize", async () => {
+    vi.useFakeTimers();
     const { watchPhoneSplit } = await import("../src/lib/mapSize.js");
     const query = Object.assign(new EventTarget(), { matches: true });
     const win = Object.assign(new EventTarget(), {
@@ -168,6 +169,7 @@ describe("phone split screen (#144)", () => {
     expect(seen).toEqual([860]);
     win.dispatchEvent(new Event("orientationchange"));
     expect(seen).toEqual([860, 700]);
+    vi.advanceTimersByTime(1000); // a turn with no resize after it
     query.matches = false;
     query.dispatchEvent(new Event("change"));
     expect(seen).toEqual([860, 700, null]);
@@ -181,6 +183,28 @@ describe("phone split screen (#144)", () => {
     expect(seen).toEqual([860, 700, null]);
     win.dispatchEvent(new Event("orientationchange"));
     expect(seen).toEqual([860, 700, null, 860]);
+    stop();
+    vi.useRealTimers();
+  });
+
+  it("reads the height again on the first resize after a turn: iOS turns before resizing (#146)", async () => {
+    const { watchPhoneSplit } = await import("../src/lib/mapSize.js");
+    const query = Object.assign(new EventTarget(), { matches: true });
+    const win = Object.assign(new EventTarget(), {
+      innerHeight: 860,
+      matchMedia: () => query,
+    });
+    const seen = [];
+    const stop = watchPhoneSplit((v) => seen.push(v), { query: "q", win });
+    win.dispatchEvent(new Event("orientationchange")); // innerHeight still the old one
+    expect(seen).toEqual([860]);
+    win.innerHeight = 380;
+    win.dispatchEvent(new Event("resize"));
+    expect(seen).toEqual([860, null]);
+    // only that one resize: the toolbar later still never switches it
+    win.innerHeight = 860;
+    win.dispatchEvent(new Event("resize"));
+    expect(seen).toEqual([860, null]);
     stop();
   });
 });

@@ -31,10 +31,12 @@ export function stickyListHeader(
   // on the new heading while nothing else took it (#143 review)
   let headingFocus = false;
   const doc = list.ownerDocument;
+  // A click on something unfocusable (the map, blank page) moves focus to body without a focusin
   const onFocusIn = (event) => {
     if (!event.target.matches?.(".add-bar-title")) headingFocus = false;
   };
   doc?.addEventListener("focusin", onFocusIn);
+  doc?.addEventListener("pointerdown", onFocusIn);
   const bar = () => list.querySelector(".add-bar");
   const measure = () => {
     const h = Math.round(bar()?.getBoundingClientRect().height ?? 0);
@@ -71,6 +73,7 @@ export function stickyListHeader(
       win.removeEventListener("scroll", schedule);
       win.removeEventListener("resize", schedule);
       doc?.removeEventListener("focusin", onFocusIn);
+      doc?.removeEventListener("pointerdown", onFocusIn);
       observer?.disconnect();
       root?.style.removeProperty("--list-header-height");
       list.classList.remove("is-scrolled");

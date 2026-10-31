@@ -56,10 +56,18 @@ export function watchSplitMap(
   measure();
   update();
   win.addEventListener("scroll", schedule, { passive: true });
-  const observer = ResizeObserver ? new ResizeObserver(measure) : null;
+  // What's above the map can change height without a scroll (a chips row, the status line)
+  const observer = ResizeObserver
+    ? new ResizeObserver(() => {
+        measure();
+        schedule();
+      })
+    : null;
   observer?.observe(section);
   const el = controls();
   if (el) observer?.observe(el);
+  if (section.previousElementSibling)
+    observer?.observe(section.previousElementSibling);
   return () => {
     win.removeEventListener("scroll", schedule);
     observer?.disconnect();

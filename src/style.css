@@ -952,6 +952,19 @@ a.navbar-brand {
   padding-inline: var(--spacing-xs);
 }
 
+/* An open My research or Watch panel isn't in the map's size, so the stuck column can outgrow the
+   viewport, its bottom out of reach until the list ends (#146). Only then does it scroll on its
+   own; a classic scrollbar may cover the map's right edge rather than overflow sideways. */
+.side-fits
+  .explore-side:has(:is(.my-research-panel, .topic-watch-panel):not([hidden])) {
+  max-height: calc(
+    100dvh - var(--observablehq-header-height) - 2 * var(--spacing-md)
+  );
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .side-fits .explore-map {
   position: static;
   max-height: none;
