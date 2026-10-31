@@ -171,6 +171,16 @@ describe("phone split screen (#144)", () => {
     query.matches = false;
     query.dispatchEvent(new Event("change"));
     expect(seen).toEqual([860, 700, null]);
+    // a phone too short (landscape) doesn't split, and a keyboard never switches it (#145 review)
+    query.matches = true;
+    win.innerHeight = 400;
+    query.dispatchEvent(new Event("change"));
+    expect(seen).toEqual([860, 700, null]);
+    win.innerHeight = 860;
+    win.dispatchEvent(new Event("resize"));
+    expect(seen).toEqual([860, 700, null]);
+    win.dispatchEvent(new Event("orientationchange"));
+    expect(seen).toEqual([860, 700, null, 860]);
     stop();
   });
 });

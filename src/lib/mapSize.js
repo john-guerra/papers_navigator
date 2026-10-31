@@ -115,24 +115,29 @@ export function splitMapHeight(viewportHeight) {
 }
 
 /**
- * The phone's height for the split screen (#144), or null where it doesn't split. Read when the
- * split starts or the phone turns, never on resize: the browser's toolbar changes innerHeight
- * while scrolling and the on-screen keyboard while typing, and neither may redraw the map.
+ * The phone's height for the split screen (#144), or null where it doesn't split (not a phone, or
+ * shorter than `minHeight`). Read when the page becomes a phone layout or the phone turns, never
+ * on resize: the browser's toolbar changes innerHeight while scrolling and the on-screen keyboard
+ * while typing, and neither may switch the split or redraw the map.
  */
-export function watchPhoneSplit(notify, { query, win = globalThis }) {
-  const split = win.matchMedia?.(query);
+export function watchPhoneSplit(
+  notify,
+  { query, minHeight = 600, win = globalThis },
+) {
+  const phone = win.matchMedia?.(query);
   let last;
   const update = () => {
-    const value = split?.matches ? win.innerHeight : null;
+    const height = win.innerHeight;
+    const value = phone?.matches && height >= minHeight ? height : null;
     if (value === last) return;
     last = value;
     notify(value);
   };
   update();
-  split?.addEventListener?.("change", update);
+  phone?.addEventListener?.("change", update);
   win.addEventListener?.("orientationchange", update);
   return () => {
-    split?.removeEventListener?.("change", update);
+    phone?.removeEventListener?.("change", update);
     win.removeEventListener?.("orientationchange", update);
   };
 }

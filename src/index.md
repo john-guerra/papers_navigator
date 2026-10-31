@@ -46,7 +46,7 @@ import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
-import { PHONE_QUERY, SPLIT_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
+import { PHONE_QUERY, SPLIT_MIN_HEIGHT, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
 import { watchSplitMap } from "./lib/splitLayout.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
 import { controlsHeight, mapSize, watchPhoneSplit, watchStickyViewport } from "./lib/mapSize.js";
@@ -587,7 +587,7 @@ const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // mid-drag must not rebuild the map and drop the brush (#143 review)
 const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
 // Phones tall enough (#144): the map sticks in the top half, the list scrolls below (null otherwise)
-const phoneSplit = Generators.observe((notify) => watchPhoneSplit(notify, { query: SPLIT_QUERY }));
+const phoneSplit = Generators.observe((notify) => watchPhoneSplit(notify, { query: PHONE_QUERY, minHeight: SPLIT_MIN_HEIGHT }));
 const scrollToPaper = (id) => {
   const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
   if (!row?.isConnected) return;
@@ -749,10 +749,10 @@ const showQueryMarker = Generators.input(queryMarkerStore);
 
 ```js
 // Nearest neighbours (#102): the card lists the pinned paper's neighbours, floating over the
-// sticky map's corner on desktop (#114), under the map on stacked layouts
+// sticky map's corner on desktop (#114) and in the phone split (#144), else under the map
 const neighboursCard = neighboursPanel({
   // Floating over the map wherever the map stays in view: desktop, and the phone split (#144)
-  floating: matchMedia(`${TWO_COLUMN_QUERY}, ${SPLIT_QUERY}`),
+  floating: ((desktop) => ({ get matches() { return desktop.matches || layout.classList.contains("phone-split"); }, addEventListener: (type, f) => desktop.addEventListener(type, f) }))(matchMedia(TWO_COLUMN_QUERY)),
   paperOf: (id) => papers.find((p) => p.id === id),
   href: (p) => paperRoute.href(p.shortId ?? p.id),
   onOpen: (p) => openPaper(p.shortId ?? p.id),
@@ -953,8 +953,9 @@ listHeader.refresh();
 // Phone split (#144): the heights the sticky map section and the list header need, re-measured
 // with each map
 mapInput;
+layout.classList.toggle("phone-split", phoneSplit != null);
 if (phoneSplit != null) {
-  const stop = watchSplitMap(document.getElementById("explore-map"));
+  const stop = watchSplitMap(document.getElementById("explore-map"), { layout, nav: () => document.getElementById("observablehq-header")?.getBoundingClientRect().bottom ?? 0 });
   invalidation.then(stop);
 }
 ```
@@ -962,7 +963,7 @@ if (phoneSplit != null) {
 ```js
 // Brushing and linking (#136): scrolling or pointing at the list rings that paper on the map.
 // Pointing at a row also previews its neighbours (#140).
-// Only where the map stays beside the list (desktop); stacked, it has scrolled away
+// Wherever the map stays in view beside or above the list: desktop and the phone split (#144)
 {
   const list = document.querySelector(".explore-list");
   const mark = (id) => {
@@ -990,8 +991,8 @@ if (phoneSplit != null) {
   }, {
     // Wherever the map stays beside or above the list: desktop, and the phone split (#144), whose
     // reading line sits in the list's half
-    enabled: () => (!matchesMedia(STACKED_QUERY) || matchesMedia(SPLIT_QUERY)) && !layout.classList.contains("hide-map"),
-    line: () => (matchesMedia(SPLIT_QUERY) ? 0.72 : 0.4),
+    enabled: () => !matchesMedia(STACKED_QUERY) || (layout.classList.contains("phone-split") && !layout.classList.contains("hide-map")),
+    line: () => (layout.classList.contains("phone-split") ? 0.72 : 0.4),
     start: listFocusState.active,
   });
   if (!listFocusState.active) mark(null);
