@@ -229,6 +229,22 @@ describe("scatterSpec reliability (#84)", () => {
 });
 
 describe("BrushableScatterPlot", () => {
+  it("renders SVG by default, so its labels stay crisp (#134)", async () => {
+    const widget = await BrushableScatterPlot(data);
+    expect(widget.querySelector("svg.marks")).not.toBeNull();
+    expect(widget.querySelector("canvas")).toBeNull();
+    // no per-point ARIA: screen readers would hear hundreds of raw coordinates
+    // the marks are visual only: the list and the aria-live lines are the accessible path, so
+    // screen readers never walk hundreds of raw coordinates (the brush rect ignores config.aria)
+    expect(widget.querySelector("svg.marks").getAttribute("aria-hidden")).toBe(
+      "true",
+    );
+    const exposed = [
+      ...widget.querySelectorAll('[role="graphics-symbol"]'),
+    ].filter((el) => !el.closest('[aria-hidden="true"]'));
+    expect(exposed).toEqual([]);
+  });
+
   it("starts with everything brushed and nothing clicked", async () => {
     const widget = await BrushableScatterPlot(data, { renderer: "svg" });
     expect(widget.value.brushed).toHaveLength(3);

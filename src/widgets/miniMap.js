@@ -235,7 +235,8 @@ export function createMiniMap({
   onOpen = () => {},
   animation = () => ({ enabled: false }),
   phone = () => globalThis.matchMedia?.("(max-width: 639.98px)").matches,
-  renderer = "canvas",
+  // SVG like the Explore map (#134): crisp labels
+  renderer = "svg",
 }) {
   const placed = rows.filter(
     (d) => Number.isFinite(d.x) && Number.isFinite(d.y),

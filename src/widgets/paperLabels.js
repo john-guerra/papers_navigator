@@ -106,6 +106,21 @@ export function legendBoxes(view) {
 }
 
 /**
+ * Where the Vega surface sits inside its parent, in CSS px, for overlays positioned absolutely
+ * there. From the layout boxes, not offsetLeft/offsetTop: those exist on a canvas but not on the
+ * SVG renderer's root <svg> (#134), where they are undefined.
+ */
+export function surfaceOffset(surface) {
+  const parent = surface.parentElement;
+  const s = surface.getBoundingClientRect();
+  const p = parent.getBoundingClientRect();
+  return [
+    s.left - p.left - parent.clientLeft,
+    s.top - p.top - parent.clientTop,
+  ];
+}
+
+/**
  * Short paper labels (#99) on a BrushableScatterPlot, drawn by smart-labels (Voronoi cells decide
  * which papers have room, `threshold` px²) into an SVG laid over the Vega canvas. The overlay
  * never takes the pointer (`pointer-events: none`), so the brush, clicks, the nearest-point
@@ -190,8 +205,9 @@ export function attachPaperLabels(
     if (getComputedStyle(parent).position === "static")
       parent.style.position = "relative";
     if (svg.parentElement !== parent) parent.append(svg);
-    svg.style.left = `${surface.offsetLeft}px`;
-    svg.style.top = `${surface.offsetTop}px`;
+    const [left, top] = surfaceOffset(surface);
+    svg.style.left = `${left}px`;
+    svg.style.top = `${top}px`;
     // jsdom has no layout: the plot plus its origin on both sides
     const [ox, oy] = view.origin();
     const w = surface.clientWidth || view.width() + 2 * ox;
