@@ -2468,3 +2468,10 @@ body #vg-tooltip-element table tr td.value {
   color: var(--color-on-surface-muted);
   font-size: 10px;
 }
+
+/* #138 — a class's display beats the UA's [hidden] rule: the empty neighbours card drew as a
+   4px strip over the map's bottom-right corner. Last, so it wins over every layout's display */
+.neighbours-panel[hidden],
+.neighbours-panel.is-floating[hidden] {
+  display: none;
+}
