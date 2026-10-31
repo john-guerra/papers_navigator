@@ -2,7 +2,11 @@
 import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import { attachNearestTooltip } from "./nearestTooltip.js";
 import { attachNeighbours } from "./mapNeighbours.js";
-import { attachPaperLabels, legendBoxes } from "./paperLabels.js";
+import {
+  attachPaperLabels,
+  legendBoxes,
+  surfaceOffset,
+} from "./paperLabels.js";
 import { diameterOf, similarityLegend } from "./similarityLegend.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import {
@@ -561,6 +565,9 @@ export function scatterSpec(
     // Transparent so the page's paper shows through (Vega defaults to white)
     // and the title/legend take the page's ink and sans font (both themes).
     config: {
+      // SVG marks would otherwise read every point's raw x/y to screen readers (#134); the list
+      // and the aria-live lines by the map are the accessible path
+      aria: false,
       background: "transparent",
       view: { stroke: null },
       font: token("font-sans", "sans-serif"),
@@ -931,8 +938,9 @@ function attachTaperedLegend(target, view, { title, labels }) {
     const offset = 8;
     const left = ox + view.width() - el.offsetWidth - offset;
     const top = oy + offset;
-    el.style.left = `${surface.offsetLeft + left}px`;
-    el.style.top = `${surface.offsetTop + top}px`;
+    const [sx, sy] = surfaceOffset(surface);
+    el.style.left = `${sx + left}px`;
+    el.style.top = `${sy + top}px`;
     rect = [left, top, left + el.offsetWidth, top + el.offsetHeight];
     return true;
   };
@@ -1139,6 +1147,9 @@ export async function BrushableScatterPlot(data, options = {}) {
   target.className = "brushable-scatterplot";
   target.append(chart);
   target.view = chart.view;
+  // Visual only (#134): with SVG marks screen readers would walk every point; the list and the
+  // aria-live lines by the map are the accessible path (a canvas exposed nothing either)
+  chart.querySelector("svg.marks")?.setAttribute("aria-hidden", "true");
   const tapered = taperedLegend(options)
     ? attachTaperedLegend(target, chart.view, {
         title: options.colorTitle ?? options.color,
@@ -1291,7 +1302,7 @@ export async function BrushableScatterPlot(data, options = {}) {
    * pixels. Lets pages react to taps while the chart itself ignores touches (phones).
    */
   target.pointAt = (clientX, clientY, radius = 24) => {
-    const surface = chart.querySelector("canvas, svg");
+    const surface = chart.querySelector(".marks");
     if (!surface) return null;
     const rect = surface.getBoundingClientRect();
     const [ox, oy] = chart.view.origin();
@@ -1354,7 +1365,7 @@ export async function BrushableScatterPlot(data, options = {}) {
   /** The index of the query marker within `radius` px of a screen position, or -1. */
   target.queryAt = (clientX, clientY, radius = 14) => {
     if (!markers.length || (transition && tm < transition.total)) return -1;
-    const surface = chart.querySelector("canvas, svg");
+    const surface = chart.querySelector(".marks");
     if (!surface) return -1;
     const rect = surface.getBoundingClientRect();
     const [ox, oy] = chart.view.origin();
