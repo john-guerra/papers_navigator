@@ -593,6 +593,36 @@ button.unfollow {
   font-style: italic;
 }
 
+/* ✕ inside the field (#128): clears the search; muted, with a 44px hit area */
+.search-row form.has-search-clear {
+  position: relative;
+}
+
+#observablehq-main .search-row form.has-search-clear input[type="text"] {
+  padding-right: 44px;
+}
+
+#observablehq-main .search-row .search-clear {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-on-surface-muted);
+}
+
+#observablehq-main .search-row .search-clear:hover {
+  background: none;
+  color: var(--color-primary);
+}
+
+#observablehq-main .search-row .search-clear[hidden] {
+  display: none;
+}
+
 #observablehq-main .search-row form input[type="text"]::placeholder {
   font: var(--typography-body-md);
 }

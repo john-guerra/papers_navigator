@@ -25,6 +25,7 @@ import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { createQueryMarkerSettings, queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
+import { addSearchClear } from "./components/searchClear.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
 import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
@@ -222,6 +223,8 @@ const setQuery = (text) => {
   queryInput.dispatchEvent(new Event("input", { bubbles: true }));
 };
 const clearQuery = () => setQuery("");
+// ✕ in the field clears the search (#128): no "Search" chip taking a row under the facets
+addSearchClear(queryInput, clearQuery);
 if (researchPaused) researchPausedToast(researchStore, { onResume: clearQuery });
 // Typing a search leaves "My research": one ranking at a time, the last one asked for
 queryInput.addEventListener("input", () => researchStore.value.active && researchStore.set({ active: false }));
@@ -897,15 +900,9 @@ const levelName = { strong: "Strong", good: "Good", weak: "Weak", all: "All" }[r
 const leaveResearch = () => researchStore.value.active && researchStore.set({ active: false });
 const chips = [
   hasQuery && researchMode && { label: rankingLabel, value: `${levelName} matches`, onClear: leaveResearch },
-  hasQuery && !researchMode && {
-    label: "Search",
-    value: `${query} · ${levelName} matches`,
-    onClear: clearQuery,
-  },
-  rankingMode === "keyword" && { label: "Search", value: `${query} · keyword matches`, onClear: clearQuery },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
 ].filter(Boolean);
-// Clear all empties the search (like its chip's ✕; the default search is for first visits only)
+// Clear all empties the search (like the field's ✕; the default search is for first visits only)
 // and the map region; the facet strip's Clear all goes back to Main tracks. URL: just "q=" (#104)
 const chipsRow = renderChips(chips, {
   onClearAll:
