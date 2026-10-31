@@ -33,8 +33,28 @@ export default {
   } catch (error) {}
   // Offline after first load (#15): src/sw.js, copied to dist/sw.js by npm run build.
   // Relative URL: the site lives in a subfolder. (No sw.js in npm run dev: it fails quietly.)
-  if ("serviceWorker" in navigator)
-    addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+  // A page marked data-sw-after-render (Explore, #124) registers it only once its program is on
+  // screen (it dispatches papersnavigator:rendered), so the worker's precache doesn't compete
+  // with the first render on a first visit; a minute after load at the latest.
+  if ("serviceWorker" in navigator) {
+    let loaded = false;
+    let rendered = false;
+    let registered = false;
+    const register = () => {
+      if (registered) return;
+      registered = true;
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    };
+    addEventListener("papersnavigator:rendered", () => {
+      rendered = true;
+      if (loaded) register();
+    });
+    addEventListener("load", () => {
+      loaded = true;
+      if (rendered || !document.querySelector("[data-sw-after-render]")) register();
+      else setTimeout(register, 60000);
+    });
+  }
 </script>
 <script type="module">
   // Highlight the current page in the navbar ("/index", "/index.html" and "/" are the same page)
