@@ -47,8 +47,8 @@
   --color-focus: #1f74bf;
 
   /* Colors: data visualization (light) */
-  --color-viz-similarity-1: #d5958c;
-  --color-viz-similarity-2: #b14f45;
+  --color-viz-similarity-1: #c37b71;
+  --color-viz-similarity-2: #a7463d;
   --color-viz-similarity-3: #75201a;
   --color-viz-reliability-1: #a3b0dc;
   --color-viz-reliability-2: #5f74bf;
@@ -139,8 +139,8 @@
   --color-on-surface-muted: #aeaaa4;
   --color-outline: #413c38;
   --color-focus: #70b3f7;
-  --color-viz-similarity-1: #8f4e44;
-  --color-viz-similarity-2: #d67161;
+  --color-viz-similarity-1: #975348;
+  --color-viz-similarity-2: #da7464;
   --color-viz-similarity-3: #ffa99a;
   --color-viz-reliability-1: #3d4a80;
   --color-viz-reliability-2: #6f84cf;
@@ -172,8 +172,8 @@
     --color-on-surface-muted: #aeaaa4;
     --color-outline: #413c38;
     --color-focus: #70b3f7;
-    --color-viz-similarity-1: #8f4e44;
-    --color-viz-similarity-2: #d67161;
+    --color-viz-similarity-1: #975348;
+    --color-viz-similarity-2: #da7464;
     --color-viz-similarity-3: #ffa99a;
     --color-viz-reliability-1: #3d4a80;
     --color-viz-reliability-2: #6f84cf;
@@ -2406,4 +2406,36 @@ body #vg-tooltip-element table tr td.value {
   #observablehq-main input[type="checkbox"]::before {
     content: none;
   }
+}
+
+/* #130 — similarity legend: one bar for size and color, styled like Vega's legends
+   (DESIGN.md → Legend: top-right on surface, outline border, rounded.md, 8px padding) */
+.similarity-legend {
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-md, 6px);
+  background: var(--color-surface);
+  font-family: var(--font-sans, sans-serif);
+  line-height: 1.2;
+}
+
+.similarity-legend-title {
+  margin-bottom: 5px;
+  color: var(--color-on-surface);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.similarity-legend svg {
+  display: block;
+}
+
+.similarity-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
+  color: var(--color-on-surface-muted);
+  font-size: 10px;
 }

@@ -3,6 +3,7 @@ import vegaSelected from "vega-selected/dist/vegaSelected.es.js";
 import { attachNearestTooltip } from "./nearestTooltip.js";
 import { attachNeighbours } from "./mapNeighbours.js";
 import { attachPaperLabels, legendBoxes } from "./paperLabels.js";
+import { diameterOf, similarityLegend } from "./similarityLegend.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import {
   domainAt,
@@ -39,8 +40,8 @@ function token(name, fallback) {
 /** DESIGN.md sequential similarity ramp, weakest to strongest match. */
 export function similarityRange() {
   return [
-    token("color-viz-similarity-1", "#d5958c"),
-    token("color-viz-similarity-2", "#b14f45"),
+    token("color-viz-similarity-1", "#c37b71"),
+    token("color-viz-similarity-2", "#a7463d"),
     token("color-viz-similarity-3", "#75201a"),
   ];
 }
@@ -348,14 +349,23 @@ export function scatterSpec(
               type: highlighted ? "nominal" : colorType,
               title: colorTitle,
               scale: colorScale,
-              legend: legendFor({
-                data,
+              // Size echoing a labelled ramp: the widget draws one tapered legend for both (#130)
+              legend: taperedLegend({
                 color,
-                quantitative: colorType === "quantitative",
-                scoreDomain,
+                colorType,
+                colorScheme,
+                size,
                 legendLabels,
-                highlighted,
-              }),
+              })
+                ? null
+                : legendFor({
+                    data,
+                    color,
+                    quantitative: colorType === "quantitative",
+                    scoreDomain,
+                    legendLabels,
+                    highlighted,
+                  }),
             }
           : { test: visible, value: token("color-viz-neutral", "#605954") },
         value: token("color-viz-dim", "#e1ddd8"),
@@ -366,12 +376,16 @@ export function scatterSpec(
           type: "quantitative",
           scale: {
             range: sizeRange,
-            // Fixed while leaving points are still in the data (#82)
-            ...(transition &&
-              data.length && {
-                domain: extent(data.map((d) => d[size])),
-                clamp: true,
-              }),
+            // Echoing the ramp, size spans the same domain (#130): the smallest dot at the Good
+            // cut, the largest at the best match. Otherwise it is fixed while leaving points are
+            // still in the data (#82)
+            ...(sizeCopy && scoreDomain
+              ? { domain: scoreDomain, clamp: true }
+              : transition &&
+                data.length && {
+                  domain: extent(data.map((d) => d[size])),
+                  clamp: true,
+                }),
           },
           legend: null,
         },
@@ -864,6 +878,69 @@ export function neighbourRows(
 }
 
 /**
+ * Whether the map draws the tapered similarity legend (#130) instead of Vega's gradient: size
+ * echoes the quantitative color field and the ramp is labelled at its ends.
+ */
+export function taperedLegend({
+  color,
+  colorType,
+  colorScheme,
+  size,
+  legendLabels,
+} = {}) {
+  return Boolean(
+    color &&
+    size === color &&
+    colorType === "quantitative" &&
+    !colorScheme &&
+    legendLabels,
+  );
+}
+
+/**
+ * The tapered legend (#130), built from the view's own color and size scales so the bar is
+ * exactly what the dots show, and laid in the plot's top-right corner like Vega's legends
+ * (DESIGN.md → Legend). `box()` is its rectangle in overlay pixels (for the paper labels), or null.
+ */
+function attachTaperedLegend(target, view, { title, labels }) {
+  const color = view.scale("color");
+  const size = view.scale("size");
+  const [d0, d1] = color?.domain?.() ?? [];
+  if (!size || !(d1 > d0)) return { box: () => null };
+  const at = (t) => d0 + t * (d1 - d0);
+  const el = similarityLegend({
+    title,
+    labels,
+    colorAt: (t) => color(at(t)),
+    diameterAt: (t) => diameterOf(size(at(t))),
+  });
+  Object.assign(el.style, { position: "absolute", pointerEvents: "none" });
+  let rect = null;
+  const place = () => {
+    const surface = target.querySelector(".marks");
+    if (!surface || !target.isConnected) return false;
+    const parent = surface.parentElement;
+    if (getComputedStyle(parent).position === "static")
+      parent.style.position = "relative";
+    if (el.parentElement !== parent) parent.append(el);
+    const [ox, oy] = view.origin();
+    const offset = 8;
+    const left = ox + view.width() - el.offsetWidth - offset;
+    const top = oy + offset;
+    el.style.left = `${surface.offsetLeft + left}px`;
+    el.style.top = `${surface.offsetTop + top}px`;
+    rect = [left, top, left + el.offsetWidth, top + el.offsetHeight];
+    return true;
+  };
+  // Placed once the map is on the page (and again if the view resizes)
+  let tries = 0;
+  const retry = () => place() || (++tries < 120 && nextFrame(retry));
+  retry();
+  view.addResizeListener?.(place);
+  return { el, box: () => rect, place };
+}
+
+/**
  * The color legend: a ramp labelled only at its two ends with `legendLabels` (its numbers mean
  * little to readers; the tooltip has the exact score), or the 3 + Other categories.
  */
@@ -1054,6 +1131,12 @@ export async function BrushableScatterPlot(data, options = {}) {
   target.className = "brushable-scatterplot";
   target.append(chart);
   target.view = chart.view;
+  const tapered = taperedLegend(options)
+    ? attachTaperedLegend(target, chart.view, {
+        title: options.colorTitle ?? options.color,
+        labels: options.legendLabels,
+      })
+    : null;
 
   // Restore the region selection (pixels from data units at the scales now in effect)
   if (brush?.x && brush?.y) {
@@ -1398,6 +1481,7 @@ export async function BrushableScatterPlot(data, options = {}) {
           ];
         }),
         ...legendBoxes(chart.view),
+        ...(tapered?.box() ? [tapered.box()] : []),
       ],
     });
     target.paperLabels = labels;
