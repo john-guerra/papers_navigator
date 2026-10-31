@@ -95,7 +95,7 @@ invalidation.then(urlSync.stop);
 const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 ```
 
-<h1>${conference.name} Papers</h1>
+<h1 class="sr-only">${conference.name} Papers</h1>
 
 <details class="lede"><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
 
