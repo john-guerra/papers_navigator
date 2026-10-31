@@ -982,7 +982,8 @@ a.navbar-brand {
   /* The map's title on phones (#132), beside its buttons; the query is cut with … if long */
   .map-caption {
     flex: 1 1 0;
-    min-width: 0;
+    /* The count stays readable when "Drag on the map to select…" widens its button */
+    min-width: 9ch;
     overflow: hidden;
     color: var(--color-on-surface);
     font: var(--typography-label-md);
