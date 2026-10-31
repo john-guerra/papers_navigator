@@ -48,7 +48,8 @@ import { renderChips } from "./components/chips.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
 import { PHONE_QUERY, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
-import { mapSize, watchStickyViewport } from "./lib/mapSize.js";
+import { controlsHeight, mapSize, watchStickyViewport } from "./lib/mapSize.js";
+import { stickyListHeader } from "./lib/stickyList.js";
 import { conferenceZone } from "./lib/time.js";
 // Explicit, so the page uses the same d3 as the widgets (node_modules) instead of a second copy
 // from npm (#124: ~100 KB and 35 requests on the first load)
@@ -98,6 +99,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 <details class="lede"><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
 
 <div id="explore" class="explore-layout" data-sw-after-render>
+<div class="explore-side">
 <section class="explore-controls">
   <div class="search-row">${queryInput}${myResearchInput}${topicWatchInput ?? ""}</div>
   <p id="search-status" class="search-status" hidden></p>
@@ -115,6 +117,7 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
   ${neighboursCard}
   </div>
 </section>
+</div>
 <section class="explore-list">
   ${addBar}
   ${papersList}
@@ -578,7 +581,9 @@ if (layout.classList.contains("select-mode") && map.brushed.length < positioned.
 // Measured on the controls (same column, always visible): hiding the map on phones must not
 // change the width, which would redraw the map and drop its selection
 const mapWidth = Generators.width(document.querySelector(".explore-controls"));
-// Desktop: the map is sticky, so it fits the viewport height too (null on stacked layouts)
+// Desktop: the map is sticky, so it fits the viewport height too (null on stacked layouts). The
+// controls' height is read when the map is built anyway (below), never watched: a chip appearing
+// mid-drag must not rebuild the map and drop the brush (#143 review)
 const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
 const scrollToPaper = (id) => {
   const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
@@ -630,7 +635,9 @@ const positioned = withReliability(withLiveClusters(applyProjection(filtered, al
 // Every paper as drawn on this projection: the distortion overlay and the details mini-map (#101)
 const everyPaper = applyProjection(papers, aligned).papers;
 mapState.everyPaper = everyPaper;
-const [mapW, mapH] = mapSize(mapWidth, { viewportHeight: stickyViewport });
+// Side column (#142): with the controls (search, facets, relevance) when both fit, else the map alone
+const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")) });
+layout.classList.toggle("side-fits", Boolean(sideFits));
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared
 const projectionKey = `${projection}:${alignProjections}`;
@@ -898,6 +905,7 @@ const narrowed =
   rankingMode !== "none" || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || topics.length || !sameSet(types, defaultTypes);
 const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))), {
   disabledHint: narrowed ? null : "Search, filter or select a map region to add papers in bulk",
+  onTop: listHeader.scrollToTop,
   onAdd: (fresh) => {
     const undo = addWithUndo(store, fresh, addReason);
     showToast(`Added ${fresh.length} to My Papers`, { actionLabel: "Undo", onAction: undo });
@@ -921,6 +929,20 @@ const chipsRow = renderChips(chips, {
         }
       : null,
 });
+```
+
+```js
+// The add bar is the list's sticky header (#142): "↑ Top" once scrolled, and its height for
+// scroll-padding, so rows scrolled into view stay clear of it
+const listHeader = stickyListHeader(document.querySelector(".explore-list"), {
+  offset: () => parseFloat(getComputedStyle(document.querySelector(".explore-list .add-bar") ?? document.body).top) || 0,
+});
+invalidation.then(listHeader.stop);
+```
+
+```js
+addBar; // re-rendered: measure the new bar
+listHeader.refresh();
 ```
 
 ```js
