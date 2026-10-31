@@ -523,12 +523,13 @@ export function scatterSpec(
     ...(shade ? [shade] : []),
     points,
     ...(q ? q.below : []),
+    // Under the neighbour preview and the query marker, which stay on top (DESIGN.md)
+    ...(f ?? []),
     ...(nn ? nn.below : []),
     ...(rings ? [rings] : []),
     ...textLayers,
     ...(nn ? nn.above : []),
     ...(q ? q.above : []),
-    ...(f ?? []),
   ];
 
   return {
@@ -866,7 +867,7 @@ function neighbourLayers({ xScale, yScale, tween, transition }) {
 
 /**
  * The paper in focus in the list (#136, brushing and linking): a ring in ink around its dot on a
- * background halo, on top of everything, from the `focus` dataset ({x, y}, at most one row).
+ * background halo, above the points but under the neighbour preview and the query marker, from the `focus` dataset ({x, y}, at most one row).
  * Hidden mid-motion and faded in as it settles, like the neighbour marks.
  */
 function focusLayers({ xScale, yScale, tween, transition }) {

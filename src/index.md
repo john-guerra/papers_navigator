@@ -590,6 +590,7 @@ const scrollToPaper = (id) => {
 // From the URL (#92); people picked in the link don't count as "just added" (no switch to All)
 const relevanceState = { level: urlStart.level, people: urlStart.facets.authors.length + urlStart.facets.affiliations.length };
 const topicWatchState = { open: false };
+const listFocusState = { tracker: null, active: false }; // #136: the list → map focus, across map redraws
 const researchPanelState = { open: false };
 const listState = { key: null, shown: 100 };
 const searchStatusState = { model: null }; // the previous model status, for "Ranked by meaning"
@@ -927,14 +928,25 @@ const chipsRow = renderChips(chips, {
 // Only where the map stays beside the list (desktop); stacked, it has scrolled away
 {
   const list = document.querySelector(".explore-list");
-  // A new map starts without a ring: drop the old row marker too
-  for (const row of list.querySelectorAll(".in-focus")) row.classList.remove("in-focus");
-  const stop = trackListFocus(list, (id) => {
-    mapInput.focusPaper(id);
+  const mark = (id) => {
     for (const row of list.querySelectorAll(".in-focus")) row.classList.remove("in-focus");
     if (id != null) list.querySelector(`[data-paper-id="${CSS.escape(id)}"]`)?.classList.add("in-focus");
-  }, { enabled: () => !matchesMedia(STACKED_QUERY) });
-  invalidation.then(stop);
+  };
+  // A map redrawn mid-reading (projection, colors, filters) picks the focus up again at once
+  const tracker = trackListFocus(list, (id) => {
+    listFocusState.active = id != null;
+    mapInput.focusPaper(id);
+    mark(id);
+  }, { enabled: () => !matchesMedia(STACKED_QUERY), start: listFocusState.active });
+  if (!listFocusState.active) mark(null);
+  listFocusState.tracker = tracker;
+  // A click on the map pins a paper and scrolls the list to it: that paper keeps the ring
+  const onPin = (event) => event.detail?.pinned != null && tracker.hold(event.detail.pinned);
+  mapInput.addEventListener("neighbours", onPin);
+  invalidation.then(() => {
+    tracker.stop();
+    mapInput.removeEventListener("neighbours", onPin);
+  });
 }
 ```
 
@@ -1022,6 +1034,13 @@ const papersList = PapersList(ordered, {
   actions: (p) => html`<span class="paper-actions">${listToggles.toggle(p)}${conferenceLink(p)}${paperScore(p, researchAbstracts.length > 1 ? `abstract ${p.abstractIndex + 1}` : "")}</span>`,
 });
 papersList.update = listToggles.update;
+```
+
+```js
+// New list rows (relevance, region, filters) on the same map: put the #136 row marker back on
+// the paper in focus, or let the reading line take over if it left the list
+papersList;
+requestAnimationFrame(() => listFocusState.tracker?.refresh());
 ```
 
 ```js

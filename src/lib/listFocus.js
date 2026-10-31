@@ -1,6 +1,9 @@
 // Brushing and linking from the list to the map (#136): which paper the reader is looking at.
-// While scrolling, the row crossing a reading line (a share of the viewport's height); a row
-// under the pointer or with keyboard focus wins until the pointer leaves the list.
+// While scrolling, the row crossing a reading line (a share of the viewport's height). An explicit
+// choice holds instead: a row the pointer actually moves over, a row with keyboard focus, or a
+// paper pinned on the map (`hold`); it lasts until the reader scrolls on purpose (wheel, touch,
+// scroll keys) or the pointer leaves the list. Scrolls the page makes itself (focus moving to a
+// row below the fold, "scroll to this paper") don't release it.
 
 /**
  * The id of the row crossing `lineY` (rows: [{id, top, bottom}] in viewport px, in list order),
@@ -14,11 +17,23 @@ export function rowAtLine(rows, lineY) {
   return null;
 }
 
+const SCROLL_KEYS = new Set([
+  "ArrowDown",
+  "ArrowUp",
+  "PageDown",
+  "PageUp",
+  "Home",
+  "End",
+  " ",
+]);
+
 /**
  * Calls `onFocus(id | null)` when the paper in focus in `list` (rows `[data-paper-id]`) changes.
- * Nothing until the reader scrolls, hovers or tabs into a row. `enabled()` false (e.g. layouts
- * where the map isn't beside the list) reports null and ignores the list. Returns a function
- * that stops tracking.
+ * Nothing until the reader scrolls, points or tabs into a row, unless `start` is true (a map
+ * redrawn mid-reading picks the focus up again at once). `enabled()` false (e.g. layouts where
+ * the map isn't beside the list) reports null and ignores the list.
+ * Returns {stop, hold(id), refresh()}: `hold` makes `id` the focus until the next scroll intent
+ * (a pinned map point); `refresh` re-reports after the list re-rendered (new row elements).
  */
 export function trackListFocus(
   list,
@@ -28,16 +43,20 @@ export function trackListFocus(
     enabled = () => true,
     viewportHeight = () => globalThis.innerHeight,
     frame = (cb) => requestAnimationFrame(cb),
+    start = false,
   } = {},
 ) {
   let current;
-  let pointed = null;
+  let held = null;
   let pending = false;
-  const report = (id) => {
-    if (id === current) return;
+  let lastPointer = null;
+  const report = (id, force = false) => {
+    if (id === current && !force) return;
     current = id;
     onFocus(id);
   };
+  const rowElement = (id) =>
+    list.querySelector(`[data-paper-id="${CSS.escape(id)}"]`);
   const atLine = () =>
     rowAtLine(
       [...list.querySelectorAll("[data-paper-id]")].map((row) => {
@@ -46,42 +65,88 @@ export function trackListFocus(
       }),
       viewportHeight() * line,
     );
-  const update = () => {
+  const update = (force = false) => {
     pending = false;
-    if (!enabled()) return report(null);
-    report(pointed ?? atLine());
+    if (!enabled()) return report(null, force);
+    report(held ?? atLine(), force);
   };
-  const onScroll = () => {
+  const schedule = () => {
     if (pending) return;
     pending = true;
-    frame(update);
+    frame(() => update());
+  };
+  // The reader scrolls on purpose: the reading line takes over again
+  // (the pointer's last position stays: content scrolling under it is not a move)
+  const release = () => {
+    held = null;
+  };
+  const onKey = (event) => {
+    if (
+      SCROLL_KEYS.has(event.key) &&
+      !event.target.closest?.("input, textarea, select")
+    )
+      release();
   };
   const rowId = (event) =>
     event.target.closest?.("[data-paper-id]")?.dataset.paperId ?? null;
-  const onPoint = (event) => {
+  // A real move, not the boundary events some browsers send when content scrolls under a
+  // pointer that stays put
+  const onMove = (event) => {
     if (event.pointerType === "touch" || !enabled()) return;
+    const at = `${event.clientX},${event.clientY}`;
+    if (at === lastPointer) return;
+    lastPointer = at;
     const id = rowId(event);
     if (id == null) return;
-    pointed = id;
+    held = id;
     report(id);
   };
   const onFocusIn = (event) => {
     if (!enabled()) return;
     const id = rowId(event);
-    if (id != null) report(id);
+    if (id == null) return;
+    held = id;
+    report(id);
+  };
+  const onFocusOut = (event) => {
+    if (list.contains(event.relatedTarget)) return;
+    held = null;
+    schedule();
   };
   const onLeave = () => {
-    pointed = null;
+    held = null;
+    lastPointer = null;
     update();
   };
-  addEventListener("scroll", onScroll, { passive: true });
-  list.addEventListener("pointerover", onPoint);
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("wheel", release, { passive: true });
+  addEventListener("touchmove", release, { passive: true });
+  addEventListener("keydown", onKey);
+  list.addEventListener("pointermove", onMove);
   list.addEventListener("pointerleave", onLeave);
   list.addEventListener("focusin", onFocusIn);
-  return () => {
-    removeEventListener("scroll", onScroll);
-    list.removeEventListener("pointerover", onPoint);
-    list.removeEventListener("pointerleave", onLeave);
-    list.removeEventListener("focusin", onFocusIn);
+  list.addEventListener("focusout", onFocusOut);
+  if (start) update();
+  return {
+    stop() {
+      removeEventListener("scroll", schedule);
+      removeEventListener("wheel", release);
+      removeEventListener("touchmove", release);
+      removeEventListener("keydown", onKey);
+      list.removeEventListener("pointermove", onMove);
+      list.removeEventListener("pointerleave", onLeave);
+      list.removeEventListener("focusin", onFocusIn);
+      list.removeEventListener("focusout", onFocusOut);
+    },
+    hold(id) {
+      if (!enabled()) return;
+      held = id;
+      report(id);
+    },
+    refresh() {
+      // A held paper no longer listed gives way to the reading line
+      if (held != null && !rowElement(held)) held = null;
+      if (current !== undefined) update(true);
+    },
   };
 }
