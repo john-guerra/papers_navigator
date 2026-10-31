@@ -45,7 +45,7 @@ export function similarityLegend({
   el.setAttribute("role", "img");
   el.setAttribute(
     "aria-label",
-    `${title}: smaller, lighter dots are ${labels[0]}; larger, darker dots are ${labels[1]}`,
+    `${title}: smaller, fainter dots are ${labels[0]}; larger, stronger dots are ${labels[1]}`,
   );
 
   const heading = document.createElement("div");

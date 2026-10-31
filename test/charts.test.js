@@ -328,6 +328,9 @@ describe("scatterSpec legend (DESIGN.md → Legend)", () => {
     expect(compile(scatterSpec(data, options)).spec.legends ?? []).toEqual([]);
     expect(taperedLegend({ ...options, size: null })).toBe(false);
     expect(taperedLegend({ ...options, legendLabels: null })).toBe(false);
+    // tied scores collapse the ramp: Vega's plain gradient instead
+    expect(taperedLegend({ ...options, scoreDomain: [0.5, 0.5] })).toBe(false);
+    expect(taperedLegend({ ...options, scoreDomain: null })).toBe(false);
     expect(
       taperedLegend({ ...options, color: "room", colorType: "nominal" }),
     ).toBe(false);

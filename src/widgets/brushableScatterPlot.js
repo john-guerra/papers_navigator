@@ -356,6 +356,7 @@ export function scatterSpec(
                 colorScheme,
                 size,
                 legendLabels,
+                scoreDomain,
               })
                 ? null
                 : legendFor({
@@ -887,13 +888,16 @@ export function taperedLegend({
   colorScheme,
   size,
   legendLabels,
+  scoreDomain,
 } = {}) {
+  // A ramp domain that has collapsed (tied scores) keeps Vega's plain gradient
   return Boolean(
     color &&
     size === color &&
     colorType === "quantitative" &&
     !colorScheme &&
-    legendLabels,
+    legendLabels &&
+    scoreDomain?.[1] > scoreDomain?.[0],
   );
 }
 
@@ -937,6 +941,8 @@ function attachTaperedLegend(target, view, { title, labels }) {
   const retry = () => place() || (++tries < 120 && nextFrame(retry));
   retry();
   view.addResizeListener?.(place);
+  // Its width depends on the self-hosted font: measure again once fonts are in
+  document.fonts?.ready.then(place);
   return { el, box: () => rect, place };
 }
 

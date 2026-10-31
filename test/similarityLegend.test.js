@@ -78,7 +78,7 @@ describe("similarityLegend", () => {
     const b = legend();
     expect(a.getAttribute("role")).toBe("img");
     expect(a.getAttribute("aria-label")).toBe(
-      "Similarity: smaller, lighter dots are less similar; larger, darker dots are more similar",
+      "Similarity: smaller, fainter dots are less similar; larger, stronger dots are more similar",
     );
     expect(a.querySelector("linearGradient").id).not.toBe(
       b.querySelector("linearGradient").id,
