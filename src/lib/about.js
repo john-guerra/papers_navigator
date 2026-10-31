@@ -47,6 +47,10 @@ export const STORAGE_ITEMS = [
     what: "Whether the map shows paper labels (the toggle under the map)",
   },
   {
+    key: "papersNavigator:queryMarker",
+    what: "Whether the map shows the “★ Your search” marker (Map options)",
+  },
+  {
     key: "papersNavigator:theme",
     what: "Your Appearance choice (Auto, Light or Dark)",
   },

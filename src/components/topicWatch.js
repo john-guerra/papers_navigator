@@ -28,13 +28,19 @@ export function topicWatch(
     class="btn-secondary topic-watch-open"
     aria-expanded="false"
   ></button>`;
+  // Short labels (it sits beside "My research"); the full meaning stays in the title
   open.textContent = current
     ? research
-      ? `🔍 Watching as “${current.value}” (${LEVEL_NAMES[current.level]})`
-      : `🔍 Watching this research topic (${LEVEL_NAMES[current.level]})`
+      ? `🔍 Watching “${current.value}” (${LEVEL_NAMES[current.level]})`
+      : `🔍 Watching topic (${LEVEL_NAMES[current.level]})`
+    : "🔍 Watch topic";
+  open.title = current
+    ? research
+      ? `Watching as research topic “${current.value}”`
+      : "Watching this search as a research topic"
     : research
-      ? "🔍 Watch as a research topic"
-      : "🔍 Watch this research topic";
+      ? "Watch as a research topic"
+      : "Watch this search as a research topic";
   const nameInput = html`<input
     type="text"
     class="topic-watch-name"

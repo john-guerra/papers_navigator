@@ -177,7 +177,7 @@ The map squeezes 384 dimensions of meaning into two, so distances on it can misl
 A *watch* is a standing rule: its papers are always in My Papers, including papers added in later program updates.
 
 - **Watch a researcher or institution** (a friend, your lab, your university): open the Author or Institution facet and press **Watch** on its row (or Watch on a researcher's profile).
-- **Watch a research topic:** after a search, press **🔍 Watch this research topic** under the relevance control. A preview shows how many papers match at Strong or Good across the whole program and which would join your list; confirm to save it.
+- **Watch a research topic:** after a search, press **🔍 Watch topic** beside **My research**. A preview shows how many papers match at Strong or Good across the whole program and which would join your list; confirm to save it.
 - Manage your watches in My Papers → Watching.
 
 ### My research
@@ -187,7 +187,7 @@ Rank the whole program against your own work.
 1. Press **My research** beside the search box.
 2. Paste one or more abstracts (up to 10, a blank line between them).
 3. Press **Rank the program**. The list, map colors and Strong · Good · Weak · All now follow your abstracts; each paper is scored by its closest abstract.
-4. Optionally **Watch as a research topic** to keep those papers in My Papers.
+4. Optionally **🔍 Watch topic** to keep those papers in My Papers.
 
 Your abstracts stay on this device: they are saved in this browser only and never put in share links. **Delete from this device** removes them.
 

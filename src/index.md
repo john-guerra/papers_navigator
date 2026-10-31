@@ -23,7 +23,8 @@ import { getEmbedder } from "./lib/embedder.js";
 import { keywordMatches, mapMatches, readyAnnouncement, searchMode, searchStatusLine, watchModel, whenIdle } from "./lib/searchStatus.js";
 import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
-import { queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
+import { createQueryMarkerSettings, queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
+import { queryMarkerControl } from "./components/queryMarkerControl.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
 import { animationControl } from "./components/animationControl.js";
 import { createNeighbourIndex, createNeighbourSettings, shouldUnpinOnEscape } from "./lib/neighbours.js";
@@ -92,21 +93,19 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 
 <h1>${conference.name} Papers</h1>
 
-<p class="lede">Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning. Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p>
+<details class="lede"><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
 
 <div id="explore" class="explore-layout" data-sw-after-render>
 <section class="explore-controls">
-  <div class="search-row">${queryInput}${myResearchInput}</div>
+  <div class="search-row">${queryInput}${myResearchInput}${topicWatchInput ?? ""}</div>
   <p id="search-status" class="search-status" hidden></p>
   <p id="search-live" class="sr-only" aria-live="polite"></p>
   ${facetsInput}
   ${chipsRow}
-  ${relevanceInput ?? ""}${topicWatchInput ?? ""}
-  <div class="map-controls">${mapToggle}</div>
+  ${relevanceInput ?? ""}
+  <div class="map-actions">${mapToggle}${selectRegionButton}</div>
 </section>
 <section id="explore-map" class="explore-map">
-  ${selectRegionButton}
-  <p class="map-hint">Tap a point to see its paper. To select an area, tap <strong>Select region</strong>, then drag.</p>
   <div class="map-stage">
   ${mapInput}
   <p id="query-live" class="sr-only" aria-live="polite"></p>
@@ -127,6 +126,7 @@ ${paperDetail}
   ${animationInput}
   <h3>Appearance</h3>
   ${themeControl()}
+  ${queryMarkerInput}
   <h3>Advanced</h3>
   ${neighboursInput}
   ${advancedDr}
@@ -441,15 +441,19 @@ const neighbourIndex = createNeighbourIndex(() => embeddings.matrix, papers.map(
 const neighbourState = { pinned: null };
 // Short paper labels on the map (#99): per device, on by default except on phones (too dense)
 const paperLabelStore = createPaperLabelSettings({ phone: matchesMedia(PHONE_QUERY) });
+// "★ Your search" on the map (#100), per device; Map options → Appearance can hide it
+const queryMarkerStore = createQueryMarkerSettings();
 ```
 
 ```js
 // Options controls bound to their stores; built once, unbound when the cell is invalidated
 const animationInput = animationControl(animationStore, { hasTopics });
 const neighboursInput = neighboursControl(neighbourStore);
+const queryMarkerInput = queryMarkerControl(queryMarkerStore);
 invalidation.then(() => {
   animationInput.dispose();
   neighboursInput.dispose();
+  queryMarkerInput.dispose();
 });
 ```
 
@@ -695,13 +699,17 @@ const map = Generators.input(mapInput);
 ```
 
 ```js
+const showQueryMarker = Generators.input(queryMarkerStore);
+```
+
+```js
 // "★ Your search" / "★ My research" (#100): placed among the papers on the map (drawn, aligned
 // coordinates) by their nearest neighbours in the embedding, all in the browser
 // Faded when few similar papers are visible (best visible match under the Weak cut). Screen
 // readers hear where it lands from the aria-live line by the map (never in the URL).
 {
   const markers = queryMarkers({ vectors: rankingVectors, matrix: embeddings.matrix, papers, shown: positioned, query: query ?? "", research: researchMode, weakCut: rankingVectors ? cutsFor(scored.map((d) => d.score)).weak : -Infinity });
-  mapInput.placeQuery(markers);
+  mapInput.placeQuery(showQueryMarker ? markers : []);
   // Paper labels (#99) always show (where they fit) for the query's nearest paper and the top
   // Strong matches
   mapInput.paperLabels?.update({ emphasis: emphasisIds(positioned, { strongCut: hasQuery ? cutsFor(scored.map((d) => d.score)).strong : null, markers }) });
@@ -919,7 +927,7 @@ const chipsRow = renderChips(chips, {
   const phone = matchMedia(PHONE_QUERY);
   const onTap = (event) => {
     if (!phone.matches || layout.classList.contains("select-mode")) return;
-    // Taps on controls in the map area (Select region, Hide map, Color by) aren't point taps
+    // Taps on controls in the map area (Color by, labels) aren't point taps
     if (event.target.closest("button, select, input, label, a")) return;
     const paper = mapInput.pointAt(event.clientX, event.clientY);
     if (paper) mapInput.pinNeighbours(paper.id);

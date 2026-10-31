@@ -55,8 +55,8 @@ describe("topicWatch", () => {
       },
       { onSave: vi.fn() },
     );
-    expect(el.querySelector(".topic-watch-open").textContent).toContain(
-      "Watching",
+    expect(el.querySelector(".topic-watch-open").textContent).toBe(
+      "🔍 Watching topic (Good)",
     );
     const save = el.querySelector(".topic-watch-save");
     expect(save.disabled).toBe(true);

@@ -3,6 +3,8 @@
 // have room; this module decides, in priority order, which of those labels survive overlaps with
 // the topic labels, the query marker, the legend and each other.
 
+import { createBooleanSetting } from "./booleanSetting.js";
+
 export const PAPER_LABELS_KEY = "papersNavigator:paperLabels";
 
 /**
@@ -14,25 +16,7 @@ export function createPaperLabelSettings({
   storage = globalThis.localStorage,
   phone = false,
 } = {}) {
-  const store = new EventTarget();
-  let stored = null;
-  try {
-    const parsed = JSON.parse(storage?.getItem(PAPER_LABELS_KEY) ?? "null");
-    if (typeof parsed === "boolean") stored = parsed;
-  } catch {
-    // Unreadable: the default
-  }
-  store.value = stored ?? !phone;
-  store.set = (on) => {
-    store.value = Boolean(on);
-    try {
-      storage?.setItem(PAPER_LABELS_KEY, JSON.stringify(store.value));
-    } catch {
-      // Private mode etc.: the choice still applies for this page view
-    }
-    store.dispatchEvent(new Event("input"));
-  };
-  return store;
+  return createBooleanSetting(PAPER_LABELS_KEY, !phone, storage);
 }
 
 /**

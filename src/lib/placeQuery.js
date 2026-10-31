@@ -1,4 +1,17 @@
+import { createBooleanSetting } from "./booleanSetting.js";
 import { DIMS } from "./search.js";
+
+export const QUERY_MARKER_KEY = "papersNavigator:queryMarker";
+
+/**
+ * "★ Your search" on the map, on or off (Map options → Appearance), remembered per device and on
+ * by default. Hiding it only stops drawing it: paper labels and the aria-live line still use it.
+ */
+export function createQueryMarkerSettings({
+  storage = globalThis.localStorage,
+} = {}) {
+  return createBooleanSetting(QUERY_MARKER_KEY, true, storage);
+}
 
 /**
  * Where a query (a search, an abstract) lands on the map (#100). UMAP and t-SNE have no
