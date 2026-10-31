@@ -28,7 +28,9 @@ const SCROLL_KEYS = new Set([
 ]);
 
 /**
- * Calls `onFocus(id | null)` when the paper in focus in `list` (rows `[data-paper-id]`) changes.
+ * Calls `onFocus(id | null, source)` when the paper in focus in `list` (rows `[data-paper-id]`)
+ * or the reason for it changes; `source` is "line" (the reading line, or nothing), "pointer",
+ * "keyboard" or "pin".
  * Nothing until the reader scrolls, points or tabs into a row, unless `start` is true (a map
  * redrawn mid-reading picks the focus up again at once). `enabled()` false (e.g. layouts where
  * the map isn't beside the list) reports null and ignores the list.
@@ -47,13 +49,21 @@ export function trackListFocus(
   } = {},
 ) {
   let current;
+  let currentSource;
   let held = null;
+  let heldBy = null;
   let pending = false;
   let lastPointer = null;
-  const report = (id, force = false) => {
-    if (id === current && !force) return;
+  const report = (id, source, force = false) => {
+    if (id === current && source === currentSource && !force) return;
     current = id;
-    onFocus(id);
+    currentSource = source;
+    onFocus(id, source);
+  };
+  const hold = (id, source) => {
+    held = id;
+    heldBy = source;
+    report(id, source);
   };
   const rowElement = (id) =>
     list.querySelector(`[data-paper-id="${CSS.escape(id)}"]`);
@@ -67,8 +77,9 @@ export function trackListFocus(
     );
   const update = (force = false) => {
     pending = false;
-    if (!enabled()) return report(null, force);
-    report(held ?? atLine(), force);
+    if (!enabled()) return report(null, "line", force);
+    if (held != null) report(held, heldBy, force);
+    else report(atLine(), "line", force);
   };
   const schedule = () => {
     if (pending) return;
@@ -97,16 +108,12 @@ export function trackListFocus(
     if (at === lastPointer) return;
     lastPointer = at;
     const id = rowId(event);
-    if (id == null) return;
-    held = id;
-    report(id);
+    if (id != null) hold(id, "pointer");
   };
   const onFocusIn = (event) => {
     if (!enabled()) return;
     const id = rowId(event);
-    if (id == null) return;
-    held = id;
-    report(id);
+    if (id != null) hold(id, "keyboard");
   };
   const onFocusOut = (event) => {
     if (list.contains(event.relatedTarget)) return;
@@ -139,9 +146,7 @@ export function trackListFocus(
       list.removeEventListener("focusout", onFocusOut);
     },
     hold(id) {
-      if (!enabled()) return;
-      held = id;
-      report(id);
+      if (enabled()) hold(id, "pin");
     },
     refresh() {
       // A held paper no longer listed gives way to the reading line
