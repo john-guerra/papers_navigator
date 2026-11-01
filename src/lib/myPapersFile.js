@@ -1,18 +1,35 @@
 import { isEntry } from "./followed.js";
+import { cleanNotes } from "./notes.js";
 
-/** My Papers export format v2: hand-added papers, watch rules and exceptions together (#49). */
-export function exportMyPapers({ followed, rules = [], exceptions = [] }) {
-  return JSON.stringify({ version: 2, followed, rules, exceptions }, null, 2);
+/**
+ * My Papers export format v2: hand-added papers, watch rules and exceptions together (#49),
+ * and paper notes (#152, `{paperId: text}`, on any paper; older versions ignore them).
+ */
+export function exportMyPapers({
+  followed,
+  rules = [],
+  exceptions = [],
+  notes = {},
+}) {
+  return JSON.stringify(
+    { version: 2, followed, rules, exceptions, notes },
+    null,
+    2,
+  );
 }
 
 /**
- * Note shown by Export when the file will carry "My research" abstracts (#27): they stay out of
- * share links, so the export is the one place they leave the browser. "" when there are none.
+ * Note shown by Export when the file will carry private text, "My research" abstracts (#27) or
+ * paper notes (#152): they stay out of share links, so the export is the one place they leave
+ * the browser. "" when there are none.
  */
-export function exportNote(rules = []) {
-  return rules.some((r) => r.research?.length)
-    ? "Includes the abstracts of your research topics"
-    : "";
+export function exportNote(rules = [], notes = {}) {
+  const parts = [
+    Object.keys(notes).length && "your notes",
+    rules.some((r) => r.research?.length) &&
+      "the abstracts of your research topics",
+  ].filter(Boolean);
+  return parts.length ? `Includes ${parts.join(" and ")}` : "";
 }
 
 /**
@@ -24,12 +41,14 @@ export function parseMyPapersFile(text) {
   const papers = Array.isArray(data) ? data : data?.followed;
   if (Array.isArray(papers) && !papers.every(isEntry))
     throw new Error("Some papers in this file are missing their id.");
-  if (Array.isArray(data)) return { followed: data, rules: [], exceptions: [] };
+  if (Array.isArray(data))
+    return { followed: data, rules: [], exceptions: [], notes: {} };
   if (data && Array.isArray(data.followed))
     return {
       followed: data.followed,
       rules: Array.isArray(data.rules) ? data.rules : [],
       exceptions: Array.isArray(data.exceptions) ? data.exceptions : [],
+      notes: cleanNotes(data.notes),
     };
   throw new Error("This file is not a My Papers export.");
 }

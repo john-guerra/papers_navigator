@@ -90,14 +90,14 @@ Previous versions: the <a href="https://johnguerra.co/viz/chi2026Papers/" target
 
 ## Privacy
 
-**The app collects nothing: your papers, watches and abstracts never leave your browser.** Like any website, the servers that deliver its files (johnguerra.co, and Hugging Face for the search model) see standard request details such as your IP address.
+**The app collects nothing: your papers, watches, notes and abstracts never leave your browser.** Like any website, the servers that deliver its files (johnguerra.co, and Hugging Face for the search model) see standard request details such as your IP address.
 
 ### What the app does not do
 
 - No accounts, no sign-in.
 - No cookies.
 - No analytics, trackers, ads or third-party scripts.
-- The app sends none of your data anywhere: no searches, no lists, no abstracts. Search and ranking run on your device.
+- The app sends none of your data anywhere: no searches, no lists, no notes, no abstracts. Search and ranking run on your device.
 
 ### What stays in this browser
 
@@ -109,7 +109,7 @@ The browser also keeps a copy of the site's files and of the search model (Cache
 
 ### Who your browser talks to, and why
 
-- **johnguerra.co**, the web server that hosts this site, delivers its pages and data. Like any web server it may keep standard access logs (IP address, browser, page address, time). Page addresses include an open paper (<code>?paper=…</code>) or researcher (<code>?name=…</code>) when you open or reload such a link. Your list and abstracts never go in a page address that reaches the server. Searches, filters and map options (and the Researchers search too) are kept in the page address after <code>#</code>, so you can reload or share a view; the part after <code>#</code> is never sent to the server.
+- **johnguerra.co**, the web server that hosts this site, delivers its pages and data. Like any web server it may keep standard access logs (IP address, browser, page address, time). Page addresses include an open paper (<code>?paper=…</code>) or researcher (<code>?name=…</code>) when you open or reload such a link. Your list, notes and abstracts never go in a page address that reaches the server. Searches, filters and map options (and the Researchers search too) are kept in the page address after <code>#</code>, so you can reload or share a view; the part after <code>#</code> is never sent to the server.
 - **Hugging Face** (huggingface.co and its download servers) delivers the search model files (about 23 MB) the first time you open Explore; after that the browser reuses its saved copy. My Papers also loads it in the background only if you watch research topics (and not when your device asks to save data). Only the model is downloaded: your words are never sent.
 - **The conference website** (${sourceHost}) and other sites only when you follow a link, such as a paper's Conference page ↗, a PDF or a video.
 
@@ -117,13 +117,13 @@ The fonts (Newsreader and Source Sans 3) are served by this site itself.
 
 ### Share links, QR codes and files
 
-- **Share list** and **Send to my phone** build a link that carries your list inside the link itself, after the <code>#</code> (for example <code>…/my-papers.html#follow=…</code>). Browsers never send that part to the server; whoever you give the link to sees the list. The QR code is drawn in your browser. Your My research abstracts are never put in a link.
-- **Export JSON** saves a file on your device (it includes the abstracts of research topics you watch). **Import JSON** reads a file you pick; nothing is uploaded.
+- **Share list** and **Send to my phone** build a link that carries your list inside the link itself, after the <code>#</code> (for example <code>…/my-papers.html#follow=…</code>). Browsers never send that part to the server; whoever you give the link to sees the list. The QR code is drawn in your browser. Your notes and My research abstracts are never put in a link.
+- **Export JSON** saves a file on your device (it includes your notes and the abstracts of research topics you watch). **Import JSON** reads a file you pick; nothing is uploaded.
 
 ### Delete your data
 
-- One thing at a time: **Remove** a paper, **Stop watching** a rule in My Papers → Watching, or **Delete from this device** in My research.
-- Everything at once: clear this site's data in your browser's settings (site settings for johnguerra.co: "Delete data" or "Clear site data"). That removes your lists, watches, abstracts, settings and cached files. Export JSON first if you want to keep your list.
+- One thing at a time: **Remove** a paper, **Delete note** in a paper's details, **Stop watching** a rule in My Papers → Watching, or **Delete from this device** in My research.
+- Everything at once: clear this site's data in your browser's settings (site settings for johnguerra.co: "Delete data" or "Clear site data"). That removes your lists, watches, notes, abstracts, settings and cached files. Export JSON first if you want to keep your list.
 
 ## Explore
 
@@ -160,6 +160,7 @@ Every dot is a paper; similar papers sit close together.
 
 - Click a paper's title (in the list, in My Papers or on a researcher profile) or its dot on the map to open its details: abstract, authors and institutions, session, room and time, links, and **Related papers**. Each paper's details have their own address, so you can bookmark or send them. A copied paper title link opens just that paper, without your search and filters.
 - **Conference page ↗** opens the paper on the conference website.
+- **📝 My note:** write a note on any paper in its details (questions to ask, why it matters to you). It saves as you type, only on this device, and doesn't add the paper to My Papers; empty it or use **Delete note** to remove it. Papers with a note show “📝 Note” in the list and on researcher profiles; My Papers shows the note itself, and its search finds words in your notes. Notes are never put in a link; Export JSON carries them to another device.
 - **Map neighbourhood:** above Related papers, a small map zoomed in around the paper (the ringed dot in the accent color). Its related papers are the darker dots. Point at a related paper (or move to it with the keyboard) to draw a line to it; if it's far away on the map, the small map zooms out to show it. Click a dot to open that paper. On Explore it uses the map's current projection; on My Papers and Researchers, the default one.
 
 ### Map reliability
@@ -228,13 +229,13 @@ On a laptop the itinerary and **All my papers** take the main column; sharing an
 - **Watching** lists your watches with how many papers each brings and where they fall in the week. Add one with **Watch a friend or an institution**; **Stop watching** asks whether to keep or remove its papers.
 - **Recommended papers** (✨) are papers similar to the ones in your list. **Add to My Papers**, or **Dismiss** the ones you don't want. They are computed in your browser.
 - **New** flags papers that joined your list through your watches after a program update; **Mark as seen** clears the flag.
-- **All my papers** has a search box and **Sort by** (Time, Room, Added on, Title, Reason).
+- **All my papers** has a search box (it also finds words in your notes) and **Sort by** (Time, Room, Added on, Title, Reason). Each paper shows your 📝 note, if it has one.
 
 ### Share, export and import
 
 - **Share list** (phones) opens your phone's share sheet. On a laptop, **Send to my phone** shows a QR code and **Copy link**. The link carries the papers you added and your watches (researchers, institutions, research topics), but not your My research abstracts.
 - Opening a shared link offers **Merge into my list**, **Replace my list** (asks first, and can be undone) or **Ignore**.
-- **Export JSON** saves your list, reasons and watches to a file; **Import JSON** brings it back, on this or another device (merge or replace).
+- **Export JSON** saves your list, reasons, watches and notes to a file; **Import JSON** brings it back, on this or another device (merge or replace). Imported notes are always added to yours: when a paper has a different note in each, both texts are kept.
 - After a replace, **Restore previous list** brings back the list you had.
 
 ### At the venue and offline

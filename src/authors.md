@@ -138,6 +138,7 @@ const paperDetail = paperPanel(paperParam, {
   store,
   route: paperRoute,
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
+  notes: notesStore,
 });
 invalidation.then(paperDetail.dispose);
 ```
@@ -145,4 +146,13 @@ invalidation.then(paperDetail.dispose);
 ```js
 followed;
 paperDetail.update?.();
+```
+
+```js
+// Paper notes (#152): on this device only; "📝 Note" marks profile rows, the details edit them
+import { createNotesStore } from "./lib/notes.js";
+import { bindNoteMarkers } from "./components/noteMarkers.js";
+const notesStore = createNotesStore(conference.id);
+invalidation.then(() => notesStore.dispose());
+invalidation.then(bindNoteMarkers(document.querySelector(".author-page"), notesStore));
 ```

@@ -2000,7 +2000,8 @@ details.missing > summary {
 
 /* #13 — "More" expands a paper row in place */
 .paper.expanded .paper-authors,
-.paper.expanded .paper-abstract {
+.paper.expanded .paper-abstract,
+.paper.expanded .paper-note-text {
   display: block;
   -webkit-line-clamp: unset;
   line-clamp: unset;
@@ -2381,6 +2382,51 @@ details.missing > summary {
 .paper-detail-abstract {
   margin: var(--spacing-md, 12px) 0;
   line-height: 1.5;
+}
+
+/* #152 — paper notes: "My note" in the details, the note in My Papers rows */
+.paper-note textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4.5em;
+  padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+  border: 1px solid var(--color-on-surface-muted);
+  border-radius: var(--rounded-sm, 4px);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  font: var(--typography-body-sm);
+  resize: vertical;
+}
+
+/* 16px on phones: iOS zooms the page into smaller text fields on focus */
+@media (max-width: 639.98px) {
+  .paper-note textarea {
+    font-size: 1rem;
+  }
+}
+
+.paper-note-footer {
+  margin: var(--spacing-xs, 4px) 0 0;
+  font: var(--typography-meta);
+}
+
+.paper-note-text {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 70ch;
+  margin-top: var(--spacing-xs, 4px);
+  font: var(--typography-body-sm);
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.paper-note-text.paper-note-full {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: none;
 }
 
 /* #101 — the paper's map neighbourhood above its related papers */

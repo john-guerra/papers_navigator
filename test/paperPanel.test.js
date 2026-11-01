@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { paperPanel } from "../src/components/paperPanel.js";
+import { createNotesStore } from "../src/lib/notes.js";
 
 const papers = [
   { id: "id-a", shortId: "a", title: "A" },
@@ -102,5 +103,57 @@ describe("paperPanel mini-map (#101)", () => {
     expect(el.querySelector(".mini-map")).not.toBe(first);
     expect(el.querySelector(".mini-map")).toBeTruthy();
     el.dispose();
+  });
+});
+
+describe("paperPanel notes (#152)", () => {
+  it("shows My note when given a notes store; a note doesn't add the paper", () => {
+    const notes = createNotesStore("conf", null, null);
+    const { el, store, addWithUndo } = setup("a", { notes });
+    const input = el.querySelector(".paper-note textarea");
+    expect(input).toBeTruthy();
+    input.value = "Ask about the evaluation";
+    input.dispatchEvent(new Event("input"));
+    // closing the panel saves pending typing
+    el.dispose();
+    expect(notes.get("id-a")).toBe("Ask about the evaluation");
+    expect(store.value).toEqual([]);
+    expect(addWithUndo).not.toHaveBeenCalled();
+  });
+  it("has no note section without a notes store", () => {
+    const { el } = setup("a");
+    expect(el.querySelector(".paper-note")).toBeNull();
+    el.dispose();
+  });
+});
+
+describe("paperPanel focus (#152 review)", () => {
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  it("focuses Close when a paper opens, not when the same panel is redrawn", async () => {
+    const route = { open: vi.fn(), close: vi.fn() };
+    const notes = createNotesStore("conf", null, null);
+    const first = setup("a", { route, notes }).el;
+    await frame();
+    expect(document.activeElement.classList).toContain("paper-detail-close");
+    // typing a note when the page redraws the panel (e.g. related papers arrived)
+    const input = first.querySelector(".paper-note textarea");
+    input.focus();
+    input.value = "half a sent";
+    input.dispatchEvent(new Event("input"));
+    // Framework builds the new panel, then disposes and replaces the old one
+    const again = setup("a", { route, notes }).el;
+    first.dispose();
+    first.remove();
+    await frame();
+    const next = again.querySelector(".paper-note textarea");
+    expect(next.value).toBe("half a sent");
+    expect(document.activeElement).toBe(next);
+    again.dispose();
+    // after closing, opening it again focuses Close
+    setup(null, { route });
+    const reopened = setup("a", { route, notes }).el;
+    await frame();
+    expect(document.activeElement.classList).toContain("paper-detail-close");
+    reopened.dispose();
   });
 });
