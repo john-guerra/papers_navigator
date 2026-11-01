@@ -13,6 +13,7 @@ import {
 import { planAdd } from "../lib/selection.js";
 import { PapersList, conferenceLink } from "../widgets/papersList.js";
 import { followToggles } from "./followToggles.js";
+import { renderRecommended } from "./recommended.js";
 
 const plural = (n, word) =>
   `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
@@ -135,6 +136,8 @@ export function renderAuthorProfile(
     detailsHref = (p) => `?paper=${encodeURIComponent(p.shortId ?? p.id)}`,
     watch = "",
     coauthorLimit = 24,
+    // () => Promise of papers like theirs, best first ({...paper, score, because}); none: no section
+    similar = null,
   },
 ) {
   const papers = [...author.papers].sort((a, b) =>
@@ -217,6 +220,57 @@ export function renderAuthorProfile(
       >`,
   });
 
+  // Papers like theirs (#150): the program's papers closest to any of theirs, loaded after paint
+  const likeState = { status: "loading", shown: 5 };
+  const likeBody = html`<div></div>`;
+  const likeSection = similar
+    ? html`<section class="author-like-theirs">
+        <h2>Papers like theirs</h2>
+        ${likeBody}
+      </section>`
+    : "";
+  // Each draw makes its own toggles, so el.update syncs only the shown ones (#151 review)
+  let likeToggles = followToggles({ inMyPapers, onToggle });
+  const drawLike = () => {
+    likeToggles = followToggles({ inMyPapers, onToggle });
+    likeBody.replaceChildren(
+      renderRecommended(likeState, {
+        tz,
+        tzLabel,
+        shown: likeState.shown,
+        step: 5,
+        loadingText: "Finding papers like theirs…",
+        doneText: "No similar papers in this program.",
+        unavailableText: "Papers like theirs are unavailable",
+        actions: (p) => likeToggles.toggle(p),
+        onOpen: onDetails,
+        onShowMore: (n) => {
+          const from = likeState.shown;
+          likeState.shown = n;
+          drawLike();
+          // The section is redrawn: focus the first new row instead of losing it to the page
+          likeBody.querySelectorAll(".recommended-open")[from]?.focus();
+        },
+        onRetry: loadLike,
+      }),
+    );
+  };
+  function loadLike() {
+    Object.assign(likeState, { status: "loading" });
+    drawLike();
+    similar().then(
+      (recs) => {
+        Object.assign(likeState, { status: "ready", recs });
+        drawLike();
+      },
+      () => {
+        likeState.status = "error";
+        drawLike();
+      },
+    );
+  }
+  if (similar) loadLike();
+
   const anyTimed = summary.days.length > 0;
   const el = html`<article class="author-profile">
     <p class="author-back"><a href="./authors.html">← All researchers</a></p>
@@ -265,11 +319,12 @@ export function renderAuthorProfile(
         : ""
     }
     <h2>Papers <small>(${papers.length})</small></h2>
-    ${list}
+    ${list} ${likeSection}
   </article>`;
   drawMine();
   el.update = () => {
     toggles.update();
+    likeToggles.update();
     drawMine();
   };
   return el;
