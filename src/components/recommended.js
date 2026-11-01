@@ -7,11 +7,26 @@ const STEP = 10;
  * Recommended papers (#26): the top `shown` recommendations, each with its room/time and
  * similarity, "why" (the most similar paper in My Papers, opening its details), "Add to My
  * Papers" and "Dismiss". `state.status`: "empty" (My Papers is empty), "loading", "error"
- * (the embeddings didn't load) or "ready" with `state.recs`.
+ * (the embeddings didn't load) or "ready" with `state.recs`. `actions(p)` replaces Add and Dismiss.
  */
 export function renderRecommended(
   state,
-  { tz, tzLabel, shown = STEP, onAdd, onDismiss, onOpen, onShowMore, onRetry },
+  {
+    tz,
+    tzLabel,
+    shown = STEP,
+    step = STEP,
+    onAdd,
+    onDismiss,
+    onOpen,
+    onShowMore,
+    onRetry,
+    // Researcher profiles (#150): their own row actions (a toggle, no Dismiss) and wording
+    actions = null,
+    loadingText = "Finding papers like yours…",
+    doneText = "No more papers to recommend: you've seen them all.",
+    unavailableText = "Recommendations are unavailable",
+  },
 ) {
   const note = (text) => html`<p class="muted">${text}</p>`;
   const body = (() => {
@@ -19,27 +34,26 @@ export function renderRecommended(
       return note(
         "Add papers to My Papers and papers similar to them show up here.",
       );
-    if (state.status === "loading") return note("Finding papers like yours…");
+    if (state.status === "loading") return note(loadingText);
     if (state.status === "error") {
       const retry = html`<button class="btn-text recommended-retry">
         Try again
       </button>`;
       retry.onclick = () => onRetry?.();
       return html`<p class="muted">
-        Recommendations are unavailable: the paper embeddings couldn't load
-        (offline before they were saved on this device?). ${retry}
+        ${unavailableText}: the paper embeddings couldn't load (offline before
+        they were saved on this device?). ${retry}
       </p>`;
     }
     const { recs } = state;
-    if (!recs.length)
-      return note("No more papers to recommend: you've seen them all.");
+    if (!recs.length) return note(doneText);
     const more =
       recs.length > shown
         ? html`<button class="btn-text recommended-more">
-            Show more (${Math.min(STEP, recs.length - shown)})
+            Show more (${Math.min(step, recs.length - shown)})
           </button>`
         : "";
-    if (more) more.onclick = () => onShowMore(shown + STEP);
+    if (more) more.onclick = () => onShowMore(shown + step);
     return html`<ol class="recommended-papers">
         ${recs.slice(0, shown).map((p) => renderRow(p))}
       </ol>
@@ -63,17 +77,6 @@ export function renderRecommended(
       event.preventDefault();
       onOpen(p.because);
     };
-    const add = html`<button class="follow-toggle" aria-pressed="false">
-      <span class="ring" aria-hidden="true"></span>Add to My Papers
-    </button>`;
-    add.onclick = () => onAdd(p);
-    const dismiss = html`<button
-      class="btn-text recommended-dismiss"
-      aria-label=${`Dismiss: ${p.title}`}
-    >
-      Dismiss
-    </button>`;
-    dismiss.onclick = () => onDismiss(p);
     const meta = [
       p.room && `📍 ${p.room}`,
       paperWhen(p, tz, tzLabel),
@@ -85,8 +88,25 @@ export function renderRecommended(
       ${open}
       <span class="recommended-meta">${meta}</span>
       <span class="recommended-why">✨ Like ${why}</span>
-      <span class="paper-actions">${add}${dismiss}</span>
+      <span class="paper-actions"
+        >${actions ? actions(p) : addAndDismiss(p)}</span
+      >
     </li>`;
+  }
+
+  function addAndDismiss(p) {
+    const add = html`<button class="follow-toggle" aria-pressed="false">
+      <span class="ring" aria-hidden="true"></span>Add to My Papers
+    </button>`;
+    add.onclick = () => onAdd(p);
+    const dismiss = html`<button
+      class="btn-text recommended-dismiss"
+      aria-label=${`Dismiss: ${p.title}`}
+    >
+      Dismiss
+    </button>`;
+    dismiss.onclick = () => onDismiss(p);
+    return [add, dismiss];
   }
 
   return html`<section class="recommended-section">${body}</section>`;

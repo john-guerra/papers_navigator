@@ -19,12 +19,14 @@ import { watchButton } from "./components/watchButton.js";
 import { showToast } from "./components/toast.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { conferenceZone } from "./lib/time.js";
+import { recommendPapers } from "./lib/recommend.js";
+import { afterFirstPaint } from "./lib/researchTopics.js";
 ```
 
 ```js
 const conference = FileAttachment("data/conference.json").json();
 const papers = FileAttachment("data/papers.json").json();
-// Only read when a paper's details need related papers (precached by the service worker)
+// Read after first paint for Papers like theirs, or for a paper's related papers (precached by the service worker)
 const embeddingsFile = FileAttachment("data/embeddings.bin");
 ```
 
@@ -90,6 +92,11 @@ const authorView = !authorParam
         },
         onDetails: openPaper,
         detailsHref: (p) => paperRoute.href(p.shortId ?? p.id),
+        // Papers like theirs (#150): max similarity to any of their papers, like My Papers' recommendations
+        similar: () =>
+          new Promise((resolve) => afterFirstPaint(resolve))
+            .then(loadMatrix)
+            .then((matrix) => recommendPapers(author.papers.map((p) => p.id), matrix, papers)),
         // Watch = an author rule (#5): their papers stay in My Papers, also after program updates
         watch: watchButton({ type: "author", value: author.name }, {
           variant: "secondary",

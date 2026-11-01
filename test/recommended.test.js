@@ -86,4 +86,30 @@ describe("renderRecommended", () => {
       "No more",
     );
   });
+
+  it("takes its own actions, step and loading text (researcher profiles, #150)", () => {
+    const { el } = setup(
+      { status: "ready", recs },
+      {
+        shown: 5,
+        step: 5,
+        onDismiss: undefined,
+        actions: (p) => {
+          const b = document.createElement("button");
+          b.className = "custom-action";
+          b.textContent = p.id;
+          return b;
+        },
+      },
+    );
+    expect(el.querySelectorAll(".recommended-paper")).toHaveLength(5);
+    expect(el.querySelectorAll(".custom-action")).toHaveLength(5);
+    expect(el.querySelector(".recommended-dismiss")).toBeNull();
+    expect(el.querySelector(".recommended-more").textContent).toContain("(5)");
+    const loading = setup(
+      { status: "loading" },
+      { loadingText: "Finding papers like theirs…" },
+    ).el;
+    expect(loading.textContent).toContain("Finding papers like theirs…");
+  });
 });
