@@ -22,16 +22,23 @@ describe("My Papers file", () => {
     const parsed = JSON.parse(
       exportMyPapers({ followed, rules, exceptions: ["x"] }),
     );
-    expect(parsed).toEqual({ version: 2, followed, rules, exceptions: ["x"] });
+    expect(parsed).toEqual({
+      version: 2,
+      followed,
+      rules,
+      exceptions: ["x"],
+      notes: {},
+    });
   });
   it("reads the new format and the old plain list", () => {
     expect(
       parseMyPapersFile(exportMyPapers({ followed, rules, exceptions: [] })),
-    ).toEqual({ followed, rules, exceptions: [] });
+    ).toEqual({ followed, rules, exceptions: [], notes: {} });
     expect(parseMyPapersFile(JSON.stringify(followed))).toEqual({
       followed,
       rules: [],
       exceptions: [],
+      notes: {},
     });
   });
   it("rejects files that are not My Papers", () => {
@@ -75,5 +82,41 @@ describe("exportNote", () => {
     expect(exportNote([...rules, mine])).toBe(
       "Includes the abstracts of your research topics",
     );
+  });
+});
+
+describe("My Papers file with notes (#152)", () => {
+  it("exports notes on any paper and reads them back, cleaned", () => {
+    const notes = { a: "Ask about the study", z: "Not in My Papers" };
+    const text = exportMyPapers({ followed, rules, exceptions: [], notes });
+    expect(JSON.parse(text).notes).toEqual(notes);
+    expect(parseMyPapersFile(text).notes).toEqual(notes);
+    expect(
+      parseMyPapersFile(
+        JSON.stringify({
+          version: 2,
+          followed,
+          notes: { a: " x ", b: 1, c: "" },
+        }),
+      ).notes,
+    ).toEqual({ a: "x" });
+  });
+  it("reads a notes-only file (notes on papers not in My Papers)", () => {
+    expect(
+      parseMyPapersFile(
+        JSON.stringify({ version: 2, followed: [], notes: { z: "n" } }),
+      ),
+    ).toMatchObject({ followed: [], notes: { z: "n" } });
+  });
+});
+
+describe("exportNote with notes (#152)", () => {
+  it("says the file includes your notes", () => {
+    const mine = { type: "topic", value: "Mine", research: ["A"] };
+    expect(exportNote(rules, { a: "x" })).toBe("Includes your notes");
+    expect(exportNote([mine], { a: "x" })).toBe(
+      "Includes your notes and the abstracts of your research topics",
+    );
+    expect(exportNote(rules, {})).toBe("");
   });
 });

@@ -20,6 +20,8 @@ export function renderPaperDetail(
     authorHref = authorUrl,
     // (related papers) => the neighbourhood mini-map (#101) with .highlight(id), or null
     miniMap = null,
+    // "My note" (#152): an element shown before the abstract, or null
+    note = null,
   },
 ) {
   const { toggle, update } = followToggles({ inMyPapers, onToggle });
@@ -123,6 +125,7 @@ export function renderPaperDetail(
       ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page ↗</a>` : ""}
       ${(paper.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
     </p>
+    ${note ?? ""}
     ${paper.abstract ? html`<div class="paper-detail-abstract">${paper.abstract}</div>` : ""}
     ${relatedSection}
   </aside>`;
@@ -143,6 +146,7 @@ export function renderPaperDetail(
   el.dispose = () => {
     disposed = true;
     mini?.dispose?.();
+    note?.dispose?.();
   };
   return el;
 }

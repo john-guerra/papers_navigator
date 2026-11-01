@@ -27,6 +27,10 @@ export const STORAGE_ITEMS = [
     what: "Numbers computed from those abstracts, so they aren't recomputed on every visit",
   },
   {
+    key: "papersNavigator:<id>:notes",
+    what: "Your notes on papers (My note in a paper's details)",
+  },
+  {
     key: "papersNavigator:<id>:dismissed",
     what: "Recommended papers you dismissed",
   },

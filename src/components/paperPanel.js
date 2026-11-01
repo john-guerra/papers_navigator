@@ -1,5 +1,6 @@
 import { html } from "htl";
 import { renderPaperDetail } from "./paperDetail.js";
+import { renderPaperNote } from "./paperNote.js";
 import { showToast } from "./toast.js";
 import { addWithUndo as addWithUndoDefault } from "../lib/selection.js";
 import { createAnimationSettings } from "../lib/animationSettings.js";
@@ -19,6 +20,9 @@ const deviceAnimation = () => (deviceSettings ??= createAnimationSettings());
  * map draws them; elsewhere the papers' own x/y, the default projection) and moves as the map
  * animation settings say (`animation`, a store with `.value`; read from this device by default).
  *
+ * With `notes` (the notes store, #152) the panel has "My note", saved on this device as you
+ * type; closing the panel saves what's pending.
+ *
  * `el.update()` refreshes the toggles in place; `el.highlight(id | null)` shows a paper on the
  * mini-map; `el.refreshMiniMap(key)` redraws it when the map's positions change (a new key); `el.dispose()` stops listening to Esc and stops the mini-map.
  */
@@ -37,6 +41,7 @@ export function paperPanel(
     mapRows = () => papers,
     animation = null,
     miniMap = true,
+    notes = null,
   },
 ) {
   const paper = key
@@ -74,6 +79,7 @@ export function paperPanel(
     },
     onOpen: open,
     onClose: () => route.close(),
+    note: notes ? renderPaperNote(paper, { notes, toast }) : null,
     miniMap: miniMap
       ? (relatedPapers) =>
           createMiniMap({

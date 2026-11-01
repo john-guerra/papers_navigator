@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { paperPanel } from "../src/components/paperPanel.js";
+import { createNotesStore } from "../src/lib/notes.js";
 
 const papers = [
   { id: "id-a", shortId: "a", title: "A" },
@@ -101,6 +102,27 @@ describe("paperPanel mini-map (#101)", () => {
     el.refreshMiniMap("tsne:true");
     expect(el.querySelector(".mini-map")).not.toBe(first);
     expect(el.querySelector(".mini-map")).toBeTruthy();
+    el.dispose();
+  });
+});
+
+describe("paperPanel notes (#152)", () => {
+  it("shows My note when given a notes store; a note doesn't add the paper", () => {
+    const notes = createNotesStore("conf", null, null);
+    const { el, store, addWithUndo } = setup("a", { notes });
+    const input = el.querySelector(".paper-note textarea");
+    expect(input).toBeTruthy();
+    input.value = "Ask about the evaluation";
+    input.dispatchEvent(new Event("input"));
+    // closing the panel saves pending typing
+    el.dispose();
+    expect(notes.get("id-a")).toBe("Ask about the evaluation");
+    expect(store.value).toEqual([]);
+    expect(addWithUndo).not.toHaveBeenCalled();
+  });
+  it("has no note section without a notes store", () => {
+    const { el } = setup("a");
+    expect(el.querySelector(".paper-note")).toBeNull();
     el.dispose();
   });
 });

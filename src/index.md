@@ -41,6 +41,8 @@ import { relevanceControl } from "./widgets/relevanceControl.js";
 import { themeControl } from "./components/themeControl.js";
 import { PapersList, conferenceLink, paperScore } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
+import { createNotesStore } from "./lib/notes.js";
+import { bindNoteMarkers } from "./components/noteMarkers.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
@@ -80,6 +82,9 @@ const store = createMyPapers({ followed: followedStore, rules: rulesStore, paper
 const followed = Generators.input(store);
 invalidation.then(bindMyPapersBadge(store));
 const rulesState = Generators.input(rulesStore);
+// Paper notes (#152): on this device only; "📝 Note" marks list rows, the details edit them
+const notesStore = createNotesStore(conference.id);
+invalidation.then(bindNoteMarkers(document.querySelector(".explore-list"), notesStore));
 // "My research" (#27): pasted abstracts, kept in this browser only
 const researchStore = createResearchStore(conference.id);
 const research = Generators.input(researchStore);
@@ -1135,6 +1140,7 @@ const paperDetail = paperPanel(paperParam, {
   // The mini-map (#101) places papers as the map draws them (projection, alignment)
   mapRows: () => mapState.everyPaper ?? papers,
   animation: animationStore,
+  notes: notesStore,
 });
 invalidation.then(paperDetail.dispose);
 ```
