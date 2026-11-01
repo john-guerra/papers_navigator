@@ -148,4 +148,82 @@ describe("renderAuthorProfile (#78)", () => {
     expect(onDetails).toHaveBeenCalledTimes(2);
     expect(onDetails.mock.calls[0][0].id).toBe("p1");
   });
+
+  it("lists papers like theirs once they load, with toggles that follow My Papers (#150)", async () => {
+    const index = buildAuthorIndex(papers);
+    const ann = index.find((a) => a.name === "Ann Lee");
+    const like = Array.from({ length: 8 }, (_, i) => ({
+      ...papers[2 + i],
+      score: 0.8 - i / 100,
+      because: papers[0],
+    }));
+    let mine = new Set(["x1"]);
+    const onToggle = vi.fn();
+    const el = renderAuthorProfile(ann, {
+      tz,
+      inMyPapers: (id) => mine.has(id),
+      onToggle,
+      onAddAll: () => {},
+      onDetails: () => {},
+      similar: () => Promise.resolve(like),
+    });
+    document.body.append(el);
+    const section = el.querySelector(".author-like-theirs");
+    expect(section.querySelector("h2").textContent).toBe("Papers like theirs");
+    expect(section.textContent).toContain("Finding papers like theirs…");
+    await new Promise((r) => setTimeout(r));
+    const rows = section.querySelectorAll(".recommended-paper");
+    expect(rows).toHaveLength(5);
+    expect(rows[0].textContent).toContain("80% similar");
+    expect(rows[0].textContent).toContain("Like Maps");
+    expect(section.querySelector(".recommended-dismiss")).toBeNull();
+    const toggle = rows[1].querySelector(".follow-toggle");
+    expect(toggle.getAttribute("aria-pressed")).toBe("true"); // x1 is in My Papers
+    toggle.click();
+    expect(onToggle).toHaveBeenCalledWith(like[1]);
+    mine = new Set();
+    el.update();
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    section.querySelector(".recommended-more").click();
+    expect(section.querySelectorAll(".recommended-paper")).toHaveLength(8);
+    el.remove();
+  });
+
+  it("offers Try again when the embeddings can't load (#150)", async () => {
+    const index = buildAuthorIndex(papers);
+    const ann = index.find((a) => a.name === "Ann Lee");
+    const similar = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce([]);
+    const el = renderAuthorProfile(ann, {
+      tz,
+      inMyPapers: () => false,
+      onToggle: () => {},
+      onAddAll: () => {},
+      onDetails: () => {},
+      similar,
+    });
+    document.body.append(el);
+    await new Promise((r) => setTimeout(r));
+    el.querySelector(".author-like-theirs .recommended-retry").click();
+    await new Promise((r) => setTimeout(r));
+    expect(similar).toHaveBeenCalledTimes(2);
+    expect(el.querySelector(".author-like-theirs").textContent).toContain(
+      "No similar papers",
+    );
+    el.remove();
+  });
+
+  it("has no Papers like theirs section without a source", () => {
+    const ann = buildAuthorIndex(papers).find((a) => a.name === "Ann Lee");
+    const el = renderAuthorProfile(ann, {
+      tz,
+      inMyPapers: () => false,
+      onToggle: () => {},
+      onAddAll: () => {},
+      onDetails: () => {},
+    });
+    expect(el.querySelector(".author-like-theirs")).toBeNull();
+  });
 });
