@@ -2423,6 +2423,12 @@ details.missing > summary {
   line-clamp: 3;
 }
 
+.paper-note-text.paper-note-full {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: none;
+}
+
 /* #101 — the paper's map neighbourhood above its related papers */
 .mini-map {
   margin: 0 0 var(--spacing-xs, 4px);

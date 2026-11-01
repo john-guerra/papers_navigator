@@ -23,13 +23,19 @@ export function bindNoteMarkers(root, notes, { text = false } = {}) {
         marker.textContent = "📝 Note";
         marker.title = "You have a note on this paper (paper details)";
         const where = isPaper && row.querySelector(".paper-where");
-        if (where) where.prepend(marker, " · ");
-        else row.append(" ", marker);
+        if (where) {
+          // " · " only before the rest of the meta line, if it has any
+          if (where.textContent.trim()) {
+            const sep = document.createElement("span");
+            sep.className = "note-marker-sep";
+            sep.textContent = " · ";
+            where.prepend(sep);
+          }
+          where.prepend(marker);
+        } else row.append(" ", marker);
       }
     } else if (marker) {
-      // also the " · " after it
-      if (marker.nextSibling?.nodeType === Node.TEXT_NODE)
-        marker.nextSibling.remove();
+      row.querySelector(":scope .note-marker-sep")?.remove();
       marker.remove();
     }
     // The note itself (as text, never HTML), under the meta line
@@ -44,6 +50,11 @@ export function bindNoteMarkers(root, notes, { text = false } = {}) {
         else row.append(full);
       }
       if (full.textContent !== content) full.textContent = content;
+      // Clamped like the abstract when the row has "More" to expand it; whole otherwise
+      full.classList.toggle(
+        "paper-note-full",
+        !row.querySelector(".paper-more"),
+      );
     } else full?.remove();
   };
   const markAll = () => root.querySelectorAll(ROWS).forEach(mark);

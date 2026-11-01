@@ -26,9 +26,15 @@ export function renderPaperNote(
     placeholder="Questions to ask, why it matters to you…"
   ></textarea>`;
   input.value = notes.get(paper.id);
-  const status = html`<span class="paper-note-status" aria-live="polite"
+  const status = html`<span class="paper-note-status"
     >Saved as you type, only on this device.</span
   >`;
+  // Screen readers hear the first save and failures, not every pause in typing
+  const live = html`<span class="sr-only" aria-live="polite"></span>`;
+  const announce = (message) => {
+    if (message !== lastAnnounced) live.textContent = lastAnnounced = message;
+  };
+  let lastAnnounced = "";
   const remove = html`<button type="button" class="btn-text paper-note-delete">
     Delete note
   </button>`;
@@ -45,6 +51,7 @@ export function renderPaperNote(
         ? "Saved on this device."
         : "No note."
       : "This browser couldn't save the note (storage full or blocked); it is kept until you leave the page.";
+    if (!ok || notes.has(paper.id)) announce(status.textContent);
     showDelete();
   };
   input.addEventListener("input", () => {
@@ -52,6 +59,12 @@ export function renderPaperNote(
     timer = setTimeout(save, delay);
   });
   input.addEventListener("blur", () => timer && save());
+  // Reload, closing the tab or switching apps don't reliably blur the textarea
+  const onPageHide = () => timer && save();
+  const onVisibility = () =>
+    document.visibilityState === "hidden" && onPageHide();
+  addEventListener("pagehide", onPageHide);
+  document.addEventListener("visibilitychange", onVisibility);
 
   remove.onclick = () => {
     clearTimeout(timer);
@@ -83,12 +96,14 @@ export function renderPaperNote(
   const el = html`<section class="paper-note">
     <h3><label for=${id}>📝 My note</label></h3>
     ${input}
-    <p class="paper-note-footer muted">${status} ${remove}</p>
+    <p class="paper-note-footer muted">${status} ${remove}${live}</p>
   </section>`;
   el.flush = () => timer && save();
   el.dispose = () => {
     el.flush();
     notes.removeEventListener("input", onStore);
+    removeEventListener("pagehide", onPageHide);
+    document.removeEventListener("visibilitychange", onVisibility);
   };
   return el;
 }

@@ -6,12 +6,15 @@
  * They never go in a URL (query or fragment), a share link or a request.
  */
 
-/** Characters kept per note (a long page of text; keeps localStorage use bounded). */
+/**
+ * Characters you can type in one note (a long page; keeps localStorage use bounded). Only
+ * typing is capped: imported and merged notes are kept whole, so an import never loses text.
+ */
 export const MAX_NOTE_LENGTH = 10000;
 
-/** A note as stored: trimmed and capped; "" means no note. */
+/** A note as stored: trimmed; "" means no note. */
 export function cleanNote(text) {
-  return typeof text === "string" ? text.trim().slice(0, MAX_NOTE_LENGTH) : "";
+  return typeof text === "string" ? text.trim() : "";
 }
 
 /** Validated notes from storage or an imported file: `{paperId: text}`, empty notes dropped. */
@@ -42,7 +45,7 @@ export function mergeNotes(current, incoming) {
       added++;
     } else if (mine.includes(text)) continue;
     else {
-      notes[id] = text.includes(mine) ? text : cleanNote(`${mine}\n\n${text}`);
+      notes[id] = text.includes(mine) ? text : `${mine}\n\n${text}`;
       combined++;
     }
   }
@@ -67,7 +70,8 @@ export function importedNotesText({ added, combined }) {
  * Notes, persisted per conference in localStorage. Reactive store: `.value` is `{paperId:
  * text}` and it emits `input` on every change (also another tab's). `set(id, text)` returns
  * false when the browser couldn't save it (the note is kept for this visit); `delete(id)` and
- * `merge(notes)` return an undo.
+ * `merge(notes)` return an undo, which leaves alone any note changed since. `dispose()` stops
+ * following other tabs.
  */
 export function createNotesStore(
   conferenceId,
@@ -99,31 +103,48 @@ export function createNotesStore(
     return saved;
   };
   // Another tab wrote or deleted a note
-  events?.addEventListener?.("storage", (event) => {
+  const onStorage = (event) => {
     if (event.key !== key) return;
     value = load();
     store.dispatchEvent(new Event("input"));
-  });
-  store.get = (id) => value[id] ?? "";
-  store.has = (id) => Boolean(value[id]);
-  store.set = (id, text) => {
-    const note = cleanNote(text);
+  };
+  events?.addEventListener?.("storage", onStorage);
+  store.dispose = () => events?.removeEventListener?.("storage", onStorage);
+  // One note set as is ("" deletes it)
+  const write = (id, note) => {
     if ((value[id] ?? "") === note) return true;
     const next = { ...value };
     if (note) next[id] = note;
     else delete next[id];
     return save(next);
   };
+  store.get = (id) => value[id] ?? "";
+  store.has = (id) => Boolean(value[id]);
+  store.set = (id, text) =>
+    write(id, cleanNote(text).slice(0, MAX_NOTE_LENGTH));
+  // Undo only if you haven't written a new note since
   store.delete = (id) => {
     const previous = value[id];
-    if (previous) store.set(id, "");
-    return () => previous && store.set(id, previous);
+    if (previous) write(id, "");
+    return () => previous && !value[id] && write(id, previous);
   };
   store.merge = (incoming) => {
     const before = value;
     const { notes, added, combined } = mergeNotes(value, incoming);
     if (added || combined) save(notes);
-    return { added, combined, undo: () => (added || combined) && save(before) };
+    // Undo puts back each note the import changed, unless you edited it since
+    const undo = () => {
+      const next = { ...value };
+      let changed = false;
+      for (const id of Object.keys(notes)) {
+        if (notes[id] === before[id] || value[id] !== notes[id]) continue;
+        if (before[id]) next[id] = before[id];
+        else delete next[id];
+        changed = true;
+      }
+      if (changed) save(next);
+    };
+    return { added, combined, undo };
   };
   Object.defineProperty(store, "value", { get: () => value });
   return store;

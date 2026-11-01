@@ -61,6 +61,33 @@ describe("bindNoteMarkers", () => {
     );
   });
 
+  it("adds no dangling separator when the meta line is empty", () => {
+    const { row } = setup();
+    const where = row("a").querySelector(".paper-where");
+    expect(where.textContent.trim()).toBe("📝 Note");
+  });
+
+  it("with text: a row without “More” shows the whole note (not clamped)", () => {
+    const notes = createNotesStore("conf", null, null);
+    notes.set("a", "long note");
+    notes.set("b", "long note");
+    const root = document.createElement("section");
+    root.append(
+      PapersList(
+        [
+          { id: "a", title: "A", authors: [] },
+          { id: "b", title: "B", authors: [], abstract: "Has More" },
+        ],
+        { tz: "US/Eastern" },
+      ),
+    );
+    bindNoteMarkers(root, notes, { text: true });
+    const note = (id) =>
+      root.querySelector(`[data-paper-id="${id}"] .paper-note-text`);
+    expect(note("a").classList).toContain("paper-note-full");
+    expect(note("b").classList).not.toContain("paper-note-full");
+  });
+
   it("marks itinerary items too", () => {
     const notes = createNotesStore("conf", null, null);
     notes.set("a", "x");

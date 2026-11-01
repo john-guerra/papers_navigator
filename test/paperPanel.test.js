@@ -126,3 +126,34 @@ describe("paperPanel notes (#152)", () => {
     el.dispose();
   });
 });
+
+describe("paperPanel focus (#152 review)", () => {
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  it("focuses Close when a paper opens, not when the same panel is redrawn", async () => {
+    const route = { open: vi.fn(), close: vi.fn() };
+    const notes = createNotesStore("conf", null, null);
+    const first = setup("a", { route, notes }).el;
+    await frame();
+    expect(document.activeElement.classList).toContain("paper-detail-close");
+    // typing a note when the page redraws the panel (e.g. related papers arrived)
+    const input = first.querySelector(".paper-note textarea");
+    input.focus();
+    input.value = "half a sent";
+    input.dispatchEvent(new Event("input"));
+    // Framework builds the new panel, then disposes and replaces the old one
+    const again = setup("a", { route, notes }).el;
+    first.dispose();
+    first.remove();
+    await frame();
+    const next = again.querySelector(".paper-note textarea");
+    expect(next.value).toBe("half a sent");
+    expect(document.activeElement).toBe(next);
+    again.dispose();
+    // after closing, opening it again focuses Close
+    setup(null, { route });
+    const reopened = setup("a", { route, notes }).el;
+    await frame();
+    expect(document.activeElement.classList).toContain("paper-detail-close");
+    reopened.dispose();
+  });
+});

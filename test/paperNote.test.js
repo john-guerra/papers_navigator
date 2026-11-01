@@ -47,6 +47,21 @@ describe("renderPaperNote", () => {
     expect(deleteButton(el).hidden).toBe(false);
   });
 
+  it("announces the first save, not every pause in typing", () => {
+    const { el, type } = setup();
+    const live = el.querySelector("[aria-live]");
+    type("one");
+    vi.advanceTimersByTime(300);
+    expect(live.textContent).toBe("Saved on this device.");
+    live.textContent = "";
+    type("one two");
+    vi.advanceTimersByTime(300);
+    expect(live.textContent).toBe("");
+    expect(
+      el.querySelector(".paper-note-status").getAttribute("aria-live"),
+    ).toBeNull();
+  });
+
   it("saves right away on blur and on flush (closing the panel)", () => {
     const { el, notes, input, type } = setup();
     type("on blur");
@@ -110,6 +125,29 @@ describe("renderPaperNote", () => {
       /couldn't save/i,
     );
     warn.mockRestore();
+  });
+
+  it("saves pending typing when the page is hidden or unloaded", () => {
+    const { notes, type } = setup();
+    type("before reload");
+    dispatchEvent(new Event("pagehide"));
+    expect(notes.get("id-a")).toBe("before reload");
+    type("before switching apps");
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(notes.get("id-a")).toBe("before switching apps");
+    delete document.visibilityState;
+  });
+
+  it("stops listening to the page after dispose", () => {
+    const { el, notes, type } = setup();
+    el.dispose();
+    type("after dispose");
+    dispatchEvent(new Event("pagehide"));
+    expect(notes.get("id-a")).toBe("");
   });
 
   it("stops listening after dispose", () => {

@@ -146,5 +146,6 @@ paperDetail.update?.();
 import { createNotesStore } from "./lib/notes.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
 const notesStore = createNotesStore(conference.id);
+invalidation.then(() => notesStore.dispose());
 invalidation.then(bindNoteMarkers(document.querySelector(".author-page"), notesStore));
 ```

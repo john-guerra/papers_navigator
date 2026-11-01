@@ -21,7 +21,7 @@ const memoryStorage = () => {
 };
 
 describe("cleanNotes", () => {
-  it("keeps non-empty string notes, trimmed and capped", () => {
+  it("keeps non-empty string notes, trimmed, never truncated (imports lose no text)", () => {
     expect(
       cleanNotes({
         a: "  hello\nworld  ",
@@ -29,7 +29,7 @@ describe("cleanNotes", () => {
         c: 3,
         d: "x".repeat(MAX_NOTE_LENGTH + 5),
       }),
-    ).toEqual({ a: "hello\nworld", d: "x".repeat(MAX_NOTE_LENGTH) });
+    ).toEqual({ a: "hello\nworld", d: "x".repeat(MAX_NOTE_LENGTH + 5) });
   });
   it("returns {} for anything that isn't an object of notes", () => {
     expect(cleanNotes(null)).toEqual({});
@@ -54,6 +54,13 @@ describe("mergeNotes", () => {
     });
     expect(added).toBe(1);
     expect(combined).toBe(2);
+  });
+  it("never truncates a combined note", () => {
+    const mine = "m".repeat(MAX_NOTE_LENGTH - 10);
+    const theirs = "t".repeat(100);
+    expect(mergeNotes({ a: mine }, { a: theirs }).notes.a).toBe(
+      `${mine}\n\n${theirs}`,
+    );
   });
   it("leaves a note that already contains the imported one", () => {
     expect(mergeNotes({ a: "long note" }, { a: "long" })).toEqual({
@@ -117,6 +124,38 @@ describe("createNotesStore", () => {
     expect(notes.has("a")).toBe(false);
     undo();
     expect(notes.get("a")).toBe("keep me");
+  });
+  it("caps a typed note", () => {
+    const notes = createNotesStore("conf", null, null);
+    notes.set("a", "x".repeat(MAX_NOTE_LENGTH + 5));
+    expect(notes.get("a")).toHaveLength(MAX_NOTE_LENGTH);
+  });
+  it("Undo of a delete doesn't overwrite a note written after it", () => {
+    const notes = createNotesStore("conf", null, null);
+    notes.set("a", "old");
+    const undo = notes.delete("a");
+    notes.set("a", "new");
+    undo();
+    expect(notes.get("a")).toBe("new");
+  });
+  it("Undo of an import reverts only notes still as the import left them", () => {
+    const notes = createNotesStore("conf", null, null);
+    notes.set("a", "mine");
+    const { undo } = notes.merge({ a: "theirs", b: "new", c: "other" });
+    notes.set("b", "edited after the import");
+    undo();
+    expect(notes.value).toEqual({ a: "mine", b: "edited after the import" });
+  });
+  it("stops following other tabs after dispose", () => {
+    const storage = memoryStorage();
+    const events = new EventTarget();
+    const notes = createNotesStore("conf", storage, events);
+    notes.dispose();
+    storage.setItem(KEY, '{"z":"x"}');
+    const event = new Event("storage");
+    event.key = KEY;
+    events.dispatchEvent(event);
+    expect(notes.has("z")).toBe(false);
   });
   it("merges imported notes, with an undo", () => {
     const notes = createNotesStore("conf", memoryStorage(), null);

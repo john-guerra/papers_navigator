@@ -57,6 +57,7 @@ const rulesState = Generators.input(rulesStore);
 invalidation.then(bindMyPapersBadge(store));
 // Paper notes (#152): on this device only (and in the export file), never in links
 const notesStore = createNotesStore(conference.id);
+invalidation.then(() => notesStore.dispose());
 const notesState = Generators.input(notesStore);
 // The embeddings, loaded once on first need (a failed load, e.g. offline, is retried)
 const loadMatrix = lazyLoader(async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length));

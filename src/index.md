@@ -84,6 +84,7 @@ invalidation.then(bindMyPapersBadge(store));
 const rulesState = Generators.input(rulesStore);
 // Paper notes (#152): on this device only; "📝 Note" marks list rows, the details edit them
 const notesStore = createNotesStore(conference.id);
+invalidation.then(() => notesStore.dispose());
 invalidation.then(bindNoteMarkers(document.querySelector(".explore-list"), notesStore));
 // "My research" (#27): pasted abstracts, kept in this browser only
 const researchStore = createResearchStore(conference.id);
@@ -1121,22 +1122,16 @@ const openPaper = (key) => paperRoute.open(key);
 ```
 
 ```js
-// Related papers need the embeddings (#124): an open paper asks for them if they haven't
-// arrived yet (they load right after the first render) and its details redraw when they do
-const embeddingMatrix = Generators.observe((notify) => {
-  notify(embeddings.matrix);
-  if (paperParam && !embeddings.matrix) embeddings.load().then((e) => notify(e.matrix), () => {});
-});
-```
-
-```js
 const paperDetail = paperPanel(paperParam, {
   papers,
   tz,
   tzLabel,
   store,
   route: paperRoute,
-  related: (paper) => (embeddingMatrix ? relatedPapers(paper.id, embeddingMatrix, papers) : []),
+  // Related papers need the embeddings (#124): until they arrive (right after the first render)
+  // the panel fills them in place, never rebuilt, so typing a note isn't interrupted (#152)
+  related: (paper) =>
+    embeddings.matrix ? relatedPapers(paper.id, embeddings.matrix, papers) : embeddings.load().then((e) => relatedPapers(paper.id, e.matrix, papers)),
   // The mini-map (#101) places papers as the map draws them (projection, alignment)
   mapRows: () => mapState.everyPaper ?? papers,
   animation: animationStore,
