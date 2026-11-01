@@ -186,6 +186,18 @@ describe("renderAuthorProfile (#78)", () => {
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
     section.querySelector(".recommended-more").click();
     expect(section.querySelectorAll(".recommended-paper")).toHaveLength(8);
+    // focus goes to the first new row, not to the page (#151 review)
+    expect(document.activeElement).toBe(
+      section.querySelectorAll(".recommended-open")[5],
+    );
+    // redraws replace their toggles: only the shown ones are synced (#151 review)
+    const inMyPapersCalls = vi.fn(() => false);
+    mine = { has: inMyPapersCalls };
+    el.update();
+    const likeCalls = inMyPapersCalls.mock.calls.filter(([id]) =>
+      id.startsWith("x"),
+    ).length;
+    expect(likeCalls).toBe(8);
     el.remove();
   });
 
@@ -206,6 +218,9 @@ describe("renderAuthorProfile (#78)", () => {
     });
     document.body.append(el);
     await new Promise((r) => setTimeout(r));
+    expect(el.querySelector(".author-like-theirs").textContent).toContain(
+      "Papers like theirs are unavailable",
+    );
     el.querySelector(".author-like-theirs .recommended-retry").click();
     await new Promise((r) => setTimeout(r));
     expect(similar).toHaveBeenCalledTimes(2);

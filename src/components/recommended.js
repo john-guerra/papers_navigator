@@ -25,6 +25,7 @@ export function renderRecommended(
     actions = null,
     loadingText = "Finding papers like yours…",
     doneText = "No more papers to recommend: you've seen them all.",
+    unavailableText = "Recommendations are unavailable",
   },
 ) {
   const note = (text) => html`<p class="muted">${text}</p>`;
@@ -40,8 +41,8 @@ export function renderRecommended(
       </button>`;
       retry.onclick = () => onRetry?.();
       return html`<p class="muted">
-        Recommendations are unavailable: the paper embeddings couldn't load
-        (offline before they were saved on this device?). ${retry}
+        ${unavailableText}: the paper embeddings couldn't load (offline before
+        they were saved on this device?). ${retry}
       </p>`;
     }
     const { recs } = state;

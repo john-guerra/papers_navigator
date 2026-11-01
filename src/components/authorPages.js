@@ -229,7 +229,10 @@ export function renderAuthorProfile(
         ${likeBody}
       </section>`
     : "";
-  const drawLike = () =>
+  // Each draw makes its own toggles, so el.update syncs only the shown ones (#151 review)
+  let likeToggles = followToggles({ inMyPapers, onToggle });
+  const drawLike = () => {
+    likeToggles = followToggles({ inMyPapers, onToggle });
     likeBody.replaceChildren(
       renderRecommended(likeState, {
         tz,
@@ -238,15 +241,20 @@ export function renderAuthorProfile(
         step: 5,
         loadingText: "Finding papers like theirs…",
         doneText: "No similar papers in this program.",
-        actions: (p) => toggles.toggle(p),
+        unavailableText: "Papers like theirs are unavailable",
+        actions: (p) => likeToggles.toggle(p),
         onOpen: onDetails,
         onShowMore: (n) => {
+          const from = likeState.shown;
           likeState.shown = n;
           drawLike();
+          // The section is redrawn: focus the first new row instead of losing it to the page
+          likeBody.querySelectorAll(".recommended-open")[from]?.focus();
         },
         onRetry: loadLike,
       }),
     );
+  };
   function loadLike() {
     Object.assign(likeState, { status: "loading" });
     drawLike();
@@ -316,6 +324,7 @@ export function renderAuthorProfile(
   drawMine();
   el.update = () => {
     toggles.update();
+    likeToggles.update();
     drawMine();
   };
   return el;
