@@ -14,7 +14,7 @@ import { planAdd } from "../lib/selection.js";
 import { PapersList, conferenceLink } from "../widgets/papersList.js";
 import { followToggles } from "./followToggles.js";
 import { renderRecommended } from "./recommended.js";
-import { filterChip } from "./filterChips.js";
+import { INFERRED_TOPIC_HINT, filterChip } from "./filterChips.js";
 
 const plural = (n, word) =>
   `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
@@ -107,10 +107,10 @@ export function renderAuthorNotFound(name) {
 
 /** Topics or keywords with counts, the first `limit` of them ("and n more"). */
 // Each chip opens Explore filtered by that topic or keyword (#154)
-const countChips = (all, label, facet, limit = 20) => {
+const countChips = (all, label, facet, limit = 20, hint = null) => {
   if (!all.length) return "";
   const rest = all.length - limit;
-  return html`<h3 class="label-caps">${label}</h3>
+  return html`<h3 class="label-caps" title=${hint}>${label}</h3>
     <ul class="author-chips">
       ${all.slice(0, limit).map((d) => html`<li>${filterChip(facet, d.value, d.count)}</li>`)}
       ${rest > 0 ? html`<li class="muted">and ${rest} more</li>` : ""}
@@ -297,8 +297,8 @@ export function renderAuthorProfile(
     ${anyTimed && !next ? html`<p class="muted">All their presentations are over.</p>` : ""}
     ${
       topicCounts.length || keywords.length
-        ? html`<h2>Topics</h2>
-            ${countChips(topicCounts, "Map topics", "topics")}
+        ? html`<h2>Topics and keywords</h2>
+            ${countChips(topicCounts, "Inferred topics", "topics", 20, INFERRED_TOPIC_HINT)}
             ${countChips(keywords, "Keywords", "keywords")}`
         : ""
     }

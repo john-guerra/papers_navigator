@@ -189,7 +189,7 @@ export function nextPresentation(papers, now, tz) {
   };
 }
 
-/** Map topics (clusters) and keywords of a researcher's papers, with counts (most first). */
+/** Inferred topics (map clusters) and keywords of a researcher's papers, with counts (most first). */
 export function topics(papers) {
   const clusters = new Map();
   const keywords = new Map();

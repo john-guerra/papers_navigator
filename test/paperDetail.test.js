@@ -183,6 +183,9 @@ describe("paper details: topic and keywords (#154)", () => {
       "Maps",
     ]);
     expect(links[0].getAttribute("href")).toBe("./#q=&type=&topic=maps%2C+geo");
+    const label = el.querySelector(".paper-detail-topics-label");
+    expect(label.textContent).toBe("Inferred topic"); // #156
+    expect(label.title).toMatch(/inferred from the abstracts/i);
     expect(links[1].getAttribute("href")).toBe("./#q=&type=&kw=Color");
   });
 
