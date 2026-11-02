@@ -1,4 +1,4 @@
-// Phone split screen (#144): the map section sticks under the nav and the list scrolls below.
+// Split screen (#144, #158; stacked layouts tall enough): the map section sticks under the nav and the list scrolls below.
 // Until it sticks the map's controls row (Color by, labels) stays under the map, so the map starts
 // high; once stuck (`map-stuck` on the layout) the row moves above the map and the section shifts
 // up by its height with a transform, so the row hides under the nav, the map doesn't move and the

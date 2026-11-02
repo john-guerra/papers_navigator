@@ -51,7 +51,7 @@ import { startExploreUrl } from "./components/exploreUrl.js";
 import { PHONE_QUERY, SPLIT_MIN_HEIGHT, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
 import { watchSplitMap } from "./lib/splitLayout.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
-import { controlsHeight, mapSize, watchPhoneSplit, watchStickyViewport } from "./lib/mapSize.js";
+import { controlsHeight, mapSize, watchSplitScreen, watchStickyViewport } from "./lib/mapSize.js";
 import { stickyListHeader } from "./lib/stickyList.js";
 import { conferenceZone } from "./lib/time.js";
 // Explicit, so the page uses the same d3 as the widgets (node_modules) instead of a second copy
@@ -592,8 +592,9 @@ const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // controls' height is read when the map is built anyway (below), never watched: a chip appearing
 // mid-drag must not rebuild the map and drop the brush (#143 review)
 const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
-// Phones tall enough (#144): the map sticks in the top half, the list scrolls below (null otherwise)
-const phoneSplit = Generators.observe((notify) => watchPhoneSplit(notify, { query: PHONE_QUERY, minHeight: SPLIT_MIN_HEIGHT }));
+// Stacked layouts tall enough (#144, #158): the map sticks in the top half, the list scrolls below.
+// The height the nav (and the phone tab bar) leave, or null where it doesn't split
+const splitRoom = Generators.observe((notify) => watchSplitScreen(notify, { query: STACKED_QUERY, tabBarQuery: PHONE_QUERY, minHeight: SPLIT_MIN_HEIGHT }));
 const scrollToPaper = (id) => {
   const row = document.querySelector(".explore-list .papers-list")?.showThrough?.(id);
   if (!row?.isConnected) return;
@@ -645,7 +646,7 @@ const positioned = withReliability(withLiveClusters(applyProjection(filtered, al
 const everyPaper = applyProjection(papers, aligned).papers;
 mapState.everyPaper = everyPaper;
 // Side column (#142): with the controls (search, facets, relevance) when both fit, else the map alone
-const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")), splitHeight: phoneSplit });
+const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")), splitRoom });
 layout.classList.toggle("side-fits", Boolean(sideFits));
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared
@@ -755,10 +756,10 @@ const showQueryMarker = Generators.input(queryMarkerStore);
 
 ```js
 // Nearest neighbours (#102): the card lists the pinned paper's neighbours, floating over the
-// sticky map's corner on desktop (#114) and in the phone split (#144), else under the map
+// sticky map's corner on desktop (#114) and in the split screen (#144), else under the map
 const neighboursCard = neighboursPanel({
-  // Floating over the map wherever the map stays in view: desktop, and the phone split (#144)
-  floating: ((desktop) => ({ get matches() { return desktop.matches || layout.classList.contains("phone-split"); }, addEventListener: (type, f) => desktop.addEventListener(type, f) }))(matchMedia(TWO_COLUMN_QUERY)),
+  // Floating over the map wherever the map stays in view: desktop, and the split screen (#144)
+  floating: ((desktop) => ({ get matches() { return desktop.matches || layout.classList.contains("split-screen"); }, addEventListener: (type, f) => desktop.addEventListener(type, f) }))(matchMedia(TWO_COLUMN_QUERY)),
   paperOf: (id) => papers.find((p) => p.id === id),
   href: (p) => paperRoute.href(p.shortId ?? p.id),
   onOpen: (p) => openPaper(p.shortId ?? p.id),
@@ -956,11 +957,11 @@ listHeader.refresh();
 ```
 
 ```js
-// Phone split (#144): the heights the sticky map section and the list header need, re-measured
-// with each map
+// Split screen (#144, #158): the heights the sticky map section and the list header need,
+// re-measured with each map
 mapInput;
-layout.classList.toggle("phone-split", phoneSplit != null);
-if (phoneSplit != null) {
+layout.classList.toggle("split-screen", splitRoom != null);
+if (splitRoom != null) {
   const stop = watchSplitMap(document.getElementById("explore-map"), { layout, nav: () => document.getElementById("observablehq-header")?.getBoundingClientRect().bottom ?? 0 });
   invalidation.then(stop);
 }
@@ -969,7 +970,7 @@ if (phoneSplit != null) {
 ```js
 // Brushing and linking (#136): scrolling or pointing at the list rings that paper on the map.
 // Pointing at a row also previews its neighbours (#140).
-// Wherever the map stays in view beside or above the list: desktop and the phone split (#144)
+// Wherever the map stays in view beside or above the list: desktop and the split screen (#144)
 {
   const list = document.querySelector(".explore-list");
   const mark = (id) => {
@@ -995,10 +996,10 @@ if (phoneSplit != null) {
       mapInput.previewNeighbours(keyboardRow ?? null);
     }
   }, {
-    // Wherever the map stays beside or above the list: desktop, and the phone split (#144), whose
-    // reading line sits in the list's half
-    enabled: () => !matchesMedia(STACKED_QUERY) || (layout.classList.contains("phone-split") && !layout.classList.contains("hide-map")),
-    line: () => (layout.classList.contains("phone-split") ? 0.72 : 0.4),
+    // Wherever the map stays beside or above the list: desktop, and the split screen (#144, #158),
+    // whose reading line sits in the list's half. "Hide map" only hides it on phones
+    enabled: () => !matchesMedia(STACKED_QUERY) || (layout.classList.contains("split-screen") && !(layout.classList.contains("hide-map") && matchesMedia(PHONE_QUERY))),
+    line: () => (layout.classList.contains("split-screen") ? 0.72 : 0.4),
     start: listFocusState.active,
   });
   if (!listFocusState.active) mark(null);
