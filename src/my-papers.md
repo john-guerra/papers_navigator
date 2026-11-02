@@ -379,8 +379,9 @@ invalidation.then(arrangeMyPapers(document.querySelector(".my-papers-layout")));
 invalidation.then(
   collapsibleSections(document.querySelector(".my-papers-layout"), {
     sections: [
-      { name: "watching", count: ".watching-rule" },
-      { name: "recommended", count: ".recommended-paper" },
+      { name: "watching", count: (el) => el.querySelectorAll(".watching-rule").length, unit: ["watch", "watches"] },
+      // no count: nearly every paper gets ranked (Show more pages through them), so it says nothing
+      { name: "recommended" },
     ],
   }),
 );

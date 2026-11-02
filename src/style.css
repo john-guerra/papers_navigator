@@ -319,6 +319,7 @@ details.lede > p {
 
 #observablehq-main details > summary::before {
   content: "›";
+  content: "›" / ""; /* empty alt text: screen readers skip the chevron */
   display: inline-block;
   width: 1em;
   color: var(--color-on-surface-muted);
@@ -1350,11 +1351,13 @@ a.navbar-brand {
   color: inherit;
   font: inherit;
   text-align: left;
+  white-space: normal;
   cursor: pointer;
 }
 
 #observablehq-main h2 > .section-toggle::before {
   content: "›";
+  content: "›" / ""; /* empty alt text: screen readers skip the chevron */
   display: inline-block;
   width: 1em;
   color: var(--color-on-surface-muted);

@@ -7,8 +7,9 @@ import { STACKED_QUERY } from "../lib/breakpoints.js";
  * collapsed; what the reader opens is remembered on this device (OPEN_SECTIONS_KEY). Desktop's
  * side column shows everything: no buttons there.
  *
- * `sections` are {name, count}: the `.mp-<name>` block inside `layout` and a selector for what
- * the heading counts. The state lives on the block (`is-collapsed`, style.css hides all but the
+ * `sections` are {name, count, unit}: the `.mp-<name>` block inside `layout`, `count(block)`
+ * (a number, or null for none, the default: no number at all) and the count's
+ * [singular, plural] word, which only screen readers hear ("Watching (2 watches)"). The state lives on the block (`is-collapsed`, style.css hides all but the
  * heading), which the page never re-renders, while the heading itself can be re-rendered (the
  * Watching component draws its own): a MutationObserver puts the button back and keeps the count
  * current. Returns a function that removes the buttons and stops listening.
@@ -48,7 +49,23 @@ export function collapsibleSections(
   // button, so it waits here while the heading is a button and gets its text back on desktop
   const anchors = new WeakMap();
 
-  const enhance = ({ name, count }) => {
+  const setCount = (badge, n, [one, many]) => {
+    const key = n == null ? "" : String(n);
+    if (badge.dataset.n === key) return;
+    badge.dataset.n = key;
+    badge.replaceChildren();
+    if (n == null) return;
+    const visible = doc.createElement("span");
+    visible.setAttribute("aria-hidden", "true");
+    visible.textContent = key;
+    const spoken = doc.createElement("span");
+    spoken.className = "sr-only";
+    spoken.textContent = ` (${n} ${n === 1 ? one : many})`;
+    badge.append(visible, spoken);
+  };
+
+  const enhance = (section) => {
+    const { name, count = () => null, unit = ["", ""] } = section;
     const el = block(name);
     const heading = el?.querySelector("h2");
     if (!heading) return;
@@ -75,25 +92,30 @@ export function collapsibleSections(
         if (open.has(name)) open.delete(name);
         else open.add(name);
         save();
-        enhance({ name, count });
+        enhance(section);
       });
     }
     button.setAttribute("aria-expanded", String(expanded));
-    const badge = button.querySelector(".section-count");
-    const n = String(el.querySelectorAll(count).length);
-    if (badge.textContent !== n) badge.textContent = n;
+    setCount(button.querySelector(".section-count"), count(el), unit);
   };
 
   const plain = ({ name }) => {
     const el = block(name);
     el?.classList.remove("is-collapsed");
     for (const button of el?.querySelectorAll("h2 > .section-toggle") ?? []) {
+      const heading = button.parentElement;
+      const focused = doc.activeElement === button;
       button.querySelector(".section-count")?.remove();
       const anchor = anchors.get(button);
       if (anchor) {
         anchor.append(...button.childNodes);
         button.replaceWith(anchor);
       } else button.replaceWith(...button.childNodes);
+      // Crossing the breakpoint with the toggle focused (a tablet turned): keep the keyboard here
+      if (focused) {
+        if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
     }
   };
 
@@ -108,7 +130,12 @@ export function collapsibleSections(
     : null;
   for (const { name } of sections) {
     const el = block(name);
-    if (el) observer?.observe(el, { childList: true, subtree: true });
+    if (el)
+      observer?.observe(el, {
+        childList: true,
+        subtree: true,
+        attributeFilter: ["data-count"],
+      });
   }
   apply();
   media?.addEventListener?.("change", apply);

@@ -32,8 +32,20 @@ function memoryStorage(initial = {}) {
 }
 
 const SECTIONS = [
-  { name: "watching", count: ".watching-rule" },
-  { name: "recommended", count: ".recommended-paper" },
+  {
+    name: "watching",
+    count: (el) => el.querySelectorAll(".watching-rule").length,
+    unit: ["watch", "watches"],
+  },
+  {
+    name: "recommended",
+    // the page's own count; empty while loading or after an error
+    count: (el) => {
+      const value = el.querySelector("[data-count]")?.dataset.count;
+      return value ? Number(value) : null;
+    },
+    unit: ["paper", "papers"],
+  },
 ];
 
 const toggle = (name) => document.querySelector(`.mp-${name} h2 button`);
@@ -46,7 +58,7 @@ beforeEach(() => {
     <div class="mp-watching"><span><section class="watching"><h2>Watching</h2>
       <ul><li class="watching-rule">A</li><li class="watching-rule">B</li></ul></section></span></div>
     <div class="mp-recommended"><h2 id="rec">Recommended papers</h2>
-      <div><ol><li class="recommended-paper">1</li></ol></div></div>
+      <div data-count="12"><ol><li class="recommended-paper">1</li></ol></div></div>
     <div class="mp-list"><h2>All my papers</h2></div>
   </div>`;
   layout = document.querySelector(".my-papers-layout");
@@ -68,7 +80,9 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
       );
     }
     expect(toggle("watching").textContent).toMatch(/Watching\s*2/);
-    expect(toggle("recommended").textContent).toMatch(/Recommended papers\s*1/);
+    expect(toggle("recommended").textContent).toMatch(
+      /Recommended papers\s*12/,
+    );
     // the heading stays a heading with its id
     expect(document.getElementById("rec").tagName).toBe("H2");
     expect(document.querySelector(".mp-list h2 button")).toBeNull();
@@ -144,10 +158,15 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
     await flush();
     expect(toggle("watching").getAttribute("aria-expanded")).toBe("true");
     expect(toggle("watching").textContent).toMatch(/Watching\s*1/);
-    layout.querySelector(".mp-recommended ol").innerHTML =
-      `<li class="recommended-paper">1</li><li class="recommended-paper">2</li><li class="recommended-paper">3</li>`;
+    layout.querySelector("[data-count]").dataset.count = "3";
     await flush();
     expect(toggle("recommended").textContent).toMatch(/Recommended papers\s*3/);
+    // loading or failed: no number (not a misleading 0)
+    layout.querySelector("[data-count]").dataset.count = "";
+    await flush();
+    expect(
+      toggle("recommended").querySelector(".section-count").textContent,
+    ).toBe("");
   });
 
   it("takes Framework's heading anchor out of the button (no link inside a button), back on desktop", () => {
@@ -160,11 +179,55 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
       storage: memoryStorage(),
     });
     expect(heading.querySelector("a")).toBeNull();
-    expect(toggle("recommended").textContent).toMatch(/Recommended papers\s*1/);
+    expect(toggle("recommended").textContent).toMatch(
+      /Recommended papers\s*12/,
+    );
     media.set(false);
     expect(heading.innerHTML).toBe(
       `<a class="observablehq-header-anchor" href="#rec">Recommended papers</a>`,
     );
+  });
+
+  it("screen readers hear the count with its unit, not a bare number", () => {
+    const { win } = fakeMedia(true);
+    collapsibleSections(layout, {
+      sections: SECTIONS,
+      win,
+      storage: memoryStorage(),
+    });
+    const count = toggle("watching").querySelector(".section-count");
+    expect(count.querySelector('[aria-hidden="true"]').textContent).toBe("2");
+    expect(count.querySelector(".sr-only").textContent).toBe(" (2 watches)");
+  });
+
+  it("keeps focus on the heading when the focused toggle goes away at the breakpoint", () => {
+    const { media, win } = fakeMedia(true);
+    collapsibleSections(layout, {
+      sections: SECTIONS,
+      win,
+      storage: memoryStorage(),
+    });
+    toggle("watching").focus();
+    media.set(false);
+    expect(document.activeElement).toBe(
+      layout.querySelector(".mp-watching h2"),
+    );
+    media.set(true);
+    toggle("recommended").focus();
+    media.set(false);
+    expect(document.activeElement).toBe(document.getElementById("rec"));
+  });
+
+  it("a section without `count` shows no number", () => {
+    const { win } = fakeMedia(true);
+    collapsibleSections(layout, {
+      sections: [{ name: "recommended" }],
+      win,
+      storage: memoryStorage(),
+    });
+    expect(
+      toggle("recommended").querySelector(".section-count").textContent,
+    ).toBe("");
   });
 
   it("stop() removes the toggles and listeners", () => {
