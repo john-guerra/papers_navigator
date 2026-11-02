@@ -247,7 +247,8 @@ After one visit, My Papers, the itinerary, Now / Next and Researchers keep worki
 **Researchers** in the navbar lists everyone with a paper in the ${conference.name} program.
 
 - Search by name or institution (accents don't matter); click a name for their profile. Author names everywhere in the app link here too.
-- A profile shows **When they present** (with the next talk), their **Topics**, **Co-authors** and **Papers**, with ⚠ when one overlaps something in your list.
+- A profile shows **When they present** (with the next talk), their **Topics and keywords**, **Co-authors** and **Papers**, with ⚠ when one overlaps something in your list.
+- **Inferred topics** are clusters of papers on the map, inferred from the abstracts and labelled automatically; they aren't assigned by the conference. Click a topic or keyword (here or in a paper's details) to see its papers on Explore.
 - **Watch** keeps all their papers in My Papers; **Add N to My Papers** adds the current ones once.
 
 ## Acknowledgments

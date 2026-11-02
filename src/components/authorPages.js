@@ -297,7 +297,7 @@ export function renderAuthorProfile(
     ${anyTimed && !next ? html`<p class="muted">All their presentations are over.</p>` : ""}
     ${
       topicCounts.length || keywords.length
-        ? html`<h2>Topics</h2>
+        ? html`<h2>Topics and keywords</h2>
             ${countChips(topicCounts, "Inferred topics", "topics", 20, INFERRED_TOPIC_HINT)}
             ${countChips(keywords, "Keywords", "keywords")}`
         : ""
