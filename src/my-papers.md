@@ -375,7 +375,8 @@ display(
 ```js
 // Desktop (≥ 1024px): list tools, Watching and Recommended in a side column (#110)
 invalidation.then(arrangeMyPapers(document.querySelector(".my-papers-layout")));
-// One column (< 1024px): Watching and Recommended fold under their headings (#160)
+// One column (< 1024px): Watching and Recommended fold under their headings (#160); style.css
+// has a fold rule per name (#162)
 invalidation.then(
   collapsibleSections(document.querySelector(".my-papers-layout"), {
     sections: [
