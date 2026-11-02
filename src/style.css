@@ -1378,13 +1378,20 @@ a.navbar-brand {
 }
 
 @media (max-width: 1023.98px) {
-  /* everything in the block but its heading (and what holds the heading) */
-  .my-papers-layout .is-collapsed :not(h2, h2 *, :has(h2)) {
+  /* A section not in <html data-open-sections> (written by the head script before the page
+     draws, #162) shows only its heading (and what holds the heading) */
+  :root:not([data-open-sections~="watching"])
+    .mp-watching
+    :not(h2, h2 *, :has(h2)),
+  :root:not([data-open-sections~="recommended"])
+    .mp-recommended
+    :not(h2, h2 *, :has(h2)) {
     display: none;
   }
 
   /* folded headings sit closer together: a short list of what's below */
-  .my-papers-layout .is-collapsed h2 {
+  :root:not([data-open-sections~="watching"]) .mp-watching h2,
+  :root:not([data-open-sections~="recommended"]) .mp-recommended h2 {
     margin-block: var(--spacing-sm) 0;
   }
 }

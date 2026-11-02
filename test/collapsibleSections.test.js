@@ -53,6 +53,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve));
 
 let layout;
 beforeEach(() => {
+  delete document.documentElement.dataset.openSections;
   // Watching's heading is inside its re-rendered component; Recommended's is the page's own
   document.body.innerHTML = `<div class="my-papers-layout">
     <div class="mp-watching"><span><section class="watching"><h2>Watching</h2>
@@ -75,9 +76,6 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
     for (const name of ["watching", "recommended"]) {
       const button = toggle(name);
       expect(button.getAttribute("aria-expanded")).toBe("false");
-      expect(layout.querySelector(`.mp-${name}`).classList).toContain(
-        "is-collapsed",
-      );
     }
     expect(toggle("watching").textContent).toMatch(/Watching\s*2/);
     expect(toggle("recommended").textContent).toMatch(
@@ -88,15 +86,21 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
     expect(document.querySelector(".mp-list h2 button")).toBeNull();
   });
 
+  it("writes the remembered state on <html>, where style.css folds by it", () => {
+    const { win } = fakeMedia(false);
+    const storage = memoryStorage({ [OPEN_SECTIONS_KEY]: '["watching"]' });
+    collapsibleSections(layout, { sections: SECTIONS, win, storage });
+    expect(document.documentElement.dataset.openSections).toBe("watching");
+  });
+
   it("a click opens the section and remembers it on this device", () => {
     const { win } = fakeMedia(true);
     const storage = memoryStorage();
     collapsibleSections(layout, { sections: SECTIONS, win, storage });
     toggle("recommended").click();
     expect(toggle("recommended").getAttribute("aria-expanded")).toBe("true");
-    expect(layout.querySelector(".mp-recommended").classList).not.toContain(
-      "is-collapsed",
-    );
+    // the state style.css folds by, on <html> like the head script writes it (#162)
+    expect(document.documentElement.dataset.openSections).toBe("recommended");
     expect(JSON.parse(storage.getItem(OPEN_SECTIONS_KEY))).toEqual([
       "recommended",
     ]);
@@ -133,7 +137,6 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
       storage: memoryStorage(),
     });
     expect(toggle("watching")).toBeNull();
-    expect(layout.querySelector(".is-collapsed")).toBeNull();
     media.set(true);
     expect(toggle("watching").getAttribute("aria-expanded")).toBe("false");
     media.set(false);
@@ -141,7 +144,6 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
     expect(layout.querySelector(".mp-watching h2").textContent).toBe(
       "Watching",
     );
-    expect(layout.querySelector(".is-collapsed")).toBeNull();
   });
 
   it("a re-rendered section gets its toggle back, keeps its state and updates the count", async () => {
@@ -239,7 +241,6 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
     });
     stop();
     expect(toggle("watching")).toBeNull();
-    expect(layout.querySelector(".is-collapsed")).toBeNull();
     expect(media.listeners.size).toBe(0);
   });
 });

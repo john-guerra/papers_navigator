@@ -31,6 +31,13 @@ export default {
     const theme = localStorage.getItem("papersNavigator:theme");
     if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   } catch (error) {}
+  // My Papers in one column (#160, #162): the sections you opened, so style.css folds the others
+  // from the first paint; src/components/collapsibleSections.js keeps it current
+  document.documentElement.dataset.openSections = "";
+  try {
+    const open = JSON.parse(localStorage.getItem("papersNavigator:openSections") || "[]");
+    if (Array.isArray(open)) document.documentElement.dataset.openSections = open.join(" ");
+  } catch (error) {}
   // Offline after first load (#15): src/sw.js, copied to dist/sw.js by npm run build.
   // Relative URL: the site lives in a subfolder. (No sw.js in npm run dev: it fails quietly.)
   // A page marked data-sw-after-render (Explore, #124) registers it only once its program is on

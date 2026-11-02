@@ -9,10 +9,13 @@ import { STACKED_QUERY } from "../lib/breakpoints.js";
  *
  * `sections` are {name, count, unit}: the `.mp-<name>` block inside `layout`, `count(block)`
  * (a number, or null for none, the default: no number at all) and the count's
- * [singular, plural] word, which only screen readers hear ("Watching (2 watches)"). The state lives on the block (`is-collapsed`, style.css hides all but the
- * heading), which the page never re-renders, while the heading itself can be re-rendered (the
- * Watching component draws its own): a MutationObserver puts the button back and keeps the count
- * current. Returns a function that removes the buttons and stops listening.
+ * [singular, plural] word, which only screen readers hear ("Watching (2 watches)").
+ *
+ * The state lives on `root` (<html>) as `data-open-sections="watching …"`, which style.css folds
+ * by: the head script (observablehq.config.js) writes it from storage before the page draws, so
+ * nothing flashes open or closed while the page's cells run (#162). The heading itself can be
+ * re-rendered (the Watching component draws its own): a MutationObserver puts the button back
+ * and keeps the count current. Returns a function that removes the buttons and stops listening.
  */
 export const OPEN_SECTIONS_KEY = "papersNavigator:openSections";
 
@@ -32,12 +35,15 @@ export function collapsibleSections(
     query = STACKED_QUERY,
     win = globalThis,
     storage = globalThis.localStorage,
+    root = layout.ownerDocument.documentElement,
   },
 ) {
   const doc = layout.ownerDocument;
   const media = win.matchMedia?.(query);
   const open = readOpen(storage);
+  const publish = () => (root.dataset.openSections = [...open].join(" "));
   const save = () => {
+    publish();
     try {
       storage?.setItem(OPEN_SECTIONS_KEY, JSON.stringify([...open]));
     } catch {
@@ -70,7 +76,6 @@ export function collapsibleSections(
     const heading = el?.querySelector("h2");
     if (!heading) return;
     const expanded = open.has(name);
-    el.classList.toggle("is-collapsed", !expanded);
     let button = heading.querySelector(":scope > .section-toggle");
     if (!button) {
       button = doc.createElement("button");
@@ -101,7 +106,6 @@ export function collapsibleSections(
 
   const plain = ({ name }) => {
     const el = block(name);
-    el?.classList.remove("is-collapsed");
     for (const button of el?.querySelectorAll("h2 > .section-toggle") ?? []) {
       const heading = button.parentElement;
       const focused = doc.activeElement === button;
@@ -137,6 +141,7 @@ export function collapsibleSections(
         attributeFilter: ["data-count"],
       });
   }
+  publish();
   apply();
   media?.addEventListener?.("change", apply);
   return () => {
