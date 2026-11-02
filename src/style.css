@@ -1389,10 +1389,20 @@ a.navbar-brand {
     display: none;
   }
 
-  /* folded headings sit closer together: a short list of what's below */
+  /* folded headings sit closer together: a short list of what's below. They take the toggle's
+     44px before it exists, and Watching keeps that room before its component draws, so nothing
+     below jumps when the page's cells run (#163 review). Section names: src/my-papers.md */
   :root:not([data-open-sections~="watching"]) .mp-watching h2,
   :root:not([data-open-sections~="recommended"]) .mp-recommended h2 {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
     margin-block: var(--spacing-sm) 0;
+  }
+
+  :root:not([data-open-sections~="watching"]) .mp-watching {
+    min-height: 44px;
+    margin-top: var(--spacing-sm);
   }
 }
 

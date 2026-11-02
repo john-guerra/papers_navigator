@@ -15,7 +15,12 @@ import { STACKED_QUERY } from "../lib/breakpoints.js";
  * by: the head script (observablehq.config.js) writes it from storage before the page draws, so
  * nothing flashes open or closed while the page's cells run (#162). The heading itself can be
  * re-rendered (the Watching component draws its own): a MutationObserver puts the button back
- * and keeps the count current. Returns a function that removes the buttons and stops listening.
+ * and keeps the count current. Returns a function that removes the buttons, unfolds every section
+ * and stops listening. The price of folding before any JS runs: if this module never loads, a
+ * phone shows the folded headings with no way to open them.
+ *
+ * The section names are also written in style.css (one fold rule each);
+ * test/openSectionsHead.test.js checks that the two lists agree.
  */
 export const OPEN_SECTIONS_KEY = "papersNavigator:openSections";
 
@@ -148,5 +153,7 @@ export function collapsibleSections(
     media?.removeEventListener?.("change", apply);
     observer?.disconnect();
     sections.forEach(plain);
+    // No buttons left to open them: unfold all (the cell re-running publishes the saved state)
+    root.dataset.openSections = sections.map((d) => d.name).join(" ");
   };
 }

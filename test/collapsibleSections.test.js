@@ -242,5 +242,9 @@ describe("collapsibleSections (#160, My Papers in one column)", () => {
     stop();
     expect(toggle("watching")).toBeNull();
     expect(media.listeners.size).toBe(0);
+    // without buttons nothing could open them again: unfold all
+    expect(document.documentElement.dataset.openSections).toBe(
+      "watching recommended",
+    );
   });
 });
