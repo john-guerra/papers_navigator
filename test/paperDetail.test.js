@@ -163,3 +163,34 @@ describe("renderPaperDetail with related papers still loading (#70)", () => {
     );
   });
 });
+
+describe("paper details: topic and keywords (#154)", () => {
+  it("shows the topic and keywords, each linking to Explore filtered by it", () => {
+    const el = renderPaperDetail(
+      {
+        id: "a",
+        title: "Paper a",
+        authors: [],
+        clusterLabel: "maps, geo",
+        keywords: ["Color", "Maps"],
+      },
+      { inMyPapers: () => false, onToggle: () => {} },
+    );
+    const links = [...el.querySelectorAll(".paper-detail-topics a.chip")];
+    expect(links.map((a) => a.textContent.trim())).toEqual([
+      "maps, geo",
+      "Color",
+      "Maps",
+    ]);
+    expect(links[0].getAttribute("href")).toBe("./#q=&type=&topic=maps%2C+geo");
+    expect(links[1].getAttribute("href")).toBe("./#q=&type=&kw=Color");
+  });
+
+  it("has no topics line without a topic or keywords", () => {
+    const el = renderPaperDetail(
+      { id: "a", title: "Paper a", authors: [] },
+      { inMyPapers: () => false, onToggle: () => {} },
+    );
+    expect(el.querySelector(".paper-detail-topics")).toBeNull();
+  });
+});

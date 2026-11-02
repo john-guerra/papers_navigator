@@ -6,6 +6,7 @@ import {
   createUrlSync,
   decodeExploreState,
   encodeExploreState,
+  exploreFilterHref,
   hashParams,
   withParams,
 } from "../src/lib/urlState.js";
@@ -542,5 +543,25 @@ describe("createUrlSync", () => {
       expect(() => vi.advanceTimersByTime(250)).not.toThrow();
       expect(sync.state).toEqual({ q: "a" });
     });
+  });
+});
+
+describe("exploreFilterHref (#154)", () => {
+  it("links to Explore filtered by one topic or keyword, across all types", () => {
+    const href = exploreFilterHref("keywords", "Color, & light");
+    expect(href.startsWith("./#")).toBe(true);
+    const state = decodeExploreState(new URLSearchParams(href.slice(3)), {
+      ...options,
+      facetValues: {
+        ...options.facetValues,
+        keywords: new Set(["Color, & light"]),
+      },
+    });
+    expect(state.facets.keywords).toEqual(["Color, & light"]);
+    expect(state.facets.types).toEqual([]); // all types, not the Main tracks default
+    expect(state.query).toBe("");
+    expect(exploreFilterHref("topics", "maps, geo")).toBe(
+      "./#q=&type=&topic=maps%2C+geo",
+    );
   });
 });

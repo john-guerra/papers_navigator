@@ -442,6 +442,39 @@ button.unfollow {
   background: var(--color-surface-sunken);
 }
 
+/* A topic or keyword that opens Explore filtered by it (#154); beats the global a[href] */
+a.chip-link[href] {
+  padding: 0 10px;
+  text-decoration: none;
+}
+
+a.chip-link[href]:hover {
+  border-color: var(--color-on-surface-muted);
+  background: var(--color-surface-sunken);
+}
+
+@media (pointer: coarse) {
+  a.chip-link[href] {
+    min-height: var(--spacing-touch);
+  }
+}
+
+.paper-detail-topics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
+}
+
+.paper-detail-topics-label {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-meta);
+}
+
+.paper-detail-topics-label:not(:first-child) {
+  margin-left: var(--spacing-sm);
+}
+
 /* Counts */
 .badge,
 .badge-my-papers {
