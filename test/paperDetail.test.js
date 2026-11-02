@@ -194,3 +194,23 @@ describe("paper details: topic and keywords (#154)", () => {
     expect(el.querySelector(".paper-detail-topics")).toBeNull();
   });
 });
+
+describe("paper details: many keywords (#155 review)", () => {
+  it("shows 10 keywords, then Show all", () => {
+    const keywords = Array.from({ length: 45 }, (_, i) => `K${i}`);
+    const el = renderPaperDetail(
+      { id: "a", title: "Paper a", authors: [], keywords },
+      { inMyPapers: () => false, onToggle: () => {} },
+    );
+    document.body.append(el);
+    const line = el.querySelector(".paper-detail-topics");
+    expect(line.querySelectorAll("a.chip")).toHaveLength(10);
+    const more = line.querySelector(".paper-detail-topics-more");
+    expect(more.textContent.trim()).toBe("Show all 45");
+    more.click();
+    expect(line.querySelectorAll("a.chip")).toHaveLength(45);
+    expect(line.querySelector(".paper-detail-topics-more")).toBeNull();
+    expect(document.activeElement).toBe(line.querySelectorAll("a.chip")[10]);
+    el.remove();
+  });
+});

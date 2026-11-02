@@ -259,6 +259,8 @@ describe("renderAuthorProfile (#78)", () => {
       a.getAttribute("href").endsWith("kw=Color"),
     );
     expect(color.textContent).toContain("Color");
-    expect(color.getAttribute("aria-label")).toMatch(/papers on Explore/);
+    expect(color.getAttribute("aria-label")).toBe(
+      "Keyword “Color” (1 of theirs): show its papers on Explore",
+    );
   });
 });

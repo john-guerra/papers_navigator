@@ -10,7 +10,7 @@ import {
 /**
  * Explore's view in the URL fragment (#92), read once at load. Returns `start` (the decoded state, with
  * this conference's defaults for anything absent or invalid), `explicitQuery` (the link names a
- * search, which takes over from "My research") and `sync` (urlState's createUrlSync: pages call
+ * search, or no search when followed, which takes over from "My research") and `sync` (urlState's createUrlSync: pages call
  * `sync.update(patch)` when the view changes). Facet values a link names must exist in this
  * program; projections and Color by must be ones this conference has.
  */
@@ -52,5 +52,13 @@ export function startExploreUrl({
     encode: (state) => encodeExploreState(state, defaults),
     state: start,
   });
-  return { start, explicitQuery: Boolean(params.get("q")?.trim()), sync };
+  // A followed link with an empty q says "no search" (#154's topic/keyword links): it takes over
+  // from My research too. Not a reload or Back/Forward: the page writes q= itself once the search
+  // is cleared, and that must keep My research (#155 review)
+  const navigation =
+    win?.performance?.getEntriesByType?.("navigation")?.[0]?.type;
+  const explicitQuery =
+    Boolean(params.get("q")?.trim()) ||
+    (params.has("q") && navigation === "navigate");
+  return { start, explicitQuery, sync };
 }

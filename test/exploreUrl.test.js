@@ -91,6 +91,20 @@ describe("startExploreUrl (#92)", () => {
     expect(start("#q=").explicitQuery).toBe(false);
   });
 
+  it("counts a followed link that says no search, not a reload of one (#155 review)", () => {
+    const withNavigation = (hash, type) => {
+      const win = fakeWindow(hash);
+      win.performance = { getEntriesByType: () => [{ type }] };
+      return start(hash, { win }).explicitQuery;
+    };
+    // A topic/keyword link: "no search", and My research must not cut its papers
+    expect(withNavigation("#q=&type=&kw=LLM", "navigate")).toBe(true);
+    // The page writes q= itself when the search is cleared: a reload or Back keeps My research
+    expect(withNavigation("#q=&type=&kw=LLM", "reload")).toBe(false);
+    expect(withNavigation("#q=", "back_forward")).toBe(false);
+    expect(withNavigation("#type=&kw=LLM", "navigate")).toBe(false);
+  });
+
   it("writes back only what differs from the defaults", () => {
     const { sync } = start("");
     sync.update({ query: "LLM agents" });
