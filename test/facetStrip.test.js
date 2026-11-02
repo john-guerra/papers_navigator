@@ -222,6 +222,23 @@ describe("facetStrip popover", () => {
     );
   });
 
+  it("closePopover() closes the open popover, but not one in the open phone sheet (#159 review)", () => {
+    const widget = make();
+    const popover = open(widget, "type");
+    widget.closePopover();
+    expect(popover.hidden).toBe(true);
+    expect(
+      facetEl(widget, "type")
+        .querySelector(".fs-button")
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+    widget.closePopover(); // nothing open: no-op
+    widget.querySelector(".fs-sheet-toggle").click();
+    const inSheet = open(widget, "author");
+    widget.closePopover();
+    expect(inSheet.hidden).toBe(false);
+  });
+
   it("supports the listbox keyboard pattern: arrows, Enter, Escape", () => {
     const widget = make();
     const popover = open(widget, "author");

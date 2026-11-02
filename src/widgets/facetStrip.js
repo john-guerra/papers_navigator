@@ -336,6 +336,12 @@ export function facetStrip(
     if (event.target === root) render();
   });
 
+  // Closes an open popover, e.g. when the split screen's map sticks and the strip scrolls away
+  // (#159 review); one inside the open phone sheet stays, since the sheet stays in view
+  root.closePopover = () => {
+    if (!root.classList.contains("fs-sheet-open")) setOpen(null);
+  };
+
   Object.defineProperty(root, "value", {
     get: () => state,
     set: (v) => {

@@ -77,4 +77,30 @@ describe("watchSplitMap (#144)", () => {
     stop();
     layout.remove();
   });
+
+  it("calls onStuck each time the map becomes stuck, not while it stays stuck (#159 review)", () => {
+    const { layout, section, scrollTo } = fakeLayout();
+    let stuck = 0;
+    const stop = watchSplitMap(section, {
+      layout,
+      nav: () => 56,
+      root: document.createElement("div"),
+      frame: (cb) => cb(),
+      ResizeObserver: null,
+      onStuck: () => stuck++,
+    });
+    expect(stuck).toBe(0);
+    scrollTo(444);
+    window.dispatchEvent(new Event("scroll"));
+    scrollTo(500);
+    window.dispatchEvent(new Event("scroll"));
+    expect(stuck).toBe(1);
+    scrollTo(400);
+    window.dispatchEvent(new Event("scroll"));
+    scrollTo(444);
+    window.dispatchEvent(new Event("scroll"));
+    expect(stuck).toBe(2);
+    stop();
+    layout.remove();
+  });
 });

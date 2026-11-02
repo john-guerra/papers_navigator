@@ -1,4 +1,4 @@
-// Phone split screen (#144): the map section sticks under the nav and the list scrolls below.
+// Split screen (#144, #158; stacked layouts tall enough): the map section sticks under the nav and the list scrolls below.
 // Until it sticks the map's controls row (Color by, labels) stays under the map, so the map starts
 // high; once stuck (`map-stuck` on the layout) the row moves above the map and the section shifts
 // up by its height with a transform, so the row hides under the nav, the map doesn't move and the
@@ -8,13 +8,14 @@
  * Publishes `--map-controls-height` (the row) and `--split-map-height` (the stuck map without it)
  * for `section`, and toggles `map-stuck` on `layout` as the page scrolls: stuck once the section's
  * place in the flow (right after the element before it, plus the grid's row gap) reaches the nav
- * (`nav()`, px). Returns a function that stops.
+ * (`nav()`, px), calling `onStuck` each time it becomes stuck. Returns a function that stops.
  */
 export function watchSplitMap(
   section,
   {
     layout = section.parentElement,
     nav = () => 0,
+    onStuck = () => {},
     root = globalThis.document?.documentElement,
     win = globalThis,
     frame = (cb) => requestAnimationFrame(cb),
@@ -46,7 +47,10 @@ export function watchSplitMap(
     const flowTop = before
       ? before.getBoundingClientRect().bottom + gap
       : Infinity;
-    layout.classList.toggle("map-stuck", flowTop <= nav() + 0.5);
+    const stuck = flowTop <= nav() + 0.5;
+    const was = layout.classList.contains("map-stuck");
+    layout.classList.toggle("map-stuck", stuck);
+    if (stuck && !was) onStuck();
   };
   const schedule = () => {
     if (pending) return;

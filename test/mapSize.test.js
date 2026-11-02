@@ -106,7 +106,7 @@ describe("watchStickyViewport", () => {
     return {
       query,
       innerHeight: 900,
-      matchMedia: () => query,
+      matchMedia: (q) => (q === RESIZE_QUERY ? touch : query),
       addEventListener: (type, f) => listeners.add(f),
       removeEventListener: (type, f) => listeners.delete(f),
       resize() {
@@ -141,70 +141,192 @@ describe("watchStickyViewport", () => {
   });
 });
 
-describe("phone split screen (#144)", () => {
-  it("gives the map 45% of what the nav and tab bar leave, 220–420px", async () => {
-    const { splitMapHeight, SPLIT_CHROME } =
+// The query that lets a resize re-decide the split (#159 review): a touch device never matches it
+const RESIZE_QUERY = "(hover: hover) and (pointer: fine)";
+const touch = Object.assign(new EventTarget(), { matches: false });
+
+describe("split screen (#144, #158)", () => {
+  it("gives the map 45% of what the nav (and the phone tab bar) leave, 220–420px on phones", async () => {
+    const { splitMapHeight, splitRoom, SPLIT_NAV, SPLIT_TAB_BAR } =
       await import("../src/lib/mapSize.js");
-    expect(mapSize(380, { splitHeight: 860 })).toEqual([
-      360,
-      Math.round((860 - SPLIT_CHROME) * 0.45),
+    expect(SPLIT_NAV).toBe(56);
+    expect(SPLIT_TAB_BAR).toBe(56);
+    expect(splitRoom(860, { tabBar: true })).toBe(860 - 112);
+    expect(splitRoom(1000, { tabBar: false })).toBe(1000 - 56);
+    // phones: unchanged from #144 (860 tall → 45% of 748)
+    expect(mapSize(400, { splitRoom: 748 })).toEqual([
+      380,
+      Math.round(748 * 0.45),
     ]);
-    expect(splitMapHeight(600)).toBe(220);
-    expect(splitMapHeight(2000)).toBe(420);
+    expect(splitMapHeight(488, 400)).toBe(220);
+    expect(splitMapHeight(2000, 400)).toBe(420);
   });
 
-  it("reads the height when the split starts or the phone turns, never on resize", async () => {
+  it("lets a wider window's map grow up to the stacked map's own height (#158)", async () => {
+    const { splitMapHeight } = await import("../src/lib/mapSize.js");
+    // 820×1180 (iPad): 45% of 1124, under 3/4 of the width
+    expect(splitMapHeight(1124, 820)).toBe(Math.round(1124 * 0.45));
+    // never taller than the stacked map (3/4 of the width, at most 620)
+    expect(splitMapHeight(2000, 700)).toBe(525);
+    expect(splitMapHeight(3000, 1000)).toBe(620);
+    // short rooms still get 220
+    expect(splitMapHeight(400, 900)).toBe(220);
+  });
+
+  it("on touch devices reads the height when the split starts or the phone turns, never on resize", async () => {
     vi.useFakeTimers();
-    const { watchPhoneSplit } = await import("../src/lib/mapSize.js");
+    const { watchSplitScreen } = await import("../src/lib/mapSize.js");
     const query = Object.assign(new EventTarget(), { matches: true });
     const win = Object.assign(new EventTarget(), {
       innerHeight: 860,
-      matchMedia: () => query,
+      matchMedia: (q) => (q === RESIZE_QUERY ? touch : query),
     });
     const seen = [];
-    const stop = watchPhoneSplit((v) => seen.push(v), { query: "q", win });
-    expect(seen).toEqual([860]);
+    const stop = watchSplitScreen((v) => seen.push(v), { query: "q", win });
+    expect(seen).toEqual([860 - 56]);
     win.innerHeight = 700; // toolbar or keyboard
     win.dispatchEvent(new Event("resize"));
-    expect(seen).toEqual([860]);
+    expect(seen).toEqual([804]);
     win.dispatchEvent(new Event("orientationchange"));
-    expect(seen).toEqual([860, 700]);
+    expect(seen).toEqual([804, 644]);
     vi.advanceTimersByTime(1000); // a turn with no resize after it
     query.matches = false;
     query.dispatchEvent(new Event("change"));
-    expect(seen).toEqual([860, 700, null]);
-    // a phone too short (landscape) doesn't split, and a keyboard never switches it (#145 review)
+    expect(seen).toEqual([804, 644, null]);
+    // a window too short (landscape) doesn't split, and a keyboard never switches it (#145 review)
     query.matches = true;
     win.innerHeight = 400;
     query.dispatchEvent(new Event("change"));
-    expect(seen).toEqual([860, 700, null]);
+    expect(seen).toEqual([804, 644, null]);
     win.innerHeight = 860;
     win.dispatchEvent(new Event("resize"));
-    expect(seen).toEqual([860, 700, null]);
+    expect(seen).toEqual([804, 644, null]);
     win.dispatchEvent(new Event("orientationchange"));
-    expect(seen).toEqual([860, 700, null, 860]);
+    expect(seen).toEqual([804, 644, null, 804]);
     stop();
     vi.useRealTimers();
   });
 
+  it("leaves room for the phone tab bar only while it shows, and follows it across 640px (#158)", async () => {
+    const { watchSplitScreen } = await import("../src/lib/mapSize.js");
+    const stacked = Object.assign(new EventTarget(), { matches: true });
+    const phone = Object.assign(new EventTarget(), { matches: true });
+    const win = Object.assign(new EventTarget(), {
+      innerHeight: 1000,
+      matchMedia: (q) =>
+        q === "phone" ? phone : q === RESIZE_QUERY ? touch : stacked,
+    });
+    const seen = [];
+    const stop = watchSplitScreen((v) => seen.push(v), {
+      query: "stacked",
+      tabBarQuery: "phone",
+      win,
+    });
+    expect(seen).toEqual([1000 - 112]);
+    phone.matches = false; // widened past 640: no tab bar
+    phone.dispatchEvent(new Event("change"));
+    expect(seen).toEqual([888, 944]);
+    stacked.matches = false; // desktop: no split
+    stacked.dispatchEvent(new Event("change"));
+    expect(seen).toEqual([888, 944, null]);
+    stop();
+    phone.matches = true;
+    phone.dispatchEvent(new Event("change"));
+    expect(seen).toEqual([888, 944, null]);
+  });
+
   it("reads the height again on the first resize after a turn: iOS turns before resizing (#146)", async () => {
-    const { watchPhoneSplit } = await import("../src/lib/mapSize.js");
+    const { watchSplitScreen } = await import("../src/lib/mapSize.js");
     const query = Object.assign(new EventTarget(), { matches: true });
     const win = Object.assign(new EventTarget(), {
       innerHeight: 860,
-      matchMedia: () => query,
+      matchMedia: (q) => (q === RESIZE_QUERY ? touch : query),
     });
     const seen = [];
-    const stop = watchPhoneSplit((v) => seen.push(v), { query: "q", win });
+    const stop = watchSplitScreen((v) => seen.push(v), { query: "q", win });
     win.dispatchEvent(new Event("orientationchange")); // innerHeight still the old one
-    expect(seen).toEqual([860]);
+    expect(seen).toEqual([804]);
     win.innerHeight = 380;
     win.dispatchEvent(new Event("resize"));
-    expect(seen).toEqual([860, null]);
+    expect(seen).toEqual([804, null]);
     // only that one resize: the toolbar later still never switches it
     win.innerHeight = 860;
     win.dispatchEvent(new Event("resize"));
-    expect(seen).toEqual([860, null]);
+    expect(seen).toEqual([804, null]);
+    stop();
+  });
+
+  it("on desktop (fine pointer, hover) re-decides on resize, debounced (#159 review)", async () => {
+    const { watchSplitScreen } = await import("../src/lib/mapSize.js");
+    const stacked = Object.assign(new EventTarget(), { matches: true });
+    const fine = Object.assign(new EventTarget(), { matches: true });
+    const win = Object.assign(new EventTarget(), {
+      innerHeight: 1000,
+      matchMedia: (q) => (q === RESIZE_QUERY ? fine : stacked),
+    });
+    const timers = new Map();
+    let next = 0;
+    const setTimer = (f, ms) => {
+      timers.set(++next, { f, ms });
+      return next;
+    };
+    const clearTimer = (id) => timers.delete(id);
+    const flush = () => {
+      const pending = [...timers.values()];
+      timers.clear();
+      for (const t of pending) t.f();
+    };
+    const seen = [];
+    const stop = watchSplitScreen((v) => seen.push(v), {
+      query: "q",
+      win,
+      setTimer,
+      clearTimer,
+    });
+    expect(seen).toEqual([944]);
+    win.innerHeight = 700;
+    win.dispatchEvent(new Event("resize"));
+    win.innerHeight = 500; // the window shrinks: too short to split
+    win.dispatchEvent(new Event("resize"));
+    expect(seen).toEqual([944]); // debounced: nothing yet
+    expect(timers.size).toBe(1);
+    expect([...timers.values()][0].ms).toBeGreaterThanOrEqual(150);
+    flush();
+    expect(seen).toEqual([944, null]);
+    win.innerHeight = 1000; // grows back
+    win.dispatchEvent(new Event("resize"));
+    flush();
+    expect(seen).toEqual([944, null, 944]);
+    // a pending re-decision and the listener go with stop()
+    win.dispatchEvent(new Event("resize"));
+    expect(timers.size).toBe(1);
+    stop();
+    expect(timers.size).toBe(0);
+    win.innerHeight = 500;
+    win.dispatchEvent(new Event("resize"));
+    expect(timers.size).toBe(0);
+    expect(seen).toEqual([944, null, 944]);
+  });
+
+  it("on touch devices a resize schedules nothing (the keyboard must not flip the split)", async () => {
+    const { watchSplitScreen } = await import("../src/lib/mapSize.js");
+    const stacked = Object.assign(new EventTarget(), { matches: true });
+    const win = Object.assign(new EventTarget(), {
+      innerHeight: 860,
+      matchMedia: (q) => (q === RESIZE_QUERY ? touch : stacked),
+    });
+    const timers = [];
+    const seen = [];
+    const stop = watchSplitScreen((v) => seen.push(v), {
+      query: "q",
+      win,
+      setTimer: (f) => timers.push(f),
+      clearTimer: () => {},
+    });
+    win.innerHeight = 400; // keyboard
+    win.dispatchEvent(new Event("resize"));
+    expect(timers).toEqual([]);
+    expect(seen).toEqual([804]);
     stop();
   });
 });

@@ -28,12 +28,12 @@ export function mapSize(
     reserved = MAP_RESERVED_HEIGHT,
     controlsHeight = null,
     fitMin = MAP_FIT_MIN_HEIGHT,
-    splitHeight = null,
+    splitRoom = null,
   } = {},
 ) {
   const w = Math.max(260, width - 20);
-  // Phone split screen (#144): the map takes SPLIT_SHARE of what the nav and tab bar leave
-  if (splitHeight != null) return [w, splitMapHeight(splitHeight)];
+  // Split screen (#144, #158): the map takes SPLIT_SHARE of what the nav (and tab bar) leave
+  if (splitRoom != null) return [w, splitMapHeight(splitRoom, width)];
   let h = Math.min(620, Math.max(320, width * 0.75));
   if (viewportHeight == null) return [w, Math.round(h)];
   if (controlsHeight != null) {
@@ -103,62 +103,110 @@ export function watchStickyViewport(notify, { query, win = globalThis }) {
   return () => win.removeEventListener?.("resize", update);
 }
 
-/** Phone split screen (#144): the nav and the tab bar, then the map's share of the rest. */
-export const SPLIT_CHROME = 112;
+/**
+ * Split screen (#144 phones, #158 every stacked layout): the map sticks under the nav and takes
+ * SPLIT_SHARE of the height the nav, and on phones the bottom tab bar (style.css `.tabbar`, shown
+ * below 640px), leave: the "room".
+ */
+export const SPLIT_NAV = 56;
+export const SPLIT_TAB_BAR = 56;
 export const SPLIT_SHARE = 0.45;
 
-/** The split map's height for a phone `viewportHeight` tall: 45% of the rest, 220–420px. */
-export function splitMapHeight(viewportHeight) {
-  return Math.round(
-    Math.min(420, Math.max(220, (viewportHeight - SPLIT_CHROME) * SPLIT_SHARE)),
-  );
+/** The room the split shares between map and list in a window `viewportHeight` tall. */
+export function splitRoom(viewportHeight, { tabBar = false } = {}) {
+  return viewportHeight - SPLIT_NAV - (tabBar ? SPLIT_TAB_BAR : 0);
+}
+
+/**
+ * The split map's height: 45% of the room, at least 220px and at most 420px, or, on a wider
+ * window, at most the stacked map's own height (3/4 of its width, 620px at most), so a tablet's
+ * map isn't a flat strip while a phone's stays as in #144.
+ */
+export function splitMapHeight(room, width = 0) {
+  const max = Math.max(420, Math.min(620, width * 0.75));
+  return Math.round(Math.min(max, Math.max(220, room * SPLIT_SHARE)));
 }
 
 /** How long after a turn its resize may still come (iOS sends it after orientationchange). */
 export const TURN_RESIZE_MS = 1000;
 
 /**
- * The phone's height for the split screen (#144), or null where it doesn't split (not a phone, or
- * shorter than `minHeight`). Read when the page becomes a phone layout or the phone turns, never
- * on resize: the browser's toolbar changes innerHeight while scrolling and the on-screen keyboard
- * while typing, and neither may switch the split or redraw the map. The one exception is the
- * first resize within a second of a turn, since iOS Safari turns before it resizes (#146).
+ * The split screen's room (#144, #158; `splitRoom`), or null where it doesn't split: not a stacked
+ * layout (`query`), or shorter than `minHeight`. `tabBarQuery` says when the phone tab bar takes
+ * its share. Read when the page becomes a stacked layout, crosses the tab bar's breakpoint or the
+ * device turns, never on resize: the browser's toolbar changes innerHeight while scrolling and the
+ * on-screen keyboard while typing, and neither may switch the split or redraw the map. The one
+ * exception is the first resize within a second of a turn, since iOS Safari turns before it
+ * resizes (#146). Devices with a mouse (`resizeQuery`: fine pointer and hover) have neither, but
+ * their windows get resized, so there a resize re-decides too, `debounce` ms after the last one
+ * (#159 review).
  */
-export function watchPhoneSplit(
+export const SPLIT_RESIZE_QUERY = "(hover: hover) and (pointer: fine)";
+export const SPLIT_RESIZE_DEBOUNCE = 200;
+
+export function watchSplitScreen(
   notify,
-  { query, minHeight = 600, win = globalThis },
+  {
+    query,
+    tabBarQuery = null,
+    minHeight = 600,
+    resizeQuery = SPLIT_RESIZE_QUERY,
+    debounce = SPLIT_RESIZE_DEBOUNCE,
+    win = globalThis,
+    setTimer = (f, ms) => setTimeout(f, ms),
+    clearTimer = (id) => clearTimeout(id),
+  },
 ) {
-  const phone = win.matchMedia?.(query);
+  const stacked = win.matchMedia?.(query);
+  const mouse = resizeQuery ? win.matchMedia?.(resizeQuery) : null;
+  const tabBar = tabBarQuery ? win.matchMedia?.(tabBarQuery) : null;
   let last;
   const update = () => {
     const height = win.innerHeight;
-    const value = phone?.matches && height >= minHeight ? height : null;
+    const value =
+      stacked?.matches && height >= minHeight
+        ? splitRoom(height, { tabBar: !!tabBar?.matches })
+        : null;
     if (value === last) return;
     last = value;
     notify(value);
   };
   let disarm;
+  let settle;
+  const onResize = () => {
+    if (!mouse?.matches) return;
+    clearTimer(settle);
+    settle = setTimer(() => {
+      settle = undefined;
+      update();
+    }, debounce);
+  };
   const afterTurn = () => {
-    clearTimeout(disarm);
+    clearTimer(disarm);
     win.removeEventListener?.("resize", afterTurn);
     update();
   };
   const onTurn = () => {
     update();
-    clearTimeout(disarm);
+    clearTimer(disarm);
     win.addEventListener?.("resize", afterTurn);
-    disarm = setTimeout(
+    disarm = setTimer(
       () => win.removeEventListener?.("resize", afterTurn),
       TURN_RESIZE_MS,
     );
   };
   update();
-  phone?.addEventListener?.("change", update);
+  win.addEventListener?.("resize", onResize);
+  stacked?.addEventListener?.("change", update);
+  tabBar?.addEventListener?.("change", update);
   win.addEventListener?.("orientationchange", onTurn);
   return () => {
-    phone?.removeEventListener?.("change", update);
+    stacked?.removeEventListener?.("change", update);
+    tabBar?.removeEventListener?.("change", update);
     win.removeEventListener?.("orientationchange", onTurn);
     win.removeEventListener?.("resize", afterTurn);
-    clearTimeout(disarm);
+    win.removeEventListener?.("resize", onResize);
+    clearTimer(disarm);
+    clearTimer(settle);
   };
 }
