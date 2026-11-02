@@ -163,3 +163,54 @@ describe("renderPaperDetail with related papers still loading (#70)", () => {
     );
   });
 });
+
+describe("paper details: topic and keywords (#154)", () => {
+  it("shows the topic and keywords, each linking to Explore filtered by it", () => {
+    const el = renderPaperDetail(
+      {
+        id: "a",
+        title: "Paper a",
+        authors: [],
+        clusterLabel: "maps, geo",
+        keywords: ["Color", "Maps"],
+      },
+      { inMyPapers: () => false, onToggle: () => {} },
+    );
+    const links = [...el.querySelectorAll(".paper-detail-topics a.chip")];
+    expect(links.map((a) => a.textContent.trim())).toEqual([
+      "maps, geo",
+      "Color",
+      "Maps",
+    ]);
+    expect(links[0].getAttribute("href")).toBe("./#q=&type=&topic=maps%2C+geo");
+    expect(links[1].getAttribute("href")).toBe("./#q=&type=&kw=Color");
+  });
+
+  it("has no topics line without a topic or keywords", () => {
+    const el = renderPaperDetail(
+      { id: "a", title: "Paper a", authors: [] },
+      { inMyPapers: () => false, onToggle: () => {} },
+    );
+    expect(el.querySelector(".paper-detail-topics")).toBeNull();
+  });
+});
+
+describe("paper details: many keywords (#155 review)", () => {
+  it("shows 10 keywords, then Show all", () => {
+    const keywords = Array.from({ length: 45 }, (_, i) => `K${i}`);
+    const el = renderPaperDetail(
+      { id: "a", title: "Paper a", authors: [], keywords },
+      { inMyPapers: () => false, onToggle: () => {} },
+    );
+    document.body.append(el);
+    const line = el.querySelector(".paper-detail-topics");
+    expect(line.querySelectorAll("a.chip")).toHaveLength(10);
+    const more = line.querySelector(".paper-detail-topics-more");
+    expect(more.textContent.trim()).toBe("Show all 45");
+    more.click();
+    expect(line.querySelectorAll("a.chip")).toHaveLength(45);
+    expect(line.querySelector(".paper-detail-topics-more")).toBeNull();
+    expect(document.activeElement).toBe(line.querySelectorAll("a.chip")[10]);
+    el.remove();
+  });
+});

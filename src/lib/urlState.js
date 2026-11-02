@@ -61,6 +61,21 @@ const sameSet = (a, b) =>
 const round = (v) => String(Math.round(v * 1000) / 1000);
 
 /**
+ * A link to Explore filtered by one facet value (#154; e.g. a topic or keyword on a researcher's
+ * profile or in paper details): no search (an empty `q`, not the conference's default query,
+ * whose relevance cut would hide most of them) and all types, so a workshop's or poster's topic
+ * isn't hidden by the Main tracks default. `base` is Explore's page.
+ */
+export function exploreFilterHref(facet, value, base = "./") {
+  const params = new URLSearchParams([
+    ["q", ""],
+    [FACET_KEYS.types, ""],
+    [FACET_KEYS[facet], value],
+  ]);
+  return `${base}#${params}`;
+}
+
+/**
  * URLSearchParams with only the keys that differ from `defaults`: {query, types, projection,
  * projections (the precomputed ones, the only ones a link can name)}.
  */

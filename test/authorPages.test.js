@@ -241,4 +241,26 @@ describe("renderAuthorProfile (#78)", () => {
     });
     expect(el.querySelector(".author-like-theirs")).toBeNull();
   });
+
+  it("links each map topic and keyword to Explore with it as a filter (#154)", () => {
+    const ann = buildAuthorIndex(papers).find((a) => a.name === "Ann Lee");
+    const el = renderAuthorProfile(ann, {
+      tz,
+      inMyPapers: () => false,
+      onToggle: () => {},
+      onAddAll: () => {},
+      onDetails: () => {},
+    });
+    const links = [...el.querySelectorAll(".author-chips a.chip")];
+    const hrefs = links.map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("./#q=&type=&topic=maps%2C+geo");
+    expect(hrefs).toContain("./#q=&type=&kw=Color");
+    const color = links.find((a) =>
+      a.getAttribute("href").endsWith("kw=Color"),
+    );
+    expect(color.textContent).toContain("Color");
+    expect(color.getAttribute("aria-label")).toBe(
+      "Keyword “Color” (1 of theirs): show its papers on Explore",
+    );
+  });
 });

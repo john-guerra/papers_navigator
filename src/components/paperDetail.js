@@ -2,6 +2,7 @@ import { html } from "htl";
 import { AWARDS, authorsLine, paperWhen } from "../widgets/papersList.js";
 import { authorUrl } from "../lib/authors.js";
 import { followToggles } from "./followToggles.js";
+import { filterChip } from "./filterChips.js";
 
 /**
  * Paper details (#22) with related papers (#23): everything about one paper, its links, the
@@ -121,6 +122,7 @@ export function renderPaperDetail(
       ${authorsLine(paper.authors, authorHref)}
     </p>
     <p class="paper-detail-where">${where}</p>
+    ${topicsLine(paper)}
     <p class="paper-detail-links">
       ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page ↗</a>` : ""}
       ${(paper.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
@@ -149,4 +151,33 @@ export function renderPaperDetail(
     note?.dispose?.();
   };
   return el;
+}
+
+/** Keyword chips shown before "Show all n" (a few papers list 40+). */
+const KEYWORDS_SHOWN = 10;
+
+/** The paper's map topic and keywords (#154), each opening Explore filtered by it. */
+function topicsLine(paper) {
+  const keywords = paper.keywords ?? [];
+  if (!paper.clusterLabel && !keywords.length) return "";
+  const more =
+    keywords.length > KEYWORDS_SHOWN
+      ? html`<button class="btn-text paper-detail-topics-more">
+          Show all ${keywords.length}
+        </button>`
+      : "";
+  const line = html`<p class="paper-detail-topics">
+    ${paper.clusterLabel ? html`<span class="paper-detail-topics-label">Map topic</span> ${filterChip("topics", paper.clusterLabel)}` : ""}
+    ${keywords.length ? html`<span class="paper-detail-topics-label">Keywords</span> ${keywords.slice(0, KEYWORDS_SHOWN).map((k) => filterChip("keywords", k))}` : ""}
+    ${more}
+  </p>`;
+  if (more)
+    more.onclick = () => {
+      const rest = keywords
+        .slice(KEYWORDS_SHOWN)
+        .map((k) => filterChip("keywords", k));
+      more.replaceWith(...rest);
+      rest[0].focus();
+    };
+  return line;
 }
