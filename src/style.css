@@ -319,6 +319,7 @@ details.lede > p {
 
 #observablehq-main details > summary::before {
   content: "›";
+  content: "›" / ""; /* empty alt text: screen readers skip the chevron */
   display: inline-block;
   width: 1em;
   color: var(--color-on-surface-muted);
@@ -1331,6 +1332,60 @@ a.navbar-brand {
 @media (max-width: 1023.98px) {
   .my-papers-layout.has-side {
     display: block;
+  }
+}
+
+/* One column (#160): Watching and Recommended fold under their headings, drawn as headings with
+   the details chevron and a muted count; src/components/collapsibleSections.js adds the buttons
+   below 1024px only */
+#observablehq-main h2 > .section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--spacing-sm);
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+
+#observablehq-main h2 > .section-toggle::before {
+  content: "›";
+  content: "›" / ""; /* empty alt text: screen readers skip the chevron */
+  display: inline-block;
+  width: 1em;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-md);
+  font-size: 1rem;
+  font-style: normal;
+  transition: transform var(--motion-duration) var(--motion-ease);
+}
+
+#observablehq-main h2 > .section-toggle[aria-expanded="true"]::before {
+  transform: rotate(90deg);
+}
+
+#observablehq-main h2 > .section-toggle .section-count {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-md);
+  font-style: normal;
+}
+
+@media (max-width: 1023.98px) {
+  /* everything in the block but its heading (and what holds the heading) */
+  .my-papers-layout .is-collapsed :not(h2, h2 *, :has(h2)) {
+    display: none;
+  }
+
+  /* folded headings sit closer together: a short list of what's below */
+  .my-papers-layout .is-collapsed h2 {
+    margin-block: var(--spacing-sm) 0;
   }
 }
 

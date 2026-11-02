@@ -47,6 +47,10 @@ export const STORAGE_ITEMS = [
     what: "Your nearest neighbours choices (Options → Advanced)",
   },
   {
+    key: "papersNavigator:openSections",
+    what: "Which My Papers sections (Watching, Recommended papers) you opened on a narrow screen",
+  },
+  {
     key: "papersNavigator:paperLabels",
     what: "Whether the map shows paper labels (the toggle under the map)",
   },
