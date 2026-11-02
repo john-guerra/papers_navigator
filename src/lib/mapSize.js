@@ -137,13 +137,28 @@ export const TURN_RESIZE_MS = 1000;
  * device turns, never on resize: the browser's toolbar changes innerHeight while scrolling and the
  * on-screen keyboard while typing, and neither may switch the split or redraw the map. The one
  * exception is the first resize within a second of a turn, since iOS Safari turns before it
- * resizes (#146).
+ * resizes (#146). Devices with a mouse (`resizeQuery`: fine pointer and hover) have neither, but
+ * their windows get resized, so there a resize re-decides too, `debounce` ms after the last one
+ * (#159 review).
  */
+export const SPLIT_RESIZE_QUERY = "(hover: hover) and (pointer: fine)";
+export const SPLIT_RESIZE_DEBOUNCE = 200;
+
 export function watchSplitScreen(
   notify,
-  { query, tabBarQuery = null, minHeight = 600, win = globalThis },
+  {
+    query,
+    tabBarQuery = null,
+    minHeight = 600,
+    resizeQuery = SPLIT_RESIZE_QUERY,
+    debounce = SPLIT_RESIZE_DEBOUNCE,
+    win = globalThis,
+    setTimer = (f, ms) => setTimeout(f, ms),
+    clearTimer = (id) => clearTimeout(id),
+  },
 ) {
   const stacked = win.matchMedia?.(query);
+  const mouse = resizeQuery ? win.matchMedia?.(resizeQuery) : null;
   const tabBar = tabBarQuery ? win.matchMedia?.(tabBarQuery) : null;
   let last;
   const update = () => {
@@ -157,21 +172,31 @@ export function watchSplitScreen(
     notify(value);
   };
   let disarm;
+  let settle;
+  const onResize = () => {
+    if (!mouse?.matches) return;
+    clearTimer(settle);
+    settle = setTimer(() => {
+      settle = undefined;
+      update();
+    }, debounce);
+  };
   const afterTurn = () => {
-    clearTimeout(disarm);
+    clearTimer(disarm);
     win.removeEventListener?.("resize", afterTurn);
     update();
   };
   const onTurn = () => {
     update();
-    clearTimeout(disarm);
+    clearTimer(disarm);
     win.addEventListener?.("resize", afterTurn);
-    disarm = setTimeout(
+    disarm = setTimer(
       () => win.removeEventListener?.("resize", afterTurn),
       TURN_RESIZE_MS,
     );
   };
   update();
+  win.addEventListener?.("resize", onResize);
   stacked?.addEventListener?.("change", update);
   tabBar?.addEventListener?.("change", update);
   win.addEventListener?.("orientationchange", onTurn);
@@ -180,6 +205,8 @@ export function watchSplitScreen(
     tabBar?.removeEventListener?.("change", update);
     win.removeEventListener?.("orientationchange", onTurn);
     win.removeEventListener?.("resize", afterTurn);
-    clearTimeout(disarm);
+    win.removeEventListener?.("resize", onResize);
+    clearTimer(disarm);
+    clearTimer(settle);
   };
 }

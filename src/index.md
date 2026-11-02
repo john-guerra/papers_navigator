@@ -962,7 +962,8 @@ listHeader.refresh();
 mapInput;
 layout.classList.toggle("split-screen", splitRoom != null);
 if (splitRoom != null) {
-  const stop = watchSplitMap(document.getElementById("explore-map"), { layout, nav: () => document.getElementById("observablehq-header")?.getBoundingClientRect().bottom ?? 0 });
+  // A facet popover left open would scroll away with the strip, still focusable (#159 review)
+  const stop = watchSplitMap(document.getElementById("explore-map"), { layout, nav: () => document.getElementById("observablehq-header")?.getBoundingClientRect().bottom ?? 0, onStuck: () => facetsInput.closePopover?.() });
   invalidation.then(stop);
 }
 ```
