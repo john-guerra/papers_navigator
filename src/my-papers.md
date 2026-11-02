@@ -30,6 +30,7 @@ import { bindNoteMarkers } from "./components/noteMarkers.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { arrangeMyPapers } from "./components/myPapersLayout.js";
+import { collapsibleSections } from "./components/collapsibleSections.js";
 import { segmentedControl } from "./widgets/segmentedControl.js";
 import { conferenceZone } from "./lib/time.js";
 import { PHONE_QUERY, matches } from "./lib/breakpoints.js";
@@ -374,6 +375,15 @@ display(
 ```js
 // Desktop (≥ 1024px): list tools, Watching and Recommended in a side column (#110)
 invalidation.then(arrangeMyPapers(document.querySelector(".my-papers-layout")));
+// One column (< 1024px): Watching and Recommended fold under their headings (#160)
+invalidation.then(
+  collapsibleSections(document.querySelector(".my-papers-layout"), {
+    sections: [
+      { name: "watching", count: ".watching-rule" },
+      { name: "recommended", count: ".recommended-paper" },
+    ],
+  }),
+);
 // Notes (#152): the list shows each note; the itinerary marks papers with one ("📝 Note")
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-list"), notesStore, { text: true }));
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-schedule"), notesStore));
