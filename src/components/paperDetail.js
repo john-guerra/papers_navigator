@@ -2,7 +2,7 @@ import { html } from "htl";
 import { AWARDS, authorsLine, paperWhen } from "../widgets/papersList.js";
 import { authorUrl } from "../lib/authors.js";
 import { followToggles } from "./followToggles.js";
-import { filterChip } from "./filterChips.js";
+import { INFERRED_TOPIC_HINT, filterChip } from "./filterChips.js";
 
 /**
  * Paper details (#22) with related papers (#23): everything about one paper, its links, the
@@ -156,7 +156,7 @@ export function renderPaperDetail(
 /** Keyword chips shown before "Show all n" (a few papers list 40+). */
 const KEYWORDS_SHOWN = 10;
 
-/** The paper's map topic and keywords (#154), each opening Explore filtered by it. */
+/** The paper's inferred topic (#156) and keywords (#154), each opening Explore filtered by it. */
 function topicsLine(paper) {
   const keywords = paper.keywords ?? [];
   if (!paper.clusterLabel && !keywords.length) return "";
@@ -167,7 +167,7 @@ function topicsLine(paper) {
         </button>`
       : "";
   const line = html`<p class="paper-detail-topics">
-    ${paper.clusterLabel ? html`<span class="paper-detail-topics-label">Map topic</span> ${filterChip("topics", paper.clusterLabel)}` : ""}
+    ${paper.clusterLabel ? html`<span class="paper-detail-topics-label" title=${INFERRED_TOPIC_HINT}>Inferred topic</span> ${filterChip("topics", paper.clusterLabel)}` : ""}
     ${keywords.length ? html`<span class="paper-detail-topics-label">Keywords</span> ${keywords.slice(0, KEYWORDS_SHOWN).map((k) => filterChip("keywords", k))}` : ""}
     ${more}
   </p>`;

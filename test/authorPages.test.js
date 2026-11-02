@@ -259,6 +259,16 @@ describe("renderAuthorProfile (#78)", () => {
       a.getAttribute("href").endsWith("kw=Color"),
     );
     expect(color.textContent).toContain("Color");
+    // "Inferred topics" (#156): clusters inferred from the abstracts, said in a tooltip
+    const heading = [...el.querySelectorAll("h3")].find((h) =>
+      h.textContent.includes("topics"),
+    );
+    expect(heading.textContent).toBe("Inferred topics");
+    expect(heading.title).toMatch(/inferred from the abstracts/i);
+    const topic = links.find((a) => a.getAttribute("href").includes("topic="));
+    expect(topic.getAttribute("aria-label")).toMatch(
+      /^Inferred topic “maps, geo”/,
+    );
     expect(color.getAttribute("aria-label")).toBe(
       "Keyword “Color” (1 of theirs): show its papers on Explore",
     );
