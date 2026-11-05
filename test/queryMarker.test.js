@@ -283,12 +283,13 @@ describe("query marker through a motion (#82)", () => {
 });
 
 describe("similarity topo map behind the map (#182)", () => {
-  // A dense patch of papers around (1.5, 1.5) scoring 0.5, in a sparser ring scoring 0.3
+  // A dense patch of papers around (1.5, 1.5) scoring 0.5, the middle one 0.55
   const scores = [
     ...Array.from({ length: 25 }, (_, i) => ({
       x: 1.5 + ((i % 5) - 2) * 0.3,
       y: 1.5 + (Math.floor(i / 5) - 2) * 0.3,
-      score: 0.5,
+      // The best paper in its middle
+      score: i === 12 ? 0.55 : 0.5,
     })),
   ];
   const levels = [0.3, 0.35, 0.4, 0.45, 0.5];
@@ -309,15 +310,12 @@ describe("similarity topo map behind the map (#182)", () => {
     expect(paths.length).toBeGreaterThan(1);
     expect(paths.length).toBeLessThanOrEqual(levels.length);
     expect(paths[0].getAttribute("d")).toMatch(/^M.*Z/);
-    expect(paths[0].dataset.level).toBe("0.3");
-    // Labels on 2–3 levels, as whole percents
-    const texts = [...layer.querySelectorAll("text.query-level-label")].map(
-      (t) => t.textContent,
+    // Stacked from the lowest level up, and no level labels (#182 review)
+    expect([...paths].map((p) => Number(p.dataset.level))).toEqual(
+      [...levels].slice(0, paths.length),
     );
-    expect(texts.length).toBeGreaterThan(0);
-    expect(texts.length).toBeLessThanOrEqual(3);
-    expect(texts).toContain("30%");
-    // The ★ sits on the peak (1.5, 1.5), not at the placement (2, 3)
+    expect(layer.querySelectorAll("text")).toHaveLength(0);
+    // The ★ sits on the peak (the best paper, 1.5, 1.5), not at the placement (2, 3)
     const [m] = widget.queryMarkers();
     expect(Math.hypot(m.x - 1.5, m.y - 1.5)).toBeLessThan(0.5);
     expect(
@@ -338,6 +336,40 @@ describe("similarity topo map behind the map (#182)", () => {
     await widget.placeQuery([]);
     expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(0);
     expect(widget.querySelectorAll("svg.query-area text")).toHaveLength(0);
+  });
+
+  it("is the map's bottom-most layer: under the legend, the points and topic labels, the paper labels (#182 review)", async () => {
+    const widget = await BrushableScatterPlot(
+      data.map((d, i) => ({ ...d, score: 0.1 * i })),
+      {
+        renderer: "svg",
+        width: 200,
+        height: 200,
+        query: true,
+        color: "score",
+        colorType: "quantitative",
+        size: "score",
+        scoreDomain: [0, 0.6],
+        legendLabels: ["less similar", "more similar"],
+        colorTitle: "Similarity",
+      },
+    );
+    document.body.append(widget);
+    widgets.push(widget);
+    await widget.placeQuery([{ ...marker, scores, levels }]);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(widget.querySelector(".similarity-legend")).not.toBeNull();
+    const layer = widget.querySelector("svg.query-area");
+    const before = (el) =>
+      !!(layer.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    // Every other element of the map comes after it in paint order (same stacking context:
+    // positioned, z-index auto, so DOM order decides)
+    expect(widget.firstElementChild).toBe(layer);
+    for (const el of widget.querySelectorAll(
+      ".marks, .similarity-legend, .paper-labels",
+    ))
+      expect(before(el)).toBe(true);
+    expect(getComputedStyle(layer).zIndex).not.toMatch(/^[1-9]/);
   });
 
   it("few similar papers visible: the whole terrain is faded", async () => {

@@ -153,7 +153,7 @@ Every dot is a paper; similar papers sit close together.
 - **Color by** Similarity (after a search; the legend in the corner runs from 0% to 60%+ similarity and a color means the same % in every search; 30% is marked "Good" when it is the search's Good level), Type, Room, Session or Topic.
 - **Topic labels** name the groups of similar papers; turn them off with the toggle under the map.
 - A ring around a dot means it is **In My Papers**.
-- After a search, thin contour lines draw the map as **terrain whose height is the match to your search**, one line every 5% from the Good level (30%) up; a few of them are labelled ("40%"). They are an estimate between papers, drawn only where there are papers, so empty space stays flat. A **★ Your search** marks the highest peak (with **My research**, one per abstract, from its own Good level); when no line rises above Good it sits on the best match instead. Hover the ★ for its nearest papers and lines to them. Searches whose good matches are scattered over the map show few or no lines: there is no single place for them.
+- After a search, soft shaded bands draw the map as **terrain whose height is the match to your search**: one band every 5% from the Good level (30%) up, darker where papers match better. Each band shows how close you are to a paper that matches at least that well, so empty space stays flat and the bands are an estimate between papers. A **★ Your search** marks the highest peak, the best match on the map (with **My research**, one per abstract, from its own Good level). Hover the ★ for its nearest papers and lines to them.
 - On a phone, **Hide map** tucks the map away.
 
 ### Open a paper

@@ -14,11 +14,7 @@ import {
   token,
 } from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
-import {
-  isolineLabels,
-  nameSpot,
-  similarityTerrain,
-} from "../lib/placeQuery.js";
+import { nameSpot, similarityTerrain } from "../lib/placeQuery.js";
 import { bleedBox } from "../lib/bleedBox.js";
 import { quietCorner } from "../lib/quietCorner.js";
 import {
@@ -763,11 +759,12 @@ export function queryRows(markers) {
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /**
- * The similarity terrains (#182) in `layer` (an <svg> laid behind the map's marks), in plot
- * pixels at the final scales: per marker a <g> (faded with `data-faint`) holding one path per
- * isoline level (`data-level`, `--rank` 0 → 1 from the lowest to the top level, the top one
- * `data-top`) and its level labels. `terrains[i]` = similarityTerrain(...) plus `labels`
- * (isolineLabels), or null. `toPixel` maps data units to the layer's pixels.
+ * The similarity terrains (#182) in `layer` (an <svg> laid behind the map's marks, its bottom-most
+ * layer), in plot pixels at the final scales: per marker a <g> (faded with `data-faint`) holding
+ * one filled path per level, stacked from the lowest (Good) up, so higher levels paint over lower
+ * ones and read progressively stronger (`data-level`; `--rank` 0 → 1 from the lowest to the top
+ * level). `terrains[i]` = similarityTerrain(...) or null. `toPixel` maps data units to the layer's
+ * pixels.
  */
 function drawQueryArea(layer, terrains, markers, toPixel) {
   layer.replaceChildren();
@@ -791,19 +788,9 @@ function drawQueryArea(layer, terrains, markers, toPixel) {
       path.setAttribute("fill-rule", "evenodd");
       path.setAttribute("class", "query-level");
       path.dataset.level = String(value);
-      path.style.setProperty("--rank", last ? (k / last).toFixed(3) : "1");
-      if (k === last && last > 0) path.setAttribute("data-top", "");
+      path.style.setProperty("--rank", last ? (k / last).toFixed(3) : "0");
       group.append(path);
     });
-    for (const label of terrain.labels ?? []) {
-      const [x, y] = toPixel([label.x, label.y]);
-      const text = document.createElementNS(SVG_NS, "text");
-      text.setAttribute("class", "query-level-label");
-      text.setAttribute("x", x.toFixed(1));
-      text.setAttribute("y", y.toFixed(1));
-      text.textContent = label.text;
-      group.append(text);
-    }
     layer.append(group);
   });
 }
@@ -1480,8 +1467,9 @@ export async function BrushableScatterPlot(data, options = {}) {
   let markers = [];
   let hoveredMarker = -1;
   let areas = [];
-  // One <svg> behind the marks (like the similarity legend, #168) holding the similarity terrain
-  // (#182), a path per isoline level: drawn once per placement, never per animation frame
+  // One <svg> behind everything on the map (the points, topic and paper labels, the legend)
+  // holding the similarity terrain (#182), a filled path per level: drawn once per placement,
+  // never per animation frame
   const areaLayer = document.createElementNS(
     "http://www.w3.org/2000/svg",
     "svg",
@@ -1561,8 +1549,7 @@ export async function BrushableScatterPlot(data, options = {}) {
   };
   chart.view.addResizeListener?.(() => areas.length && drawAreas());
   // Each marker's name goes to the free side of its ★, off the topic labels (#172 re-review):
-  // nameX/nameY in data units, nameOffset [dx, dy] in px, at the final scales. The terrain's level
-  // labels then avoid the topic labels, the ★ and its name (#182): `labels` on each terrain.
+  // nameX/nameY in data units, nameOffset [dx, dy] in px, at the final scales
   const withNameSpots = (list, { width: w, height: h, xDomain, yDomain }) => {
     const [x0, x1] = xDomain;
     const [y0, y1] = yDomain;
@@ -1590,44 +1577,24 @@ export async function BrushableScatterPlot(data, options = {}) {
     });
     // Its marks clip to the plot (padding included): never past it, halo too (#181)
     const bounds = [2, 2, w + 18, h + 18];
-    const named = list.map((m) => {
+    return list.map((m) => {
       const name = m.label.replace(/^★\s*/, "");
-      const width = estimateWidth(name, 11) * (0.62 / 0.55);
-      const star = toPlot([m.x, m.y]);
-      const { dx, dy } = nameSpot(star, {
-        width,
+      const { dx, dy } = nameSpot(toPlot([m.x, m.y]), {
+        width: estimateWidth(name, 11) * (0.62 / 0.55),
         height: 13,
         obstacles: topics,
         bounds,
       });
-      const [nx, ny] = [star[0] + dx, star[1] + dy];
       return {
-        marker: {
-          ...m,
-          nameX: m.x + dx / kx,
-          nameY: m.y - dy / ky,
-          nameOffset: [dx, dy],
-        },
-        boxes: [
-          [star[0] - 8, star[1] - 8, star[0] + 8, star[1] + 8],
-          [nx - width / 2, ny - 7, nx + width / 2, ny + 7],
-        ],
+        ...m,
+        nameX: m.x + dx / kx,
+        nameY: m.y - dy / ky,
+        nameOffset: [dx, dy],
       };
     });
-    const taken = [...topics, ...named.flatMap((n) => n.boxes)];
-    areas.forEach((terrain) => {
-      if (!terrain?.levels.length) return;
-      terrain.labels = isolineLabels(terrain.levels, {
-        toPx: toPlot,
-        obstacles: taken,
-        bounds,
-      });
-      taken.push(...terrain.labels.map((l) => l.box));
-    });
-    return named.map((n) => n.marker);
   };
   /**
-   * Each terrain's outline (its lowest isoline: the others nest inside) as polygon bounding
+   * Each terrain's outline (its lowest level: the others nest inside) as polygon bounding
    * boxes in plot pixels (for the legend's corner, #168).
    */
   target.queryAreaBoxes = (sx, sy) =>
@@ -1649,7 +1616,7 @@ export async function BrushableScatterPlot(data, options = {}) {
     markers = list;
     hoveredMarker = -1;
     // The similarity terrain (#182) on the plot's pixels at the final scales; the ★ moves to
-    // its highest peak, inside the top isoline
+    // its highest peak, inside the top level
     const rows = data.filter(
       (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
     );
@@ -1664,7 +1631,7 @@ export async function BrushableScatterPlot(data, options = {}) {
         ? similarityTerrain(m.scores ?? [], { ...grid, levels: m.levels })
         : null,
     );
-    // With no isoline above Good it sits on the top match: never in empty space (#172 re-review)
+    // With no level above Good it sits on the top match: never in empty space (#172 re-review)
     const placed = list.map((m, i) => {
       const at = areas[i]?.peak ?? m.nearest[0];
       return at ? { ...m, x: at.x, y: at.y } : m;

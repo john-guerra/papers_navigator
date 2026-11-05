@@ -54,6 +54,7 @@
   --color-viz-reliability-2: #5f74bf;
   --color-viz-reliability-3: #28377a;
   --color-viz-dim: #e1ddd8;
+  --terrain-alpha: 0.07; /* similarity terrain band opacity (#182) */
   --color-viz-neutral: #605954;
   --color-viz-followed-ring: #241e1a;
   --color-viz-cat-1: #2a78d6;
@@ -146,6 +147,7 @@
   --color-viz-reliability-2: #6f84cf;
   --color-viz-reliability-3: #b4c3ff;
   --color-viz-dim: #3b3734;
+  --terrain-alpha: 0.13; /* similarity terrain band opacity (#182) */
   --color-viz-neutral: #aeaaa4;
   --color-viz-followed-ring: #eeebe5;
   --color-viz-cat-1: #3987e5;
@@ -179,6 +181,7 @@
     --color-viz-reliability-2: #6f84cf;
     --color-viz-reliability-3: #b4c3ff;
     --color-viz-dim: #3b3734;
+    --terrain-alpha: 0.13; /* similarity terrain band opacity (#182) */
     --color-viz-neutral: #aeaaa4;
     --color-viz-followed-ring: #eeebe5;
     --color-viz-cat-1: #3987e5;
@@ -3137,38 +3140,24 @@ body #vg-tooltip-element table tr td.value {
   transition: opacity var(--motion-duration) var(--motion-ease);
 }
 
-/* The similarity terrain (#182): quiet isolines in a muted primary, a little stronger for higher
-   levels (--rank 0 → 1, set per path), no fills but a faint wash inside the top level */
+/* The similarity terrain (#182): nested filled bands in a muted primary, one per level, stacked
+   from the lowest (Good) up, so each level adds a little more tint (a hypsometric tint), with a
+   faint edge so neighbouring levels read apart. The layer is the map's bottom-most: dots and
+   labels keep their full color over it. */
 .query-area g {
   --terrain-ink: color-mix(
     in srgb,
-    var(--color-primary) 65%,
+    var(--color-primary) 70%,
     var(--color-on-surface-muted)
   );
 }
 
 .query-level {
-  fill: none;
-  stroke: var(--terrain-ink);
-  stroke-width: calc(0.75px + 0.5px * var(--rank, 0));
-  stroke-opacity: calc(0.35 + 0.35 * var(--rank, 0));
-  stroke-linejoin: round;
-}
-
-.query-level[data-top] {
-  fill: var(--color-primary);
-  fill-opacity: 0.06;
-}
-
-.query-level-label {
   fill: var(--terrain-ink);
-  font: 500 9.5px var(--font-sans, sans-serif);
-  font-variant-numeric: tabular-nums;
-  text-anchor: middle;
-  dominant-baseline: central;
-  paint-order: stroke;
-  stroke: var(--color-background);
-  stroke-width: 3px;
+  fill-opacity: var(--terrain-alpha, 0.07);
+  stroke: var(--terrain-ink);
+  stroke-opacity: 0.14;
+  stroke-width: 0.5px;
   stroke-linejoin: round;
 }
 

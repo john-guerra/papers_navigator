@@ -72,13 +72,13 @@ export function placeByNeighbours(
   return { x, y, spread: Math.sqrt(squared / total), neighbours: top };
 }
 
-/** The terrain's isoline spacing (#182): one every 5 points of match. */
+/** The terrain's level spacing (#182): one band every 5 points of match. */
 export const TERRAIN_STEP = 0.05;
 
 /**
- * The isoline levels of the similarity terrain (#182): every `step` from the Good cut up to the
- * best visible score (searches 0.30, 0.35, …; My research from its own Good cut). [] when
- * nothing reaches Good or without a Good cut.
+ * The levels of the similarity terrain (#182): every `step` from the Good cut up to the best
+ * visible score (searches 0.30, 0.35, …; My research from its own Good cut). [] when nothing
+ * reaches Good or without a Good cut.
  */
 export function terrainLevels(good, best, step = TERRAIN_STEP) {
   if (!Number.isFinite(good) || !Number.isFinite(best)) return [];
@@ -91,30 +91,26 @@ export function terrainLevels(good, best, step = TERRAIN_STEP) {
 }
 
 /**
- * The similarity terrain (#182): a topographic map whose height is the match % to the query.
- * The map (`width` × `height` pixels showing `xDomain` × `yDomain`) is cut into `cell`-pixel
- * squares; each holds the Nadaraya–Watson estimate of the score there: the average of the
- * `points` ({x, y, score}, data units) weighted by a Gaussian of their distance (`bandwidth` px).
- * It is an estimate between papers, so it is masked where there are few: the height is scaled
- * by min(1, density / `minWeight`), the density a Gaussian of half the bandwidth summed over the
- * papers (one paper on its own dot counts 1). The mask is continuous, so isolines stay smooth;
- * no terrain shows in empty space, and a lone paper gets at most a small island on its own dot.
- * Isolines at `levels` are traced with marching squares (d3.contours, linear interpolation).
+ * The similarity terrain (#182): a topographic map whose height is the match % to the query,
+ * drawn as nested filled bands. The map (`width` × `height` pixels showing `xDomain` ×
+ * `yDomain`) is cut into `cell`-pixel squares; each holds the highest nearby score: the max over
+ * the `points` ({x, y, score}, data units) of score × a Gaussian of their distance (`bandwidth`
+ * px, 1 at the dot). An upper envelope, so every paper's own score is the height at its dot
+ * (weak neighbours never pull a Good paper down), levels nest around strong papers and merge
+ * where Good papers cluster, and empty space stays flat. Levels are traced with marching squares
+ * (d3.contours, linear interpolation), so their edges are smooth.
  *
- * Tuned on VIS 2026 (283 main-track papers on a ~715 × 547 px map, Volume rendering, Data
- * literacy, Perception): 30px gives nested, rounded terrain where matches gather (15–20px only
- * circled single dots); a minWeight of 1 keeps the terrain inside the clouds of papers (2 halved
- * it almost everywhere: on this map a 15px kernel sums to ~1 between neighbours). Searches whose
- * Good matches are scattered among weak ones (Perception) get no isoline: the average there is
- * under Good, and the ★ sits on the top match. 2–4 ms per placement.
+ * It replaced a Gaussian-weighted average of nearby scores (#182 review): weak neighbours
+ * diluted every peak, so terrain was tiny, and searches whose Good matches are scattered
+ * (Perception on VIS 2026) drew nothing.
  *
  * The grid runs `margin` px past the map on every side (#181), so terrain at the map's edge
  * falls off like anywhere else instead of being cut along the grid's edge.
  *
- * Returns null without points, else {levels: [{value, polygons}] (only the levels with an
- * isoline, lowest first; polygons a GeoJSON MultiPolygon's coordinates in data units), peak,
- * valueAt(x, y)}: `peak` {x, y} the highest point, inside the top isoline and kept on the map,
- * where the ★ goes (on a plateau, its densest cell); null when no isoline rises above the first level (the Good cut).
+ * Returns null without points, else {levels: [{value, polygons}] (only the levels that show,
+ * lowest first; polygons a GeoJSON MultiPolygon's coordinates in data units), peak, valueAt(x,
+ * y)}: `peak` {x, y} the highest point (on the best paper's dot), kept on the map, where the ★
+ * goes; null when no level rises above the first one (the Good cut).
  */
 export function similarityTerrain(
   points,
@@ -125,8 +121,7 @@ export function similarityTerrain(
     yDomain,
     levels = [],
     cell = 4,
-    bandwidth = 30,
-    minWeight = 1,
+    bandwidth = 25,
     margin = 2 * bandwidth,
   },
 ) {
@@ -146,17 +141,15 @@ export function similarityTerrain(
   const rows = rows0 + 2 * pad;
   const ox = pad * cw;
   const oy = pad * ch;
-  // Each paper splats its kernel on the cells within 3 bandwidths (separable: a row of x weights
+  // Each paper stamps its kernel on the cells within 3 bandwidths (separable: a row of x weights
   // times a column of y weights), so the cost is papers × (6 bandwidths / cell)², not cells ×
-  // papers. The density kernel (half the bandwidth) is the same weight to the 4th power.
-  const sum = new Float64Array(cols * rows);
-  const weight = new Float64Array(cols * rows);
-  const density = new Float64Array(cols * rows);
+  // papers
+  const field = new Float64Array(cols * rows);
   const reach = 3 * bandwidth;
   const twoH2 = 2 * bandwidth * bandwidth;
   const wx = new Float64Array(cols);
   for (const p of points) {
-    if (!Number.isFinite(p.score)) continue;
+    if (!(p.score > 0)) continue;
     const gx = (p.x - x0) * sx + ox;
     const gy = (p.y - y0) * sy + oy;
     const c0 = Math.max(0, Math.ceil((gx - reach) / cw - 0.5));
@@ -166,29 +159,15 @@ export function similarityTerrain(
     for (let c = c0; c <= c1; c++)
       wx[c] = Math.exp(-(((c + 0.5) * cw - gx) ** 2) / twoH2);
     for (let r = r0; r <= r1; r++) {
-      const wy = Math.exp(-(((r + 0.5) * ch - gy) ** 2) / twoH2);
+      const wy = p.score * Math.exp(-(((r + 0.5) * ch - gy) ** 2) / twoH2);
       for (let c = c0, i = r * cols + c0; c <= c1; c++, i++) {
-        const w = wy * wx[c];
-        weight[i] += w;
-        sum[i] += w * p.score;
-        const w2 = w * w;
-        density[i] += w2 * w2;
+        const v = wy * wx[c];
+        if (v > field[i]) field[i] = v;
       }
     }
   }
-  const field = new Float64Array(cols * rows);
-  let high = 0;
-  for (let i = 0; i < field.length; i++) {
-    if (!(weight[i] > 0)) continue;
-    field[i] = (sum[i] / weight[i]) * Math.min(1, density[i] / minWeight);
-    if (field[i] > high) high = field[i];
-  }
-  // The summit: papers of about the same score make a plateau, so of the cells within a point of
-  // the highest, the densest (where those papers crowd), not the first one found
-  let top = -1;
-  for (let i = 0; i < field.length; i++)
-    if (field[i] >= high - 0.01 && (top < 0 || density[i] > density[top]))
-      top = i;
+  let top = 0;
+  for (let i = 1; i < field.length; i++) if (field[i] > field[top]) top = i;
   // Grid coordinates (value i at i + 0.5, d3.contours' convention) → data units
   const toData = ([gx, gy]) => [
     x0 + (gx * cw - ox) / sx,
@@ -205,9 +184,8 @@ export function similarityTerrain(
         polygon.map((ring) => ring.map(toData)),
       ),
     }));
-  const rises = kept.some((l) => l.value > levels[0]);
   let peak = null;
-  if (rises && top >= 0) {
+  if (kept.some((l) => l.value > levels[0])) {
     const [x, y] = toData([(top % cols) + 0.5, Math.floor(top / cols) + 0.5]);
     // On the map, though the highest cell can sit just past its edge (#181)
     const clamp = (v, a, b) =>
@@ -223,71 +201,6 @@ export function similarityTerrain(
       return c >= 0 && c < cols && r >= 0 && r < rows ? field[r * cols + c] : 0;
     },
   };
-}
-
-/** Which of `n` levels get a label (#182): all up to 3, else the lowest, a middle one, the top. */
-function labelledLevels(n) {
-  if (n <= 3) return [...Array(n).keys()];
-  return [0, Math.floor((n - 1) / 2), n - 1];
-}
-
-/**
- * Where the terrain's level labels ("45%") go (#182): on 2–3 levels only (labelledLevels), each
- * on its own isoline, at a vertex where the line runs closest to horizontal (it reads along the
- * line), whose `width` × `height` px box stays inside `bounds` ([x0, y0, x1, y1]) and crosses
- * none of `obstacles` (topic labels, the ★ and its name) nor a label already placed. A level
- * with no free spot goes unlabelled. `toPx` maps data units to the same pixels as the boxes.
- * Returns [{value, text, x, y (data units), box}].
- */
-export function isolineLabels(
-  levels,
-  { toPx, obstacles = [], bounds = null, height = 11, charWidth = 6.2 } = {},
-) {
-  const placed = [];
-  const taken = [...obstacles];
-  const crosses = ([a, b, c, d]) =>
-    taken.some(([e, f, g, h]) => a < g && e < c && b < h && f < d);
-  for (const index of labelledLevels(levels.length)) {
-    const { value, polygons } = levels[index];
-    const text = `${Math.round(value * 100)}%`;
-    const width = text.length * charWidth + 4;
-    let best = null;
-    for (const [outer] of polygons) {
-      const px = outer.map(toPx);
-      const n = px.length - 1; // closed ring: the last point repeats the first
-      for (let i = 0; i < n; i++) {
-        const [x, y] = px[i];
-        const box = [
-          x - width / 2,
-          y - height / 2,
-          x + width / 2,
-          y + height / 2,
-        ];
-        if (
-          bounds &&
-          (box[0] < bounds[0] ||
-            box[1] < bounds[1] ||
-            box[2] > bounds[2] ||
-            box[3] > bounds[3])
-        )
-          continue;
-        if (crosses(box)) continue;
-        // The line's slope around the vertex: flat reads best
-        const [ax, ay] = px[(i - 2 + n) % n];
-        const [bx, by] = px[(i + 2) % n];
-        const slope = Math.abs(by - ay) / (Math.hypot(bx - ax, by - ay) || 1);
-        if (!best || slope < best.slope - 1e-6) {
-          const [dx, dy] = outer[i];
-          best = { slope, label: { value, text, x: dx, y: dy, box } };
-        }
-      }
-    }
-    if (best) {
-      placed.push(best.label);
-      taken.push(best.label.box);
-    }
-  }
-  return placed;
 }
 
 /** How far below the program's best match the best visible one may be before the marker fades. */
@@ -377,7 +290,7 @@ export function queryMarkers({
       const faint =
         bestShown < weakCut ||
         bestShown < bestSimilarity(vector, matrix, papers.length, dims) - gap;
-      // #182: the terrain is drawn from every shown paper's score, with an isoline every 0.05
+      // #182: the terrain is drawn from every shown paper's score, with a level every 0.05
       // from the Good cut up to the best visible score; none without cuts
       const levels = terrainLevels(goodCut, bestShown);
       const scores = levels.length
@@ -423,7 +336,8 @@ export function queryCuts(cuts) {
  * Where the query marker's name goes around its ★ at `star` = [x, y] (#172 re-review): the
  * first side whose `width` × `height` box (px) crosses none of `obstacles` ([x0, y0, x1, y1],
  * e.g. topic labels), tried above, below, right, left, then at its corners (below left, above
- * left, below right, above right); when every spot is taken, the least covered one. Returns the box center's offset {dx, dy} from the ★ in px.
+ * left, below right, above right), then just past a topic label near it (below, right, above,
+ * left, within 70px, #182 review); when every spot is taken, the least covered one. Returns the box center's offset {dx, dy} from the ★ in px.
  *
  * With `bounds` ([x0, y0, x1, y1], the map's drawing box) the box never leaves the map (#181:
  * next to its right edge only "Yo" showed): each side's box slides inside it, and a side that
@@ -445,10 +359,36 @@ export function nameSpot(
     { dx: width / 2 + gap / 2, dy: 14 },
     { dx: width / 2 + gap / 2, dy: -13 },
   ];
+  // Then just past a nearby obstacle (#182 review: a ★ on a topic label's last line had every
+  // side on that label): below it, right of it, above it, left of it, the nearest first, with
+  // the name's box at most `reach` px from the ★
+  const reach = 70;
+  const near = sides.length;
+  const past = [[], [], [], []];
+  for (const [a, b, c, d] of obstacles) {
+    if (a > px + reach || c < px - reach || b > py + reach || d < py - reach)
+      continue;
+    const below = d + 1 - py;
+    const right = c + 2 - px;
+    const above = py - (b - 1);
+    const left = px - (a - 2);
+    if (below > 0 && below <= reach)
+      past[0].push({ dx: 0, dy: below + height / 2, far: below });
+    if (right > 0 && right <= reach)
+      past[1].push({ dx: right + width / 2, dy: 0, far: right });
+    if (above > 0 && above <= reach)
+      past[2].push({ dx: 0, dy: -(above + height / 2), far: above });
+    if (left > 0 && left <= reach)
+      past[3].push({ dx: -(left + width / 2), dy: 0, far: left });
+  }
+  for (const group of past) sides.push(...group.sort((u, v) => u.far - v.far));
   const slide = (v, size, lo, hi) =>
     Math.max(lo, Math.min(v, Math.max(lo, hi - size)));
   let best = null;
-  for (const side of sides) {
+  for (const [k, side] of sides.entries()) {
+    // Past the spots by the ★: one barely covered (no more than a 3px strip of it) beats
+    // moving the name away
+    if (k === near && best && !best.onStar && best.covered <= 3 * width) break;
     let x0 = px + side.dx - width / 2;
     let y0 = py + side.dy - height / 2;
     let onStar = false;
