@@ -2,7 +2,7 @@
 // `brownbluegreen`, so that is the default; Options → Appearance offers every continuous Vega
 // scheme (https://vega.github.io/vega/docs/schemes/) and our oxblood ramp (DESIGN.md tokens).
 // The map passes the name to Vega-Lite's `scale.scheme`; the legend reads the map's own scale,
-// and the histogram and the Options preview sample the same interpolator, so all three match.
+// and the Options preview samples the same interpolator.
 import { interpolateColors, scheme as vegaScheme } from "vega";
 
 export const SIMILARITY_SCHEME_KEY = "papersNavigator:similarityScheme";
@@ -120,6 +120,22 @@ export function similarityRange() {
     token("color-viz-similarity-2", "#a7463d"),
     token("color-viz-similarity-3", "#75201a"),
   ];
+}
+
+/**
+ * The ramp's domain (#166 review), like the CHI navigator's: the scheme spans the scores of the
+ * papers shown, from the relevance level's `cut` (the lowest shown score when there is no cut,
+ * "All") to the best match on the map. At the Good level that is the Good cut → the best match.
+ * Null when nothing is shown or the domain collapses (tied scores).
+ */
+export function rampDomain(scores, cut = null) {
+  const shown = scores.filter(
+    (s) => Number.isFinite(s) && (cut == null || s >= cut),
+  );
+  if (!shown.length) return null;
+  const hi = Math.max(...shown);
+  const lo = cut ?? Math.min(...shown);
+  return hi > lo ? [lo, hi] : null;
 }
 
 /** The Vega-Lite color scale for similarity: `{scheme}`, or the oxblood `{range}`. */

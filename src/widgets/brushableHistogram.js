@@ -17,8 +17,6 @@ export function BrushableHistogram(
     thresholds = 30,
     // DESIGN.md similarity token (a CSS var, so it follows light/dark)
     fill = "var(--color-viz-similarity-2, steelblue)",
-    // #166: t in [0, 1] (the bar's middle along the domain) → its color, e.g. the map's scheme
-    fillAt = null,
   } = {},
 ) {
   const values = data.map(x).filter((v) => Number.isFinite(v));
@@ -50,12 +48,7 @@ export function BrushableHistogram(
     .attr("x", (b) => xScale(b.x0) + 0.5)
     .attr("width", (b) => Math.max(0, xScale(b.x1) - xScale(b.x0) - 1))
     .attr("y", (b) => yScale(b.length))
-    .attr("height", (b) => yScale(0) - yScale(b.length))
-    .attr("fill", (b) => {
-      if (!fillAt) return null;
-      const [d0, d1] = xScale.domain();
-      return fillAt(((b.x0 + b.x1) / 2 - d0) / (d1 - d0 || 1));
-    });
+    .attr("height", (b) => yScale(0) - yScale(b.length));
 
   svg
     .append("g")

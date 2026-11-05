@@ -25,7 +25,7 @@ import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { createQueryMarkerSettings, queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
-import { createSimilaritySchemeSettings } from "./lib/similarityScheme.js";
+import { createSimilaritySchemeSettings, rampDomain } from "./lib/similarityScheme.js";
 import { similaritySchemeControl } from "./components/similaritySchemeControl.js";
 import { addSearchClear } from "./components/searchClear.js";
 import { trackListFocus } from "./lib/listFocus.js";
@@ -701,7 +701,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labels: showTopics ? clusterLabels(positioned) : null,
   labelSize: mapWidth < 500 ? 13 : 15,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
-  scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
+  // Starts at the Good level (Good cut → best match on the map); the level cell below moves it
+  scoreDomain: hasQuery ? rampDomain(positioned.map((d) => d.score), cutsFor(scored.map((d) => d.score)).good) ?? scoreRampDomain(scored, cutsFor) : null,
   similarityScheme,
   // DESIGN.md → Legend: the ramp says "less / more similar", not scores
   legendLabels: ["less similar", "more similar"],
@@ -846,7 +847,10 @@ urlSync.update({
 ```js
 // Points below the chosen relevance level are drawn in viz-dim, live (no redraw)
 // null = no cut ("All"): cosine scores can be negative, so 0 would dim some papers
-mapInput.view.signal("levelCut", hasQuery && relevance !== "all" ? cuts[relevance] : null).runAsync();
+const levelCutValue = hasQuery && relevance !== "all" ? cuts[relevance] : null;
+mapInput.view.signal("levelCut", levelCutValue).runAsync();
+// The scheme spans the shown papers' scores, like the CHI navigator (#166 review), live
+if (hasQuery) mapInput.setScoreDomain(rampDomain(positioned.map((d) => d.score), levelCutValue));
 // Rings follow My Papers live without redrawing the map (a redraw would drop the brush)
 mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 // Keyword matches (#125): the rest viz-dim, like papers below the relevance level
