@@ -83,6 +83,20 @@ describe("paperPanel", () => {
   });
 });
 
+describe("paperPanel Escape (#177 review)", () => {
+  it("leaves an Escape another layer already handled (e.g. a toggletip)", () => {
+    const { el, route } = setup("a");
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      cancelable: true,
+    });
+    event.preventDefault();
+    dispatchEvent(event);
+    expect(route.close).not.toHaveBeenCalled();
+    el.dispose();
+  });
+});
+
 describe("paperPanel mini-map (#101)", () => {
   it("redraws the mini-map only when the map's key changes after the first", () => {
     let rows = [

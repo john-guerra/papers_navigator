@@ -40,7 +40,7 @@ describe("relevanceControl", () => {
     );
     document.body.append(el);
     expect(el.value).toBe("good");
-    const labels = [...el.querySelectorAll("button")].map((b) =>
+    const labels = [...el.querySelectorAll("button[data-level]")].map((b) =>
       b.textContent.replace(/\s+/g, " ").trim(),
     );
     expect(labels).toEqual(["Strong 2", "Good 4", "Weak 5", "All 5"]);
@@ -49,7 +49,7 @@ describe("relevanceControl", () => {
     );
     let fired = 0;
     el.addEventListener("input", () => fired++);
-    el.querySelector("button").click();
+    el.querySelector("button[data-level]").click();
     expect(el.value).toBe("strong");
     expect(fired).toBe(1);
     el.value = "all";
@@ -91,7 +91,7 @@ describe("relevanceControl keeps focus", () => {
       { value: "good" },
     );
     document.body.append(el);
-    const strong = el.querySelector("button");
+    const strong = el.querySelector("button[data-level]");
     strong.focus();
     strong.click();
     expect(document.activeElement).toBe(strong);
