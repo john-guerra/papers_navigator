@@ -89,3 +89,23 @@ describe("topicWatch", () => {
     el.remove();
   });
 });
+
+describe("topicWatch Loose (#183)", () => {
+  it("names the weak level Loose in its buttons and label", () => {
+    const el = topicWatch(
+      {
+        query: "llm",
+        previews: { strong: preview(5), good: preview(20), weak: preview(40) },
+        current: { level: "weak" },
+      },
+      { onSave: vi.fn() },
+    );
+    expect(el.querySelector(".topic-watch-open").textContent).toBe(
+      "🔍 Watching topic (Loose)",
+    );
+    expect(el.querySelector('[data-level="weak"]').textContent).toContain(
+      "Loose",
+    );
+    expect(el.textContent).not.toContain("Weak");
+  });
+});

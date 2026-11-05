@@ -7,8 +7,8 @@ const levelButtons = (el) => [...el.querySelectorAll("button[data-level]")];
 
 afterEach(() => document.body.replaceChildren());
 
-describe("relevanceControl Weak", () => {
-  it("shows Strong, Good, Weak and All", () => {
+describe("relevanceControl Loose (#183)", () => {
+  it("shows Strong, Good, Loose and All, keeping the weak key", () => {
     const el = relevanceControl(counts);
     expect(levelButtons(el).map((b) => b.dataset.level)).toEqual([
       "strong",
@@ -16,7 +16,47 @@ describe("relevanceControl Weak", () => {
       "weak",
       "all",
     ]);
-    expect(el.textContent).toContain("Weak");
+    expect(el.textContent).toContain("Loose");
+    expect(el.textContent).not.toContain("Weak");
+  });
+});
+
+describe("relevanceControl cuts in the toggletip (#183)", () => {
+  const open = (el) => {
+    document.body.append(el);
+    el.querySelector(".toggletip-button").click();
+    return el.querySelector('[role="status"]').textContent.replace(/\s+/g, " ");
+  };
+
+  it("shows each level's cut, rounded like the % next to papers", () => {
+    const cuts = { strong: 0.4651, good: 0.3, weak: 0.2 };
+    const text = open(relevanceControl(counts, { cuts: () => cuts }));
+    expect(text).toContain("Strong ≥ 47%: the closest matches");
+    expect(text).toContain("Good ≥ 30%: clearly related");
+    expect(text).toContain("Loose ≥ 20%: loosely related");
+    expect(text).toContain("All: every paper, closest first");
+  });
+
+  it("reads the cuts when it opens, not when it is built", () => {
+    let cuts = { strong: 0.45, good: 0.3, weak: 0.2 };
+    const el = relevanceControl(counts, { cuts: () => cuts });
+    cuts = { strong: 0.71, good: 0.62, weak: 0.48 };
+    const text = open(el);
+    expect(text).toContain("Strong ≥ 71%");
+    expect(text).toContain("Good ≥ 62%");
+    expect(text).toContain("Loose ≥ 48%");
+  });
+});
+
+describe("relevanceControl short label on phones (#183)", () => {
+  it("has a short visible “Match” that screen readers skip", () => {
+    const el = relevanceControl(counts);
+    const short = el.querySelector(".relevance-label-short");
+    expect(short.textContent.trim()).toBe("Match");
+    expect(short.getAttribute("aria-hidden")).toBe("true");
+    expect(el.getAttribute("aria-labelledby")).toBe(
+      el.querySelector(".relevance-label").id,
+    );
   });
 });
 
@@ -75,7 +115,7 @@ describe("relevanceControl label (#176)", () => {
     );
     expect(text).toContain("Strong: the closest matches");
     expect(text).toContain("Good: clearly related");
-    expect(text).toContain("Weak: loosely related");
+    expect(text).toContain("Loose: loosely related");
     expect(text).toContain("All: every paper, closest first");
     expect(text).not.toMatch(/\d/);
   });

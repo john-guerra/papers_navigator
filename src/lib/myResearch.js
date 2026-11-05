@@ -263,7 +263,7 @@ export function researchCuts(scores) {
   if (sorted.filter((s) => s >= good).length < 5)
     good = sorted[Math.min(9, sorted.length - 1)];
   const strong = Math.min(sorted[0], Math.max(good, mean + 2.5 * sd));
-  // Weak: mean + 1 sd (about the top sixth of the program), never above Good
+  // Loose (key "weak"): mean + 1 sd (about the top sixth of the program), never above Good
   const weak = Math.min(good, mean + sd);
   return { good, strong, weak };
 }

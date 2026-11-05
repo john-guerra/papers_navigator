@@ -1,25 +1,29 @@
 import { html } from "htl";
 import { toggletip } from "../components/toggletip.js";
+import { LEVEL_NAMES, cutPercent } from "../lib/relevanceLevels.js";
 
 const LEVELS = [
-  ["strong", "Strong", "the closest matches", "The closest matches to your"],
-  ["good", "Good", "clearly related", "Clearly related to your"],
-  ["weak", "Weak", "loosely related", "Loosely related to your"],
-  ["all", "All", "every paper, closest first", null],
-];
+  ["strong", "the closest matches", "The closest matches to your"],
+  ["good", "clearly related", "Clearly related to your"],
+  ["weak", "loosely related", "Loosely related to your"],
+  ["all", "every paper, closest first", null],
+].map(([key, ...rest]) => [key, LEVEL_NAMES[key], ...rest]);
 
 /**
- * “Match to your search: ⓘ Strong n · Good n · Weak n · All n” (DESIGN.md → Relevance control).
- * The visible label names the group (aria-labelledby, so it's announced once); the ⓘ toggletip
- * says what the levels mean (similarity by meaning, not paper quality, #176) and each level has a
- * `title` hint. `subject` is "search", or "research" while My research ranks.
+ * “Match to your search: ⓘ Strong n · Good n · Loose n · All n” (DESIGN.md → Relevance control).
+ * The visible label names the group (aria-labelledby, so it's announced once; phones show a short
+ * “Match” instead, hidden from screen readers, #183); the ⓘ toggletip says what the levels mean
+ * (similarity by meaning, not paper quality, #176) and each level has a `title` hint.
+ * `subject` is "search", or "research" while My research ranks. `cuts` is a getter for the
+ * current `{strong, good, weak}` cuts: the toggletip reads it each time it opens and shows
+ * “Strong ≥ 47%”…, rounded like the % next to each paper (#183).
  * Reactive widget: `.value` is "strong" | "good" | "weak" | "all"; emits `input` when the user picks a
  * level, and updates when `.value` is set and `input` is dispatched. Buttons are built once and
  * only their pressed state changes, so keyboard focus stays put.
  */
 export function relevanceControl(
   counts,
-  { value = "good", subject = "search" } = {},
+  { value = "good", subject = "search", cuts = null } = {},
 ) {
   const buttons = LEVELS.map(([key, name, , hint]) => {
     const button = html`<button
@@ -39,17 +43,21 @@ export function relevanceControl(
   const labelId = `relevance-label-${Math.random().toString(36).slice(2, 9)}`;
   const info = toggletip({
     label: "About the match levels",
-    content: () =>
-      html`<span class="toggletip-lede"
+    content: () => {
+      const current = typeof cuts === "function" ? cuts() : cuts;
+      return html`<span class="toggletip-lede"
           >How closely each paper's title and abstract match your ${subject} by
           meaning, not how good the paper is.</span
         >
-        ${LEVELS.map(
-          ([, name, meaning]) =>
-            html`<span class="toggletip-item"
-              ><strong>${name}</strong>: ${meaning}</span
-            >`,
-        )}`,
+        ${LEVELS.map(([key, name, meaning]) => {
+          const cut =
+            current && Number.isFinite(current[key]) ? current[key] : null;
+          return html`<span class="toggletip-item"
+            ><strong>${name}</strong
+            >${cut === null ? "" : ` ≥ ${cutPercent(cut)}`}: ${meaning}</span
+          >`;
+        })}`;
+    },
   });
   const el = html`<div
     class="relevance-field"
@@ -59,6 +67,7 @@ export function relevanceControl(
     <span class="relevance-label-row"
       ><span id=${labelId} class="relevance-label" aria-hidden="true"
         >Match to your ${subject}:</span
+      ><span class="relevance-label-short" aria-hidden="true">Match</span
       >${info}</span
     >
     <div class="relevance-control">${buttons}</div>

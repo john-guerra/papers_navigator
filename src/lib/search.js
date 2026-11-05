@@ -38,7 +38,7 @@ export function relevanceCuts(scores) {
     sorted.filter((s) => s >= 0.3).length >= 5
       ? 0.3
       : sorted[Math.min(9, sorted.length - 1)];
-  // Weak: loosely related (2/3 of the Good cut, i.e. 0.20 for a normal search; never above
+  // Loose (key "weak"): loosely related (2/3 of the Good cut, i.e. 0.20 for a normal search; never above
   // Good, even when a fallback Good is negative)
   return {
     good,

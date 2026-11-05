@@ -1,6 +1,7 @@
 import { html } from "htl";
 import { ruleReason } from "../lib/rules.js";
 import { authorUrl } from "../lib/authors.js";
+import { WATCH_LEVEL_NAMES } from "../lib/relevanceLevels.js";
 
 const papersWord = (n) => `${n} ${n === 1 ? "paper" : "papers"}`;
 const TYPE_LABELS = { author: "Friend", affiliation: "Institution" };
@@ -47,8 +48,6 @@ export function renderWatching(
   </section>`;
 }
 
-const LEVEL_NAMES = { strong: "Strong", good: "Good", weak: "Weak" };
-
 /** "Tue 3 · Wed 1 · 2 without a time · most in Charts (2)" (US11.2: where they fall). */
 function scheduleText({ days, untimed, topSession }) {
   const parts = days.map((d) => `${d.label} ${d.count}`);
@@ -71,7 +70,7 @@ function watchingName(rule) {
 }
 
 function ruleRow(rule, count, removable, onRemove, { summary, note }) {
-  const level = LEVEL_NAMES[rule.level];
+  const level = WATCH_LEVEL_NAMES[rule.level];
   const where = summary && count ? scheduleText(summary) : "";
   const row = html`<li class="watching-rule" data-rule=${rule.id}>
     <span class="watching-name">${watchingName(rule)}</span>
