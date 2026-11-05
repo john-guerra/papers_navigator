@@ -9,7 +9,7 @@ import {
   createSimilaritySchemeSettings,
   isSimilarityScheme,
   SIMILARITY_DOMAIN,
-  SIMILARITY_LEGEND_LABELS,
+  similarityLegendLabels,
   similarityColorAt,
   similarityColorScale,
 } from "../src/lib/similarityScheme.js";
@@ -115,7 +115,7 @@ describe("scatterSpec with a similarity scheme", () => {
     colorType: "quantitative",
     size: "score",
     scoreDomain: SIMILARITY_DOMAIN,
-    legendLabels: SIMILARITY_LEGEND_LABELS,
+    legendLabels: similarityLegendLabels(0.3),
   };
 
   it("colors similarity with the Vega scheme over the fixed domain", () => {
@@ -151,7 +151,26 @@ describe("SIMILARITY_DOMAIN (#184: the same color means the same % in every sear
   });
 
   it("is labelled with fixed ticks at its ends and midpoint", () => {
-    expect(SIMILARITY_LEGEND_LABELS).toEqual(["0%", "30% (Good)", "60%+"]);
+    expect(similarityLegendLabels(0.3)).toEqual(["0%", "30% (Good)", "60%+"]);
+  });
+
+  it("names the midpoint Good only when the active Good cut is 30% (#193 review)", () => {
+    // A search with 5+ papers at 0.30
+    const scores = [0.62, 0.5, 0.41, 0.36, 0.33, 0.31, 0.2, 0.1];
+    expect(similarityLegendLabels(relevanceCuts(scores).good)[1]).toBe(
+      "30% (Good)",
+    );
+    // A short query: Good falls back to the 10th best score
+    const low = [0.4, 0.35, 0.28, 0.25, 0.22, 0.2, 0.19, 0.18, 0.17, 0.16];
+    expect(relevanceCuts(low).good).not.toBe(0.3);
+    expect(similarityLegendLabels(relevanceCuts(low).good)).toEqual([
+      "0%",
+      "30%",
+      "60%+",
+    ]);
+    // My research (its own cuts) or no cut at all
+    expect(similarityLegendLabels(null)).toEqual(["0%", "30%", "60%+"]);
+    expect(similarityLegendLabels(0.41)).toEqual(["0%", "30%", "60%+"]);
   });
 });
 

@@ -130,8 +130,18 @@ export function similarityRange() {
  */
 export const SIMILARITY_DOMAIN = [0, 0.6];
 
-/** The similarity legend's fixed ticks, spread evenly over SIMILARITY_DOMAIN (#184). */
-export const SIMILARITY_LEGEND_LABELS = ["0%", "30% (Good)", "60%+"];
+/**
+ * The similarity legend's fixed ticks, spread evenly over SIMILARITY_DOMAIN (#184). The midpoint
+ * is named Good only when the active Good cut (`goodCut`) is that 30%: a search with 5+ papers
+ * there. A short query's fallback Good, My research's own cuts (pass null) or none: plain 30%.
+ */
+export function similarityLegendLabels(goodCut = null) {
+  const [lo, hi] = SIMILARITY_DOMAIN;
+  const mid = (lo + hi) / 2;
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  const good = goodCut != null && Math.abs(goodCut - mid) < 1e-9;
+  return [pct(lo), `${pct(mid)}${good ? " (Good)" : ""}`, `${pct(hi)}+`];
+}
 
 /** The Vega-Lite color scale for similarity: `{scheme}`, or the oxblood `{range}`. */
 export function similarityColorScale(name) {

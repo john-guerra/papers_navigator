@@ -198,7 +198,7 @@ function categoryRange() {
  * Vega-Lite spec for the map. DESIGN.md → Data Visualization:
  * - quantitative color (similarity) uses the sequential ramp;
  * - the legend sits in the top-right corner on `surface` (DESIGN.md → Legend); a ramp is labelled
- *   only at its ends, with `legendLabels` ([low, high], e.g. ["less similar", "more similar"]);
+ *   with `legendLabels` spread evenly over it (e.g. ["0%", "30% (Good)", "60%+"], #184);
  * - categorical color highlights at most 3 `categories` (pass them from the whole program so
  *   filtering never repaints survivors; default: top 3 of `data`), everything else is Other;
  * - points outside the brush are dimmed; with `matches`, so are those not in the `matchIds`
@@ -963,7 +963,7 @@ export function neighbourRows(
 
 /**
  * Whether the map draws the tapered similarity legend (#130) instead of Vega's gradient: size
- * echoes the quantitative color field and the ramp is labelled at its ends.
+ * echoes the quantitative color field and the ramp is labelled (`legendLabels`, spread evenly).
  */
 export function taperedLegend({
   color,
@@ -973,7 +973,7 @@ export function taperedLegend({
   legendLabels,
   scoreDomain,
 } = {}) {
-  // A ramp domain that has collapsed (tied scores) keeps Vega's plain gradient
+  // Needs a real domain (lo < hi): the similarity map's is fixed (#184); other callers pass theirs
   return Boolean(
     color &&
     size === color &&

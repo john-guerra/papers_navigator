@@ -707,6 +707,11 @@ describe("fixed ramp domain (#184: the same color is the same % at every level)"
       // Clamped: a 0.9 match gets the strongest color, like 0.6
       const color = widget.view.scale("color");
       expect(color(0.9)).toBe(color(0.6));
+      // ...and at the low end: negative scores (common at All) get the weakest color and dot
+      const size = widget.view.scale("size");
+      expect(color(-0.2)).toBe(color(0));
+      expect(size(-0.2)).toBe(12);
+      expect(size(-0.2)).toBe(size(0));
       expect(widget.setScoreDomain).toBeUndefined();
     } finally {
       widget.remove();

@@ -21,7 +21,7 @@ import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { createQueryMarkerSettings, queryAnnouncement, queryCuts, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
-import { SIMILARITY_DOMAIN, SIMILARITY_LEGEND_LABELS, createSimilaritySchemeSettings } from "./lib/similarityScheme.js";
+import { SIMILARITY_DOMAIN, createSimilaritySchemeSettings, similarityLegendLabels } from "./lib/similarityScheme.js";
 import { similaritySchemeControl } from "./components/similaritySchemeControl.js";
 import { addSearchClear } from "./components/searchClear.js";
 import { trackListFocus } from "./lib/listFocus.js";
@@ -700,8 +700,8 @@ const mapInput = await BrushableScatterPlot(positioned, {
   // Fixed 0 → 60% for every search, filter, level and My research (#184): a color means the same %
   scoreDomain: hasQuery ? SIMILARITY_DOMAIN : null,
   similarityScheme,
-  // DESIGN.md → Legend: fixed ticks 0% · 30% (Good) · 60%+ (#184)
-  legendLabels: SIMILARITY_LEGEND_LABELS,
+  // DESIGN.md → Legend: fixed ticks 0% · 30% · 60%+, "(Good)" when the search's Good cut is 30% (#184)
+  legendLabels: similarityLegendLabels(hasQuery && !researchMode ? cutsFor(scored.map((d) => d.score)).good : null),
   // Readable labels and a percentage instead of raw field names and a long float
   tooltip: [
     { field: "shortLabel", title: "Label" },
