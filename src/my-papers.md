@@ -31,6 +31,7 @@ import { renderShareBanner, renderShareButton, renderShareDialog } from "./compo
 import { bindMyPapersBadge } from "./components/badge.js";
 import { arrangeMyPapers } from "./components/myPapersLayout.js";
 import { collapsibleSections } from "./components/collapsibleSections.js";
+import { clearMyPapers } from "./components/clearMyPapers.js";
 import { segmentedControl } from "./widgets/segmentedControl.js";
 import { conferenceZone } from "./lib/time.js";
 import { PHONE_QUERY, matches } from "./lib/breakpoints.js";
@@ -182,7 +183,7 @@ display(banner);
 <div class="my-papers-layout">
 <div class="mp-main">
 <div class="mp-view"><div class="my-papers-tools">${viewInput} ${reasonInput}</div>${newNotice}</div>
-<div class="mp-tools"><div class="my-papers-tools">${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton}</div><div>${sharePanel}</div><div>${importStatus}</div></div>
+<div class="mp-tools"><div class="my-papers-tools">${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton} ${clearControl}</div><div>${sharePanel}</div><div>${importStatus}</div></div>
 
 ```js
 // Created once (no dependency on the followed list) so following/unfollowing keeps the choice
@@ -470,6 +471,25 @@ const restoreButton = previous && !sameIds(previous, followedStore.value)
       return button;
     })()
   : html`<span></span>`;
+```
+
+```js
+// Clear My Papers (#164): asks inline, then removes every paper (watched ones become exceptions,
+// as with Remove); watches and notes stay, and Undo restores exactly what was there
+const clearControl = clearMyPapers({
+  count: () => store.value.length,
+  watches: () => rulesStore.value.rules.length,
+  onClear: () => {
+    const n = store.value.length;
+    const undo = store.remove(store.value.map((d) => d.id));
+    showToast(`Removed ${n} ${n === 1 ? "paper" : "papers"} from My Papers`, { actionLabel: "Undo", onAction: undo, focusAction: true });
+  },
+});
+```
+
+```js
+followed;
+clearControl.update();
 ```
 
 ```js

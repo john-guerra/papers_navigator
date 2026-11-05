@@ -1305,6 +1305,24 @@ a.navbar-brand {
   display: none;
 }
 
+/* Clear My Papers' inline confirm takes its own row of the list tools (#164) */
+.clear-my-papers:has(.clear-confirm) {
+  flex-basis: 100%;
+}
+
+.clear-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+@media (max-width: 639.98px) {
+  .clear-my-papers .btn-text {
+    min-height: var(--spacing-touch);
+  }
+}
+
 /* Desktop: the itinerary and the list on the left, list tools / Watching / Recommended in a side
    column separated by a hairline (DESIGN.md → Layout); src/components/myPapersLayout.js moves
    the sections, stacked layouts keep one column */
