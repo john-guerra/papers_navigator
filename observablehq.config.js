@@ -1,4 +1,5 @@
 import { loadConferenceConfig } from "./src/lib/conference.js";
+import { footerHtml } from "./src/lib/footer.js";
 
 const conference = await loadConferenceConfig();
 
@@ -98,7 +99,8 @@ export default {
   <a href="./authors">Researchers</a>
   <a href="./about">About</a>
 </nav>`,
-  footer: `Built by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a> · Papers Navigator · <a href="./about#privacy">About &amp; privacy</a>`,
+  // Credits, license, source and feedback links (#189): request-free, see src/lib/footer.js
+  footer: footerHtml(),
   search: false,
   // johnguerra.co (Apache) serves my-papers.html, not /my-papers
   cleanUrls: false,
