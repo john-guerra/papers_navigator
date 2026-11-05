@@ -117,9 +117,15 @@
   text-transform: uppercase;
 }
 
+/* The next paper's title: buttons default to nowrap, so a long title would push the
+   page sideways on phones (#191). Let it wrap inside the column instead. */
 .author-next-open {
+  justify-content: flex-start;
+  max-width: 100%;
   padding: 0;
   font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
   text-align: left;
 }
 
@@ -170,7 +176,8 @@
   }
 
   .author-coauthors a,
-  .author-back a {
+  .author-back a,
+  .author-next-open {
     display: inline-flex;
     align-items: center;
     min-height: var(--spacing-touch, 44px);
