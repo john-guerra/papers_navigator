@@ -23,7 +23,7 @@ import { getEmbedder } from "./lib/embedder.js";
 import { keywordMatches, mapMatches, readyAnnouncement, searchMode, searchStatusLine, watchModel, whenIdle } from "./lib/searchStatus.js";
 import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
-import { createQueryMarkerSettings, queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
+import { createQueryMarkerSettings, queryAnnouncement, queryCuts, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
 import { createSimilaritySchemeSettings, rampDomain } from "./lib/similarityScheme.js";
 import { similaritySchemeControl } from "./components/similaritySchemeControl.js";
@@ -762,7 +762,7 @@ const similarityScheme = Generators.input(similaritySchemeStore);
 // Faded when few similar papers are visible (best visible match under the Weak cut). Screen
 // readers hear where it lands from the aria-live line by the map (never in the URL).
 {
-  const markers = queryMarkers({ vectors: rankingVectors, matrix: embeddings.matrix, papers, shown: positioned, query: query ?? "", research: researchMode, weakCut: rankingVectors ? cutsFor(scored.map((d) => d.score)).weak : -Infinity });
+  const markers = queryMarkers({ vectors: rankingVectors, matrix: embeddings.matrix, papers, shown: positioned, query: query ?? "", research: researchMode, ...queryCuts(rankingVectors ? cutsFor(scored.map((d) => d.score)) : null) });
   mapInput.placeQuery(showQueryMarker ? markers : []);
   // Paper labels (#99) always show (where they fit) for the query's nearest paper and the top
   // Strong matches

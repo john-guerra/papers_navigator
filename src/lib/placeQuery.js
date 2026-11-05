@@ -71,6 +71,69 @@ export function placeByNeighbours(
   return { x, y, spread: Math.sqrt(squared / total), neighbours: top };
 }
 
+/**
+ * Where the matching papers are (#167): the map (`width` × `height` pixels showing `xDomain` ×
+ * `yDomain`) cut into `cell`-pixel squares, a Gaussian kernel density (bandwidth in pixels) of
+ * the `points` ({x, y, weight}, data units) on them, and the densest cells that together hold
+ * `mass` of the density. One blob per group of matches, so matches the projection split show
+ * as several areas, and nothing between them. Measured on VIS 2026 (32 searches) against the
+ * neighbours' spread disc it replaces: it holds all the Strong matches (the disc: 59%, median),
+ * 25% of it is empty (> 20px from any Good match; the disc: 43%) and it covers 3.3% of the map
+ * (the disc: 8.4%). Cells: {x, x2, y, y2} in data units; [] without points.
+ */
+export function matchArea(
+  points,
+  { width, height, xDomain, yDomain, cell = 4, bandwidth = 22, mass = 0.8 },
+) {
+  if (!points?.length || !(width > 0) || !(height > 0)) return [];
+  const [x0, x1] = xDomain;
+  const [y0, y1] = yDomain;
+  const sx = width / (x1 - x0 || 1);
+  const sy = height / (y1 - y0 || 1);
+  const px = points.map((p) => [(p.x - x0) * sx, (p.y - y0) * sy, p.weight]);
+  const cols = Math.max(1, Math.round(width / cell));
+  const rows = Math.max(1, Math.round(height / cell));
+  const cw = width / cols;
+  const ch = height / rows;
+  const twoH2 = 2 * bandwidth * bandwidth;
+  const reach2 = 9 * bandwidth * bandwidth; // ignore points beyond 3 bandwidths
+  const density = new Float64Array(cols * rows);
+  let total = 0;
+  for (let r = 0; r < rows; r++) {
+    const cy = (r + 0.5) * ch;
+    for (let c = 0; c < cols; c++) {
+      const cx = (c + 0.5) * cw;
+      let d = 0;
+      for (const [x, y, w] of px) {
+        const d2 = (x - cx) ** 2 + (y - cy) ** 2;
+        if (d2 <= reach2) d += w * Math.exp(-d2 / twoH2);
+      }
+      density[r * cols + c] = d;
+      total += d;
+    }
+  }
+  if (!(total > 0)) return [];
+  // The level: walk the cells from the densest until they hold `mass` of the total
+  const order = Array.from(density.keys())
+    .filter((i) => density[i] > 0)
+    .sort((a, b) => density[b] - density[a]);
+  const cells = [];
+  let held = 0;
+  for (const i of order) {
+    if (held >= mass * total) break;
+    held += density[i];
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    cells.push({
+      x: x0 + (c * cw) / sx,
+      x2: x0 + ((c + 1) * cw) / sx,
+      y: y0 + (r * ch) / sy,
+      y2: y0 + ((r + 1) * ch) / sy,
+    });
+  }
+  return cells;
+}
+
 /** How far below the program's best match the best visible one may be before the marker fades. */
 export const FAINT_GAP = 0.1;
 
@@ -83,6 +146,23 @@ function bestSimilarity(vector, matrix, n, dims) {
     if (s > best) best = s;
   }
   return best;
+}
+
+/** Shown papers whose similarity to `vector` is at least `strong`: {x, y, weight: s - good}. */
+function strongMatches(vector, matrix, positions, dims, strong, good) {
+  const out = [];
+  for (let i = 0; i < positions.length; i++) {
+    if (!positions[i]) continue;
+    let s = 0;
+    for (let d = 0, o = i * dims; d < dims; d++) s += vector[d] * matrix[o + d];
+    if (s >= strong)
+      out.push({
+        x: positions[i][0],
+        y: positions[i][1],
+        weight: Math.max(s - good, 0.01),
+      });
+  }
+  return out;
 }
 
 /**
@@ -127,6 +207,8 @@ export function queryMarkers({
   x = "x",
   y = "y",
   weakCut = -Infinity,
+  goodCut = null,
+  strongCut = null,
   gap = FAINT_GAP,
 }) {
   if (!vectors?.length || !shown?.length) return [];
@@ -145,6 +227,25 @@ export function queryMarkers({
       const faint =
         bestShown < weakCut ||
         bestShown < bestSimilarity(vector, matrix, papers.length, dims) - gap;
+      // #167: the search area is drawn around the Strong matches on the map (each weighted by
+      // how far it clears Good), or around its nearest papers without cuts
+      const matches =
+        strongCut == null
+          ? place.neighbours.map(({ index, similarity }) => ({
+              x: positions[index][0],
+              y: positions[index][1],
+              weight: Math.exp(
+                (similarity - place.neighbours[0].similarity) / 0.05,
+              ),
+            }))
+          : strongMatches(
+              vector,
+              matrix,
+              positions,
+              dims,
+              strongCut,
+              goodCut ?? 0,
+            );
       const label = research
         ? `★ My research${vectors.length > 1 ? ` ${i + 1}` : ""}`
         : "★ Your search";
@@ -160,6 +261,7 @@ export function queryMarkers({
         y: place.y,
         spread: place.spread,
         faint,
+        matches,
         nearest: place.neighbours.map(({ index, similarity }) => ({
           id: papers[index].id,
           title: papers[index].title,
@@ -170,4 +272,11 @@ export function queryMarkers({
       };
     })
     .filter(Boolean);
+}
+
+/** queryMarkers' cut options from relevance cuts ({weak, good, strong}); {} without a ranking. */
+export function queryCuts(cuts) {
+  return cuts
+    ? { weakCut: cuts.weak, goodCut: cuts.good, strongCut: cuts.strong }
+    : {};
 }

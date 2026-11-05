@@ -14,6 +14,7 @@ import {
   token,
 } from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
+import { matchArea } from "../lib/placeQuery.js";
 import {
   domainAt,
   easeExpr,
@@ -517,15 +518,16 @@ export function scatterSpec(
   const f = focus ? focusLayers({ xScale, yScale, tween, transition }) : null;
   const layers = [
     ...(shade ? [shade] : []),
+    // #167: the search area and "★ Your search" sit under the points
+    ...(q ? q.under : []),
     points,
-    ...(q ? q.below : []),
+    ...(q ? q.over : []),
     // Under the neighbour preview and the query marker, which stay on top (DESIGN.md)
     ...(f ?? []),
     ...(nn ? nn.below : []),
     ...(rings ? [rings] : []),
     ...textLayers,
     ...(nn ? nn.above : []),
-    ...(q ? q.above : []),
   ];
 
   return {
@@ -603,6 +605,8 @@ const QUERY_DATA = "query";
 const FOCUS_DATA = "focus";
 // Opacity of a query marker placed among barely similar papers (heavy filters)
 const FAINT_OPACITY = 0.4;
+// Opacity of the search area's cells (#167): a light wash under the points
+const AREA_OPACITY = 0.12;
 
 /**
  * Opacity for marks that describe the final layout: as given, or mid-motion (#82) hidden and
@@ -616,14 +620,14 @@ const settleFade = (tween, transition) => (opacity) =>
     : opacity;
 
 /**
- * Query marker marks (#100), all from the `query` dataset (rows from queryRows: kind "halo",
- * "line" or "marker", `m` = marker index), never under the pointer (the widget shows their
- * tooltip itself):
- * - below the rings and labels: the uncertainty halo, a light primary disc with a dashed rim
- *   whose radius is the neighbours' spread ("approximate"), and, while the pointer is on marker
- *   `queryHover`, thin lines from it to its nearest papers;
- * - on top of everything: a primary diamond outlined in the page background (readable on any
- *   point color) and its label ("★ Your search") in primary on a background halo.
+ * Query marker marks (#100, #167), all from the `query` dataset (rows from queryRows: kind
+ * "area", "line" or "marker", `m` = marker index), never under the pointer (the widget shows
+ * their tooltip itself):
+ * - `under` the points, quiet: the search area (light primary cells where the strong matches
+ *   are, lib/placeQuery.js matchArea), a small primary ★ where the query lands and its name
+ *   ("Your search") in primary on a background halo;
+ * - `over` the points, only while the pointer is on marker `queryHover`: thin lines from it to
+ *   its nearest papers (transient, so they must read).
  * Mid-motion they stay hidden and fade in as the motion settles, like the neighbour marks.
  */
 function queryLayers({ xScale, yScale, tween, transition }) {
@@ -634,113 +638,83 @@ function queryLayers({ xScale, yScale, tween, transition }) {
   };
   // Marks with `opacity: faded`: full, or FAINT_OPACITY when few similar papers are visible
   // (datum.faint, lib/placeQuery.js); both fade in after a motion
-  const faded = Symbol("faded");
-  const fadedOpacity = {
-    condition: { test: "datum.faint", value: fade(FAINT_OPACITY) },
-    value: fade(1),
-  };
-  const layer = (filter, { opacity, ...mark }, encoding = {}) => ({
+  const faded = (full = 1) => ({
+    condition: { test: "datum.faint", value: fade(full * FAINT_OPACITY) },
+    value: fade(full),
+  });
+  const layer = (filter, mark, encoding = {}) => ({
     data: { name: QUERY_DATA },
     transform: [{ filter }],
-    mark: {
-      interactive: false,
-      clip: true,
-      ...mark,
-      ...(opacity !== faded && opacity !== undefined && { opacity }),
-    },
-    encoding: {
-      tooltip: null,
-      ...position,
-      ...(opacity === faded && { opacity: fadedOpacity }),
-      ...encoding,
-    },
+    mark: { interactive: false, clip: true, ...mark },
+    encoding: { tooltip: null, ...position, ...encoding },
   });
   const primary = token("color-primary", "#903129");
   const background = token("color-background", "#fcf9f3");
-  const label = (mark) =>
+  const text = (mark, encoding) =>
     layer(
       "datum.kind === 'marker'",
       {
         type: "text",
-        dy: -15,
-        fontSize: 12,
-        fontWeight: 700,
         font: token("font-sans", "sans-serif"),
-        opacity: faded,
         ...mark,
       },
-      { text: { field: "label" } },
+      { opacity: faded(), ...encoding },
+    );
+  const name = (mark) =>
+    text(
+      { dy: -13, fontSize: 11, fontWeight: 600, ...mark },
+      { text: { field: "name" } },
     );
   return {
-    below: [
+    under: [
       layer(
-        "datum.kind === 'halo'",
+        "datum.kind === 'area'",
+        { type: "rect", fill: primary },
         {
-          type: "point",
-          shape: "circle",
-          filled: true,
-          fill: primary,
-          fillOpacity: 0.1,
-          stroke: primary,
-          strokeOpacity: 0.55,
-          strokeWidth: 1,
-          strokeDash: [3, 3],
-          opacity: faded,
+          x2: { field: "x2" },
+          y2: { field: "y2" },
+          opacity: faded(AREA_OPACITY),
         },
-        { size: { field: "size", type: "quantitative", scale: null } },
       ),
+      text(
+        { fontSize: 13, baseline: "middle", fill: primary },
+        { text: { value: "★" } },
+      ),
+      name({
+        fill: background,
+        stroke: background,
+        strokeWidth: 3,
+        strokeJoin: "round",
+      }),
+      name({ fill: primary }),
+    ],
+    over: [
       layer(
         "datum.kind === 'line' && datum.m === queryHover",
         { type: "rule", strokeWidth: 1, color: primary, opacity: fade(0.6) },
         { x2: { field: "x2" }, y2: { field: "y2" } },
       ),
     ],
-    above: [
-      layer("datum.kind === 'marker'", {
-        type: "point",
-        shape: "diamond",
-        filled: true,
-        size: 260,
-        fill: primary,
-        stroke: background,
-        strokeWidth: 2,
-        opacity: faded,
-      }),
-      label({
-        fill: background,
-        stroke: background,
-        strokeWidth: 4,
-        strokeJoin: "round",
-      }),
-      label({ fill: primary }),
-    ],
   };
 }
 
 /**
- * Rows for the `query` dataset from queryMarkers (lib/placeQuery.js): per marker its halo (the
- * `spread` in map units times `pixelsPerUnit`, capped at `maxRadius` px, as a symbol area; left
- * out under 10 px, where the diamond covers it), lines to its nearest papers and the marker,
- * markers last so they are drawn on top.
+ * Rows for the `query` dataset from queryMarkers (lib/placeQuery.js): per marker its search
+ * area (matchArea cells around `m.matches`, else its nearest papers, on `grid` = {width, height, xDomain, yDomain}, the
+ * plot in pixels and the scales' domains; none without a grid), lines to its nearest papers and
+ * the marker itself (`name` = its label without the star, drawn apart).
  */
-export function queryRows(
-  markers,
-  { pixelsPerUnit = 1, maxRadius = Infinity } = {},
-) {
-  const halos = [];
+export function queryRows(markers, { grid = null } = {}) {
+  const areas = [];
   const lines = [];
   const marks = [];
   markers.forEach((m, i) => {
-    const radius = Math.min(m.spread * pixelsPerUnit, maxRadius);
-    if (radius >= 10)
-      halos.push({
-        kind: "halo",
-        m: i,
-        x: m.x,
-        y: m.y,
-        size: (2 * radius) ** 2,
-        faint: Boolean(m.faint),
-      });
+    if (grid)
+      for (const cell of matchArea(
+        m.matches ?? m.nearest.map(({ x, y }) => ({ x, y, weight: 1 })),
+        grid,
+      ))
+        areas.push({ kind: "area", m: i, ...cell, faint: Boolean(m.faint) });
     for (const n of m.nearest)
       lines.push({ kind: "line", m: i, x: m.x, y: m.y, x2: n.x, y2: n.y });
     marks.push({
@@ -749,10 +723,11 @@ export function queryRows(
       x: m.x,
       y: m.y,
       label: m.label,
+      name: m.label.replace(/^★\s*/, ""),
       faint: Boolean(m.faint),
     });
   });
-  return [...halos, ...lines, ...marks];
+  return [...areas, ...lines, ...marks];
 }
 
 /** The map tooltip of a query marker: what it is, that it is approximate, its nearest papers. */
@@ -1385,30 +1360,23 @@ export async function BrushableScatterPlot(data, options = {}) {
     if (!options.query) return Promise.resolve();
     markers = list;
     hoveredMarker = -1;
-    // Map units → pixels at the final scales (the halo is hidden mid-motion), the geometric mean
-    // of both axes: one circle, whatever the map's aspect ratio
+    // The search area (#167) on the plot's pixels at the final scales (hidden mid-motion)
     const rows = data.filter(
       (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
     );
-    const [x0, x1] = extent(rows.map((d) => d[x]));
-    const [y0, y1] = extent(rows.map((d) => d[y]));
-    const w = chart.view.width() - 20;
-    const h = chart.view.height() - 20;
-    const pixelsPerUnit = Math.sqrt(
-      (w / (x1 - x0 || 1)) * (h / (y1 - y0 || 1)),
-    );
+    const grid = {
+      width: chart.view.width() - 20,
+      height: chart.view.height() - 20,
+      xDomain: extent(rows.map((d) => d[x])),
+      yDomain: extent(rows.map((d) => d[y])),
+    };
     return chart.view
       .change(
         QUERY_DATA,
         chart.view
           .changeset()
           .remove(() => true)
-          .insert(
-            queryRows(markers, {
-              pixelsPerUnit,
-              maxRadius: 0.35 * Math.min(w, h),
-            }),
-          ),
+          .insert(queryRows(markers, { grid })),
       )
       .signal("queryHover", -1)
       .runAsync()

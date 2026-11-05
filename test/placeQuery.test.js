@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  matchArea,
   placeByNeighbours,
   queryAnnouncement,
+  queryCuts,
   queryMarkers,
 } from "../src/lib/placeQuery.js";
 
@@ -285,5 +287,102 @@ describe("queryAnnouncement", () => {
       "My research 1 lands near: A (approximate). My research 2 lands near: B (approximate, few similar papers visible).",
     );
     expect(queryAnnouncement([])).toBe("");
+  });
+});
+
+describe("matchArea (#167: where the matching papers are)", () => {
+  const box = { width: 100, height: 100, xDomain: [0, 10], yDomain: [0, 10] };
+  const covers = (cells, px, py) =>
+    cells.some((c) => c.x <= px && px <= c.x2 && c.y <= py && py <= c.y2);
+
+  it("one blob per group of matches, nothing between them", () => {
+    const cells = matchArea(
+      [
+        { x: 1, y: 1, weight: 1 },
+        { x: 1.5, y: 1, weight: 1 },
+        { x: 9, y: 9, weight: 1 },
+      ],
+      box,
+    );
+    expect(covers(cells, 1.2, 1)).toBe(true);
+    expect(covers(cells, 9, 9)).toBe(true);
+    expect(covers(cells, 5, 5)).toBe(false);
+    expect(covers(cells, 9, 1)).toBe(false);
+  });
+
+  it("keeps the densest cells holding `mass` of the weight: a light match can drop out", () => {
+    const cells = matchArea(
+      [
+        { x: 2, y: 2, weight: 1 },
+        { x: 8, y: 8, weight: 0.02 },
+      ],
+      { ...box, mass: 0.8 },
+    );
+    expect(covers(cells, 2, 2)).toBe(true);
+    expect(covers(cells, 8, 8)).toBe(false);
+  });
+
+  it("returns cells in data units on a regular grid, [] without matches", () => {
+    const cells = matchArea([{ x: 5, y: 5, weight: 1 }], { ...box, cell: 10 });
+    expect(cells.length).toBeGreaterThan(0);
+    for (const c of cells) {
+      expect(c.x2 - c.x).toBeCloseTo(1, 5);
+      expect(c.y2 - c.y).toBeCloseTo(1, 5);
+    }
+    expect(matchArea([], box)).toEqual([]);
+  });
+});
+
+describe("queryMarkers matches (#167)", () => {
+  const papers = ["a", "b", "c", "d", "e", "f"].map((id) => ({
+    id,
+    title: id,
+  }));
+  const shown = papers.map((p, i) => ({
+    ...p,
+    x: positions[i][0],
+    y: positions[i][1],
+  }));
+
+  it("carries the shown papers at or above the Strong cut, weighted by their margin over Good", () => {
+    const [m] = queryMarkers({
+      vectors: [unit([1, 0.2, 0.2])],
+      matrix,
+      papers,
+      shown: shown.filter((d) => d.id !== "a"),
+      k: 3,
+      dims: DIMS,
+      goodCut: 0.5,
+      strongCut: 0.9,
+    });
+    // b and c (group 1, very similar) are Strong; a is not shown; group 2 is far below
+    expect(m.matches.map((d) => [d.x, d.y])).toEqual([
+      [1, 0],
+      [0, 1],
+    ]);
+    for (const d of m.matches) expect(d.weight).toBeGreaterThan(0.4);
+  });
+
+  it("without cuts, falls back to its nearest papers", () => {
+    const [m] = queryMarkers({
+      vectors: [unit([1, 0.2, 0.2])],
+      matrix,
+      papers,
+      shown,
+      k: 3,
+      dims: DIMS,
+    });
+    expect(m.matches).toHaveLength(3);
+  });
+});
+
+describe("queryCuts", () => {
+  it("maps relevance cuts to queryMarkers options, none without a ranking", () => {
+    expect(queryCuts({ weak: 0.2, good: 0.3, strong: 0.45 })).toEqual({
+      weakCut: 0.2,
+      goodCut: 0.3,
+      strongCut: 0.45,
+    });
+    expect(queryCuts(null)).toEqual({});
   });
 });

@@ -25,23 +25,47 @@ const marker = {
   ],
 };
 
+const grid = { width: 100, height: 100, xDomain: [0, 10], yDomain: [0, 10] };
+
 describe("queryRows", () => {
-  it("a halo sized from the spread, lines to the nearest papers, the marker last", () => {
-    const rows = queryRows([marker], { pixelsPerUnit: 10 });
-    expect(rows.map((r) => r.kind)).toEqual(["halo", "line", "line", "marker"]);
-    // Radius 2 units × 10 px = 20 px: symbol area (2r)²
-    expect(rows[0]).toMatchObject({ x: 2, y: 3, size: 1600 });
-    expect(rows[1]).toMatchObject({ x: 2, y: 3, x2: 0, y2: 0, m: 0 });
-    expect(rows[3]).toMatchObject({ label: "★ Your search", m: 0 });
+  it("search-area cells, lines to the nearest papers, then the marker", () => {
+    const rows = queryRows([marker], { grid });
+    const kinds = [...new Set(rows.map((r) => r.kind))];
+    expect(kinds).toEqual(["area", "line", "marker"]);
+    expect(rows.find((r) => r.kind === "line")).toMatchObject({
+      x: 2,
+      y: 3,
+      x2: 0,
+      y2: 0,
+      m: 0,
+    });
+    // The star and the name are drawn apart (the star marks the spot)
+    expect(rows.at(-1)).toMatchObject({
+      label: "★ Your search",
+      name: "Your search",
+      m: 0,
+    });
+    // #167: no disc from the neighbours' spread any more
+    expect(rows.some((r) => r.kind === "halo")).toBe(false);
   });
 
-  it("caps the halo, and leaves out one the diamond covers", () => {
-    expect(
-      queryRows([marker], { pixelsPerUnit: 100, maxRadius: 50 })[0].size,
-    ).toBe(10000);
-    expect(
-      queryRows([marker], { pixelsPerUnit: 2 }).some((r) => r.kind === "halo"),
-    ).toBe(false);
+  it("draws the area around the matches, not around the marker", () => {
+    const matches = [
+      { x: 1, y: 1, weight: 1 },
+      { x: 9, y: 9, weight: 1 },
+    ];
+    const cells = queryRows([{ ...marker, matches }], { grid }).filter(
+      (r) => r.kind === "area",
+    );
+    const covers = (px, py) =>
+      cells.some((c) => c.x <= px && px <= c.x2 && c.y <= py && py <= c.y2);
+    expect(covers(1, 1)).toBe(true);
+    expect(covers(9, 9)).toBe(true);
+    expect(covers(5, 5)).toBe(false);
+  });
+
+  it("leaves the area out without a grid", () => {
+    expect(queryRows([marker]).some((r) => r.kind === "area")).toBe(false);
   });
 
   it("numbers markers by index", () => {
@@ -49,6 +73,7 @@ describe("queryRows", () => {
     expect(rows.filter((r) => r.kind === "marker").map((r) => r.m)).toEqual([
       0, 1,
     ]);
+    expect(rows.at(-1).name).toBe("My research 2");
   });
 });
 
@@ -71,17 +96,19 @@ describe("queryTooltip", () => {
 
 describe("faint marker", () => {
   it("rows carry `faint`, and the marker layers fade it", async () => {
-    const rows = queryRows([{ ...marker, faint: true }], { pixelsPerUnit: 10 });
+    const rows = queryRows([{ ...marker, faint: true }], { grid });
     expect(
       rows.filter((r) => r.kind !== "line").every((r) => r.faint === true),
     ).toBe(true);
     const spec = scatterSpec(data, { width: 200, height: 200, query: true });
-    const diamond = spec.layer.find((l) => l.mark.shape === "diamond");
-    expect(diamond.encoding.opacity).toEqual({
+    const star = spec.layer.find(
+      (l) => l.data?.name === "query" && l.encoding.text?.value === "★",
+    );
+    expect(star.encoding.opacity).toEqual({
       condition: { test: "datum.faint", value: 0.4 },
       value: 1,
     });
-    expect(diamond.mark.opacity).toBeUndefined();
+    expect(star.mark.opacity).toBeUndefined();
   });
 
   it("is drawn at lower opacity", async () => {
@@ -93,13 +120,30 @@ describe("faint marker", () => {
 });
 
 describe("scatterSpec with a query layer", () => {
-  it("adds the empty `query` dataset, the hover param and its layers on top", () => {
+  it("adds the empty `query` dataset, the hover param, and its marks under the points (#167)", () => {
     const spec = scatterSpec(data, { width: 200, height: 200, query: true });
     expect(spec.datasets).toEqual({ query: [] });
     expect(spec.params.map((p) => p.name)).toContain("queryHover");
-    const last = spec.layer.at(-1);
-    expect(last.data).toEqual({ name: "query" });
-    expect(last.mark.type).toBe("text");
+    const pointsAt = spec.layer.findIndex(
+      (l) => l.mark.type === "point" && !l.data,
+    );
+    const queryAt = (test) =>
+      spec.layer.findIndex((l) => l.data?.name === "query" && test(l));
+    // The area, the star and its name sit under the points…
+    expect(queryAt((l) => l.mark.type === "rect")).toBeLessThan(pointsAt);
+    expect(queryAt((l) => l.encoding.text?.value === "★")).toBeLessThan(
+      pointsAt,
+    );
+    expect(queryAt((l) => l.encoding.text?.field === "name")).toBeLessThan(
+      pointsAt,
+    );
+    // …the hover lines over them (transient, they must read)
+    expect(queryAt((l) => l.mark.type === "rule")).toBeGreaterThan(pointsAt);
+    // No diamond, nothing of the marker on top of the map
+    expect(spec.layer.some((l) => l.mark.shape === "diamond")).toBe(false);
+    expect(
+      spec.layer.filter((l) => l.data?.name === "query").at(-1).mark.type,
+    ).toBe("rule");
     expect(
       spec.layer.every(
         (l) => l.data?.name !== "query" || l.mark.interactive === false,
@@ -165,7 +209,8 @@ describe("BrushableScatterPlot query marker (#100)", () => {
     await widget.placeQuery([marker]);
     expect(widget.view.data("query").map((r) => r.kind)).toContain("marker");
     expect(widget.querySelector("svg")).toBe(svgBefore);
-    expect(widget.querySelector("svg").textContent).toContain("★ Your search");
+    expect(widget.querySelector("svg").textContent).toContain("Your search");
+    expect(widget.querySelector("svg").textContent).toContain("★");
     await widget.placeQuery([]);
     expect(widget.view.data("query")).toEqual([]);
   });
