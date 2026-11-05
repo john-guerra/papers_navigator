@@ -1,7 +1,7 @@
 import { html } from "htl";
+import { WATCH_LEVEL_NAMES } from "../lib/relevanceLevels.js";
 
 const papersWord = (n) => `${n} ${n === 1 ? "paper" : "papers"}`;
-const LEVEL_NAMES = { strong: "Strong", good: "Good", weak: "Weak" };
 
 /**
  * "Watch this research topic" for the current Explore search (#24, US11.1–11.2): a button that
@@ -22,7 +22,7 @@ export function topicWatch(
   },
   { onSave, onToggle },
 ) {
-  let chosen = current?.level ?? (level in LEVEL_NAMES ? level : "good");
+  let chosen = current?.level ?? (level in WATCH_LEVEL_NAMES ? level : "good");
   // A level with no papers (fixed cuts, #186: a weak search has 0 Strong) starts at Good
   if (!current && !previews[chosen]?.count && previews.good) chosen = "good";
   const open = html`<button
@@ -33,8 +33,8 @@ export function topicWatch(
   // Short labels (it sits beside "My research"); the full meaning stays in the title
   open.textContent = current
     ? research
-      ? `🔍 Watching “${current.value}” (${LEVEL_NAMES[current.level]})`
-      : `🔍 Watching topic (${LEVEL_NAMES[current.level]})`
+      ? `🔍 Watching “${current.value}” (${WATCH_LEVEL_NAMES[current.level]})`
+      : `🔍 Watching topic (${WATCH_LEVEL_NAMES[current.level]})`
     : "🔍 Watch topic";
   open.title = current
     ? research
@@ -52,8 +52,8 @@ export function topicWatch(
   nameInput.value = current?.value ?? research?.name ?? "";
   const savedName = () => nameInput.value.trim() || research?.name;
 
-  // Only the levels with a preview (Explore passes Strong, Good and Weak)
-  const levelButtons = Object.entries(LEVEL_NAMES)
+  // Only the levels with a preview (Explore passes Strong, Good and Loose)
+  const levelButtons = Object.entries(WATCH_LEVEL_NAMES)
     .filter(([key]) => previews[key])
     .map(([key, name]) => {
       const button = html`<button type="button" data-level=${key}>
@@ -113,7 +113,7 @@ export function topicWatch(
         ? ` Compared with what you watch now: +${p.added}, −${p.dropped}.`
         : "";
     summary.textContent =
-      `${papersWord(p.count)} in the program at ${LEVEL_NAMES[chosen]} (all types): ` +
+      `${papersWord(p.count)} in the program at ${WATCH_LEVEL_NAMES[chosen]} (all types): ` +
       `${p.joining} would join My Papers, ${p.already} already there. ` +
       `${papersWord(p.out)} stay out.${change}`;
     borderline.replaceChildren(
@@ -137,7 +137,7 @@ export function topicWatch(
     save.textContent = current
       ? same
         ? "Already watching at this level"
-        : `Watch at ${LEVEL_NAMES[chosen]} instead`
+        : `Watch at ${WATCH_LEVEL_NAMES[chosen]} instead`
       : `Watch · ${papersWord(p.count)}`;
   };
   const setOpen = (on) => {

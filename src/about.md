@@ -133,7 +133,7 @@ Explore is the home page: a search box, filters, a map of the whole program and 
 
 1. Type what you are looking for in plain words, for example ${conference.exampleQueries?.slice(0, 3).map((q) => `“${q}”`).join(", ") ?? "a topic"}. Or tap one of the example searches in the introduction under the title.
 2. Results are ranked by meaning, not keywords: a paper can match without using your exact words. Until the model is ready (the first visit downloads it), Explore lists the whole program and a search shows keyword matches, as the line under the search box says.
-3. Pick how close a match must be with **Strong · Good · Weak · All**; each shows how many papers it includes. **Good** is the default. Each paper shows its similarity on the right of its row (for example "54%").
+3. Pick how close a match must be with **Strong · Good · Loose · All**; each shows how many papers it includes. **Good** is the default; the ⓘ beside them shows each level's cut (for example "Good ≥ 30%"). Each paper shows its similarity on the right of its row (for example "54%").
 
 ### Filter the program
 
@@ -187,7 +187,7 @@ Rank the whole program against your own work.
 
 1. Press **My research** beside the search box.
 2. Paste one or more abstracts (up to 10, a blank line between them).
-3. Press **Rank the program**. The list, map colors and Strong · Good · Weak · All now follow your abstracts; each paper is scored by its closest abstract.
+3. Press **Rank the program**. The list, map colors and Strong · Good · Loose · All now follow your abstracts; each paper is scored by its closest abstract.
 4. Optionally **🔍 Watch topic** to keep those papers in My Papers.
 
 Your abstracts stay on this device: they are saved in this browser only and never put in share links. **Delete from this device** removes them.

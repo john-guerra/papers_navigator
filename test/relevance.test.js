@@ -48,7 +48,7 @@ describe("relevanceControl", () => {
     const labels = [...el.querySelectorAll("button[data-level]")].map((b) =>
       b.textContent.replace(/\s+/g, " ").trim(),
     );
-    expect(labels).toEqual(["Strong 2", "Good 4", "Weak 5", "All 5"]);
+    expect(labels).toEqual(["Strong 2", "Good 4", "Loose 5", "All 5"]);
     expect(el.querySelector('[aria-pressed="true"]').textContent).toContain(
       "Good",
     );

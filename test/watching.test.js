@@ -148,3 +148,18 @@ describe("renderWatching research topics (#24)", () => {
     expect(text).toContain("Finding matches…");
   });
 });
+
+describe("renderWatching Loose (#183)", () => {
+  it("shows a topic watched at the weak level as Loose", () => {
+    const el = renderWatching(
+      {
+        rules: [{ id: "topic:x", type: "topic", value: "x", level: "weak" }],
+        countFor: () => 1,
+        names: { author: [], affiliation: [] },
+      },
+      { onRemove() {}, onAdd() {} },
+    );
+    expect(el.textContent).toContain("Loose");
+    expect(el.textContent).not.toContain("Weak");
+  });
+});

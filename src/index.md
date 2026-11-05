@@ -40,6 +40,7 @@ import { facetStrip } from "./widgets/facetStrip.js";
 import { BrushableScatterPlot, topCategories } from "./widgets/brushableScatterPlot.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { relevanceControl } from "./widgets/relevanceControl.js";
+import { LEVEL_NAMES } from "./lib/relevanceLevels.js";
 import { themeControl } from "./components/themeControl.js";
 import { PapersList, conferenceLink, paperScore } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
@@ -759,7 +760,7 @@ const similarityScheme = Generators.input(similaritySchemeStore);
 ```js
 // "★ Your search" / "★ My research" (#100): placed among the papers on the map (drawn, aligned
 // coordinates) by their nearest neighbours in the embedding, all in the browser
-// Faded when few similar papers are visible (best visible match under the Weak cut). Screen
+// Faded when few similar papers are visible (best visible match under the Loose cut). Screen
 // readers hear where it lands from the aria-live line by the map (never in the URL).
 {
   const markers = queryMarkers({ vectors: rankingVectors, matrix: embeddings.matrix, papers, shown: positioned, query: query ?? "", research: researchMode, ...queryCuts(rankingVectors ? cutsFor(scored.map((d) => d.score)) : null) });
@@ -871,7 +872,7 @@ if (hasQuery && peopleCount > relevanceState.people && relevanceState.level !== 
 relevanceState.people = peopleCount;
 const cuts = cutsFor(scored.map((d) => d.score));
 const relevanceInput = hasQuery
-  ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level, subject: researchMode ? "research" : "search" })
+  ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level, subject: researchMode ? "research" : "search", cuts: () => cuts })
   : null;
 const relevance = relevanceInput ? Generators.input(relevanceInput) : "all";
 ```
@@ -952,7 +953,7 @@ const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))
     showToast(`Added ${fresh.length} to My Papers`, { actionLabel: "Undo", onAction: undo });
   },
 });
-const levelName = { strong: "Strong", good: "Good", weak: "Weak", all: "All" }[relevance];
+const levelName = LEVEL_NAMES[relevance];
 const leaveResearch = () => researchStore.value.active && researchStore.set({ active: false });
 const chips = [
   hasQuery && researchMode && { label: rankingLabel, value: `${levelName} matches`, onClear: leaveResearch },

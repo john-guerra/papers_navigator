@@ -2202,7 +2202,8 @@ details.missing > summary {
 }
 
 /* #176 — "Match to your search: ⓘ" before the relevance control; the label row wraps above
-   the control when they don't fit (phones). Anchors the toggletip's bubble. */
+   the control when they don't fit (phones use a short label, #183). Anchors the toggletip's
+   bubble. */
 .relevance-field {
   position: relative;
   display: flex;
@@ -2222,9 +2223,52 @@ details.missing > summary {
   gap: var(--spacing-xs, 4px);
 }
 
-.relevance-label {
+:is(.relevance-label, .relevance-label-short) {
   color: var(--color-on-surface-muted);
   font: var(--typography-label-md);
+}
+
+.relevance-label-short {
+  display: none;
+}
+
+/* #183 — phones: one row. A short "Match" (the full label stays the group's accessible name,
+   visually hidden), tighter segments (still 44px tall, counts visible) and an ⓘ whose 44px hit
+   area overlaps its neighbours' padding instead of taking room. */
+@media (max-width: 639.98px) {
+  /* Still wraps (back to two rows) on screens narrower than 360px, never scrolls sideways */
+  .relevance-field {
+    column-gap: var(--spacing-xs, 4px);
+  }
+
+  .relevance-label-row {
+    flex: none;
+    gap: 0;
+  }
+
+  .relevance-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .relevance-label-short {
+    display: inline;
+  }
+
+  /* No hover disc: it would cover "Match" (and sticks after a tap); the ⓘ darkens instead */
+  .relevance-label-row .toggletip-button,
+  .relevance-label-row .toggletip-button:hover {
+    margin: 0 -8px;
+    background: none;
+  }
+
+  .relevance-field .relevance-control button {
+    padding: 0 6px;
+  }
 }
 
 /* Toggletip (src/components/toggletip.js): a small ⓘ with a 28px hit area (44px on touch) */
