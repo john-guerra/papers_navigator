@@ -208,7 +208,7 @@ const exampleChips = html`${(conference.exampleQueries ?? []).map((q, i) => {
 ```
 
 ```js
-const queryPlaceholder = "Describe what you are looking for, e.g. LLM agents for scientific visualization";
+const queryPlaceholder = "Describe what you are looking for, e.g. AI agents that help scientists explore data";
 // Ranking by My research (#27) when the page left off: no default search in the box
 const queryInput = Inputs.text({ placeholder: queryPlaceholder, value: researchStore.value.active ? "" : urlStart.query });
 // Search is always live (#12), debounced so typing doesn't recompute on every keystroke

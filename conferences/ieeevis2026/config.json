@@ -45,14 +45,15 @@
   "typeNames": {
     "workshop": "Workshop Paper"
   },
-  "defaultQuery": "Dimensionality reduction",
+  "defaultQuery": "Volume rendering",
   "exampleQueries": [
-    "LLM agents",
+    "Volume rendering",
+    "AI agents",
     "Dimensionality reduction",
-    "Accessibility",
-    "Uncertainty",
-    "Visualization literacy",
-    "Immersive analytics",
-    "Healthcare"
+    "Graphs",
+    "Perception",
+    "Storytelling",
+    "Data literacy",
+    "Accessibility"
   ]
 }

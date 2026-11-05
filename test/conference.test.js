@@ -17,6 +17,22 @@ describe("conference config", () => {
     const config = await loadConferenceConfig("ieeevis2026");
     expect(config.timezone).toBe("US/Eastern");
   });
+
+  // #165: chosen by running the search on the VIS 2026 papers (evidence in the PR)
+  it("has 6–8 distinct example searches, the default among them", async () => {
+    const { defaultQuery, exampleQueries } =
+      await loadConferenceConfig("ieeevis2026");
+    expect(defaultQuery).toBeTruthy();
+    expect(exampleQueries).toContain(defaultQuery);
+    expect(exampleQueries.length).toBeGreaterThanOrEqual(6);
+    expect(exampleQueries.length).toBeLessThanOrEqual(8);
+    expect(new Set(exampleQueries).size).toBe(exampleQueries.length);
+    // "visualization" and "analytics" match almost every VIS paper (e.g. "Visualization
+    // literacy" clears the Good cut for 361 of 488, "Visual analytics" for 373), so an
+    // example with them doesn't narrow anything
+    for (const q of exampleQueries)
+      expect(q).not.toMatch(/visuali[sz]ation|analytic/i);
+  });
 });
 
 describe("publicConfig", () => {
