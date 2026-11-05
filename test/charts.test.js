@@ -9,6 +9,12 @@ import {
 } from "../src/widgets/brushableScatterPlot.js";
 import { BrushableHistogram } from "../src/widgets/brushableHistogram.js";
 
+/** The [rampLo, rampHi] params' initial values (#166 review: the ramp domain is live). */
+const rampParams = (spec) =>
+  ["rampLo", "rampHi"].map(
+    (name) => (spec.params ?? []).find((p) => p.name === name)?.value,
+  );
+
 const data = [
   { id: "a", x: 0, y: 0, type: "full", score: 0.9 },
   { id: "b", x: 5, y: 5, type: "short", score: 0.2 },
@@ -137,9 +143,10 @@ describe("scatterSpec reliability (#84)", () => {
     });
     expect(spec.encoding.color.condition.scale).toMatchObject({
       range: ["#28377a", "#5f74bf", "#a3b0dc"],
-      domain: [0.2, 0.9],
+      domain: [{ expr: "rampLo" }, { expr: "rampHi" }],
       clamp: true,
     });
+    expect(rampParams(spec)).toEqual([0.2, 0.9]);
   });
 
   it("draws the distortion overlay behind the points, ignoring the pointer", async () => {
@@ -355,7 +362,7 @@ describe("scatterSpec legend (DESIGN.md → Legend)", () => {
     expect(taperedLegend(options)).toBe(true);
     // size spans the ramp's domain, so the bar tapers from the smallest to the largest dot
     expect(scatterSpec(data, options).encoding.size.scale).toMatchObject({
-      domain: [0.3, 0.9],
+      domain: [{ expr: "rampLo" }, { expr: "rampHi" }],
       clamp: true,
     });
     const { compile } = await import("vega-lite");
@@ -486,9 +493,10 @@ describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories"
       scoreDomain: [0.3, 0.7],
     });
     expect(spec.encoding.color.condition.scale).toMatchObject({
-      domain: [0.3, 0.7],
+      domain: [{ expr: "rampLo" }, { expr: "rampHi" }],
       clamp: true,
     });
+    expect(rampParams(spec)).toEqual([0.3, 0.7]);
   });
 
   it("updates the level through the levelCut signal without a redraw", async () => {
@@ -677,5 +685,42 @@ describe("tooltip fields with titles and formats", () => {
       { field: "id" },
       { field: "score", title: "Similarity", format: ".0%" },
     ]);
+  });
+});
+
+describe("live ramp domain (#166 review: CHI maps the scheme over the shown scores)", () => {
+  it("setScoreDomain moves the color and size domains without a redraw", async () => {
+    const widget = await BrushableScatterPlot(data, {
+      renderer: "svg",
+      width: 300,
+      height: 200,
+      color: "score",
+      colorType: "quantitative",
+      size: "score",
+      scoreDomain: [0.3, 0.9],
+    });
+    document.body.append(widget);
+    try {
+      const svg = widget.querySelector("svg");
+      expect(widget.view.scale("color").domain()).toEqual([0.3, 0.9]);
+      await widget.setScoreDomain([0.1, 0.8]);
+      expect(widget.view.scale("color").domain()).toEqual([0.1, 0.8]);
+      expect(widget.view.scale("size").domain()).toEqual([0.1, 0.8]);
+      expect(widget.querySelector("svg")).toBe(svg);
+      // A collapsed or missing domain is ignored
+      await widget.setScoreDomain(null);
+      expect(widget.view.scale("color").domain()).toEqual([0.1, 0.8]);
+    } finally {
+      widget.remove();
+    }
+  });
+
+  it("is a no-op on maps without a score domain", async () => {
+    const widget = await BrushableScatterPlot(data, {
+      renderer: "svg",
+      width: 200,
+      height: 200,
+    });
+    await expect(widget.setScoreDomain([0, 1])).resolves.toBeUndefined();
   });
 });

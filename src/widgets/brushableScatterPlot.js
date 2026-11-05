@@ -8,6 +8,11 @@ import {
   surfaceOffset,
 } from "./paperLabels.js";
 import { diameterOf, similarityLegend } from "./similarityLegend.js";
+import {
+  similarityColorScale,
+  similarityRange,
+  token,
+} from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import {
   domainAt,
@@ -26,29 +31,8 @@ export function brushFilter(data, drag, { x = "x", y = "y" } = {}) {
   );
 }
 
-/**
- * A DESIGN.md token from the page's CSS custom properties (src/style.css), or `fallback`
- * outside a styled page (tests, reuse elsewhere). Read when the spec is built, so the map
- * picks up the light or dark value in effect at render time.
- */
-function token(name, fallback) {
-  const value =
-    typeof document === "undefined"
-      ? ""
-      : getComputedStyle(document.documentElement)
-          .getPropertyValue(`--${name}`)
-          .trim();
-  return value || fallback;
-}
-
-/** DESIGN.md sequential similarity ramp, weakest to strongest match. */
-export function similarityRange() {
-  return [
-    token("color-viz-similarity-1", "#c37b71"),
-    token("color-viz-similarity-2", "#a7463d"),
-    token("color-viz-similarity-3", "#75201a"),
-  ];
-}
+// DESIGN.md tokens and the similarity ramp live in lib/similarityScheme.js (#166)
+export { similarityRange };
 
 /** DESIGN.md reliability ramp (#84), most to least reliable: it darkens where the map misleads. */
 export function reliabilityRange() {
@@ -237,6 +221,7 @@ export function scatterSpec(
     colorTitle = color,
     colorType = "nominal",
     colorScheme = null,
+    similarityScheme = null,
     categories,
     ringIds = null,
     labels = null,
@@ -289,9 +274,13 @@ export function scatterSpec(
           range: [...palette.slice(0, highlighted.length), palette[3]],
         }
       : {
-          range: colorRange ?? similarityRange(),
-          // DESIGN.md: the ramp's light end starts at the Good cut
-          ...(scoreDomain && { domain: scoreDomain, clamp: true }),
+          // #166: a Vega scheme chosen in Options, else the oxblood ramp (or the caller's range)
+          ...(colorRange
+            ? { range: colorRange }
+            : similarityColorScale(similarityScheme)),
+          // Live domain (#166 review): from the level cut (or the lowest shown score) to the best
+          // shown match, like the CHI navigator; set with setScoreDomain, no redraw
+          ...(scoreDomain && { domain: RAMP_DOMAIN, clamp: true }),
         };
 
   const visible = {
@@ -314,6 +303,13 @@ export function scatterSpec(
   };
   // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
   const levelCut = { name: "levelCut", value: null };
+  // The color/size ramp's domain (#166 review), updated with setScoreDomain (no redraw)
+  const rampParams = scoreDomain
+    ? [
+        { name: "rampLo", value: scoreDomain[0] },
+        { name: "rampHi", value: scoreDomain[1] },
+      ]
+    : [];
   // The keyword matches' ids (#125), updated with highlightMatches (no redraw)
   const matchParams = matches ? [{ name: "matchIds", value: null }] : [];
   // nice: false + padding in pixels, so cullLabels can mirror the scales exactly
@@ -386,7 +382,7 @@ export function scatterSpec(
             // cut, the largest at the best match. Otherwise it is fixed while leaving points are
             // still in the data (#82)
             ...(sizeCopy && scoreDomain
-              ? { domain: scoreDomain, clamp: true }
+              ? { domain: RAMP_DOMAIN, clamp: true }
               : transition &&
                 data.length && {
                   domain: extent(data.map((d) => d[size])),
@@ -553,6 +549,7 @@ export function scatterSpec(
             ...(nn ? [{ name: "nnIds", value: [] }] : []),
             ...(q ? [{ name: "queryHover", value: -1 }] : []),
             levelCut,
+            ...rampParams,
             ...matchParams,
             ...(tween?.params ?? []),
           ],
@@ -563,6 +560,7 @@ export function scatterSpec(
           params: [
             ...points.params,
             levelCut,
+            ...rampParams,
             ...matchParams,
             ...(tween?.params ?? []),
           ],
@@ -595,6 +593,8 @@ export function scatterSpec(
   };
 }
 
+// The ramp's live domain (#166 review): params set by setScoreDomain
+const RAMP_DOMAIN = [{ expr: "rampLo" }, { expr: "rampHi" }];
 // Named dataset of the neighbour marks (#102), replaced with view.change (no redraw)
 const NEIGHBOURS_DATA = "nn";
 // Named dataset of the query marker (#100), replaced with view.change (no redraw)
@@ -1188,6 +1188,17 @@ export async function BrushableScatterPlot(data, options = {}) {
   target.className = "brushable-scatterplot";
   target.append(chart);
   target.view = chart.view;
+  /**
+   * Moves the similarity ramp's color and size domain (#166 review) without a redraw: pages
+   * pass rampDomain(shown scores, level cut). Ignored without a score domain or a valid one.
+   */
+  target.setScoreDomain = async (domain) => {
+    if (!options.scoreDomain || !(domain?.[1] > domain?.[0])) return;
+    await chart.view
+      .signal("rampLo", domain[0])
+      .signal("rampHi", domain[1])
+      .runAsync();
+  };
   // Visual only (#134): with SVG marks screen readers would walk every point; the list and the
   // aria-live lines by the map are the accessible path (a canvas exposed nothing either)
   chart.querySelector("svg.marks")?.setAttribute("aria-hidden", "true");

@@ -25,6 +25,8 @@ import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { createQueryMarkerSettings, queryAnnouncement, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
+import { createSimilaritySchemeSettings, rampDomain } from "./lib/similarityScheme.js";
+import { similaritySchemeControl } from "./components/similaritySchemeControl.js";
 import { addSearchClear } from "./components/searchClear.js";
 import { trackListFocus } from "./lib/listFocus.js";
 import { createAnimationSettings, mapAnimation } from "./lib/animationSettings.js";
@@ -147,6 +149,7 @@ ${paperDetail}
   <h3>Appearance</h3>
   ${themeControl()}
   ${queryMarkerInput}
+  ${similaritySchemeInput}
   <h3>Advanced</h3>
   ${neighboursInput}
   ${advancedDr}
@@ -468,6 +471,8 @@ const neighbourState = { pinned: null };
 const paperLabelStore = createPaperLabelSettings({ phone: matchesMedia(PHONE_QUERY) });
 // "★ Your search" on the map (#100), per device; Map options → Appearance can hide it
 const queryMarkerStore = createQueryMarkerSettings();
+// Similarity colors (#166), per device; default brownbluegreen like John's CHI navigator
+const similaritySchemeStore = createSimilaritySchemeSettings();
 ```
 
 ```js
@@ -475,10 +480,12 @@ const queryMarkerStore = createQueryMarkerSettings();
 const animationInput = animationControl(animationStore, { hasTopics });
 const neighboursInput = neighboursControl(neighbourStore);
 const queryMarkerInput = queryMarkerControl(queryMarkerStore);
+const similaritySchemeInput = similaritySchemeControl(similaritySchemeStore);
 invalidation.then(() => {
   animationInput.dispose();
   neighboursInput.dispose();
   queryMarkerInput.dispose();
+  similaritySchemeInput.dispose();
 });
 ```
 
@@ -694,7 +701,9 @@ const mapInput = await BrushableScatterPlot(positioned, {
   labels: showTopics ? clusterLabels(positioned) : null,
   labelSize: mapWidth < 500 ? 13 : 15,
   // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
-  scoreDomain: hasQuery ? scoreRampDomain(scored, cutsFor) : null,
+  // Starts at the Good level (Good cut → best match on the map); the level cell below moves it
+  scoreDomain: hasQuery ? rampDomain(positioned.map((d) => d.score), cutsFor(scored.map((d) => d.score)).good) ?? scoreRampDomain(scored, cutsFor) : null,
+  similarityScheme,
   // DESIGN.md → Legend: the ramp says "less / more similar", not scores
   legendLabels: ["less similar", "more similar"],
   // Readable labels and a percentage instead of raw field names and a long float
@@ -740,6 +749,11 @@ const map = Generators.input(mapInput);
 
 ```js
 const showQueryMarker = Generators.input(queryMarkerStore);
+```
+
+```js
+// #166: a new scheme redraws the map (the brush and region survive, as with Color by)
+const similarityScheme = Generators.input(similaritySchemeStore);
 ```
 
 ```js
@@ -833,7 +847,10 @@ urlSync.update({
 ```js
 // Points below the chosen relevance level are drawn in viz-dim, live (no redraw)
 // null = no cut ("All"): cosine scores can be negative, so 0 would dim some papers
-mapInput.view.signal("levelCut", hasQuery && relevance !== "all" ? cuts[relevance] : null).runAsync();
+const levelCutValue = hasQuery && relevance !== "all" ? cuts[relevance] : null;
+mapInput.view.signal("levelCut", levelCutValue).runAsync();
+// The scheme spans the shown papers' scores, like the CHI navigator (#166 review), live
+if (hasQuery) mapInput.setScoreDomain(rampDomain(positioned.map((d) => d.score), levelCutValue));
 // Rings follow My Papers live without redrawing the map (a redraw would drop the brush)
 mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 // Keyword matches (#125): the rest viz-dim, like papers below the relevance level

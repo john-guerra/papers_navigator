@@ -2961,3 +2961,34 @@ body #vg-tooltip-element table tr td.value {
     );
   }
 }
+
+/* #166 — Options → Appearance: similarity colors (a select of Vega schemes + a preview bar) */
+.similarity-scheme-control {
+  margin-top: var(--spacing-sm, 8px);
+}
+
+.similarity-scheme-control label {
+  display: grid;
+  gap: var(--spacing-xs, 4px);
+  justify-items: start;
+  font: var(--typography-body-sm);
+}
+
+.similarity-scheme-field {
+  display: inline-grid;
+  gap: var(--spacing-xs, 4px);
+  max-width: 100%;
+}
+
+.similarity-scheme-control select {
+  max-width: 100%;
+  min-height: 32px;
+  font: var(--typography-body-sm);
+}
+
+.similarity-scheme-preview {
+  display: block;
+  height: 10px;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-sm, 2px);
+}
