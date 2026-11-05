@@ -81,8 +81,7 @@ describe("relevanceCuts edge cases", () => {
       good: 0.2,
       strong: 0.45,
     });
-    // A fallback Good above 0.45 can't happen (it only applies when < 5 papers reach 0.30),
-    // but Strong never drops below Good
+    // With fewer than 5 scores the fallback Good can exceed 0.45: Strong never drops below it
     const cuts = relevanceCuts([0.9, 0.8, 0.7, 0.6, 0.29]);
     expect(cuts.strong).toBeGreaterThanOrEqual(cuts.good);
     expect(

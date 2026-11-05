@@ -4,9 +4,10 @@
  * the papers at or above it, so My Papers shows them without the language model. Pages
  * re-evaluate the cache in the background when the model can be loaded.
  *
- * Why an absolute threshold and not the level: Strong/Good cuts are derived from the score
- * distribution of the whole program (`relevanceCuts`), so a re-scrape that adds or drops papers
- * would move them and silently change what a topic means. A fixed score keeps "papers at least
+ * Why an absolute threshold and not the level: a search's Good cut can fall back to the 10th
+ * best score and My research's cuts come from the score distribution of the whole program, so
+ * a re-scrape that adds or drops papers would move them and silently change what a topic means
+ * (search cuts are otherwise fixed since #186). A fixed score keeps "papers at least
  * this similar to my query"; the level is kept only to describe the rule.
  */
 import { DIMS } from "./search.js";
