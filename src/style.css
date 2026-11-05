@@ -1317,8 +1317,9 @@ a.navbar-brand {
   align-items: center;
 }
 
-@media (max-width: 639.98px) {
-  .clear-my-papers .btn-text {
+/* 44px targets on phones and touch screens (DESIGN.md → Accessibility) */
+@media (max-width: 639.98px), (pointer: coarse) {
+  .clear-my-papers button {
     min-height: var(--spacing-touch);
   }
 }

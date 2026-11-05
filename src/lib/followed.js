@@ -31,6 +31,10 @@ function parseList(text) {
   } catch {
     throw new Error("invalid followed papers file: not JSON");
   }
+  return cleanList(list);
+}
+
+function cleanList(list) {
   if (!Array.isArray(list) || !list.every(isEntry)) {
     throw new Error(
       "invalid followed papers file: expected a list of {id, reason, addedOn}",
@@ -88,20 +92,28 @@ export function createFollowedStore(
   };
 
   Object.defineProperty(store, "value", { get: () => value });
-  const replaceWithBackup = (list) => {
+  // The backup is the list, or `{list, extra}` when the caller keeps more with it (Clear
+  // My Papers keeps the exceptions it added and the watches it stopped, #164)
+  const replaceWithBackup = (
+    list,
+    { extra, restore = (current, previous) => previous } = {},
+  ) => {
     const previous = load();
     let previousBackup = null;
     try {
       previousBackup = storage?.getItem(`${key}:backup`) ?? null;
-      storage?.setItem(`${key}:backup`, JSON.stringify(previous));
+      storage?.setItem(
+        `${key}:backup`,
+        JSON.stringify(extra ? { list: previous, extra } : previous),
+      );
     } catch (error) {
       console.warn("Could not back up My Papers", error);
     }
     set(list);
     // Undo restores this exact list and the backup it replaced (an edit made in another tab
-    // within the toast's 10 s is lost)
+    // within the toast's 10 s is lost, unless `restore` keeps it)
     return () => {
-      set(previous);
+      set(restore(load(), previous));
       try {
         if (previousBackup == null) storage?.removeItem?.(`${key}:backup`);
         else storage?.setItem(`${key}:backup`, previousBackup);
@@ -109,6 +121,15 @@ export function createFollowedStore(
         console.warn("Could not restore the My Papers backup", error);
       }
     };
+  };
+
+  const readBackup = () => {
+    const saved = storage?.getItem(`${key}:backup`);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed)
+      ? { list: parsed, extra: null }
+      : { list: parsed?.list, extra: parsed?.extra ?? null };
   };
 
   Object.assign(store, {
@@ -132,6 +153,19 @@ export function createFollowedStore(
     replace(list) {
       return replaceWithBackup(list.filter(isEntry).map((d) => ({ ...d })));
     },
+    /**
+     * Empties the list, backing it up with `extra` (see `backupExtra`). The undo puts every
+     * entry back where it was, as it was; papers added meanwhile stay, after them.
+     */
+    clear(extra) {
+      return replaceWithBackup([], {
+        extra,
+        restore: (current, previous) => {
+          const back = new Set(previous.map((d) => d.id));
+          return [...previous, ...current.filter((d) => !back.has(d.id))];
+        },
+      });
+    },
     merge(list) {
       update((current) => mergeLists(current, list.filter(isEntry)));
     },
@@ -144,8 +178,16 @@ export function createFollowedStore(
     /** The list saved before the last replace, or null. */
     backup() {
       try {
-        const saved = storage?.getItem(`${key}:backup`);
-        return saved ? parseList(saved) : null;
+        const saved = readBackup();
+        return saved ? cleanList(saved.list) : null;
+      } catch {
+        return null;
+      }
+    },
+    /** What was kept with the backup (`clear(extra)`), or null. */
+    backupExtra() {
+      try {
+        return readBackup()?.extra ?? null;
       } catch {
         return null;
       }

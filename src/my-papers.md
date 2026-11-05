@@ -458,15 +458,15 @@ const watchingSection = renderWatching(
 // After a Replace, the previous list stays in a backup: offer to bring it back once the Undo
 // toast is gone (#52)
 followed;
-const previous = followedStore.backup();
-const sameIds = (a, b) => a.length === b.length && a.every((d, i) => d.id === b[i].id);
-// Nothing to offer when the backup is the list you already have
-const restoreButton = previous && !sameIds(previous, followedStore.value)
+// (also after Clear, with the watches it changed, #164); nothing to offer when restoring
+// would change nothing
+const previousCount = store.backupCount();
+const restoreButton = previousCount
   ? (() => {
-      const button = html`<button class="btn-text">Restore previous list (${previous.length})</button>`;
+      const button = html`<button class="btn-text">Restore previous list (${previousCount})</button>`;
       button.onclick = () => {
-        const undo = followedStore.restoreBackup();
-        showToast(`Restored your previous list of ${previous.length} papers`, { actionLabel: "Undo", onAction: undo, focusAction: true });
+        const undo = store.restoreBackup();
+        showToast(`Restored your previous list of ${previousCount} papers`, { actionLabel: "Undo", onAction: undo, focusAction: true });
       };
       return button;
     })()
@@ -474,15 +474,21 @@ const restoreButton = previous && !sameIds(previous, followedStore.value)
 ```
 
 ```js
-// Clear My Papers (#164): asks inline, then removes every paper (watched ones become exceptions,
-// as with Remove); watches and notes stay, and Undo restores exactly what was there
+// Clear My Papers (#164): asks inline (papers only, or papers and the watches), then clears;
+// notes stay. Undo, or "Restore previous list" once the toast is gone, brings it all back
+const clearState = { focusAfterUndo: false };
+const inProgram = () => resolveFollowed(store.value, papers).items.length;
 const clearControl = clearMyPapers({
-  count: () => store.value.length,
+  count: inProgram,
   watches: () => rulesStore.value.rules.length,
-  onClear: () => {
-    const n = store.value.length;
-    const undo = store.remove(store.value.map((d) => d.id));
-    showToast(`Removed ${n} ${n === 1 ? "paper" : "papers"} from My Papers`, { actionLabel: "Undo", onAction: undo, focusAction: true });
+  emptyFocus: () => document.querySelector(".mp-tools button"),
+  onClear: ({ stopWatches }) => {
+    const count = inProgram();
+    const n = `${count} ${count === 1 ? "paper" : "papers"}`;
+    const w = rulesStore.value.rules.length;
+    const undo = store.clear({ stopWatches });
+    const message = stopWatches ? `Removed ${n} and stopped ${w} ${w === 1 ? "watch" : "watches"}` : `Removed ${n} from My Papers`;
+    showToast(message, { actionLabel: "Undo", onAction: () => ((clearState.focusAfterUndo = true), undo()), focusAction: true });
   },
 });
 ```
@@ -490,6 +496,8 @@ const clearControl = clearMyPapers({
 ```js
 followed;
 clearControl.update();
+// After Undo the toast's button is gone: focus goes back to Clear My Papers
+if (clearState.focusAfterUndo) (clearState.focusAfterUndo = false), clearControl.focusButton();
 ```
 
 ```js

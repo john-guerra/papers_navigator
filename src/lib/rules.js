@@ -214,6 +214,9 @@ const idList = (list) =>
     ? [...new Set(list.filter((id) => typeof id === "string" && id))]
     : [];
 
+const cleanRules = (list) =>
+  Array.isArray(list) ? list.map((r) => normalizeRule(r)).filter(Boolean) : [];
+
 function parseState(text) {
   try {
     const state = JSON.parse(text);
@@ -379,6 +382,21 @@ export function createMyPapers({ followed, rules, papers, scoresFor }) {
     return ids;
   };
 
+  // Undoes what a Clear did beside the list: drops the exceptions it added and re-adds the
+  // watches it stopped. Returns an undo that does them again.
+  const restoreExtra = (extra) => {
+    const unexcepted = idList(extra?.exceptions).filter((id) =>
+      rules.value.exceptions.includes(id),
+    );
+    const readded = cleanRules(extra?.rules).filter((r) => !rules.has(r.id));
+    if (unexcepted.length) rules.unexcept(unexcepted);
+    for (const rule of readded) rules.add(rule);
+    return () => {
+      if (unexcepted.length) rules.except(unexcepted);
+      if (readded.length) rules.remove(readded.map((r) => r.id));
+    };
+  };
+
   Object.defineProperty(myPapers, "value", { get: () => value });
   Object.assign(myPapers, {
     /** Adds by hand (clearing any exception for these papers). */
@@ -408,13 +426,69 @@ export function createMyPapers({ followed, rules, papers, scoresFor }) {
     has(id) {
       return value.some((d) => d.id === id);
     },
-    /** Watches a rule; its current matches are marked seen (not `new`). Returns the rule. */
+    /**
+     * Watches a rule; its current matches are marked seen (not `new`) and lose any exception
+     * (a Remove or Clear before), so watching shows them again. Returns the rule.
+     */
     watch(rule, now = new Date()) {
       const normalized = normalizeRule(rule, now);
       if (!normalized) return null;
       const ids = [...matchedIds([normalized])];
       if (ids.length) rules.markSeen(ids);
+      const excepted = ids.filter((id) => rules.value.exceptions.includes(id));
+      if (excepted.length) rules.unexcept(excepted);
       return rules.add(normalized, now);
+    },
+    /**
+     * Clear My Papers (#164): removes every paper. Papers a watch brings in become exceptions,
+     * or with `stopWatches` the watches stop. The hand-added list goes to the followed store's
+     * backup with what else changed, so "Restore previous list" can bring it all back. Returns
+     * an undo (entries return to their places; papers added meanwhile stay).
+     */
+    clear({ stopWatches = false } = {}) {
+      const { rules: ruleList, exceptions } = rules.value;
+      const stopped = stopWatches ? ruleList : [];
+      const matched = stopWatches ? new Set() : matchedIds(ruleList);
+      const added = [...matched].filter((id) => !exceptions.includes(id));
+      const undoList = followed.clear({ exceptions: added, rules: stopped });
+      if (added.length) rules.except(added);
+      if (stopped.length) rules.remove(stopped.map((r) => r.id));
+      return () => {
+        restoreExtra({ exceptions: added, rules: stopped });
+        undoList();
+      };
+    },
+    /**
+     * Papers "Restore previous list" would bring back (hand-added and watched), or 0 when there
+     * is no backup or restoring it would change nothing.
+     */
+    backupCount() {
+      const list = followed.backup();
+      if (!list) return 0;
+      const extra = followed.backupExtra() ?? {};
+      const current = followed.value;
+      const sameList =
+        list.length === current.length &&
+        list.every((d, i) => d.id === current[i].id);
+      const pending =
+        idList(extra.exceptions).some((id) =>
+          rules.value.exceptions.includes(id),
+        ) || cleanRules(extra.rules).some((r) => !rules.has(r.id));
+      if (sameList && !pending) return 0;
+      const ids = new Set(list.map((d) => d.id));
+      for (const id of extra.exceptions ?? []) ids.add(id);
+      for (const id of matchedIds(cleanRules(extra.rules))) ids.add(id);
+      return ids.size;
+    },
+    /** Puts the backed-up list back, with what a Clear kept beside it; returns an undo. */
+    restoreBackup() {
+      const extra = followed.backupExtra();
+      const undoList = followed.restoreBackup();
+      const undoExtra = extra ? restoreExtra(extra) : () => {};
+      return () => {
+        undoExtra();
+        undoList();
+      };
     },
     /**
      * Stops watching. With `keepPapers`, the papers each rule brought in become manual
