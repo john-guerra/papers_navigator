@@ -24,9 +24,13 @@ export function rankBySimilarity(query, matrix, papers, dims = DIMS) {
 
 /**
  * Cut points for the Strong / Good / All relevance control (DESIGN.md → Relevance control).
- * Good: 0.30 when at least 5 papers clear it, else the 10th best score (short queries score
- * low). Strong: halfway from Good to the best score.
+ * Fixed (#186), so a level means the same % in every search: Strong 0.45, Good 0.30, Loose
+ * (`weak`) 0.20. Good falls back to the 10th best score when fewer than 5 papers clear 0.30
+ * (short queries score low); Strong never drops below Good.
  */
+/** Search similarity at or above which a paper is a Strong match (#186). */
+export const STRONG_CUT = 0.45;
+
 export function relevanceCuts(scores) {
   const sorted = scores.filter((s) => s != null).sort((a, b) => b - a);
   if (!sorted.length) return { good: 0, strong: 0, weak: 0 };
@@ -38,7 +42,7 @@ export function relevanceCuts(scores) {
   // Good, even when a fallback Good is negative)
   return {
     good,
-    strong: good + (sorted[0] - good) / 2,
+    strong: Math.max(STRONG_CUT, good),
     weak: Math.min(good, (good * 2) / 3),
   };
 }
