@@ -123,19 +123,24 @@ export function similarityRange() {
 }
 
 /**
- * The ramp's domain (#166 review), like the CHI navigator's: the scheme spans the scores of the
- * papers shown, from the relevance level's `cut` (the lowest shown score when there is no cut,
- * "All") to the best match on the map. At the Good level that is the Good cut → the best match.
- * Null when nothing is shown or the domain collapses (tied scores).
+ * The similarity ramp's domain (#184), fixed for every search, filter, level and My research, so
+ * a color (and a dot size) always means the same %: 0 → 0.60, clamped (scores above 0.60 get
+ * the strongest color, below 0 the weakest). Its midpoint, 0.30, is the search's Good cut
+ * (lib/search.js relevanceCuts), so a diverging scheme splits at Good.
  */
-export function rampDomain(scores, cut = null) {
-  const shown = scores.filter(
-    (s) => Number.isFinite(s) && (cut == null || s >= cut),
-  );
-  if (!shown.length) return null;
-  const hi = Math.max(...shown);
-  const lo = cut ?? Math.min(...shown);
-  return hi > lo ? [lo, hi] : null;
+export const SIMILARITY_DOMAIN = [0, 0.6];
+
+/**
+ * The similarity legend's fixed ticks, spread evenly over SIMILARITY_DOMAIN (#184). The midpoint
+ * is named Good only when the active Good cut (`goodCut`) is that 30%: a search with 5+ papers
+ * there. A short query's fallback Good, My research's own cuts (pass null) or none: plain 30%.
+ */
+export function similarityLegendLabels(goodCut = null) {
+  const [lo, hi] = SIMILARITY_DOMAIN;
+  const mid = (lo + hi) / 2;
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  const good = goodCut != null && Math.abs(goodCut - mid) < 1e-9;
+  return [pct(lo), `${pct(mid)}${good ? " (Good)" : ""}`, `${pct(hi)}+`];
 }
 
 /** The Vega-Lite color scale for similarity: `{scheme}`, or the oxblood `{range}`. */

@@ -198,7 +198,7 @@ function categoryRange() {
  * Vega-Lite spec for the map. DESIGN.md → Data Visualization:
  * - quantitative color (similarity) uses the sequential ramp;
  * - the legend sits in the top-right corner on `surface` (DESIGN.md → Legend); a ramp is labelled
- *   only at its ends, with `legendLabels` ([low, high], e.g. ["less similar", "more similar"]);
+ *   with `legendLabels` spread evenly over it (e.g. ["0%", "30% (Good)", "60%+"], #184);
  * - categorical color highlights at most 3 `categories` (pass them from the whole program so
  *   filtering never repaints survivors; default: top 3 of `data`), everything else is Other;
  * - points outside the brush are dimmed; with `matches`, so are those not in the `matchIds`
@@ -281,9 +281,9 @@ export function scatterSpec(
           ...(colorRange
             ? { range: colorRange }
             : similarityColorScale(similarityScheme)),
-          // Live domain (#166 review): from the level cut (or the lowest shown score) to the best
-          // shown match, like the CHI navigator; set with setScoreDomain, no redraw
-          ...(scoreDomain && { domain: RAMP_DOMAIN, clamp: true }),
+          // A fixed domain (#184: lib/similarityScheme.js SIMILARITY_DOMAIN), clamped, so a
+          // color means the same score in every search, filter and level
+          ...(scoreDomain && { domain: scoreDomain, clamp: true }),
         };
 
   const visible = {
@@ -306,13 +306,6 @@ export function scatterSpec(
   };
   // The relevance level, updated by pages with view.signal("levelCut", …) (no redraw)
   const levelCut = { name: "levelCut", value: null };
-  // The color/size ramp's domain (#166 review), updated with setScoreDomain (no redraw)
-  const rampParams = scoreDomain
-    ? [
-        { name: "rampLo", value: scoreDomain[0] },
-        { name: "rampHi", value: scoreDomain[1] },
-      ]
-    : [];
   // The keyword matches' ids (#125), updated with highlightMatches (no redraw)
   const matchParams = matches ? [{ name: "matchIds", value: null }] : [];
   // nice: false + padding in pixels, so cullLabels can mirror the scales exactly
@@ -377,15 +370,23 @@ export function scatterSpec(
       },
       ...(size && {
         size: {
+          // Papers below the relevance level are context (viz-dim): the smallest dot, as when
+          // the domain started at the level cut (#184 review)
+          ...(sizeCopy &&
+            scoreDomain && {
+              condition: {
+                test: "levelCut != null && datum.score < levelCut",
+                value: sizeRange[0],
+              },
+            }),
           field: sizeCopy ? "__size" : size,
           type: "quantitative",
           scale: {
             range: sizeRange,
-            // Echoing the ramp, size spans the same domain (#130): the smallest dot at the Good
-            // cut, the largest at the best match. Otherwise it is fixed while leaving points are
-            // still in the data (#82)
+            // Echoing the ramp, size spans the same fixed domain (#130, #184). Otherwise it is
+            // fixed while leaving points are still in the data (#82)
             ...(sizeCopy && scoreDomain
-              ? { domain: RAMP_DOMAIN, clamp: true }
+              ? { domain: scoreDomain, clamp: true }
               : transition &&
                 data.length && {
                   domain: extent(data.map((d) => d[size])),
@@ -554,7 +555,6 @@ export function scatterSpec(
             ...(nn ? [{ name: "nnIds", value: [] }] : []),
             ...(q ? [{ name: "queryHover", value: -1 }] : []),
             levelCut,
-            ...rampParams,
             ...matchParams,
             ...(tween?.params ?? []),
           ],
@@ -565,7 +565,6 @@ export function scatterSpec(
           params: [
             ...points.params,
             levelCut,
-            ...rampParams,
             ...matchParams,
             ...(tween?.params ?? []),
           ],
@@ -598,8 +597,6 @@ export function scatterSpec(
   };
 }
 
-// The ramp's live domain (#166 review): params set by setScoreDomain
-const RAMP_DOMAIN = [{ expr: "rampLo" }, { expr: "rampHi" }];
 // Named dataset of the neighbour marks (#102), replaced with view.change (no redraw)
 const NEIGHBOURS_DATA = "nn";
 // Named dataset of the query marker (#100), replaced with view.change (no redraw)
@@ -966,7 +963,7 @@ export function neighbourRows(
 
 /**
  * Whether the map draws the tapered similarity legend (#130) instead of Vega's gradient: size
- * echoes the quantitative color field and the ramp is labelled at its ends.
+ * echoes the quantitative color field and the ramp is labelled (`legendLabels`, spread evenly).
  */
 export function taperedLegend({
   color,
@@ -976,7 +973,7 @@ export function taperedLegend({
   legendLabels,
   scoreDomain,
 } = {}) {
-  // A ramp domain that has collapsed (tied scores) keeps Vega's plain gradient
+  // Needs a real domain (lo < hi): the similarity map's is fixed (#184); other callers pass theirs
   return Boolean(
     color &&
     size === color &&
@@ -1061,8 +1058,8 @@ function attachTaperedLegend(
 }
 
 /**
- * The color legend: a ramp labelled only at its two ends with `legendLabels` (its numbers mean
- * little to readers; the tooltip has the exact score), or the 3 + Other categories.
+ * The color legend: a ramp labelled with `legendLabels` spread evenly over it (fixed ticks,
+ * #184; the tooltip has the exact score), or the 3 + Other categories.
  */
 function legendFor({
   data,
@@ -1076,13 +1073,18 @@ function legendFor({
     const ends =
       scoreDomain ??
       extent(data.map((d) => d[color]).filter((v) => Number.isFinite(v)));
-    return legendLabels && ends.every(Number.isFinite) && ends[0] < ends[1]
+    // The labels spread evenly over the domain (#184: fixed ticks, e.g. 0% · 30% · 60%+)
+    const n = legendLabels?.length ?? 0;
+    return n > 1 && ends.every(Number.isFinite) && ends[0] < ends[1]
       ? {
           type: "gradient",
           direction: "horizontal",
           gradientLength: 120,
-          values: ends,
-          labelExpr: `datum.index === 0 ? ${JSON.stringify(legendLabels[0])} : ${JSON.stringify(legendLabels[1])}`,
+          values: legendLabels.map((_, i) => {
+            const t = i / (n - 1);
+            return ends[0] * (1 - t) + ends[1] * t;
+          }),
+          labelExpr: `${JSON.stringify(legendLabels)}[datum.index]`,
         }
       : { type: "gradient", direction: "horizontal", gradientLength: 120 };
   }
@@ -1253,17 +1255,6 @@ export async function BrushableScatterPlot(data, options = {}) {
   target.className = "brushable-scatterplot";
   target.append(chart);
   target.view = chart.view;
-  /**
-   * Moves the similarity ramp's color and size domain (#166 review) without a redraw: pages
-   * pass rampDomain(shown scores, level cut). Ignored without a score domain or a valid one.
-   */
-  target.setScoreDomain = async (domain) => {
-    if (!options.scoreDomain || !(domain?.[1] > domain?.[0])) return;
-    await chart.view
-      .signal("rampLo", domain[0])
-      .signal("rampHi", domain[1])
-      .runAsync();
-  };
   // Visual only (#134): with SVG marks screen readers would walk every point; the list and the
   // aria-live lines by the map are the accessible path (a canvas exposed nothing either)
   chart.querySelector("svg.marks")?.setAttribute("aria-hidden", "true");

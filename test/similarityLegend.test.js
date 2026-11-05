@@ -73,6 +73,30 @@ describe("similarityLegend", () => {
     expect(path.getAttribute("fill")).toMatch(/^url\(#/);
   });
 
+  it("spreads any number of labels evenly: ends aligned, the middle centered (#184)", () => {
+    const el = similarityLegend({
+      title: "Similarity",
+      labels: ["0%", "30% (Good)", "60%+"],
+      colorAt: () => "#000",
+      diameterAt: (t) => 4 + 13 * t,
+    });
+    const spans = [...el.querySelectorAll(".similarity-legend-labels span")];
+    expect(spans.map((s) => s.textContent)).toEqual([
+      "0%",
+      "30% (Good)",
+      "60%+",
+    ]);
+    expect(spans.map((s) => s.style.left)).toEqual(["0%", "50%", "100%"]);
+    expect(spans.map((s) => s.style.transform)).toEqual([
+      "translateX(-0%)",
+      "translateX(-50%)",
+      "translateX(-100%)",
+    ]);
+    expect(el.getAttribute("aria-label")).toBe(
+      "Similarity: 0% → 30% (Good) → 60%+ (smaller to larger dots)",
+    );
+  });
+
   it("says what it shows to screen readers and gives each legend its own gradient id", () => {
     const a = legend();
     const b = legend();
