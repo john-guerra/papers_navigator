@@ -286,3 +286,39 @@ def test_run_lays_out_again_when_papers_changed_or_asked(tmp_path, case):
               relayout=case == "relayout")
     out = json.loads((conf / "data" / "projections" / "a.json").read_text())
     assert set(map(tuple, out.values())) == {(9.0, 9.0)}
+
+
+def test_layout_gate_compares_with_the_embeddings_the_layout_came_from(tmp_path):
+    # #179 review: small drifts must not add up run after run while the map stays frozen
+    conf = make_conference(tmp_path, PAPERS, ["a"])
+    base = [_unit(np.eye(384)[i] + 0.01) for i in range(3)]
+    _previous_run(conf, ["p1", "p2", "p3"], base, [[1, 2], [3, 4], [5, 6]])
+    fresh = lambda m: np.full((len(m), 2), 9.0)
+    step = _unit(base[1] + 0.12 * np.eye(384)[7])  # ~0.99 to base[1]
+    further = _unit(base[1] + 0.25 * np.eye(384)[7])  # ~0.99 to step, ~0.97 to base[1]
+    out = lambda: json.loads((conf / "data" / "projections" / "a.json").read_text())
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray([base[0], step, base[2]]), reducers={"a": fresh})
+    assert out()["p2"] == [3, 4]
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray([base[0], further, base[2]]), reducers={"a": fresh})
+    assert out()["p2"] == [9.0, 9.0]
+
+
+def test_layout_is_recomputed_when_a_paper_is_removed_or_the_previous_files_are_broken(tmp_path):
+    conf = make_conference(tmp_path, PAPERS[:2], ["a"])
+    base = [_unit(np.eye(384)[i] + 0.01) for i in range(3)]
+    _previous_run(conf, ["p1", "p2", "p3"], base, [[1, 2], [3, 4], [5, 6]])
+    fresh = lambda m: np.full((len(m), 2), 9.0)
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray(base[:2]), reducers={"a": fresh})
+    assert json.loads((conf / "data" / "projections" / "a.json").read_text()) == {"p1": [9.0, 9.0], "p2": [9.0, 9.0]}
+    (conf / "data" / "embeddings.bin").write_bytes(b"\x00" * 10)
+    (conf / "data" / "projections" / "basis.bin").unlink(missing_ok=True)
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray(base[:2]), reducers={"a": lambda m: np.full((len(m), 2), 7.0)})
+    assert json.loads((conf / "data" / "projections" / "a.json").read_text())["p1"] == [7.0, 7.0]
+
+
+def test_a_corrupt_previous_papers_json_keeps_the_scrape_order(tmp_path):
+    conf = make_conference(tmp_path, PAPERS, ["a"])
+    (conf / "data" / "papers.json").write_text("{not json")
+    embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": lambda m: np.zeros((len(m), 2))})
+    ids = [p["id"] for p in json.loads((conf / "data" / "papers.json").read_text())]
+    assert ids == ["p1", "p2", "p3"]
