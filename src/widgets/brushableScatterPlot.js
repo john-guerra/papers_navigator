@@ -15,6 +15,7 @@ import {
 } from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import { matchArea, nameSpot } from "../lib/placeQuery.js";
+import { quietCorner } from "../lib/quietCorner.js";
 import {
   domainAt,
   easeExpr,
@@ -952,10 +953,16 @@ export function taperedLegend({
 
 /**
  * The tapered legend (#130), built from the view's own color and size scales so the bar is
- * exactly what the dots show, and laid in the plot's top-right corner like Vega's legends
- * (DESIGN.md → Legend). `box()` is its rectangle in overlay pixels (for the paper labels), or null.
+ * exactly what the dots show. Drawn in the map's background (#168): inserted before the marks,
+ * which stack above it, so the points are drawn over it, in the plot corner it covers the fewest
+ * of `points()` ([x, y] data rows, lib/quietCorner.js; top-right when empty). `box()` is its
+ * rectangle in overlay pixels (for the paper labels), or null.
  */
-function attachTaperedLegend(target, view, { title, labels }) {
+function attachTaperedLegend(
+  target,
+  view,
+  { title, labels, points = () => [] },
+) {
   const color = view.scale("color");
   const size = view.scale("size");
   const [d0, d1] = color?.domain?.() ?? [];
@@ -975,14 +982,27 @@ function attachTaperedLegend(target, view, { title, labels }) {
     const parent = surface.parentElement;
     if (getComputedStyle(parent).position === "static")
       parent.style.position = "relative";
-    if (el.parentElement !== parent) parent.append(el);
+    // Positioned too, so it paints after (over) the legend that precedes it
+    if (getComputedStyle(surface).position === "static")
+      surface.style.position = "relative";
+    if (el.nextElementSibling !== surface) parent.insertBefore(el, surface);
     const [ox, oy] = view.origin();
-    const offset = 8;
-    const left = ox + view.width() - el.offsetWidth - offset;
-    const top = oy + offset;
-    const [sx, sy] = surfaceOffset(surface);
-    el.style.left = `${sx + left}px`;
-    el.style.top = `${sy + top}px`;
+    const sx = view.scale("x");
+    const sy = view.scale("y");
+    const spot = quietCorner(
+      points().map(([px, py]) => [sx(px), sy(py)]),
+      {
+        width: view.width(),
+        height: view.height(),
+        box: [el.offsetWidth, el.offsetHeight],
+      },
+    );
+    el.dataset.corner = spot.corner;
+    const left = ox + spot.left;
+    const top = oy + spot.top;
+    const [dx, dy] = surfaceOffset(surface);
+    el.style.left = `${dx + left}px`;
+    el.style.top = `${dy + top}px`;
     rect = [left, top, left + el.offsetWidth, top + el.offsetHeight];
     return true;
   };
@@ -1207,6 +1227,10 @@ export async function BrushableScatterPlot(data, options = {}) {
     ? attachTaperedLegend(target, chart.view, {
         title: options.colorTitle ?? options.color,
         labels: options.legendLabels,
+        points: () =>
+          data
+            .filter((d) => Number.isFinite(d[x]) && Number.isFinite(d[y]))
+            .map((d) => [d[x], d[y]]),
       })
     : null;
 

@@ -2869,21 +2869,19 @@ body #vg-tooltip-element table tr td.value {
   }
 }
 
-/* #130 — similarity legend: one bar for size and color, styled like Vega's legends
-   (DESIGN.md → Legend: top-right on surface, outline border, rounded.md, 8px padding) */
+/* #130 — similarity legend: one bar for size and color. #168: drawn in the map's background,
+   under the points (the widget inserts it before the marks, in the corner with the fewest
+   points), so no box: no surface, no border, just the title, the bar and its end labels */
 .similarity-legend {
   box-sizing: border-box;
-  padding: 8px;
-  border: 1px solid var(--color-outline);
-  border-radius: var(--rounded-md, 6px);
-  background: var(--color-surface);
+  padding: 4px;
   font-family: var(--font-sans, sans-serif);
   line-height: 1.2;
 }
 
 .similarity-legend-title {
   margin-bottom: 5px;
-  color: var(--color-on-surface);
+  color: var(--color-on-surface-muted);
   font-size: 11px;
   font-weight: 500;
 }
