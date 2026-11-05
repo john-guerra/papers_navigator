@@ -67,6 +67,10 @@ export const STORAGE_ITEMS = [
     what: "Whether the map shows the “★ Your search” marker (Map options)",
   },
   {
+    key: "papersNavigator:similarityScheme",
+    what: "Your similarity colors for the map (Map options → Appearance)",
+  },
+  {
     key: "papersNavigator:theme",
     what: "Your Appearance choice (Auto, Light or Dark)",
   },

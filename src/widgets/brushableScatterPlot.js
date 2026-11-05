@@ -8,6 +8,11 @@ import {
   surfaceOffset,
 } from "./paperLabels.js";
 import { diameterOf, similarityLegend } from "./similarityLegend.js";
+import {
+  similarityColorScale,
+  similarityRange,
+  token,
+} from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import {
   domainAt,
@@ -26,29 +31,8 @@ export function brushFilter(data, drag, { x = "x", y = "y" } = {}) {
   );
 }
 
-/**
- * A DESIGN.md token from the page's CSS custom properties (src/style.css), or `fallback`
- * outside a styled page (tests, reuse elsewhere). Read when the spec is built, so the map
- * picks up the light or dark value in effect at render time.
- */
-function token(name, fallback) {
-  const value =
-    typeof document === "undefined"
-      ? ""
-      : getComputedStyle(document.documentElement)
-          .getPropertyValue(`--${name}`)
-          .trim();
-  return value || fallback;
-}
-
-/** DESIGN.md sequential similarity ramp, weakest to strongest match. */
-export function similarityRange() {
-  return [
-    token("color-viz-similarity-1", "#c37b71"),
-    token("color-viz-similarity-2", "#a7463d"),
-    token("color-viz-similarity-3", "#75201a"),
-  ];
-}
+// DESIGN.md tokens and the similarity ramp live in lib/similarityScheme.js (#166)
+export { similarityRange };
 
 /** DESIGN.md reliability ramp (#84), most to least reliable: it darkens where the map misleads. */
 export function reliabilityRange() {
@@ -237,6 +221,7 @@ export function scatterSpec(
     colorTitle = color,
     colorType = "nominal",
     colorScheme = null,
+    similarityScheme = null,
     categories,
     ringIds = null,
     labels = null,
@@ -289,7 +274,10 @@ export function scatterSpec(
           range: [...palette.slice(0, highlighted.length), palette[3]],
         }
       : {
-          range: colorRange ?? similarityRange(),
+          // #166: a Vega scheme chosen in Options, else the oxblood ramp (or the caller's range)
+          ...(colorRange
+            ? { range: colorRange }
+            : similarityColorScale(similarityScheme)),
           // DESIGN.md: the ramp's light end starts at the Good cut
           ...(scoreDomain && { domain: scoreDomain, clamp: true }),
         };
