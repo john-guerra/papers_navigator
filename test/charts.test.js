@@ -9,11 +9,8 @@ import {
 } from "../src/widgets/brushableScatterPlot.js";
 import { BrushableHistogram } from "../src/widgets/brushableHistogram.js";
 
-/** The [rampLo, rampHi] params' initial values (#166 review: the ramp domain is live). */
-const rampParams = (spec) =>
-  ["rampLo", "rampHi"].map(
-    (name) => (spec.params ?? []).find((p) => p.name === name)?.value,
-  );
+/** Names of the spec's params (#184: no live ramp-domain params any more). */
+const paramNames = (spec) => (spec.params ?? []).map((p) => p.name);
 
 const data = [
   { id: "a", x: 0, y: 0, type: "full", score: 0.9 },
@@ -143,10 +140,10 @@ describe("scatterSpec reliability (#84)", () => {
     });
     expect(spec.encoding.color.condition.scale).toMatchObject({
       range: ["#28377a", "#5f74bf", "#a3b0dc"],
-      domain: [{ expr: "rampLo" }, { expr: "rampHi" }],
+      domain: [0.2, 0.9],
       clamp: true,
     });
-    expect(rampParams(spec)).toEqual([0.2, 0.9]);
+    expect(paramNames(spec)).not.toContain("rampLo");
   });
 
   it("draws the distortion overlay behind the points, ignoring the pointer", async () => {
@@ -324,15 +321,15 @@ describe("scatterSpec legend (DESIGN.md → Legend)", () => {
     });
   });
 
-  it("labels the similarity ramp at its ends, not with scores", async () => {
+  it("labels the similarity ramp with fixed ticks, evenly spread (#184)", async () => {
     const { scatterSpec } =
       await import("../src/widgets/brushableScatterPlot.js");
     const spec = scatterSpec(data, {
       color: "score",
       colorType: "quantitative",
       colorTitle: "Similarity",
-      scoreDomain: [0.3, 0.9],
-      legendLabels: ["less similar", "more similar"],
+      scoreDomain: [0, 0.6],
+      legendLabels: ["0%", "30% (Good)", "60%+"],
       width: 300,
       height: 200,
     });
@@ -341,7 +338,7 @@ describe("scatterSpec legend (DESIGN.md → Legend)", () => {
     expect(legend.fill).toBe("color");
     const texts = await legendTexts(spec);
     expect(texts).toEqual(
-      expect.arrayContaining(["Similarity", "less similar", "more similar"]),
+      expect.arrayContaining(["Similarity", "0%", "30% (Good)", "60%+"]),
     );
     expect(texts.some((t) => /^\d\.\d$/.test(t))).toBe(false);
   });
@@ -362,7 +359,7 @@ describe("scatterSpec legend (DESIGN.md → Legend)", () => {
     expect(taperedLegend(options)).toBe(true);
     // size spans the ramp's domain, so the bar tapers from the smallest to the largest dot
     expect(scatterSpec(data, options).encoding.size.scale).toMatchObject({
-      domain: [{ expr: "rampLo" }, { expr: "rampHi" }],
+      domain: [0.3, 0.9],
       clamp: true,
     });
     const { compile } = await import("vega-lite");
@@ -484,19 +481,20 @@ describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories"
     expect(neutral.value).toBe("#e1ddd8");
   });
 
-  it("starts the similarity ramp at the Good cut when given", async () => {
+  it("maps the similarity ramp over the given fixed domain, clamped (#184)", async () => {
     const { scatterSpec } =
       await import("../src/widgets/brushableScatterPlot.js");
     const spec = scatterSpec(data, {
       color: "score",
       colorType: "quantitative",
-      scoreDomain: [0.3, 0.7],
+      scoreDomain: [0, 0.6],
     });
     expect(spec.encoding.color.condition.scale).toMatchObject({
-      domain: [{ expr: "rampLo" }, { expr: "rampHi" }],
+      domain: [0, 0.6],
       clamp: true,
     });
-    expect(rampParams(spec)).toEqual([0.3, 0.7]);
+    expect(paramNames(spec)).not.toContain("rampLo");
+    expect(paramNames(spec)).not.toContain("rampHi");
   });
 
   it("updates the level through the levelCut signal without a redraw", async () => {
@@ -688,8 +686,8 @@ describe("tooltip fields with titles and formats", () => {
   });
 });
 
-describe("live ramp domain (#166 review: CHI maps the scheme over the shown scores)", () => {
-  it("setScoreDomain moves the color and size domains without a redraw", async () => {
+describe("fixed ramp domain (#184: the same color is the same % at every level)", () => {
+  it("keeps the color and size domains when the level changes, and has no setScoreDomain", async () => {
     const widget = await BrushableScatterPlot(data, {
       renderer: "svg",
       width: 300,
@@ -697,31 +695,22 @@ describe("live ramp domain (#166 review: CHI maps the scheme over the shown scor
       color: "score",
       colorType: "quantitative",
       size: "score",
-      scoreDomain: [0.3, 0.9],
+      scoreDomain: [0, 0.6],
     });
     document.body.append(widget);
     try {
-      const svg = widget.querySelector("svg");
-      expect(widget.view.scale("color").domain()).toEqual([0.3, 0.9]);
-      await widget.setScoreDomain([0.1, 0.8]);
-      expect(widget.view.scale("color").domain()).toEqual([0.1, 0.8]);
-      expect(widget.view.scale("size").domain()).toEqual([0.1, 0.8]);
-      expect(widget.querySelector("svg")).toBe(svg);
-      // A collapsed or missing domain is ignored
-      await widget.setScoreDomain(null);
-      expect(widget.view.scale("color").domain()).toEqual([0.1, 0.8]);
+      expect(widget.view.scale("color").domain()).toEqual([0, 0.6]);
+      expect(widget.view.scale("size").domain()).toEqual([0, 0.6]);
+      await widget.view.signal("levelCut", 0.45).runAsync();
+      expect(widget.view.scale("color").domain()).toEqual([0, 0.6]);
+      expect(widget.view.scale("size").domain()).toEqual([0, 0.6]);
+      // Clamped: a 0.9 match gets the strongest color, like 0.6
+      const color = widget.view.scale("color");
+      expect(color(0.9)).toBe(color(0.6));
+      expect(widget.setScoreDomain).toBeUndefined();
     } finally {
       widget.remove();
     }
-  });
-
-  it("is a no-op on maps without a score domain", async () => {
-    const widget = await BrushableScatterPlot(data, {
-      renderer: "svg",
-      width: 200,
-      height: 200,
-    });
-    await expect(widget.setScoreDomain([0, 1])).resolves.toBeUndefined();
   });
 });
 

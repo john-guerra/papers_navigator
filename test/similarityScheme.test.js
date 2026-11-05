@@ -8,7 +8,8 @@ import {
   SIMILARITY_SCHEME_KEY,
   createSimilaritySchemeSettings,
   isSimilarityScheme,
-  rampDomain,
+  SIMILARITY_DOMAIN,
+  SIMILARITY_LEGEND_LABELS,
   similarityColorAt,
   similarityColorScale,
 } from "../src/lib/similarityScheme.js";
@@ -18,6 +19,7 @@ import {
   taperedLegend,
 } from "../src/widgets/brushableScatterPlot.js";
 import { STORAGE_ITEMS } from "../src/lib/about.js";
+import { relevanceCuts } from "../src/lib/search.js";
 
 const memoryStorage = (items = {}) => ({
   items,
@@ -112,18 +114,19 @@ describe("scatterSpec with a similarity scheme", () => {
     color: "score",
     colorType: "quantitative",
     size: "score",
-    scoreDomain: [0.3, 0.9],
-    legendLabels: ["less similar", "more similar"],
+    scoreDomain: SIMILARITY_DOMAIN,
+    legendLabels: SIMILARITY_LEGEND_LABELS,
   };
 
-  it("colors similarity with the Vega scheme over the ramp domain", () => {
+  it("colors similarity with the Vega scheme over the fixed domain", () => {
     const scale = scatterSpec(data, {
       ...options,
       similarityScheme: "purpleorange",
     }).encoding.color.condition.scale;
     expect(scale.scheme).toBe("purpleorange");
     expect(scale.range).toBeUndefined();
-    expect(scale.domain).toEqual([{ expr: "rampLo" }, { expr: "rampHi" }]);
+    expect(scale.domain).toEqual([0, 0.6]);
+    expect(scale.clamp).toBe(true);
     expect(
       taperedLegend({ ...options, similarityScheme: "purpleorange" }),
     ).toBe(true);
@@ -138,19 +141,17 @@ describe("scatterSpec with a similarity scheme", () => {
   });
 });
 
-describe("rampDomain (#166 review: like CHI, the scheme spans the shown scores)", () => {
-  it("runs from the level cut (or the lowest shown score with no cut) to the best shown", () => {
-    const scores = [0.1, 0.25, 0.35, 0.6, null];
-    expect(rampDomain(scores, 0.3)).toEqual([0.3, 0.6]);
-    expect(rampDomain(scores, null)).toEqual([0.1, 0.6]);
-    // the best match on the map, not in the whole program
-    expect(rampDomain([0.2, 0.4], 0.3)).toEqual([0.3, 0.4]);
+describe("SIMILARITY_DOMAIN (#184: the same color means the same % in every search)", () => {
+  it("is 0 → 60%, its midpoint the search's Good cut, so diverging schemes split at Good", () => {
+    expect(SIMILARITY_DOMAIN).toEqual([0, 0.6]);
+    const scores = [0.62, 0.5, 0.41, 0.36, 0.33, 0.31, 0.2, 0.1];
+    expect((SIMILARITY_DOMAIN[0] + SIMILARITY_DOMAIN[1]) / 2).toBeCloseTo(
+      relevanceCuts(scores).good,
+    );
   });
 
-  it("is null when nothing is shown or the domain collapses", () => {
-    expect(rampDomain([], 0.3)).toBeNull();
-    expect(rampDomain([0.1, 0.2], 0.3)).toBeNull();
-    expect(rampDomain([0.5], null)).toBeNull();
+  it("is labelled with fixed ticks at its ends and midpoint", () => {
+    expect(SIMILARITY_LEGEND_LABELS).toEqual(["0%", "30% (Good)", "60%+"]);
   });
 });
 

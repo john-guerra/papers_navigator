@@ -15,17 +15,13 @@ import { rankBySimilarity, relatedPapers, relevanceCounts, relevanceCuts } from 
 import { createPaperRoute } from "./components/paperRoute.js";
 import { paperPanel } from "./components/paperPanel.js";
 import { followToggles } from "./components/followToggles.js";
-const scoreRampDomain = (papers, cutsOf = relevanceCuts) => {
-  const scores = papers.map((d) => d.score).filter((s) => s != null);
-  return scores.length ? [cutsOf(scores).good, Math.max(...scores)] : null;
-};
 import { getEmbedder } from "./lib/embedder.js";
 import { keywordMatches, mapMatches, readyAnnouncement, searchMode, searchStatusLine, watchModel, whenIdle } from "./lib/searchStatus.js";
 import { applyProjection } from "./lib/projections.js";
 import { createAligner } from "./lib/procrustes.js";
 import { createQueryMarkerSettings, queryAnnouncement, queryCuts, queryMarkers } from "./lib/placeQuery.js";
 import { queryMarkerControl } from "./components/queryMarkerControl.js";
-import { createSimilaritySchemeSettings, rampDomain } from "./lib/similarityScheme.js";
+import { SIMILARITY_DOMAIN, SIMILARITY_LEGEND_LABELS, createSimilaritySchemeSettings } from "./lib/similarityScheme.js";
 import { similaritySchemeControl } from "./components/similaritySchemeControl.js";
 import { addSearchClear } from "./components/searchClear.js";
 import { trackListFocus } from "./lib/listFocus.js";
@@ -701,12 +697,11 @@ const mapInput = await BrushableScatterPlot(positioned, {
   // Largest topics first: a label that would overlap a bigger topic's is left out
   labels: showTopics ? clusterLabels(positioned) : null,
   labelSize: mapWidth < 500 ? 13 : 15,
-  // The similarity ramp's light end starts at the Good cut (cuts depend only on the search)
-  // Starts at the Good level (Good cut → best match on the map); the level cell below moves it
-  scoreDomain: hasQuery ? rampDomain(positioned.map((d) => d.score), cutsFor(scored.map((d) => d.score)).good) ?? scoreRampDomain(scored, cutsFor) : null,
+  // Fixed 0 → 60% for every search, filter, level and My research (#184): a color means the same %
+  scoreDomain: hasQuery ? SIMILARITY_DOMAIN : null,
   similarityScheme,
-  // DESIGN.md → Legend: the ramp says "less / more similar", not scores
-  legendLabels: ["less similar", "more similar"],
+  // DESIGN.md → Legend: fixed ticks 0% · 30% (Good) · 60%+ (#184)
+  legendLabels: SIMILARITY_LEGEND_LABELS,
   // Readable labels and a percentage instead of raw field names and a long float
   tooltip: [
     { field: "shortLabel", title: "Label" },
@@ -850,8 +845,6 @@ urlSync.update({
 // null = no cut ("All"): cosine scores can be negative, so 0 would dim some papers
 const levelCutValue = hasQuery && relevance !== "all" ? cuts[relevance] : null;
 mapInput.view.signal("levelCut", levelCutValue).runAsync();
-// The scheme spans the shown papers' scores, like the CHI navigator (#166 review), live
-if (hasQuery) mapInput.setScoreDomain(rampDomain(positioned.map((d) => d.score), levelCutValue));
 // Rings follow My Papers live without redrawing the map (a redraw would drop the brush)
 mapInput.view.signal("mine", followed.map((d) => d.id)).runAsync();
 // Keyword matches (#125): the rest viz-dim, like papers below the relevance level

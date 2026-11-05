@@ -3010,13 +3010,19 @@ body #vg-tooltip-element table tr td.value {
   display: block;
 }
 
+/* Ticks spread evenly under the bar (the widget sets each one's left/transform, #184) */
 .similarity-legend-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  position: relative;
+  height: 1.2em;
+  white-space: nowrap;
   margin-top: 3px;
   color: var(--color-on-surface-muted);
   font-size: 10px;
+}
+
+.similarity-legend-labels span {
+  position: absolute;
+  top: 0;
 }
 
 /* #144, #158 — split screen: on stacked layouts tall enough (.split-screen, decided once in JS so

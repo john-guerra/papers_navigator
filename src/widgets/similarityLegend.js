@@ -27,7 +27,7 @@ export function wedgePath({ width, height, diameterAt, steps = 24 }) {
 
 /**
  * The legend element: `title`, the bar (`colorAt(t)` and `diameterAt(t)` for t in [0, 1], from
- * the map's own scales) and `labels` = [low, high] under its two ends. Styled by
+ * the map's own scales) and `labels` spread evenly under it, from its low end to its high end. Styled by
  * .similarity-legend (DESIGN.md → Legend); the map places it.
  */
 export function similarityLegend({
@@ -46,7 +46,7 @@ export function similarityLegend({
   // Scheme-neutral (#166 review): the colors depend on the chosen scheme, the sizes don't
   el.setAttribute(
     "aria-label",
-    `${title}: ${labels[0]} → ${labels[1]} (smaller to larger dots)`,
+    `${title}: ${labels.join(" → ")} (smaller to larger dots)`,
   );
 
   const heading = document.createElement("div");
@@ -74,11 +74,15 @@ export function similarityLegend({
 
   const ends = document.createElement("div");
   ends.className = "similarity-legend-labels";
-  for (const text of labels) {
+  // Spread evenly under the bar (#184: fixed ticks), the ends aligned to its edges
+  labels.forEach((text, i) => {
     const span = document.createElement("span");
     span.textContent = text;
+    const at = labels.length > 1 ? (i / (labels.length - 1)) * 100 : 50;
+    span.style.left = `${at}%`;
+    span.style.transform = `translateX(-${at}%)`;
     ends.append(span);
-  }
+  });
   el.append(heading, svg, ends);
   return el;
 }
