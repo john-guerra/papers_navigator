@@ -12,6 +12,9 @@
  * column can stay in view: the map gives up height so the controls fit above it, down to
  * MAP_FIT_MIN_HEIGHT (or its own width-based height, if smaller). The third value says whether
  * that worked; if not, the map alone is sticky and the controls scroll away, as before.
+ *
+ * #174: `above` is what sits above the side column at the top of the page beyond what `reserved`
+ * counts (Explore's open intro, watchIntroRoom), so the column fits the first screen too.
  */
 export const MAP_MIN_HEIGHT = 240;
 /** Nav (56) + sticky top and bottom gaps (2 × 12) + chart title/padding + controls row, rounded up. */
@@ -29,6 +32,7 @@ export function mapSize(
     controlsHeight = null,
     fitMin = MAP_FIT_MIN_HEIGHT,
     splitRoom = null,
+    above = 0,
   } = {},
 ) {
   const w = Math.max(260, width - 20);
@@ -36,6 +40,7 @@ export function mapSize(
   if (splitRoom != null) return [w, splitMapHeight(splitRoom, width)];
   let h = Math.min(620, Math.max(320, width * 0.75));
   if (viewportHeight == null) return [w, Math.round(h)];
+  reserved += above;
   if (controlsHeight != null) {
     const room =
       viewportHeight - reserved - SIDE_GAP - controlsHeight - CONTROLS_SLACK;
@@ -101,6 +106,43 @@ export function watchStickyViewport(notify, { query, win = globalThis }) {
   update();
   win.addEventListener?.("resize", update);
   return () => win.removeEventListener?.("resize", update);
+}
+
+/**
+ * Explore's intro (#174) is open on a first visit, a few lines above the side column: on the
+ * two-column layout `notify` gets its height beyond the summary line (0 when closed, and on
+ * stacked layouts, where the map isn't sticky), for mapSize's `above`. Called again only when
+ * that changes (toggling it, its text filling in, a resize that rewraps it). Returns a stop
+ * function.
+ */
+export function watchIntroRoom(notify, { details, query, win = globalThis }) {
+  const stacked = win.matchMedia?.(query);
+  const summary = details?.querySelector("summary");
+  let last;
+  const update = () => {
+    const value =
+      !details || !summary || stacked?.matches
+        ? 0
+        : Math.max(
+            0,
+            Math.round(
+              details.getBoundingClientRect().height -
+                summary.getBoundingClientRect().height,
+            ),
+          );
+    if (value === last) return;
+    last = value;
+    notify(value);
+  };
+  update();
+  const Observer = win.ResizeObserver ?? globalThis.ResizeObserver;
+  const observer = Observer && details ? new Observer(update) : null;
+  observer?.observe(details);
+  stacked?.addEventListener?.("change", update);
+  return () => {
+    observer?.disconnect();
+    stacked?.removeEventListener?.("change", update);
+  };
 }
 
 /**

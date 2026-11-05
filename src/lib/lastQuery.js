@@ -22,14 +22,17 @@ export function readLastQuery(conferenceId, storage) {
 /**
  * Saves the search box's value whenever the person changes it (typing, an example chip, ✕,
  * Clear all), never its start value: someone who never searched keeps getting the current
- * default. `input` is the search widget (its `.value` is the text). Returns a stop function.
+ * default. `input` is the search widget (its `.value` is the text). A clear the page makes
+ * itself, because My research takes over ("Rank the program", Resume), dispatches its input
+ * event with `detail: {remember: false}` and isn't saved. Returns a stop function.
  */
 export function rememberQuery(
   input,
   conferenceId,
   { storage = globalThis.localStorage } = {},
 ) {
-  const save = () => {
+  const save = (event) => {
+    if (event?.detail?.remember === false) return;
     try {
       storage?.setItem(
         lastQueryKey(conferenceId),

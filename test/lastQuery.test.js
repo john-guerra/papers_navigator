@@ -70,6 +70,17 @@ describe("the last search, remembered on this device (#174)", () => {
     expect(readLastQuery("c", storage)).toBe("");
   });
 
+  it("skips a clear the page makes itself (My research takes over, #174 review)", () => {
+    const storage = memoryStorage({ [lastQueryKey("c")]: '"graphs"' });
+    const input = document.createElement("form");
+    rememberQuery(input, "c", { storage });
+    input.value = "";
+    input.dispatchEvent(
+      new CustomEvent("input", { bubbles: true, detail: { remember: false } }),
+    );
+    expect(readLastQuery("c", storage)).toBe("graphs");
+  });
+
   it("keeps going when storage refuses (private mode)", () => {
     const input = document.createElement("form");
     const storage = {
