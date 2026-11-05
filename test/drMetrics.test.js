@@ -78,9 +78,10 @@ describe("qualityMetrics on IEEE VIS 2026", () => {
   );
   const highRanks = neighborRanks(embeddings, { dims: 384 });
   const reference = {
-    umap: { 5: [0.88158, 0.908507], 10: [0.863257, 0.882106] },
-    tsne: { 5: [0.929351, 0.890176], 10: [0.885682, 0.858532] },
-    pca: { 5: [0.718452, 0.837118], 10: [0.727595, 0.83187] },
+    // Recomputed after the #178 data refresh (one retitled paper)
+    umap: { 5: [0.881592, 0.908573], 10: [0.863265, 0.882055] },
+    tsne: { 5: [0.929288, 0.890131], 10: [0.885614, 0.858495] },
+    pca: { 5: [0.718467, 0.837147], 10: [0.727611, 0.831807] },
   };
   for (const [method, byK] of Object.entries(reference)) {
     it(`matches sklearn for ${method}`, () => {

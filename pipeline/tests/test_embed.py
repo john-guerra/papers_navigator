@@ -226,3 +226,63 @@ def test_run_skips_short_labels_unless_configured(tmp_path):
     conf = make_conference(tmp_path, PAPERS, ["a"])
     embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": lambda m: np.zeros((len(m), 2))})
     assert "shortLabel" not in json.loads((conf / "data" / "papers.json").read_text())[0]
+
+
+def test_run_keeps_the_previous_paper_order(tmp_path):
+    # #178: a refreshed scrape can list papers in another order; UMAP's output depends on input
+    # order even with a fixed seed, so keeping papers.json's order keeps the map stable.
+    # Papers new to the program go last, in the scrape's order.
+    conf = make_conference(tmp_path, PAPERS, ["a"])
+    (conf / "data" / "papers.json").write_text(json.dumps([{"id": "p3"}, {"id": "gone"}, {"id": "p1"}]))
+    raw = [*PAPERS, {"id": "p4", "title": "W", "abstract": "C", "authors": []}]
+    (conf / "data" / "papers.raw.json").write_text(json.dumps(raw))
+    seen = []
+    embed.run("testconf", root=tmp_path, encoder=lambda t: (seen.append(list(t)), np.ones((len(t), 384)))[1],
+              reducers={"a": lambda m: np.zeros((len(m), 2))})
+    ids = [p["id"] for p in json.loads((conf / "data" / "papers.json").read_text())]
+    assert ids == ["p3", "p1", "p2", "p4"]
+
+
+def _previous_run(conf, ids, vectors, coords):
+    # A prior run's outputs: papers.json order, embeddings.bin rows, projections
+    data = conf / "data"
+    (data / "papers.json").write_text(json.dumps([{"id": i} for i in ids]))
+    embed.write_embeddings(np.asarray(vectors, dtype=np.float32), data / "embeddings.bin")
+    (data / "projections").mkdir(exist_ok=True)
+    (data / "projections" / "a.json").write_text(json.dumps(dict(zip(ids, coords))))
+
+
+def _unit(v):
+    v = np.asarray(v, dtype=float)
+    return v / np.linalg.norm(v)
+
+
+def test_run_keeps_the_previous_layout_when_papers_barely_changed(tmp_path):
+    # #178: UMAP reshuffles the whole map when one embedding moves slightly (a retitled paper);
+    # same papers, every embedding within cosine 0.98 of the last run: keep the last positions
+    conf = make_conference(tmp_path, PAPERS, ["a"])
+    base = [_unit(np.eye(384)[i] + 0.01) for i in range(3)]
+    _previous_run(conf, ["p1", "p2", "p3"], base, [[1, 2], [3, 4], [5, 6]])
+    moved = [base[0], _unit(base[1] + 0.05 * np.eye(384)[7]), base[2]]
+    fresh = lambda m: np.full((len(m), 2), 9.0)
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray(moved), reducers={"a": fresh})
+    out = json.loads((conf / "data" / "projections" / "a.json").read_text())
+    assert out == {"p1": [1, 2], "p2": [3, 4], "p3": [5, 6]}
+    papers = json.loads((conf / "data" / "papers.json").read_text())
+    assert [(p["x"], p["y"]) for p in papers] == [(1, 2), (3, 4), (5, 6)]
+
+
+@pytest.mark.parametrize("case", ["new paper", "big change", "relayout"])
+def test_run_lays_out_again_when_papers_changed_or_asked(tmp_path, case):
+    papers = PAPERS + ([{"id": "p4", "title": "W", "abstract": "C", "authors": []}] if case == "new paper" else [])
+    conf = make_conference(tmp_path, papers, ["a"])
+    base = [_unit(np.eye(384)[i] + 0.01) for i in range(4)]
+    _previous_run(conf, ["p1", "p2", "p3"], base[:3], [[1, 2], [3, 4], [5, 6]])
+    vectors = base[: len(papers)]
+    if case == "big change":
+        vectors = [base[0], base[3], base[2]]  # p2 now says something else
+    fresh = lambda m: np.full((len(m), 2), 9.0)
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray(vectors), reducers={"a": fresh},
+              relayout=case == "relayout")
+    out = json.loads((conf / "data" / "projections" / "a.json").read_text())
+    assert set(map(tuple, out.values())) == {(9.0, 9.0)}
