@@ -2,7 +2,8 @@
 
 Usage: python -m pipeline.embed --conference ieeevis2026
 Reads  conferences/<id>/data/papers.raw.json
-Writes conferences/<id>/data/{papers.json, embeddings.bin, projections/<method>.json, clusters.json}
+Writes conferences/<id>/data/{papers.json, embeddings.bin, projections/<method>.json,
+projections/basis.bin (the embeddings the projections were computed from), clusters.json}
 """
 
 import argparse
@@ -55,7 +56,63 @@ def write_embeddings(matrix: np.ndarray, path: Path) -> None:
     np.asarray(matrix).astype("<f4").tofile(path)
 
 
-def run(conference_id: str, root: Path = ROOT, encoder=None, reducers=None) -> None:
+# Cosine to the last run's embedding above which a paper keeps its place (#178)
+LAYOUT_MIN_COSINE = 0.98
+
+
+def keep_previous_order(papers: list[dict], previous: Path) -> list[dict]:
+    """Papers in the order of the previous papers.json (#178), new ones last in scrape order.
+
+    UMAP's output depends on the input order even with a fixed seed, so a refreshed scrape that
+    lists the same papers in another order would otherwise reshuffle the map and its clusters."""
+    try:
+        rank = {p["id"]: i for i, p in enumerate(json.loads(previous.read_text()))}
+    except (OSError, ValueError, TypeError, KeyError):
+        return papers
+    return sorted(papers, key=lambda p: rank.get(p["id"], len(rank)))
+
+
+def previous_layout(papers: list[dict], matrix: np.ndarray, data_dir: Path, methods: list[str]):
+    """The last layout and the embeddings it was computed from, if this run can keep it (#178).
+
+    UMAP and t-SNE are chaotic: one embedding moving slightly (a retitled paper) reshuffles the
+    whole map and its clusters. With the same papers and every embedding within cosine
+    LAYOUT_MIN_COSINE of the embeddings the layout was computed from (`projections/basis.bin`,
+    else the last run's embeddings.bin), the positions still describe the program. Comparing
+    with the basis, not the last run, keeps small edits from adding up refresh after refresh
+    (#179 review). Returns ({method: xy}, basis rows in `papers` order) or None."""
+    try:
+        old_ids = [p["id"] for p in json.loads((data_dir / "papers.json").read_text())]
+        basis_file = data_dir / "projections" / "basis.bin"
+        if not basis_file.exists():
+            basis_file = data_dir / "embeddings.bin"
+        old = np.fromfile(basis_file, dtype="<f4").reshape(len(old_ids), -1)
+        projections = {
+            m: json.loads((data_dir / "projections" / f"{m}.json").read_text()) for m in methods
+        }
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    ids = [p["id"] for p in papers]
+    if sorted(ids) != sorted(old_ids) or old.shape[1] != matrix.shape[1]:
+        print("layout: new projections (the set of papers changed)")
+        return None
+    if any(set(projections[m]) != set(ids) for m in methods):
+        return None
+    row = {i: k for k, i in enumerate(old_ids)}
+    basis = old[[row[i] for i in ids]]
+    norms = np.linalg.norm(basis, axis=1) * np.linalg.norm(matrix, axis=1)
+    cosine = np.sum(basis * matrix, axis=1) / np.where(norms == 0, 1, norms)
+    print(f"layout: lowest cosine to the layout's embeddings {cosine.min():.4f}")
+    if cosine.min() < LAYOUT_MIN_COSINE:
+        moved = [f"{ids[k]} ({cosine[k]:.3f})" for k in np.flatnonzero(cosine < LAYOUT_MIN_COSINE)]
+        print(f"layout: new projections, {len(moved)} papers changed: {', '.join(moved[:10])}")
+        return None
+    return {m: np.asarray([projections[m][i] for i in ids], dtype=float) for m in methods}, basis
+
+
+def run(
+    conference_id: str, root: Path = ROOT, encoder=None, reducers=None, relayout: bool = False
+) -> None:
     encoder = encoder or default_encoder
     reducers = REDUCERS if reducers is None else reducers
     conf_dir = Path(root) / "conferences" / conference_id
@@ -69,14 +126,21 @@ def run(conference_id: str, root: Path = ROOT, encoder=None, reducers=None) -> N
     papers = json.loads((data_dir / "papers.raw.json").read_text())
     excluded = set(config.get("excludeTypeLabels", []))
     papers = [p for p in papers if p.get("typeLabel") not in excluded]
+    papers = keep_previous_order(papers, data_dir / "papers.json")
     papers = unify_keywords(papers)
     matrix = np.asarray(encoder(embed_texts(papers)), dtype=np.float32)
+    previous = None if relayout else previous_layout(papers, matrix, data_dir, methods)
+    kept, basis = previous if previous else (None, matrix)
+    if kept:
+        print("layout: kept the last run's positions (same papers, embeddings barely moved)")
     write_embeddings(matrix, data_dir / "embeddings.bin")
 
     (data_dir / "projections").mkdir(exist_ok=True)
+    # The embeddings the positions were computed from, for the next run's layout gate
+    write_embeddings(np.asarray(basis, dtype=np.float32), data_dir / "projections" / "basis.bin")
     coords = {}
     for method in methods:
-        xy = np.asarray(reducers[method](matrix), dtype=float)
+        xy = kept[method] if kept else np.asarray(reducers[method](matrix), dtype=float)
         coords[method] = xy
         projection = {p["id"]: [float(x), float(y)] for p, (x, y) in zip(papers, xy)}
         (data_dir / "projections" / f"{method}.json").write_text(json.dumps(projection))
@@ -107,4 +171,10 @@ def run(conference_id: str, root: Path = ROOT, encoder=None, reducers=None) -> N
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--conference", default="ieeevis2026")
-    run(parser.parse_args().conference)
+    parser.add_argument(
+        "--relayout",
+        action="store_true",
+        help="compute new projections even when the last run's positions could be kept",
+    )
+    args = parser.parse_args()
+    run(args.conference, relayout=args.relayout)

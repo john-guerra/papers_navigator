@@ -5,8 +5,8 @@
   "v3": "c4288368760e"
  },
  "refined": {
-  "v2": 309,
-  "v3": 20
+  "v2": 310,
+  "v3": 19
  },
  "counts": {
   "title": 154,
@@ -1514,12 +1514,11 @@
    "label": "Grand Challenges",
    "source": "llm",
    "llm": {
-    "v2": null,
-    "v3": "Grand Challenges"
+    "v2": "Grand Challenges"
    },
-   "promptVersion": "v3",
+   "promptVersion": "v2",
    "model": "google/gemma-4-e4b",
-   "inputHash": "ac7b6076f02aaa11"
+   "inputHash": "855660516c84e748"
   },
   "155591eb-2645-48a9-b4fb-06d03ae92cd9": {
    "label": "Task taxonomy",
