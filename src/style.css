@@ -3120,11 +3120,11 @@ body #vg-tooltip-element table tr td.value {
   border-radius: var(--rounded-sm, 2px);
 }
 
-/* #167 — the search area: one path per search behind the map's marks (inserted by the widget),
-   a light primary wash; 40% of that when few similar papers are visible. Hidden mid-motion,
-   it fades in as the motion settles. Around matches at the plot's edge it reaches past the
-   plot (#181): the layer spans the chart's box and a little of the margins beside it, and an
-   area that still reaches the layer's border fades out there rather than ending on a line. */
+/* #167, #182 — the similarity terrain's layer: one group of level paths per search behind the
+   map's marks (inserted by the widget). Hidden mid-motion, it fades in as the motion settles.
+   Around matches at the plot's edge the terrain reaches past the plot (#181): the layer spans
+   the chart's box and a little of the margins beside it, and a level that still reaches the
+   layer's border fades out there rather than ending on a line. */
 .query-area {
   position: absolute;
   overflow: hidden;

@@ -1,12 +1,12 @@
 // The similarity legend sits in the map's background, under the points (#168), so it goes to the
-// plot corner where it covers the least: papers, topic labels and the search area.
+// plot corner where it covers the least: papers, topic labels and the similarity terrain.
 
 const CORNERS = ["top-right", "top-left", "bottom-right", "bottom-left"];
 
 /**
  * The plot corner (`width` × `height` px) where a `box` = [w, h] legend, `inset` px from the
  * edges, covers the least: each of `points` ([x, y] in plot pixels) counts 1, each of
- * `obstacles` ([x0, y0, x1, y1]: topic labels, search areas) it overlaps counts
+ * `obstacles` ([x0, y0, x1, y1]: topic labels, the terrain's levels) it overlaps counts
  * `obstacleWeight`. Ties keep the first in top-right, top-left, bottom-right, bottom-left
  * (DESIGN.md's default corner first). With a `current` corner it only moves when another is
  * quieter by at least `margin` (#168 review: no jumping on a one-dot difference).

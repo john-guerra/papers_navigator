@@ -391,6 +391,19 @@ describe("similarityTerrain (#182: a topo map of the match %, the highest nearby
     expect(covers(t.levels.at(-1), t.peak.x, t.peak.y)).toBe(true);
   });
 
+  it("the ★ is exactly on the best paper's dot, even when a near tie owns the highest cell (#195)", () => {
+    // PLUTO 50.81% sits on a cell corner, Mastery Learning 50.69% on a cell center (4px cells
+    // = 0.2 units here): the grid's highest cell is the runner-up's
+    const t = similarityTerrain(
+      [
+        { x: 3.1, y: 3.1, score: 0.5069 },
+        { x: 6, y: 6, score: 0.5081 },
+      ],
+      { ...box, levels: terrainLevels(0.3, 0.5081) },
+    );
+    expect(t.peak).toEqual({ x: 6, y: 6 });
+  });
+
   it("no ★ peak when no level rises above Good (the ★ then sits on the top match)", () => {
     const t = similarityTerrain([{ x: 5, y: 5, score: 0.33 }], {
       ...box,
@@ -455,7 +468,6 @@ describe("queryMarkers terrain inputs (#182)", () => {
       k: 3,
       dims: DIMS,
       goodCut: 0.5,
-      strongCut: 0.9,
     });
     expect(m.scores).toHaveLength(5);
     const top = m.scores.find(
@@ -485,7 +497,6 @@ describe("queryCuts", () => {
     expect(queryCuts({ weak: 0.2, good: 0.3, strong: 0.45 })).toEqual({
       weakCut: 0.2,
       goodCut: 0.3,
-      strongCut: 0.45,
     });
     expect(queryCuts(null)).toEqual({});
   });
