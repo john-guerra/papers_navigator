@@ -2266,6 +2266,12 @@ details.missing > summary {
     background: none;
   }
 
+  /* The focus ring (≈48px) would slip under the Strong segment, which paints later */
+  .relevance-label-row .toggletip-button:focus-visible {
+    position: relative;
+    z-index: 1;
+  }
+
   .relevance-field .relevance-control button {
     padding: 0 6px;
   }
