@@ -38,6 +38,12 @@ export default {
     const open = JSON.parse(localStorage.getItem("papersNavigator:openSections") || "[]");
     if (Array.isArray(open)) document.documentElement.dataset.openSections = open.join(" ");
   } catch (error) {}
+  // Explore's intro (#174) is open unless you closed it: style.css folds it by this from the first
+  // paint; src/components/intro.js keeps it current
+  document.documentElement.dataset.intro = "open";
+  try {
+    if (localStorage.getItem("papersNavigator:intro") === "closed") document.documentElement.dataset.intro = "closed";
+  } catch (error) {}
   // Offline after first load (#15): src/sw.js, copied to dist/sw.js by npm run build.
   // Relative URL: the site lives in a subfolder. (No sw.js in npm run dev: it fails quietly.)
   // A page marked data-sw-after-render (Explore, #124) registers it only once its program is on

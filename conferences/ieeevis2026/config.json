@@ -45,15 +45,15 @@
   "typeNames": {
     "workshop": "Workshop Paper"
   },
-  "defaultQuery": "Volume rendering",
+  "defaultQuery": "Data literacy",
   "exampleQueries": [
+    "Data literacy",
     "Volume rendering",
     "AI agents",
     "Dimensionality reduction",
     "Graphs",
     "Perception",
     "Storytelling",
-    "Data literacy",
     "Accessibility"
   ]
 }

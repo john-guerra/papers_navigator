@@ -51,7 +51,7 @@ export const SHARE_KEYS = ["follow", "watch"];
 /** Longest fragment read at load (a long share list is ~2 KB); a longer one is dropped. */
 export const MAX_HASH = 4096;
 
-const MAX_QUERY = 300;
+export const MAX_QUERY = 300;
 /** Longest facet value (real author/institution/session names are far shorter). */
 const MAX_VALUE = 200;
 const MAX_VALUES = 50;

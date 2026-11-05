@@ -8,6 +8,7 @@ import {
   SIDE_GAP,
   controlsHeight,
   mapSize,
+  watchIntroRoom,
   watchStickyViewport,
 } from "../src/lib/mapSize.js";
 
@@ -328,5 +329,96 @@ describe("split screen (#144, #158)", () => {
     expect(timers).toEqual([]);
     expect(seen).toEqual([804]);
     stop();
+  });
+});
+
+// #174 review: Explore's intro is open on a first visit; on desktop the side column must still
+// fit the viewport at the top of the page, so the map gives up the open intro's extra height
+describe("mapSize: room for the open intro", () => {
+  it("takes `above` off the sticky height, both when the controls fit and when not", () => {
+    const controls = 200;
+    const [, fit, fits] = mapSize(900, {
+      viewportHeight: 1000,
+      controlsHeight: controls,
+    });
+    const [, fitIntro, fitsIntro] = mapSize(900, {
+      viewportHeight: 1000,
+      controlsHeight: controls,
+      above: 73,
+    });
+    expect(fits && fitsIntro).toBe(true);
+    expect(fit).toBe(
+      1000 - MAP_RESERVED_HEIGHT - SIDE_GAP - controls - CONTROLS_SLACK,
+    );
+    expect(fitIntro).toBe(fit - 73);
+    expect(mapSize(900, { viewportHeight: 700, above: 50 })).toEqual([
+      880,
+      700 - MAP_RESERVED_HEIGHT - 50,
+    ]);
+    // stacked layouts: the map scrolls with the page, the intro doesn't count
+    expect(mapSize(900, { above: 50 })).toEqual(mapSize(900));
+  });
+});
+
+describe("watchIntroRoom", () => {
+  function setup({ stacked = false } = {}) {
+    document.body.innerHTML = `<details class="lede" open><summary>Explore</summary><p>Search…</p></details>`;
+    const details = document.querySelector("details");
+    const sizes = { details: 96, summary: 23 };
+    details.getBoundingClientRect = () => ({ height: sizes.details });
+    details.querySelector("summary").getBoundingClientRect = () => ({
+      height: sizes.summary,
+    });
+    const media = { matches: stacked, listeners: new Set() };
+    media.addEventListener = (t, f) => media.listeners.add(f);
+    media.removeEventListener = (t, f) => media.listeners.delete(f);
+    let observed;
+    class FakeResizeObserver {
+      constructor(f) {
+        observed = f;
+      }
+      observe() {}
+      disconnect() {
+        observed = null;
+      }
+    }
+    const win = {
+      matchMedia: () => media,
+      ResizeObserver: FakeResizeObserver,
+    };
+    const notify = vi.fn();
+    const stop = watchIntroRoom(notify, { details, query: "q", win });
+    return { details, sizes, media, notify, stop, resize: () => observed?.() };
+  }
+
+  it("reports the open intro's height beyond its summary, on desktop", () => {
+    const { notify } = setup();
+    expect(notify).toHaveBeenLastCalledWith(73);
+  });
+
+  it("reports again only when that changes (closed: 0)", () => {
+    const { notify, sizes, resize } = setup();
+    resize();
+    expect(notify).toHaveBeenCalledTimes(1);
+    sizes.details = 23;
+    resize();
+    expect(notify).toHaveBeenLastCalledWith(0);
+    expect(notify).toHaveBeenCalledTimes(2);
+  });
+
+  it("stacked layouts: 0, the map isn't sticky there", () => {
+    const { notify, media } = setup({ stacked: true });
+    expect(notify).toHaveBeenLastCalledWith(0);
+    media.matches = false;
+    for (const f of media.listeners) f();
+    expect(notify).toHaveBeenLastCalledWith(73);
+  });
+
+  it("stops listening", () => {
+    const { notify, sizes, resize, stop } = setup();
+    stop();
+    sizes.details = 23;
+    resize();
+    expect(notify).toHaveBeenCalledTimes(1);
   });
 });

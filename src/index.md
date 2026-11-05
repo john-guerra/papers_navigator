@@ -48,10 +48,12 @@ import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
+import { rememberQuery } from "./lib/lastQuery.js";
+import { rememberIntro } from "./components/intro.js";
 import { PHONE_QUERY, SPLIT_MIN_HEIGHT, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
 import { watchSplitMap } from "./lib/splitLayout.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
-import { controlsHeight, mapSize, watchSplitScreen, watchStickyViewport } from "./lib/mapSize.js";
+import { controlsHeight, mapSize, watchIntroRoom, watchSplitScreen, watchStickyViewport } from "./lib/mapSize.js";
 import { stickyListHeader } from "./lib/stickyList.js";
 import { conferenceZone } from "./lib/time.js";
 // Explicit, so the page uses the same d3 as the widgets (node_modules) instead of a second copy
@@ -103,7 +105,13 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 
 <h1 class="sr-only">${conference.name} Papers</h1>
 
-<details class="lede"><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
+<details class="lede" open><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
+
+```js
+// The intro is open until you close it; remembered on this device (#174). Its own cell, so a
+// failure here can't take the URL state or My research down with it
+invalidation.then(rememberIntro(document.querySelector("details.lede")));
+```
 
 <div id="explore" class="explore-layout" data-sw-after-render>
 <div class="explore-side">
@@ -228,17 +236,20 @@ const query = Generators.observe((notify) => {
     queryInput.removeEventListener("input", onInput);
   };
 });
-const setQuery = (text) => {
+// remember = false: a clear because My research takes over isn't a last search (lastQuery.js)
+const setQuery = (text, remember = true) => {
   queryInput.querySelector("input").value = text;
   queryInput.value = text;
-  queryInput.dispatchEvent(new Event("input", { bubbles: true }));
+  queryInput.dispatchEvent(new CustomEvent("input", { bubbles: true, detail: { remember } }));
 };
 const clearQuery = () => setQuery("");
 // ✕ in the field clears the search (#128): no "Search" chip taking a row under the facets
 addSearchClear(queryInput, clearQuery);
-if (researchPaused) researchPausedToast(researchStore, { onResume: clearQuery });
+if (researchPaused) researchPausedToast(researchStore, { onResume: () => setQuery("", false) });
 // Typing a search leaves "My research": one ranking at a time, the last one asked for
 queryInput.addEventListener("input", () => researchStore.value.active && researchStore.set({ active: false }));
+// The last search (cleared too) is where the next visit starts, unless a link names one (#174)
+invalidation.then(rememberQuery(queryInput, conference.id));
 ```
 
 ```js
@@ -262,7 +273,7 @@ const myResearchInput = myResearch(
   {
     onToggle: (open) => (researchPanelState.open = open),
     onRank: (text) => {
-      clearQuery();
+      setQuery("", false);
       researchStore.set({ text, active: true });
     },
     onForget: ({ topics }) => {
@@ -592,6 +603,8 @@ const mapWidth = Generators.width(document.querySelector(".explore-controls"));
 // controls' height is read when the map is built anyway (below), never watched: a chip appearing
 // mid-drag must not rebuild the map and drop the brush (#143 review)
 const stickyViewport = Generators.observe((notify) => watchStickyViewport(notify, { query: STACKED_QUERY }));
+// Desktop: the open intro's height, so the side column fits the first screen too (#174 review)
+const introRoom = Generators.observe((notify) => watchIntroRoom(notify, { details: document.querySelector("details.lede"), query: STACKED_QUERY }));
 // Stacked layouts tall enough (#144, #158): the map sticks in the top half, the list scrolls below.
 // The height the nav (and the phone tab bar) leave, or null where it doesn't split
 const splitRoom = Generators.observe((notify) => watchSplitScreen(notify, { query: STACKED_QUERY, tabBarQuery: PHONE_QUERY, minHeight: SPLIT_MIN_HEIGHT }));
@@ -646,7 +659,7 @@ const positioned = withReliability(withLiveClusters(applyProjection(filtered, al
 const everyPaper = applyProjection(papers, aligned).papers;
 mapState.everyPaper = everyPaper;
 // Side column (#142): with the controls (search, facets, relevance) when both fit, else the map alone
-const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")), splitRoom });
+const [mapW, mapH, sideFits] = mapSize(mapWidth, { viewportHeight: stickyViewport, controlsHeight: stickyViewport == null ? null : controlsHeight(document.querySelector(".explore-controls")), splitRoom, above: introRoom });
 layout.classList.toggle("side-fits", Boolean(sideFits));
 // Same projection (filters, search, colors, theme): animate entering/leaving points and keep
 // the region selection, unless the map-region chip was cleared
@@ -928,7 +941,8 @@ const chips = [
   hasQuery && researchMode && { label: rankingLabel, value: `${levelName} matches`, onClear: leaveResearch },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
 ].filter(Boolean);
-// Clear all empties the search (like the field's ✕; the default search is for first visits only)
+// Clear all empties the search (like the field's ✕; the default search is for first visits only,
+// the cleared search is remembered, #174)
 // and the map region; the facet strip's Clear all goes back to Main tracks. URL: just "q=" (#104)
 const chipsRow = renderChips(chips, {
   onClearAll:

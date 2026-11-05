@@ -298,6 +298,18 @@ details.lede > p {
   margin: var(--spacing-xs, 4px) 0 0;
 }
 
+/* Open by default (#174); closed if you closed it: <html data-intro>, written by the head script
+   before the page draws, folds it until src/components/intro.js syncs the element (no flash).
+   Handoff: only that component adds .intro-ready, so if Explore's JS never runs a closed intro
+   keeps its paragraph hidden (accepted: the page is broken then anyway) */
+:root[data-intro="closed"] details.lede:not(.intro-ready) > p {
+  display: none;
+}
+
+:root[data-intro="closed"] details.lede:not(.intro-ready) > summary {
+  list-style-type: disclosure-closed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -122,3 +122,60 @@ describe("startExploreUrl (#92)", () => {
     expect(win.location.href).toBe("https://x.org/conf/?paper=abc#type=");
   });
 });
+
+describe("startExploreUrl: the remembered search (#174)", () => {
+  const storage = (value) => ({
+    getItem: (k) =>
+      k === "papersNavigator:vis:lastQuery" && value !== undefined
+        ? JSON.stringify(value)
+        : null,
+  });
+  const conf = { ...conference, id: "vis" };
+  const open = (hash, value, win = fakeWindow(hash)) => ({
+    win,
+    ...startExploreUrl({
+      papers,
+      conference: conf,
+      typeLabels,
+      hasTopics: true,
+      win,
+      storage: storage(value),
+    }),
+  });
+
+  it("starts from the last search when the link names none", () => {
+    expect(open("", "graphs").start.query).toBe("graphs");
+    // A cleared search is remembered too: no default search
+    expect(open("", "").start.query).toBe("");
+    // First visit: the conference's default
+    expect(open("", undefined).start.query).toBe("Dimensionality reduction");
+  });
+
+  it("a link's search wins, and the remembered one is no explicit search", () => {
+    expect(open("#q=agents", "graphs").start.query).toBe("agents");
+    expect(open("#q=", "graphs").start.query).toBe("");
+    expect(open("", "graphs").explicitQuery).toBe(false);
+  });
+
+  it("writes a remembered search into the fragment, so a reload keeps it", () => {
+    const { win, sync } = open("", "graphs");
+    sync.update({});
+    sync.flush();
+    expect(win.location.href).toBe("https://x.org/conf/?paper=abc#q=graphs");
+    // Reloading that URL, whatever is remembered by then
+    expect(open("#q=graphs", "other").start.query).toBe("graphs");
+    const cleared = open("", "");
+    cleared.sync.update({});
+    cleared.sync.flush();
+    expect(cleared.win.location.href).toBe("https://x.org/conf/?paper=abc#q=");
+    expect(open("#q=", "").start.query).toBe("");
+  });
+
+  it("the default search stays out of the fragment, remembered or not", () => {
+    const { win, sync } = open("", "Dimensionality reduction");
+    expect(sync.state.query).toBe("Dimensionality reduction");
+    sync.update({});
+    sync.flush();
+    expect(win.location.href).toBe("https://x.org/conf/?paper=abc");
+  });
+});
