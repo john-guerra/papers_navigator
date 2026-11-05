@@ -72,41 +72,62 @@ export function placeByNeighbours(
   return { x, y, spread: Math.sqrt(squared / total), neighbours: top };
 }
 
+/** The terrain's isoline spacing (#182): one every 5 points of match. */
+export const TERRAIN_STEP = 0.05;
+
 /**
- * Where the matching papers are (#167): the map (`width` × `height` pixels showing `xDomain` ×
- * `yDomain`) cut into `cell`-pixel squares, a Gaussian kernel density (bandwidth in pixels) of
- * the `points` ({x, y, weight}, data units) on them, and the level at which the densest cells
- * hold `mass` of the density. Its outline is traced with marching squares (d3.contours, linear
- * interpolation), so it is smooth: one polygon per group of matches, so matches the projection
- * split show as several areas, and nothing between them.
- *
- * The grid runs `margin` px past the map on every side (default: the kernel's reach, 3
- * bandwidths), so matches at the map's edge get a whole, round blob: a grid ending at the edge
- * cut it along a straight line there (#181). Density past the edge counts toward `mass` like any
- * other, so the level is the same wherever the matches sit.
- *
- * Returns {polygons, peak} or null without points: `polygons` a GeoJSON MultiPolygon's
- * coordinates in data units (they may reach past the domains by up to `margin` px); `peak`
- * {x, y}, the densest point of the blob holding `top` (the best match, {x, y}; the global peak
- * without it or when it falls outside), kept inside the domains: where the ★ goes.
- *
- * Measured on VIS 2026 (32 searches, medians) against the neighbours' spread disc it replaces:
- * 69% of the papers inside are Good matches (the disc: 56%), 25% of it is empty (> 20px from
- * any Good match; the disc: 43%), 3.3% of the map (the disc: 8.4%), Good matches inside 34%
- * (the disc: 35%). It contains the Strong matches by construction.
+ * The isoline levels of the similarity terrain (#182): every `step` from the Good cut up to the
+ * best visible score (searches 0.30, 0.35, …; My research from its own Good cut). [] when
+ * nothing reaches Good or without a Good cut.
  */
-export function matchArea(
+export function terrainLevels(good, best, step = TERRAIN_STEP) {
+  if (!Number.isFinite(good) || !Number.isFinite(best)) return [];
+  const levels = [];
+  for (let i = 0; ; i++) {
+    const v = Math.round((good + i * step) * 1e6) / 1e6;
+    if (v > best + 1e-9) return levels;
+    levels.push(v);
+  }
+}
+
+/**
+ * The similarity terrain (#182): a topographic map whose height is the match % to the query.
+ * The map (`width` × `height` pixels showing `xDomain` × `yDomain`) is cut into `cell`-pixel
+ * squares; each holds the Nadaraya–Watson estimate of the score there: the average of the
+ * `points` ({x, y, score}, data units) weighted by a Gaussian of their distance (`bandwidth` px).
+ * It is an estimate between papers, so it is masked where there are few: the height is scaled
+ * by min(1, density / `minWeight`), the density a Gaussian of half the bandwidth summed over the
+ * papers (one paper on its own dot counts 1). The mask is continuous, so isolines stay smooth;
+ * no terrain shows in empty space, and a lone paper gets at most a small island on its own dot.
+ * Isolines at `levels` are traced with marching squares (d3.contours, linear interpolation).
+ *
+ * Tuned on VIS 2026 (283 main-track papers on a ~715 × 547 px map, Volume rendering, Data
+ * literacy, Perception): 30px gives nested, rounded terrain where matches gather (15–20px only
+ * circled single dots); a minWeight of 1 keeps the terrain inside the clouds of papers (2 halved
+ * it almost everywhere: on this map a 15px kernel sums to ~1 between neighbours). Searches whose
+ * Good matches are scattered among weak ones (Perception) get no isoline: the average there is
+ * under Good, and the ★ sits on the top match. 2–4 ms per placement.
+ *
+ * The grid runs `margin` px past the map on every side (#181), so terrain at the map's edge
+ * falls off like anywhere else instead of being cut along the grid's edge.
+ *
+ * Returns null without points, else {levels: [{value, polygons}] (only the levels with an
+ * isoline, lowest first; polygons a GeoJSON MultiPolygon's coordinates in data units), peak,
+ * valueAt(x, y)}: `peak` {x, y} the highest point, inside the top isoline and kept on the map,
+ * where the ★ goes (on a plateau, its densest cell); null when no isoline rises above the first level (the Good cut).
+ */
+export function similarityTerrain(
   points,
   {
     width,
     height,
     xDomain,
     yDomain,
+    levels = [],
     cell = 4,
-    bandwidth = 22,
-    mass = 0.8,
-    top = null,
-    margin = 3 * bandwidth,
+    bandwidth = 30,
+    minWeight = 1,
+    margin = 2 * bandwidth,
   },
 ) {
   if (!points?.length || !(width > 0) || !(height > 0)) return null;
@@ -125,94 +146,148 @@ export function matchArea(
   const rows = rows0 + 2 * pad;
   const ox = pad * cw;
   const oy = pad * ch;
-  const px = points.map((p) => [
-    (p.x - x0) * sx + ox,
-    (p.y - y0) * sy + oy,
-    p.weight,
-  ]);
-  const twoH2 = 2 * bandwidth * bandwidth;
-  const reach2 = 9 * bandwidth * bandwidth; // ignore points beyond 3 bandwidths
+  // Each paper splats its kernel on the cells within 3 bandwidths (separable: a row of x weights
+  // times a column of y weights), so the cost is papers × (6 bandwidths / cell)², not cells ×
+  // papers. The density kernel (half the bandwidth) is the same weight to the 4th power.
+  const sum = new Float64Array(cols * rows);
+  const weight = new Float64Array(cols * rows);
   const density = new Float64Array(cols * rows);
-  let total = 0;
-  for (let r = 0; r < rows; r++) {
-    const cy = (r + 0.5) * ch;
-    for (let c = 0; c < cols; c++) {
-      const cx = (c + 0.5) * cw;
-      let d = 0;
-      for (const [x, y, w] of px) {
-        const d2 = (x - cx) ** 2 + (y - cy) ** 2;
-        if (d2 <= reach2) d += w * Math.exp(-d2 / twoH2);
+  const reach = 3 * bandwidth;
+  const twoH2 = 2 * bandwidth * bandwidth;
+  const wx = new Float64Array(cols);
+  for (const p of points) {
+    if (!Number.isFinite(p.score)) continue;
+    const gx = (p.x - x0) * sx + ox;
+    const gy = (p.y - y0) * sy + oy;
+    const c0 = Math.max(0, Math.ceil((gx - reach) / cw - 0.5));
+    const c1 = Math.min(cols - 1, Math.floor((gx + reach) / cw - 0.5));
+    const r0 = Math.max(0, Math.ceil((gy - reach) / ch - 0.5));
+    const r1 = Math.min(rows - 1, Math.floor((gy + reach) / ch - 0.5));
+    for (let c = c0; c <= c1; c++)
+      wx[c] = Math.exp(-(((c + 0.5) * cw - gx) ** 2) / twoH2);
+    for (let r = r0; r <= r1; r++) {
+      const wy = Math.exp(-(((r + 0.5) * ch - gy) ** 2) / twoH2);
+      for (let c = c0, i = r * cols + c0; c <= c1; c++, i++) {
+        const w = wy * wx[c];
+        weight[i] += w;
+        sum[i] += w * p.score;
+        const w2 = w * w;
+        density[i] += w2 * w2;
       }
-      density[r * cols + c] = d;
-      total += d;
     }
   }
-  if (!(total > 0)) return null;
-  // The level: walk the cells from the densest until they hold `mass` of the total
-  const sorted = Float64Array.from(density).sort().reverse();
-  let held = 0;
-  let level = sorted[0];
-  for (const d of sorted) {
-    if (held >= mass * total) break;
-    held += d;
-    level = d;
+  const field = new Float64Array(cols * rows);
+  let high = 0;
+  for (let i = 0; i < field.length; i++) {
+    if (!(weight[i] > 0)) continue;
+    field[i] = (sum[i] / weight[i]) * Math.min(1, density[i] / minWeight);
+    if (field[i] > high) high = field[i];
   }
+  // The summit: papers of about the same score make a plateau, so of the cells within a point of
+  // the highest, the densest (where those papers crowd), not the first one found
+  let top = -1;
+  for (let i = 0; i < field.length; i++)
+    if (field[i] >= high - 0.01 && (top < 0 || density[i] > density[top]))
+      top = i;
   // Grid coordinates (value i at i + 0.5, d3.contours' convention) → data units
   const toData = ([gx, gy]) => [
     x0 + (gx * cw - ox) / sx,
     y0 + (gy * ch - oy) / sy,
   ];
-  const [contour] = contours().size([cols, rows]).thresholds([level])(density);
-  const polygons = contour.coordinates.map((polygon) =>
-    polygon.map((ring) => ring.map(toData)),
-  );
-  return { polygons, peak: toPeak() };
-
-  function cellOf({ x, y }) {
-    const c = Math.floor(((x - x0) * sx + ox) / cw);
-    const r = Math.floor(((y - y0) * sy + oy) / ch);
-    return c >= 0 && c < cols && r >= 0 && r < rows ? r * cols + c : -1;
-  }
-  function toPeak() {
-    const i = peakOf(density, cols, rows, level, top ? cellOf(top) : -1);
-    const [x, y] = toData([(i % cols) + 0.5, Math.floor(i / cols) + 0.5]);
-    // On the map, though the densest cell can sit just past its edge (#181)
+  const traced = levels.length
+    ? contours().size([cols, rows]).thresholds(levels)(field)
+    : [];
+  const kept = traced
+    .filter((c) => c.coordinates.length)
+    .map((c) => ({
+      value: c.value,
+      polygons: c.coordinates.map((polygon) =>
+        polygon.map((ring) => ring.map(toData)),
+      ),
+    }));
+  const rises = kept.some((l) => l.value > levels[0]);
+  let peak = null;
+  if (rises && top >= 0) {
+    const [x, y] = toData([(top % cols) + 0.5, Math.floor(top / cols) + 0.5]);
+    // On the map, though the highest cell can sit just past its edge (#181)
     const clamp = (v, a, b) =>
       Math.max(Math.min(a, b), Math.min(v, Math.max(a, b)));
-    return { x: clamp(x, x0, x1), y: clamp(y, y0, y1) };
+    peak = { x: clamp(x, x0, x1), y: clamp(y, y0, y1) };
   }
+  return {
+    levels: kept,
+    peak,
+    valueAt(x, y) {
+      const c = Math.floor(((x - x0) * sx + ox) / cw);
+      const r = Math.floor(((y - y0) * sy + oy) / ch);
+      return c >= 0 && c < cols && r >= 0 && r < rows ? field[r * cols + c] : 0;
+    },
+  };
+}
+
+/** Which of `n` levels get a label (#182): all up to 3, else the lowest, a middle one, the top. */
+function labelledLevels(n) {
+  if (n <= 3) return [...Array(n).keys()];
+  return [0, Math.floor((n - 1) / 2), n - 1];
 }
 
 /**
- * The densest cell of the region (cells ≥ `level`, 4-connected) that holds cell `start`, or the
- * densest cell overall when `start` is outside the region.
+ * Where the terrain's level labels ("45%") go (#182): on 2–3 levels only (labelledLevels), each
+ * on its own isoline, at a vertex where the line runs closest to horizontal (it reads along the
+ * line), whose `width` × `height` px box stays inside `bounds` ([x0, y0, x1, y1]) and crosses
+ * none of `obstacles` (topic labels, the ★ and its name) nor a label already placed. A level
+ * with no free spot goes unlabelled. `toPx` maps data units to the same pixels as the boxes.
+ * Returns [{value, text, x, y (data units), box}].
  */
-function peakOf(density, cols, rows, level, start) {
-  let best = 0;
-  for (let i = 1; i < density.length; i++)
-    if (density[i] > density[best]) best = i;
-  if (start == null || start < 0 || !(density[start] >= level)) return best;
-  const seen = new Uint8Array(density.length);
-  const stack = [start];
-  seen[start] = 1;
-  let peak = start;
-  while (stack.length) {
-    const i = stack.pop();
-    if (density[i] > density[peak]) peak = i;
-    const c = i % cols;
-    const r = (i - c) / cols;
-    for (const j of [
-      c > 0 ? i - 1 : -1,
-      c < cols - 1 ? i + 1 : -1,
-      r > 0 ? i - cols : -1,
-      r < rows - 1 ? i + cols : -1,
-    ])
-      if (j >= 0 && !seen[j] && density[j] >= level) {
-        seen[j] = 1;
-        stack.push(j);
+export function isolineLabels(
+  levels,
+  { toPx, obstacles = [], bounds = null, height = 11, charWidth = 6.2 } = {},
+) {
+  const placed = [];
+  const taken = [...obstacles];
+  const crosses = ([a, b, c, d]) =>
+    taken.some(([e, f, g, h]) => a < g && e < c && b < h && f < d);
+  for (const index of labelledLevels(levels.length)) {
+    const { value, polygons } = levels[index];
+    const text = `${Math.round(value * 100)}%`;
+    const width = text.length * charWidth + 4;
+    let best = null;
+    for (const [outer] of polygons) {
+      const px = outer.map(toPx);
+      const n = px.length - 1; // closed ring: the last point repeats the first
+      for (let i = 0; i < n; i++) {
+        const [x, y] = px[i];
+        const box = [
+          x - width / 2,
+          y - height / 2,
+          x + width / 2,
+          y + height / 2,
+        ];
+        if (
+          bounds &&
+          (box[0] < bounds[0] ||
+            box[1] < bounds[1] ||
+            box[2] > bounds[2] ||
+            box[3] > bounds[3])
+        )
+          continue;
+        if (crosses(box)) continue;
+        // The line's slope around the vertex: flat reads best
+        const [ax, ay] = px[(i - 2 + n) % n];
+        const [bx, by] = px[(i + 2) % n];
+        const slope = Math.abs(by - ay) / (Math.hypot(bx - ax, by - ay) || 1);
+        if (!best || slope < best.slope - 1e-6) {
+          const [dx, dy] = outer[i];
+          best = { slope, label: { value, text, x: dx, y: dy, box } };
+        }
       }
+    }
+    if (best) {
+      placed.push(best.label);
+      taken.push(best.label.box);
+    }
   }
-  return peak;
+  return placed;
 }
 
 /** How far below the program's best match the best visible one may be before the marker fades. */
@@ -229,19 +304,14 @@ function bestSimilarity(vector, matrix, n, dims) {
   return best;
 }
 
-/** Shown papers whose similarity to `vector` is at least `strong`: {x, y, weight: s - good}. */
-function strongMatches(vector, matrix, positions, dims, strong, good) {
+/** Every shown paper's similarity to `vector` (#182): [{x, y, score}], for the terrain. */
+function shownScores(vector, matrix, positions, dims) {
   const out = [];
   for (let i = 0; i < positions.length; i++) {
     if (!positions[i]) continue;
     let s = 0;
     for (let d = 0, o = i * dims; d < dims; d++) s += vector[d] * matrix[o + d];
-    if (s >= strong)
-      out.push({
-        x: positions[i][0],
-        y: positions[i][1],
-        weight: Math.max(s - good, 0.01),
-      });
+    out.push({ x: positions[i][0], y: positions[i][1], score: s });
   }
   return out;
 }
@@ -289,7 +359,6 @@ export function queryMarkers({
   y = "y",
   weakCut = -Infinity,
   goodCut = null,
-  strongCut = null,
   gap = FAINT_GAP,
 }) {
   if (!vectors?.length || !shown?.length) return [];
@@ -308,27 +377,12 @@ export function queryMarkers({
       const faint =
         bestShown < weakCut ||
         bestShown < bestSimilarity(vector, matrix, papers.length, dims) - gap;
-      // #167: the search area is drawn around the Strong matches on the map (each weighted by
-      // how far it clears Good), or around its nearest papers without cuts
-      const matches =
-        strongCut == null
-          ? place.neighbours.map(({ index, similarity }) => ({
-              x: positions[index][0],
-              y: positions[index][1],
-              weight: Math.exp(
-                (similarity - place.neighbours[0].similarity) / 0.05,
-              ),
-            }))
-          : strongMatches(
-              vector,
-              matrix,
-              positions,
-              dims,
-              strongCut,
-              goodCut ?? 0,
-            );
-      // One Strong match adds nothing to its own dot: no area, just the ★ (#167 review)
-      if (strongCut != null && matches.length < 2) matches.length = 0;
+      // #182: the terrain is drawn from every shown paper's score, with an isoline every 0.05
+      // from the Good cut up to the best visible score; none without cuts
+      const levels = terrainLevels(goodCut, bestShown);
+      const scores = levels.length
+        ? shownScores(vector, matrix, positions, dims)
+        : [];
       const label = research
         ? `★ My research${vectors.length > 1 ? ` ${i + 1}` : ""}`
         : "★ Your search";
@@ -344,7 +398,8 @@ export function queryMarkers({
         y: place.y,
         spread: place.spread,
         faint,
-        matches,
+        scores,
+        levels,
         nearest: place.neighbours.map(({ index, similarity }) => ({
           id: papers[index].id,
           title: papers[index].title,

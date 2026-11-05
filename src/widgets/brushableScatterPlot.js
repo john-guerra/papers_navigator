@@ -14,7 +14,11 @@ import {
   token,
 } from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
-import { matchArea, nameSpot } from "../lib/placeQuery.js";
+import {
+  isolineLabels,
+  nameSpot,
+  similarityTerrain,
+} from "../lib/placeQuery.js";
 import { bleedBox } from "../lib/bleedBox.js";
 import { quietCorner } from "../lib/quietCorner.js";
 import {
@@ -521,7 +525,7 @@ export function scatterSpec(
   const f = focus ? focusLayers({ xScale, yScale, tween, transition }) : null;
   const layers = [
     ...(shade ? [shade] : []),
-    // #167: the search area and "★ Your search" sit under the points
+    // #167: the similarity terrain (#182) and "★ Your search" sit under the points
     ...(q ? q.under : []),
     points,
     ...(q ? q.over : []),
@@ -603,7 +607,7 @@ const NEIGHBOURS_DATA = "nn";
 const QUERY_DATA = "query";
 // Named dataset of the paper in focus in the list (#136), replaced with view.change (no redraw)
 const FOCUS_DATA = "focus";
-// How far (px) the search area may reach past the chart's box, into the page's margins (#181):
+// How far (px) the similarity terrain may reach past the chart's box, into the page's margins (#181):
 // Explore's column gap (style.css .explore-layout, 24px), so it stops at the list
 const AREA_BLEED = 24;
 // Its fade at the layer's border (style.css .query-area --fade): the layer reaches this far
@@ -655,7 +659,7 @@ const settleFade = (tween, transition) => (opacity) =>
 /**
  * Query marker marks (#100, #167), all from the `query` dataset (rows from queryRows: kind
  * "line" or "marker", `m` = marker index), never under the pointer (the widget shows their
- * tooltip itself). The search area is not here: it is one SVG path per marker behind the map
+ * tooltip itself). The terrain (#182) is not here: SVG paths, one per level, behind the map
  * (drawQueryArea), so it costs nothing per frame.
  * - `under` the points, quiet: a small primary ★ where the query lands;
  * - `over` the points, only while the pointer is on marker `queryHover`: thin lines from it to
@@ -756,37 +760,51 @@ export function queryRows(markers) {
   return [...lines, ...marks];
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 /**
- * The search areas (#167) as one SVG path per marker in `layer` (an <svg> laid behind the map's
- * marks), in plot pixels at the final scales: `areas[i]` = matchArea(...) or null. `toPixel`
- * maps data units to the layer's pixels.
+ * The similarity terrains (#182) in `layer` (an <svg> laid behind the map's marks), in plot
+ * pixels at the final scales: per marker a <g> (faded with `data-faint`) holding one path per
+ * isoline level (`data-level`, `--rank` 0 → 1 from the lowest to the top level, the top one
+ * `data-top`) and its level labels. `terrains[i]` = similarityTerrain(...) plus `labels`
+ * (isolineLabels), or null. `toPixel` maps data units to the layer's pixels.
  */
-function drawQueryArea(layer, areas, markers, toPixel) {
+function drawQueryArea(layer, terrains, markers, toPixel) {
   layer.replaceChildren();
-  areas.forEach((area, i) => {
-    if (!area?.polygons.length) return;
-    const d = area.polygons
-      .flatMap((polygon) =>
-        polygon.map(
-          (ring) =>
-            "M" +
-            ring
-              .map((p) =>
-                toPixel(p)
-                  .map((v) => v.toFixed(1))
-                  .join(","),
-              )
-              .join("L") +
-            "Z",
-        ),
-      )
-      .join("");
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", d);
-    path.setAttribute("fill-rule", "evenodd");
-    path.setAttribute("class", "query-area-path");
-    if (markers[i]?.faint) path.setAttribute("data-faint", "");
-    layer.append(path);
+  const point = (p) =>
+    toPixel(p)
+      .map((v) => v.toFixed(1))
+      .join(",");
+  terrains.forEach((terrain, i) => {
+    if (!terrain?.levels.length) return;
+    const group = document.createElementNS(SVG_NS, "g");
+    if (markers[i]?.faint) group.setAttribute("data-faint", "");
+    const last = terrain.levels.length - 1;
+    terrain.levels.forEach(({ value, polygons }, k) => {
+      const d = polygons
+        .flatMap((polygon) =>
+          polygon.map((ring) => "M" + ring.map(point).join("L") + "Z"),
+        )
+        .join("");
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("fill-rule", "evenodd");
+      path.setAttribute("class", "query-level");
+      path.dataset.level = String(value);
+      path.style.setProperty("--rank", last ? (k / last).toFixed(3) : "1");
+      if (k === last && last > 0) path.setAttribute("data-top", "");
+      group.append(path);
+    });
+    for (const label of terrain.labels ?? []) {
+      const [x, y] = toPixel([label.x, label.y]);
+      const text = document.createElementNS(SVG_NS, "text");
+      text.setAttribute("class", "query-level-label");
+      text.setAttribute("x", x.toFixed(1));
+      text.setAttribute("y", y.toFixed(1));
+      text.textContent = label.text;
+      group.append(text);
+    }
+    layer.append(group);
   });
 }
 
@@ -1266,7 +1284,7 @@ export async function BrushableScatterPlot(data, options = {}) {
           data
             .filter((d) => Number.isFinite(d[x]) && Number.isFinite(d[y]))
             .map((d) => [d[x], d[y]]),
-        // Topic labels (their wrapped boxes) and the search areas also occupy a corner
+        // Topic labels (their wrapped boxes) and the similarity terrain also occupy a corner
         obstacles: (sx, sy) => [
           ...(
             visibleLabels(data, options.labels, {
@@ -1462,8 +1480,8 @@ export async function BrushableScatterPlot(data, options = {}) {
   let markers = [];
   let hoveredMarker = -1;
   let areas = [];
-  // One <svg> behind the marks (like the similarity legend, #168) holding a path per search
-  // area: drawn once per placement, never per animation frame (#167 review)
+  // One <svg> behind the marks (like the similarity legend, #168) holding the similarity terrain
+  // (#182), a path per isoline level: drawn once per placement, never per animation frame
   const areaLayer = document.createElementNS(
     "http://www.w3.org/2000/svg",
     "svg",
@@ -1543,7 +1561,8 @@ export async function BrushableScatterPlot(data, options = {}) {
   };
   chart.view.addResizeListener?.(() => areas.length && drawAreas());
   // Each marker's name goes to the free side of its ★, off the topic labels (#172 re-review):
-  // nameX/nameY in data units, nameOffset [dx, dy] in px, at the final scales
+  // nameX/nameY in data units, nameOffset [dx, dy] in px, at the final scales. The terrain's level
+  // labels then avoid the topic labels, the ★ and its name (#182): `labels` on each terrain.
   const withNameSpots = (list, { width: w, height: h, xDomain, yDomain }) => {
     const [x0, x1] = xDomain;
     const [y0, y1] = yDomain;
@@ -1569,27 +1588,51 @@ export async function BrushableScatterPlot(data, options = {}) {
         2,
       );
     });
-    return list.map((m) => {
+    // Its marks clip to the plot (padding included): never past it, halo too (#181)
+    const bounds = [2, 2, w + 18, h + 18];
+    const named = list.map((m) => {
       const name = m.label.replace(/^★\s*/, "");
-      const { dx, dy } = nameSpot(toPlot([m.x, m.y]), {
-        width: estimateWidth(name, 11) * (0.62 / 0.55),
+      const width = estimateWidth(name, 11) * (0.62 / 0.55);
+      const star = toPlot([m.x, m.y]);
+      const { dx, dy } = nameSpot(star, {
+        width,
         height: 13,
         obstacles: topics,
-        // Its marks clip to the plot (padding included): never past it, halo too (#181)
-        bounds: [2, 2, w + 18, h + 18],
+        bounds,
       });
+      const [nx, ny] = [star[0] + dx, star[1] + dy];
       return {
-        ...m,
-        nameX: m.x + dx / kx,
-        nameY: m.y - dy / ky,
-        nameOffset: [dx, dy],
+        marker: {
+          ...m,
+          nameX: m.x + dx / kx,
+          nameY: m.y - dy / ky,
+          nameOffset: [dx, dy],
+        },
+        boxes: [
+          [star[0] - 8, star[1] - 8, star[0] + 8, star[1] + 8],
+          [nx - width / 2, ny - 7, nx + width / 2, ny + 7],
+        ],
       };
     });
+    const taken = [...topics, ...named.flatMap((n) => n.boxes)];
+    areas.forEach((terrain) => {
+      if (!terrain?.levels.length) return;
+      terrain.labels = isolineLabels(terrain.levels, {
+        toPx: toPlot,
+        obstacles: taken,
+        bounds,
+      });
+      taken.push(...terrain.labels.map((l) => l.box));
+    });
+    return named.map((n) => n.marker);
   };
-  /** Each search-area polygon's bounding box in plot pixels (for the legend's corner, #168). */
+  /**
+   * Each terrain's outline (its lowest isoline: the others nest inside) as polygon bounding
+   * boxes in plot pixels (for the legend's corner, #168).
+   */
   target.queryAreaBoxes = (sx, sy) =>
-    areas.flatMap((area) =>
-      (area?.polygons ?? []).map(([outer]) => {
+    areas.flatMap((terrain) =>
+      (terrain?.levels[0]?.polygons ?? []).map(([outer]) => {
         const xs = outer.map((p) => sx(p[0]));
         const ys = outer.map((p) => sy(p[1]));
         return [
@@ -1605,8 +1648,8 @@ export async function BrushableScatterPlot(data, options = {}) {
     if (!options.query) return Promise.resolve();
     markers = list;
     hoveredMarker = -1;
-    // The search area (#167): matchArea on the plot's pixels at the final scales; the ★ moves
-    // to the densest point of the blob holding the top match (#167 review)
+    // The similarity terrain (#182) on the plot's pixels at the final scales; the ★ moves to
+    // its highest peak, inside the top isoline
     const rows = data.filter(
       (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
     );
@@ -1617,20 +1660,18 @@ export async function BrushableScatterPlot(data, options = {}) {
       yDomain: extent(rows.map((d) => d[y])),
     };
     areas = list.map((m) =>
-      matchArea(
-        m.matches ?? m.nearest.map(({ x, y }) => ({ x, y, weight: 1 })),
-        { ...grid, top: m.nearest[0] },
-      ),
+      m.levels?.length
+        ? similarityTerrain(m.scores ?? [], { ...grid, levels: m.levels })
+        : null,
     );
-    // Without an area (one Strong match, or none) it sits on the top match: never in empty
-    // space (#172 re-review)
+    // With no isoline above Good it sits on the top match: never in empty space (#172 re-review)
     const placed = list.map((m, i) => {
       const at = areas[i]?.peak ?? m.nearest[0];
       return at ? { ...m, x: at.x, y: at.y } : m;
     });
     markers = withNameSpots(placed, grid);
     drawAreas();
-    // The legend's corner counts the search area (#168 review)
+    // The legend's corner counts the terrain (#168 review)
     tapered?.place?.();
     return chart.view
       .change(

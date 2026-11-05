@@ -3137,11 +3137,42 @@ body #vg-tooltip-element table tr td.value {
   transition: opacity var(--motion-duration) var(--motion-ease);
 }
 
-.query-area-path {
-  fill: var(--color-primary);
-  opacity: 0.12;
+/* The similarity terrain (#182): quiet isolines in a muted primary, a little stronger for higher
+   levels (--rank 0 → 1, set per path), no fills but a faint wash inside the top level */
+.query-area g {
+  --terrain-ink: color-mix(
+    in srgb,
+    var(--color-primary) 65%,
+    var(--color-on-surface-muted)
+  );
 }
 
-.query-area-path[data-faint] {
-  opacity: 0.048;
+.query-level {
+  fill: none;
+  stroke: var(--terrain-ink);
+  stroke-width: calc(0.75px + 0.5px * var(--rank, 0));
+  stroke-opacity: calc(0.35 + 0.35 * var(--rank, 0));
+  stroke-linejoin: round;
+}
+
+.query-level[data-top] {
+  fill: var(--color-primary);
+  fill-opacity: 0.06;
+}
+
+.query-level-label {
+  fill: var(--terrain-ink);
+  font: 500 9.5px var(--font-sans, sans-serif);
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: var(--color-background);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* Few similar papers visible: the whole terrain at 40% (FAINT_OPACITY) */
+.query-area g[data-faint] {
+  opacity: 0.4;
 }
