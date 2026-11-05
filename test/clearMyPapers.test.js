@@ -259,11 +259,14 @@ describe("watch after Clear or Remove (#164 review)", () => {
     expect(rules.value.exceptions).toEqual([]);
   });
 
-  it("re-watching an existing rule also drops its exceptions after single Removes", () => {
+  // Re-saving a watched rule (e.g. Explore's "Watch at <level> instead") must not undo the
+  // user's Removes (#171 re-review); only a new watch brings excepted papers back
+  it("re-saving an already watched rule keeps its exceptions", () => {
     const { store, rules } = setup();
     store.remove(["a"]);
     expect(rules.value.exceptions).toEqual(["a"]);
     store.watch({ type: "author", value: "Ada" });
-    expect(ids(store)).toContain("a");
+    expect(ids(store)).not.toContain("a");
+    expect(rules.value.exceptions).toEqual(["a"]);
   });
 });

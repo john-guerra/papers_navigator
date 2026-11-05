@@ -427,16 +427,21 @@ export function createMyPapers({ followed, rules, papers, scoresFor }) {
       return value.some((d) => d.id === id);
     },
     /**
-     * Watches a rule; its current matches are marked seen (not `new`) and lose any exception
-     * (a Remove or Clear before), so watching shows them again. Returns the rule.
+     * Watches a rule; its current matches are marked seen (not `new`). A new watch also drops
+     * their exceptions (a Remove or Clear before), so watching shows them again; re-saving a
+     * rule already watched (e.g. a new level) keeps the user's Removes. Returns the rule.
      */
     watch(rule, now = new Date()) {
       const normalized = normalizeRule(rule, now);
       if (!normalized) return null;
       const ids = [...matchedIds([normalized])];
       if (ids.length) rules.markSeen(ids);
-      const excepted = ids.filter((id) => rules.value.exceptions.includes(id));
-      if (excepted.length) rules.unexcept(excepted);
+      if (!rules.has(normalized.id)) {
+        const excepted = ids.filter((id) =>
+          rules.value.exceptions.includes(id),
+        );
+        if (excepted.length) rules.unexcept(excepted);
+      }
       return rules.add(normalized, now);
     },
     /**
