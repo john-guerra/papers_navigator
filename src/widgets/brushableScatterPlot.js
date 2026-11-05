@@ -528,6 +528,7 @@ export function scatterSpec(
     ...(rings ? [rings] : []),
     ...textLayers,
     ...(nn ? nn.above : []),
+    ...(q ? q.top : []),
   ];
 
   return {
@@ -605,8 +606,6 @@ const QUERY_DATA = "query";
 const FOCUS_DATA = "focus";
 // Opacity of a query marker placed among barely similar papers (heavy filters)
 const FAINT_OPACITY = 0.4;
-// Opacity of the search area's cells (#167): a light wash under the points
-const AREA_OPACITY = 0.12;
 
 /**
  * Opacity for marks that describe the final layout: as given, or mid-motion (#82) hidden and
@@ -621,13 +620,14 @@ const settleFade = (tween, transition) => (opacity) =>
 
 /**
  * Query marker marks (#100, #167), all from the `query` dataset (rows from queryRows: kind
- * "area", "line" or "marker", `m` = marker index), never under the pointer (the widget shows
- * their tooltip itself):
- * - `under` the points, quiet: the search area (light primary cells where the strong matches
- *   are, lib/placeQuery.js matchArea), a small primary ★ where the query lands and its name
- *   ("Your search") in primary on a background halo;
+ * "line" or "marker", `m` = marker index), never under the pointer (the widget shows their
+ * tooltip itself). The search area is not here: it is one SVG path per marker behind the map
+ * (drawQueryArea), so it costs nothing per frame.
+ * - `under` the points, quiet: a small primary ★ where the query lands;
  * - `over` the points, only while the pointer is on marker `queryHover`: thin lines from it to
- *   its nearest papers (transient, so they must read).
+ *   its nearest papers (transient, so they must read);
+ * - on `top` of everything, topic labels included: its name ("Your search") in primary on a
+ *   background halo, so it is never hidden.
  * Mid-motion they stay hidden and fade in as the motion settles, like the neighbour marks.
  */
 function queryLayers({ xScale, yScale, tween, transition }) {
@@ -667,19 +667,13 @@ function queryLayers({ xScale, yScale, tween, transition }) {
     );
   return {
     under: [
-      layer(
-        "datum.kind === 'area'",
-        { type: "rect", fill: primary },
-        {
-          x2: { field: "x2" },
-          y2: { field: "y2" },
-          opacity: faded(AREA_OPACITY),
-        },
-      ),
       text(
         { fontSize: 13, baseline: "middle", fill: primary },
         { text: { value: "★" } },
       ),
+    ],
+    // Above everything, topic labels included, so it is never hidden (#167 review)
+    top: [
       name({
         fill: background,
         stroke: background,
@@ -699,22 +693,13 @@ function queryLayers({ xScale, yScale, tween, transition }) {
 }
 
 /**
- * Rows for the `query` dataset from queryMarkers (lib/placeQuery.js): per marker its search
- * area (matchArea cells around `m.matches`, else its nearest papers, on `grid` = {width, height, xDomain, yDomain}, the
- * plot in pixels and the scales' domains; none without a grid), lines to its nearest papers and
- * the marker itself (`name` = its label without the star, drawn apart).
+ * Rows for the `query` dataset from queryMarkers (lib/placeQuery.js): per marker, lines to its
+ * nearest papers and the marker itself (`name` = its label without the star, drawn apart).
  */
-export function queryRows(markers, { grid = null } = {}) {
-  const areas = [];
+export function queryRows(markers) {
   const lines = [];
   const marks = [];
   markers.forEach((m, i) => {
-    if (grid)
-      for (const cell of matchArea(
-        m.matches ?? m.nearest.map(({ x, y }) => ({ x, y, weight: 1 })),
-        grid,
-      ))
-        areas.push({ kind: "area", m: i, ...cell, faint: Boolean(m.faint) });
     for (const n of m.nearest)
       lines.push({ kind: "line", m: i, x: m.x, y: m.y, x2: n.x, y2: n.y });
     marks.push({
@@ -727,7 +712,41 @@ export function queryRows(markers, { grid = null } = {}) {
       faint: Boolean(m.faint),
     });
   });
-  return [...areas, ...lines, ...marks];
+  return [...lines, ...marks];
+}
+
+/**
+ * The search areas (#167) as one SVG path per marker in `layer` (an <svg> laid behind the map's
+ * marks), in plot pixels at the final scales: `areas[i]` = matchArea(...) or null. `toPixel`
+ * maps data units to the layer's pixels.
+ */
+function drawQueryArea(layer, areas, markers, toPixel) {
+  layer.replaceChildren();
+  areas.forEach((area, i) => {
+    if (!area?.polygons.length) return;
+    const d = area.polygons
+      .flatMap((polygon) =>
+        polygon.map(
+          (ring) =>
+            "M" +
+            ring
+              .map((p) =>
+                toPixel(p)
+                  .map((v) => v.toFixed(1))
+                  .join(","),
+              )
+              .join("L") +
+            "Z",
+        ),
+      )
+      .join("");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill-rule", "evenodd");
+    path.setAttribute("class", "query-area-path");
+    if (markers[i]?.faint) path.setAttribute("data-faint", "");
+    layer.append(path);
+  });
 }
 
 /** The map tooltip of a query marker: what it is, that it is approximate, its nearest papers. */
@@ -1355,12 +1374,67 @@ export async function BrushableScatterPlot(data, options = {}) {
   // finds the marker near the pointer itself, for the tooltip and the lines to its neighbours.
   let markers = [];
   let hoveredMarker = -1;
+  let areas = [];
+  // One <svg> behind the marks (like the similarity legend, #168) holding a path per search
+  // area: drawn once per placement, never per animation frame (#167 review)
+  const areaLayer = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg",
+  );
+  areaLayer.setAttribute("class", "query-area");
+  areaLayer.setAttribute("aria-hidden", "true");
+  // Mid-motion it describes the final layout: hidden until the motion settles, then fades in
+  if (transition) {
+    areaLayer.style.opacity = "0";
+    target.finished.then(() => (areaLayer.style.opacity = ""));
+  }
+  let areaTries = 0;
+  const drawAreas = () => {
+    const surface = chart.querySelector(".marks");
+    if (!surface) return;
+    // Measured once the map is on the page (placeQuery can run before it is attached)
+    if (!target.isConnected) {
+      if (++areaTries < 120) nextFrame(drawAreas);
+      return;
+    }
+    const parent = surface.parentElement;
+    if (getComputedStyle(parent).position === "static")
+      parent.style.position = "relative";
+    // Positioned too, so it paints after (over) the layers that precede it
+    if (getComputedStyle(surface).position === "static")
+      surface.style.position = "relative";
+    if (areaLayer.parentElement !== parent)
+      parent.insertBefore(areaLayer, surface);
+    const [dx, dy] = surfaceOffset(surface);
+    // The marks' own size (Vega sets it), not the layout box
+    Object.assign(areaLayer.style, {
+      left: `${dx}px`,
+      top: `${dy}px`,
+      width: `${surface.getAttribute("width") ?? surface.clientWidth}px`,
+      height: `${surface.getAttribute("height") ?? surface.clientHeight}px`,
+    });
+    // Data units → the surface's pixels at the final scales (padding 10px, y up)
+    const [ox, oy] = chart.view.origin();
+    const w = chart.view.width() - 20;
+    const h = chart.view.height() - 20;
+    const rows = data.filter(
+      (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
+    );
+    const [x0, x1] = extent(rows.map((d) => d[x]));
+    const [y0, y1] = extent(rows.map((d) => d[y]));
+    drawQueryArea(areaLayer, areas, markers, ([px, py]) => [
+      ox + 10 + ((px - x0) / (x1 - x0 || 1)) * w,
+      oy + 10 + h - ((py - y0) / (y1 - y0 || 1)) * h,
+    ]);
+  };
+  chart.view.addResizeListener?.(() => areas.length && drawAreas());
   target.queryMarkers = () => markers;
   target.placeQuery = (list = []) => {
     if (!options.query) return Promise.resolve();
     markers = list;
     hoveredMarker = -1;
-    // The search area (#167) on the plot's pixels at the final scales (hidden mid-motion)
+    // The search area (#167): matchArea on the plot's pixels at the final scales; the ★ moves
+    // to the densest point of the blob holding the top match (#167 review)
     const rows = data.filter(
       (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
     );
@@ -1370,13 +1444,23 @@ export async function BrushableScatterPlot(data, options = {}) {
       xDomain: extent(rows.map((d) => d[x])),
       yDomain: extent(rows.map((d) => d[y])),
     };
+    areas = list.map((m) =>
+      matchArea(
+        m.matches ?? m.nearest.map(({ x, y }) => ({ x, y, weight: 1 })),
+        { ...grid, top: m.nearest[0] },
+      ),
+    );
+    markers = list.map((m, i) =>
+      areas[i]?.peak ? { ...m, x: areas[i].peak.x, y: areas[i].peak.y } : m,
+    );
+    drawAreas();
     return chart.view
       .change(
         QUERY_DATA,
         chart.view
           .changeset()
           .remove(() => true)
-          .insert(queryRows(markers, { grid })),
+          .insert(queryRows(markers)),
       )
       .signal("queryHover", -1)
       .runAsync()
@@ -1536,9 +1620,10 @@ export async function BrushableScatterPlot(data, options = {}) {
         }),
         ...markers.flatMap((m) => {
           const [px, py] = toPixel([m.x, m.y]);
+          // The 13px ★ and its 11px semibold name 13px above it (#167)
           return [
-            [px - 10, py - 10, px + 10, py + 10],
-            box(px, py - 15, m.label, 12, 0.65),
+            [px - 7, py - 8, px + 7, py + 8],
+            box(px, py - 13, m.label.replace(/^★\s*/, ""), 11, 0.62),
           ];
         }),
         ...legendBoxes(chart.view),

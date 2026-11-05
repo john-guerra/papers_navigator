@@ -1,4 +1,5 @@
 import { createBooleanSetting } from "./booleanSetting.js";
+import { contours } from "d3";
 import { DIMS } from "./search.js";
 
 export const QUERY_MARKER_KEY = "papersNavigator:queryMarker";
@@ -74,18 +75,34 @@ export function placeByNeighbours(
 /**
  * Where the matching papers are (#167): the map (`width` × `height` pixels showing `xDomain` ×
  * `yDomain`) cut into `cell`-pixel squares, a Gaussian kernel density (bandwidth in pixels) of
- * the `points` ({x, y, weight}, data units) on them, and the densest cells that together hold
- * `mass` of the density. One blob per group of matches, so matches the projection split show
- * as several areas, and nothing between them. Measured on VIS 2026 (32 searches) against the
- * neighbours' spread disc it replaces: it holds all the Strong matches (the disc: 59%, median),
- * 25% of it is empty (> 20px from any Good match; the disc: 43%) and it covers 3.3% of the map
- * (the disc: 8.4%). Cells: {x, x2, y, y2} in data units; [] without points.
+ * the `points` ({x, y, weight}, data units) on them, and the level at which the densest cells
+ * hold `mass` of the density. Its outline is traced with marching squares (d3.contours, linear
+ * interpolation), so it is smooth: one polygon per group of matches, so matches the projection
+ * split show as several areas, and nothing between them.
+ *
+ * Returns {polygons, peak} or null without points: `polygons` a GeoJSON MultiPolygon's
+ * coordinates in data units; `peak` {x, y}, the densest point of the blob holding `top` (the
+ * best match, {x, y}; the global peak without it or when it falls outside), where the ★ goes.
+ *
+ * Measured on VIS 2026 (32 searches, medians) against the neighbours' spread disc it replaces:
+ * 69% of the papers inside are Good matches (the disc: 56%), 25% of it is empty (> 20px from
+ * any Good match; the disc: 43%), 3.3% of the map (the disc: 8.4%), Good matches inside 34%
+ * (the disc: 35%). It contains the Strong matches by construction.
  */
 export function matchArea(
   points,
-  { width, height, xDomain, yDomain, cell = 4, bandwidth = 22, mass = 0.8 },
+  {
+    width,
+    height,
+    xDomain,
+    yDomain,
+    cell = 4,
+    bandwidth = 22,
+    mass = 0.8,
+    top = null,
+  },
 ) {
-  if (!points?.length || !(width > 0) || !(height > 0)) return [];
+  if (!points?.length || !(width > 0) || !(height > 0)) return null;
   const [x0, x1] = xDomain;
   const [y0, y1] = yDomain;
   const sx = width / (x1 - x0 || 1);
@@ -112,26 +129,66 @@ export function matchArea(
       total += d;
     }
   }
-  if (!(total > 0)) return [];
+  if (!(total > 0)) return null;
   // The level: walk the cells from the densest until they hold `mass` of the total
-  const order = Array.from(density.keys())
-    .filter((i) => density[i] > 0)
-    .sort((a, b) => density[b] - density[a]);
-  const cells = [];
+  const sorted = Float64Array.from(density).sort().reverse();
   let held = 0;
-  for (const i of order) {
+  let level = sorted[0];
+  for (const d of sorted) {
     if (held >= mass * total) break;
-    held += density[i];
-    const r = Math.floor(i / cols);
-    const c = i % cols;
-    cells.push({
-      x: x0 + (c * cw) / sx,
-      x2: x0 + ((c + 1) * cw) / sx,
-      y: y0 + (r * ch) / sy,
-      y2: y0 + ((r + 1) * ch) / sy,
-    });
+    held += d;
+    level = d;
   }
-  return cells;
+  // Grid coordinates (value i at i + 0.5, d3.contours' convention) → data units
+  const toData = ([gx, gy]) => [x0 + (gx * cw) / sx, y0 + (gy * ch) / sy];
+  const [contour] = contours().size([cols, rows]).thresholds([level])(density);
+  const polygons = contour.coordinates.map((polygon) =>
+    polygon.map((ring) => ring.map(toData)),
+  );
+  return { polygons, peak: toPeak() };
+
+  function cellOf({ x, y }) {
+    const c = Math.floor(((x - x0) * sx) / cw);
+    const r = Math.floor(((y - y0) * sy) / ch);
+    return c >= 0 && c < cols && r >= 0 && r < rows ? r * cols + c : -1;
+  }
+  function toPeak() {
+    const i = peakOf(density, cols, rows, level, top ? cellOf(top) : -1);
+    const [x, y] = toData([(i % cols) + 0.5, Math.floor(i / cols) + 0.5]);
+    return { x, y };
+  }
+}
+
+/**
+ * The densest cell of the region (cells ≥ `level`, 4-connected) that holds cell `start`, or the
+ * densest cell overall when `start` is outside the region.
+ */
+function peakOf(density, cols, rows, level, start) {
+  let best = 0;
+  for (let i = 1; i < density.length; i++)
+    if (density[i] > density[best]) best = i;
+  if (start == null || start < 0 || !(density[start] >= level)) return best;
+  const seen = new Uint8Array(density.length);
+  const stack = [start];
+  seen[start] = 1;
+  let peak = start;
+  while (stack.length) {
+    const i = stack.pop();
+    if (density[i] > density[peak]) peak = i;
+    const c = i % cols;
+    const r = (i - c) / cols;
+    for (const j of [
+      c > 0 ? i - 1 : -1,
+      c < cols - 1 ? i + 1 : -1,
+      r > 0 ? i - cols : -1,
+      r < rows - 1 ? i + cols : -1,
+    ])
+      if (j >= 0 && !seen[j] && density[j] >= level) {
+        seen[j] = 1;
+        stack.push(j);
+      }
+  }
+  return peak;
 }
 
 /** How far below the program's best match the best visible one may be before the marker fades. */
@@ -246,6 +303,8 @@ export function queryMarkers({
               strongCut,
               goodCut ?? 0,
             );
+      // One Strong match adds nothing to its own dot: no area, just the ★ (#167 review)
+      if (strongCut != null && matches.length < 2) matches.length = 0;
       const label = research
         ? `★ My research${vectors.length > 1 ? ` ${i + 1}` : ""}`
         : "★ Your search";

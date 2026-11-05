@@ -1,3 +1,4 @@
+import { polygonContains } from "d3";
 import { describe, expect, it } from "vitest";
 import {
   matchArea,
@@ -290,13 +291,14 @@ describe("queryAnnouncement", () => {
   });
 });
 
-describe("matchArea (#167: where the matching papers are)", () => {
+describe("matchArea (#167: where the matching papers are, as smooth contours)", () => {
   const box = { width: 100, height: 100, xDomain: [0, 10], yDomain: [0, 10] };
-  const covers = (cells, px, py) =>
-    cells.some((c) => c.x <= px && px <= c.x2 && c.y <= py && py <= c.y2);
+  // Inside the outer ring of any polygon of the multipolygon
+  const covers = (area, px, py) =>
+    area.polygons.some(([outer]) => polygonContains(outer, [px, py]));
 
-  it("one blob per group of matches, nothing between them", () => {
-    const cells = matchArea(
+  it("one polygon per group of matches, nothing between them", () => {
+    const area = matchArea(
       [
         { x: 1, y: 1, weight: 1 },
         { x: 1.5, y: 1, weight: 1 },
@@ -304,32 +306,50 @@ describe("matchArea (#167: where the matching papers are)", () => {
       ],
       box,
     );
-    expect(covers(cells, 1.2, 1)).toBe(true);
-    expect(covers(cells, 9, 9)).toBe(true);
-    expect(covers(cells, 5, 5)).toBe(false);
-    expect(covers(cells, 9, 1)).toBe(false);
+    expect(area.polygons).toHaveLength(2);
+    expect(covers(area, 1.2, 1)).toBe(true);
+    expect(covers(area, 9, 9)).toBe(true);
+    expect(covers(area, 5, 5)).toBe(false);
+    expect(covers(area, 9, 1)).toBe(false);
+    // Smooth outlines in data units: not on a 0.4-unit (4px) cell lattice
+    const xs = area.polygons.flat(2).map(([x]) => x);
+    expect(xs.some((x) => Math.abs(x / 0.4 - Math.round(x / 0.4)) > 0.01)).toBe(
+      true,
+    );
   });
 
-  it("keeps the densest cells holding `mass` of the weight: a light match can drop out", () => {
-    const cells = matchArea(
+  it("keeps the densest region holding `mass` of the weight: a light match can drop out", () => {
+    const area = matchArea(
       [
         { x: 2, y: 2, weight: 1 },
         { x: 8, y: 8, weight: 0.02 },
       ],
       { ...box, mass: 0.8 },
     );
-    expect(covers(cells, 2, 2)).toBe(true);
-    expect(covers(cells, 8, 8)).toBe(false);
+    expect(covers(area, 2, 2)).toBe(true);
+    expect(covers(area, 8, 8)).toBe(false);
   });
 
-  it("returns cells in data units on a regular grid, [] without matches", () => {
-    const cells = matchArea([{ x: 5, y: 5, weight: 1 }], { ...box, cell: 10 });
-    expect(cells.length).toBeGreaterThan(0);
-    for (const c of cells) {
-      expect(c.x2 - c.x).toBeCloseTo(1, 5);
-      expect(c.y2 - c.y).toBeCloseTo(1, 5);
-    }
-    expect(matchArea([], box)).toEqual([]);
+  it("peaks inside the blob that holds the top match", () => {
+    const pts = [
+      { x: 1, y: 1, weight: 1 },
+      { x: 1.3, y: 1.2, weight: 1 },
+      { x: 9, y: 9, weight: 0.8 },
+      { x: 8.7, y: 9.2, weight: 0.8 },
+    ];
+    const near = (p, x, y) => Math.hypot(p.x - x, p.y - y) < 1;
+    expect(
+      near(matchArea(pts, { ...box, top: { x: 9, y: 9 } }).peak, 9, 9),
+    ).toBe(true);
+    expect(
+      near(matchArea(pts, { ...box, top: { x: 1, y: 1 } }).peak, 1.1, 1.1),
+    ).toBe(true);
+    // Without a top match: the global peak
+    expect(near(matchArea(pts, box).peak, 1.1, 1.1)).toBe(true);
+  });
+
+  it("is null without matches", () => {
+    expect(matchArea([], box)).toBeNull();
   });
 });
 
@@ -361,6 +381,20 @@ describe("queryMarkers matches (#167)", () => {
       [0, 1],
     ]);
     for (const d of m.matches) expect(d.weight).toBeGreaterThan(0.4);
+  });
+
+  it("leaves the area out with a single Strong match on the map", () => {
+    const [m] = queryMarkers({
+      vectors: [unit([1, 0.2, 0.2])],
+      matrix,
+      papers,
+      shown: shown.filter((d) => d.id !== "a" && d.id !== "b"),
+      k: 3,
+      dims: DIMS,
+      goodCut: 0.5,
+      strongCut: 0.9,
+    });
+    expect(m.matches).toEqual([]);
   });
 
   it("without cuts, falls back to its nearest papers", () => {
