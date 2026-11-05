@@ -20,7 +20,7 @@ export default {
 <meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="${conference.name} Papers Navigator: the map of all papers, colored by topic">
+<meta property="og:image:alt" content="${conference.name} Papers Navigator: a search highlighted on the map of all papers, with the similarity legend">
 <meta name="twitter:card" content="summary_large_image">
 <script>
   // Phone bottom tab bar (#110): let env(safe-area-inset-*) report the home indicator and notch
