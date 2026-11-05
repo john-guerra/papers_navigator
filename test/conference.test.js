@@ -17,6 +17,20 @@ describe("conference config", () => {
     const config = await loadConferenceConfig("ieeevis2026");
     expect(config.timezone).toBe("US/Eastern");
   });
+
+  // #165: chosen by running the search on the VIS 2026 papers (evidence in the PR)
+  it("has example searches that each find a set of papers, the default among them", async () => {
+    const { defaultQuery, exampleQueries } =
+      await loadConferenceConfig("ieeevis2026");
+    expect(defaultQuery).toBe("AI agents");
+    expect(exampleQueries).toContain(defaultQuery);
+    expect(exampleQueries.length).toBeGreaterThanOrEqual(6);
+    expect(exampleQueries.length).toBeLessThanOrEqual(8);
+    expect(new Set(exampleQueries).size).toBe(exampleQueries.length);
+    // "visualization" matches almost every VIS paper (e.g. "Visualization literacy" clears
+    // the Good cut for 361 of 488), so an example with it doesn't narrow anything
+    for (const q of exampleQueries) expect(q).not.toMatch(/visuali[sz]ation/i);
+  });
 });
 
 describe("publicConfig", () => {
