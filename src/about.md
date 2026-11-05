@@ -268,6 +268,7 @@ Papers Navigator stands on open-source projects and open data. Thank you to thei
 - John's reactive widgets (MIT): <a href="https://navio.dev" target="_blank" rel="noopener">navio</a>, <a href="https://github.com/john-guerra/vega-selected" target="_blank" rel="noopener">vega-selected</a> and <a href="https://github.com/john-guerra/reactive-widget" target="_blank" rel="noopener">reactive-widget-helper</a>; see <a href="https://reactivewidgets.org" target="_blank" rel="noopener">reactivewidgets.org</a>.
 - <a href="https://github.com/john-guerra/smart-labels" target="_blank" rel="noopener">smart-labels</a> by John Alexis Guerra Gómez (MIT): the paper labels on the map.
 - Fonts <a href="https://fonts.google.com/specimen/Newsreader" target="_blank" rel="noopener">Newsreader</a> and <a href="https://fonts.google.com/specimen/Source+Sans+3" target="_blank" rel="noopener">Source Sans 3</a> (SIL Open Font License), served by this site.
+- <a href="https://icons.getbootstrap.com" target="_blank" rel="noopener">Bootstrap Icons</a> (MIT): the GitHub and social media marks in the footer, drawn inline by this site.
 
 **Preparing the data** (offline, before the site is built)
 
@@ -281,7 +282,7 @@ Papers Navigator stands on open-source projects and open data. Thank you to thei
 
 - Written by Claude (Anthropic's AI assistant) on behalf of <a href="https://johnguerra.co" target="_blank" rel="noopener">John Alexis Guerra Gómez</a>, who designs and directs the project. This page and the app's code were written the same way.
 - Source code: <a href="https://github.com/john-guerra/papers_navigator" target="_blank" rel="noopener">github.com/john-guerra/papers_navigator</a>, under the <a href="https://github.com/john-guerra/papers_navigator/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>. The bundled fonts, DruidJS and the vendored zadu-js files keep their own licenses (listed above).
-- Found a problem or have an idea? <a href="https://github.com/john-guerra/papers_navigator/issues" target="_blank" rel="noopener">Open an issue on GitHub</a>.
+- Found a problem or have an idea? <a href="https://github.com/john-guerra/papers_navigator/issues" target="_blank" rel="noopener">Open an issue on GitHub</a>, or reach out to John on the social media accounts listed in the footer.
 - This site isn't affiliated with ${conference.name}; for the official program, see ${sourceLink()}.
 
 </div>

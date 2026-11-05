@@ -885,6 +885,71 @@ a.navbar-brand {
   }
 }
 
+/* Footer (#189, DESIGN.md → Footer): credits on one line, feedback links on the next; quiet
+   muted sans under a hairline. On phones body's padding-bottom keeps it above the tab bar. */
+#observablehq-footer {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-md) 0 var(--spacing-lg);
+  border-top: 1px solid var(--color-outline);
+  color: var(--color-on-surface-muted);
+  font: var(--typography-meta);
+}
+
+.site-footer p {
+  max-width: none;
+  margin: 0 0 var(--spacing-xs);
+}
+
+.site-footer a[href] {
+  color: inherit;
+}
+
+.site-footer a[href]:hover {
+  color: var(--color-on-surface);
+}
+
+.site-footer-social {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--spacing-md);
+  row-gap: var(--spacing-xs);
+}
+
+.site-footer-social ul {
+  display: flex;
+  max-width: none; /* Framework caps lists at 600px */
+  flex-wrap: wrap;
+  column-gap: var(--spacing-md);
+  row-gap: var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-social li,
+.site-footer-credit a[href] {
+  white-space: nowrap;
+}
+
+.site-footer-icon {
+  flex: none;
+  margin-right: 0.3em;
+  vertical-align: -0.15em;
+}
+
+@media (max-width: 639.98px) {
+  #observablehq-footer {
+    margin-top: var(--spacing-lg);
+  }
+
+  /* Taller rows so the links are easy to tap */
+  .site-footer-social li a[href] {
+    display: inline-block;
+    padding: var(--spacing-xs) 0;
+  }
+}
+
 /* The Filters sheet (facetStrip, z-index 50 inside <main>) covers the header and the tab bar */
 #observablehq-main:has(.fs-sheet-open) {
   z-index: 3;
@@ -1133,6 +1198,11 @@ a.navbar-brand {
 .papers-list .paper {
   padding: 14px 0;
   border-bottom: 1px solid var(--color-outline);
+}
+
+/* The footer's hairline closes the list: no second rule right above it (#189) */
+.papers-list .paper:last-child {
+  border-bottom-color: transparent;
 }
 
 /* #136 — the row ringed on the map (brushing and linking): a thin primary rule in the gutter */

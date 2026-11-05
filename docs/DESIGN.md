@@ -273,6 +273,11 @@ components:
     typography: "{typography.label-md}"
     rounded: "{rounded.sm}"
     padding: 10px 14px
+  footer:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.on-surface-muted}"
+    typography: "{typography.meta}"
+    padding: 12px 0 16px
 ---
 
 # Papers Navigator — Design
@@ -390,6 +395,7 @@ Visual specs; tokens in the front matter. Behavior in _Interaction & State_.
 - **Inferred topics** (#156). The map's topic clusters are called "Inferred topics" wherever they're named in full (researcher profiles, paper details), with the tooltip "Inferred from the abstracts: a cluster of papers on the map, labelled automatically, not assigned by the conference". Not "areas": IEEE VIS has its own six areas, which these are not. Explore's facet, Color by and legend keep the short "Topic".
 - **Papers like theirs** (#150). Last on a researcher profile, under their papers: the 5 papers in the program most similar to theirs ("Show more (5)"), their own left out. Score = max cosine similarity to any of their papers (max, not mean, as in Recommended papers: people work on several topics). Rows exactly like Recommended papers (title opens the details, room · time · "n% similar", "✨ Like <their paper>"), with the Add to My Papers / In My Papers toggle instead of Add + Dismiss. Past papers stay (the page also serves people browsing the program). The embeddings load after first paint ("Finding papers like theirs…"; offline before they were saved: the same unavailable note with Try again).
 - **About page** (#88). `about.html`: the project, the privacy policy and a tutorial by task (Explore, My Papers, Researchers), with an "On this page" contents list of anchors; running text at 70ch, headings in Newsreader. Conference facts (name, dates, program website) come from the config. Its privacy claims must match the code: the localStorage list is `STORAGE_ITEMS` in `src/lib/about.js`, and a test fails when the app writes a key it doesn't list. The footer links to it as "About & privacy".
+- **Footer** (#189). On every page, under a hairline (`outline`), in muted `meta`: line 1 credits "Made with ❤️ by John Alexis Guerra Gómez, 2026 · MIT License · Source code · About & privacy"; line 2 "Questions, suggestions, comments? Reach out on" + johnguerra.bsky.social · @jguerra@vis.social · dutoguerra (LinkedIn) · @duto_guerra · @guerravis (en español), the accounts and handles of John's CHI 2026 navigator. Each link is an inline 14px filled monochrome mark (the platform name is read to screen readers only) (`currentColor`, `aria-hidden`, Bootstrap Icons paths) + visible text; links are muted and turn ink on hover. Built by `src/lib/footer.js` into the config's `footer`; it must stay request-free (no icon fonts, remote images or scripts; external links `target="_blank" rel="noopener"` with nothing in the URL), which `test/footer.test.js` checks. Wraps on phones (links never split from their mark) and sits above the tab bar via body's bottom padding. The ❤️ is John's sign-off, the one emoji outside the marker set.
 - **Empty states** say what to do next, in one sentence and one action: "Nothing of yours right now. Next: 10:00, Essex north."
 
 ## Do's and Don'ts
@@ -482,7 +488,7 @@ The map is the overview (principle 3). Rules:
 
 ## Emoji & Iconography
 
-Emoji are welcome as **meaning markers**, a small fixed set, always followed by text, never alone and never decorative.
+Emoji are welcome as **meaning markers**, a small fixed set, always followed by text, never alone and never decorative. One exception: the ❤️ in the footer's "Made with ❤️ by" credit, John's sign-off (see Components → Footer).
 
 | Marker | Meaning                                                                        |
 | ------ | ------------------------------------------------------------------------------ |
@@ -500,7 +506,7 @@ Emoji are welcome as **meaning markers**, a small fixed set, always followed by 
 | 🆕     | new since the last program update                                              |
 | 📝     | your note on the paper ("📝 My note" in details, "📝 Note" on rows)           |
 
-Buttons carry no emoji ("Export JSON", "Share list", "Copy link"), except a marker that names the button's meaning ("🔍 Watch topic"). Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No hand-drawn complex SVG in the app.
+Buttons carry no emoji ("Export JSON", "Share list", "Copy link"), except a marker that names the button's meaning ("🔍 Watch topic"). Line icons, if needed, are 16px, 1.5px stroke, `currentColor`. No icon fonts. No hand-drawn complex SVG in the app. Brand marks (GitHub, Bluesky, Mastodon, LinkedIn, X) appear only in the footer, as inline monochrome SVG from Bootstrap Icons, 14px and filled (not the 16px line style), always beside the platform's name or handle.
 
 ## Mobile & At the venue
 
