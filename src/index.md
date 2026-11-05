@@ -48,6 +48,8 @@ import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
 import { renderChips } from "./components/chips.js";
 import { startExploreUrl } from "./components/exploreUrl.js";
+import { rememberQuery } from "./lib/lastQuery.js";
+import { rememberIntro } from "./components/intro.js";
 import { PHONE_QUERY, SPLIT_MIN_HEIGHT, STACKED_QUERY, TWO_COLUMN_QUERY, matches as matchesMedia } from "./lib/breakpoints.js";
 import { watchSplitMap } from "./lib/splitLayout.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
@@ -99,11 +101,13 @@ const { start: urlStart, explicitQuery, sync: urlSync } = startExploreUrl({ pape
 invalidation.then(urlSync.stop);
 // A link that names a search shows that search, not your "My research" ranking (a toast offers Resume)
 const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
+// The intro is open until you close it; remembered on this device (#174)
+invalidation.then(rememberIntro(document.querySelector("details.lede")));
 ```
 
 <h1 class="sr-only">${conference.name} Papers</h1>
 
-<details class="lede"><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
+<details class="lede" open><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
 
 <div id="explore" class="explore-layout" data-sw-after-render>
 <div class="explore-side">
@@ -239,6 +243,8 @@ addSearchClear(queryInput, clearQuery);
 if (researchPaused) researchPausedToast(researchStore, { onResume: clearQuery });
 // Typing a search leaves "My research": one ranking at a time, the last one asked for
 queryInput.addEventListener("input", () => researchStore.value.active && researchStore.set({ active: false }));
+// The last search (cleared too) is where the next visit starts, unless a link names one (#174)
+invalidation.then(rememberQuery(queryInput, conference.id));
 ```
 
 ```js
@@ -928,7 +934,8 @@ const chips = [
   hasQuery && researchMode && { label: rankingLabel, value: `${levelName} matches`, onClear: leaveResearch },
   regionActive && { label: "Map region", value: "selected area", onClear: resetMap },
 ].filter(Boolean);
-// Clear all empties the search (like the field's ✕; the default search is for first visits only)
+// Clear all empties the search (like the field's ✕; the default search is for first visits only,
+// the cleared search is remembered, #174)
 // and the map region; the facet strip's Clear all goes back to Main tracks. URL: just "q=" (#104)
 const chipsRow = renderChips(chips, {
   onClearAll:

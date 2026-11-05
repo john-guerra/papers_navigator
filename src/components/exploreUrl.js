@@ -6,6 +6,15 @@ import {
   decodeExploreState,
   encodeExploreState,
 } from "../lib/urlState.js";
+import { readLastQuery } from "../lib/lastQuery.js";
+
+function deviceStorage(win) {
+  try {
+    return win?.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Explore's view in the URL fragment (#92), read once at load. Returns `start` (the decoded state, with
@@ -13,6 +22,9 @@ import {
  * search, or no search when followed, which takes over from "My research") and `sync` (urlState's createUrlSync: pages call
  * `sync.update(patch)` when the view changes). Facet values a link names must exist in this
  * program; projections and Color by must be ones this conference has.
+ * With no search in the link, the start search is the last one on this device (#174, lastQuery.js;
+ * "" if it was cleared), else the conference's default. Only the default is left out of the
+ * fragment, so a remembered search is written to it and a reload keeps it.
  */
 export function startExploreUrl({
   papers,
@@ -20,6 +32,7 @@ export function startExploreUrl({
   typeLabels,
   hasTopics,
   win = globalThis.window,
+  storage = deviceStorage(win),
 }) {
   // Only Explore's keys and share-link keys, capped (unknown pairs are dropped from the URL)
   const params = cleanHash({ win });
@@ -35,8 +48,9 @@ export function startExploreUrl({
       return [id, new Set(papers.flatMap((p) => [accessor(p)].flat()))];
     }),
   );
+  const remembered = readLastQuery(conference.id, storage);
   const start = decodeExploreState(params, {
-    defaults,
+    defaults: { ...defaults, query: remembered ?? defaults.query },
     projections: conference.projections,
     colors: [
       "score",

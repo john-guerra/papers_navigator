@@ -298,6 +298,16 @@ details.lede > p {
   margin: var(--spacing-xs, 4px) 0 0;
 }
 
+/* Open by default (#174); closed if you closed it: <html data-intro>, written by the head script
+   before the page draws, folds it until src/components/intro.js syncs the element (no flash) */
+:root[data-intro="closed"] details.lede:not(.intro-ready) > p {
+  display: none;
+}
+
+:root[data-intro="closed"] details.lede:not(.intro-ready) > summary {
+  list-style-type: disclosure-closed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

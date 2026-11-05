@@ -24,6 +24,9 @@ describe("conference config", () => {
       await loadConferenceConfig("ieeevis2026");
     expect(defaultQuery).toBeTruthy();
     expect(exampleQueries).toContain(defaultQuery);
+    // #174: Data literacy, offered first among the chips
+    expect(defaultQuery).toBe("Data literacy");
+    expect(exampleQueries[0]).toBe(defaultQuery);
     expect(exampleQueries.length).toBeGreaterThanOrEqual(6);
     expect(exampleQueries.length).toBeLessThanOrEqual(8);
     expect(new Set(exampleQueries).size).toBe(exampleQueries.length);

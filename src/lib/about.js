@@ -35,12 +35,20 @@ export const STORAGE_ITEMS = [
     what: "Recommended papers you dismissed",
   },
   {
+    key: "papersNavigator:<id>:lastQuery",
+    what: "Your last search on Explore, so your next visit starts from it",
+  },
+  {
     key: "papersNavigator:<id>:filtersOpen",
     what: "Whether the Options panel was open",
   },
   {
     key: "papersNavigator:animation",
     what: "Your map animation choices (Options → Animation)",
+  },
+  {
+    key: "papersNavigator:intro",
+    what: "Whether you closed Explore's introduction",
   },
   {
     key: "papersNavigator:neighbours",
