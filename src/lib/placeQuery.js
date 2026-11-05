@@ -109,8 +109,8 @@ export function terrainLevels(good, best, step = TERRAIN_STEP) {
  *
  * Returns null without points, else {levels: [{value, polygons}] (only the levels that show,
  * lowest first; polygons a GeoJSON MultiPolygon's coordinates in data units), peak, valueAt(x,
- * y)}: `peak` {x, y} the highest point (on the best paper's dot), kept on the map, where the ★
- * goes; null when no level rises above the first one (the Good cut).
+ * y)}: `peak` {x, y} the highest point, exactly the best paper's dot (#195), kept on the map,
+ * where the ★ goes; null when no level rises above the first one (the Good cut).
  */
 export function similarityTerrain(
   points,
@@ -166,8 +166,6 @@ export function similarityTerrain(
       }
     }
   }
-  let top = 0;
-  for (let i = 1; i < field.length; i++) if (field[i] > field[top]) top = i;
   // Grid coordinates (value i at i + 0.5, d3.contours' convention) → data units
   const toData = ([gx, gy]) => [
     x0 + (gx * cw - ox) / sx,
@@ -186,8 +184,12 @@ export function similarityTerrain(
     }));
   let peak = null;
   if (kept.some((l) => l.value > levels[0])) {
-    const [x, y] = toData([(top % cols) + 0.5, Math.floor(top / cols) + 0.5]);
-    // On the map, though the highest cell can sit just past its edge (#181)
+    // On the best paper's dot, the terrain's peak by construction, not the highest grid cell:
+    // a cell center can favour a near tie a pixel or two closer to it (#195)
+    let best = points[0];
+    for (const p of points) if (p.score > best.score) best = p;
+    const { x, y } = best;
+    // On the map, though the best paper can sit just past its edge (#181)
     const clamp = (v, a, b) =>
       Math.max(Math.min(a, b), Math.min(v, Math.max(a, b)));
     peak = { x: clamp(x, x0, x1), y: clamp(y, y0, y1) };
@@ -327,9 +329,7 @@ export function queryMarkers({
 
 /** queryMarkers' cut options from relevance cuts ({weak, good, strong}); {} without a ranking. */
 export function queryCuts(cuts) {
-  return cuts
-    ? { weakCut: cuts.weak, goodCut: cuts.good, strongCut: cuts.strong }
-    : {};
+  return cuts ? { weakCut: cuts.weak, goodCut: cuts.good } : {};
 }
 
 /**

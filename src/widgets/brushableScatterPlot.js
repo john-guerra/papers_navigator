@@ -762,8 +762,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
  * The similarity terrains (#182) in `layer` (an <svg> laid behind the map's marks, its bottom-most
  * layer), in plot pixels at the final scales: per marker a <g> (faded with `data-faint`) holding
  * one filled path per level, stacked from the lowest (Good) up, so higher levels paint over lower
- * ones and read progressively stronger (`data-level`; `--rank` 0 → 1 from the lowest to the top
- * level). `terrains[i]` = similarityTerrain(...) or null. `toPixel` maps data units to the layer's
+ * ones and read progressively stronger (`data-level`). `terrains[i]` = similarityTerrain(...) or null. `toPixel` maps data units to the layer's
  * pixels.
  */
 function drawQueryArea(layer, terrains, markers, toPixel) {
@@ -776,8 +775,7 @@ function drawQueryArea(layer, terrains, markers, toPixel) {
     if (!terrain?.levels.length) return;
     const group = document.createElementNS(SVG_NS, "g");
     if (markers[i]?.faint) group.setAttribute("data-faint", "");
-    const last = terrain.levels.length - 1;
-    terrain.levels.forEach(({ value, polygons }, k) => {
+    terrain.levels.forEach(({ value, polygons }) => {
       const d = polygons
         .flatMap((polygon) =>
           polygon.map((ring) => "M" + ring.map(point).join("L") + "Z"),
@@ -788,7 +786,6 @@ function drawQueryArea(layer, terrains, markers, toPixel) {
       path.setAttribute("fill-rule", "evenodd");
       path.setAttribute("class", "query-level");
       path.dataset.level = String(value);
-      path.style.setProperty("--rank", last ? (k / last).toFixed(3) : "0");
       group.append(path);
     });
     layer.append(group);
