@@ -23,6 +23,8 @@ export function topicWatch(
   { onSave, onToggle },
 ) {
   let chosen = current?.level ?? (level in LEVEL_NAMES ? level : "good");
+  // A level with no papers (fixed cuts, #186: a weak search has 0 Strong) starts at Good
+  if (!current && !previews[chosen]?.count && previews.good) chosen = "good";
   const open = html`<button
     type="button"
     class="btn-secondary topic-watch-open"
@@ -131,7 +133,7 @@ export function topicWatch(
         : []),
     );
     const same = current && current.level === chosen && !p.added && !p.dropped;
-    save.disabled = Boolean(same);
+    save.disabled = Boolean(same) || !p.count;
     save.textContent = current
       ? same
         ? "Already watching at this level"

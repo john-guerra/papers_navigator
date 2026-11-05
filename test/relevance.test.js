@@ -4,9 +4,13 @@ import { relevanceCuts, relevanceCounts } from "../src/lib/search.js";
 import { relevanceControl } from "../src/widgets/relevanceControl.js";
 
 describe("relevanceCuts", () => {
-  it("uses 0.30 for Good when enough papers clear it, and halfway to the best for Strong", () => {
-    const scores = [0.7, 0.5, 0.45, 0.4, 0.35, 0.31, 0.2, 0.1];
-    expect(relevanceCuts(scores)).toMatchObject({ good: 0.3, strong: 0.5 });
+  // #186: fixed cuts, so a level (and its color, #184) means the same % in every search
+  it("uses fixed cuts: Strong 0.45, Good 0.30, Loose 0.20, whatever the best match", () => {
+    for (const best of [0.7, 0.5]) {
+      const scores = [best, 0.46, 0.45, 0.4, 0.35, 0.31, 0.2, 0.1];
+      expect(relevanceCuts(scores)).toMatchObject({ good: 0.3, strong: 0.45 });
+      expect(relevanceCuts(scores).weak).toBeCloseTo(0.2);
+    }
   });
   it("falls back to the 10th best score when few papers clear 0.30 (short queries)", () => {
     const scores = [
@@ -14,7 +18,8 @@ describe("relevanceCuts", () => {
     ];
     const { good, strong } = relevanceCuts(scores);
     expect(good).toBe(0.2);
-    expect(strong).toBeCloseTo(0.245);
+    // Strong stays 0.45: nothing matches strongly, and the control says so (0)
+    expect(strong).toBe(0.45);
   });
   it("handles no scores", () => {
     expect(relevanceCuts([])).toEqual({ good: 0, strong: 0, weak: 0 });
@@ -63,18 +68,22 @@ describe("relevanceControl", () => {
 
 describe("relevanceCuts edge cases", () => {
   it("keeps papers tied at the cut, handles few papers and equal scores", () => {
+    // Strong is fixed at 0.45 (#186), whatever Good falls back to
     expect(relevanceCuts([0.3, 0.3, 0.3, 0.3, 0.3, 0.1])).toMatchObject({
       good: 0.3,
-      strong: 0.3,
+      strong: 0.45,
     });
     expect(relevanceCuts([0.2, 0.1, 0.05])).toMatchObject({
       good: 0.05,
-      strong: 0.125,
+      strong: 0.45,
     });
     expect(relevanceCuts([0.2, 0.2, 0.2])).toMatchObject({
       good: 0.2,
-      strong: 0.2,
+      strong: 0.45,
     });
+    // With fewer than 5 scores the fallback Good can exceed 0.45: Strong never drops below it
+    const cuts = relevanceCuts([0.9, 0.8, 0.7, 0.6, 0.29]);
+    expect(cuts.strong).toBeGreaterThanOrEqual(cuts.good);
     expect(
       relevanceCounts(
         [0.3, 0.3, 0.1].map((score) => ({ score })),

@@ -66,4 +66,26 @@ describe("topicWatch", () => {
       "+0, −15",
     );
   });
+
+  // #187 review: with fixed cuts a weak search can have 0 Strong papers
+  it("starts at Good when the current level has no papers, and won't watch 0 papers", () => {
+    const el = topicWatch(
+      {
+        query: "perception",
+        previews: {
+          strong: preview(0, { joining: 0, already: 0 }),
+          good: preview(16),
+        },
+        level: "strong",
+      },
+      { onSave: vi.fn() },
+    );
+    document.body.append(el);
+    el.querySelector(".topic-watch-open").click();
+    const pressed = el.querySelector('[data-level][aria-pressed="true"]');
+    expect(pressed.dataset.level).toBe("good");
+    el.querySelector('[data-level="strong"]').click();
+    expect(el.querySelector(".topic-watch-save").disabled).toBe(true);
+    el.remove();
+  });
 });
