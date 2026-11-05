@@ -80,9 +80,15 @@ export function placeByNeighbours(
  * interpolation), so it is smooth: one polygon per group of matches, so matches the projection
  * split show as several areas, and nothing between them.
  *
+ * The grid runs `margin` px past the map on every side (default: the kernel's reach, 3
+ * bandwidths), so matches at the map's edge get a whole, round blob: a grid ending at the edge
+ * cut it along a straight line there (#181). Density past the edge counts toward `mass` like any
+ * other, so the level is the same wherever the matches sit.
+ *
  * Returns {polygons, peak} or null without points: `polygons` a GeoJSON MultiPolygon's
- * coordinates in data units; `peak` {x, y}, the densest point of the blob holding `top` (the
- * best match, {x, y}; the global peak without it or when it falls outside), where the ★ goes.
+ * coordinates in data units (they may reach past the domains by up to `margin` px); `peak`
+ * {x, y}, the densest point of the blob holding `top` (the best match, {x, y}; the global peak
+ * without it or when it falls outside), kept inside the domains: where the ★ goes.
  *
  * Measured on VIS 2026 (32 searches, medians) against the neighbours' spread disc it replaces:
  * 69% of the papers inside are Good matches (the disc: 56%), 25% of it is empty (> 20px from
@@ -100,6 +106,7 @@ export function matchArea(
     bandwidth = 22,
     mass = 0.8,
     top = null,
+    margin = 3 * bandwidth,
   },
 ) {
   if (!points?.length || !(width > 0) || !(height > 0)) return null;
@@ -107,11 +114,22 @@ export function matchArea(
   const [y0, y1] = yDomain;
   const sx = width / (x1 - x0 || 1);
   const sy = height / (y1 - y0 || 1);
-  const px = points.map((p) => [(p.x - x0) * sx, (p.y - y0) * sy, p.weight]);
-  const cols = Math.max(1, Math.round(width / cell));
-  const rows = Math.max(1, Math.round(height / cell));
-  const cw = width / cols;
-  const ch = height / rows;
+  // Grid pixels: the map's own shifted by `margin` (a whole number of cells, so the cells inside
+  // the map are the same as without it)
+  const pad = Math.max(0, Math.ceil(margin / cell));
+  const cols0 = Math.max(1, Math.round(width / cell));
+  const rows0 = Math.max(1, Math.round(height / cell));
+  const cw = width / cols0;
+  const ch = height / rows0;
+  const cols = cols0 + 2 * pad;
+  const rows = rows0 + 2 * pad;
+  const ox = pad * cw;
+  const oy = pad * ch;
+  const px = points.map((p) => [
+    (p.x - x0) * sx + ox,
+    (p.y - y0) * sy + oy,
+    p.weight,
+  ]);
   const twoH2 = 2 * bandwidth * bandwidth;
   const reach2 = 9 * bandwidth * bandwidth; // ignore points beyond 3 bandwidths
   const density = new Float64Array(cols * rows);
@@ -140,7 +158,10 @@ export function matchArea(
     level = d;
   }
   // Grid coordinates (value i at i + 0.5, d3.contours' convention) → data units
-  const toData = ([gx, gy]) => [x0 + (gx * cw) / sx, y0 + (gy * ch) / sy];
+  const toData = ([gx, gy]) => [
+    x0 + (gx * cw - ox) / sx,
+    y0 + (gy * ch - oy) / sy,
+  ];
   const [contour] = contours().size([cols, rows]).thresholds([level])(density);
   const polygons = contour.coordinates.map((polygon) =>
     polygon.map((ring) => ring.map(toData)),
@@ -148,14 +169,17 @@ export function matchArea(
   return { polygons, peak: toPeak() };
 
   function cellOf({ x, y }) {
-    const c = Math.floor(((x - x0) * sx) / cw);
-    const r = Math.floor(((y - y0) * sy) / ch);
+    const c = Math.floor(((x - x0) * sx + ox) / cw);
+    const r = Math.floor(((y - y0) * sy + oy) / ch);
     return c >= 0 && c < cols && r >= 0 && r < rows ? r * cols + c : -1;
   }
   function toPeak() {
     const i = peakOf(density, cols, rows, level, top ? cellOf(top) : -1);
     const [x, y] = toData([(i % cols) + 0.5, Math.floor(i / cols) + 0.5]);
-    return { x, y };
+    // On the map, though the densest cell can sit just past its edge (#181)
+    const clamp = (v, a, b) =>
+      Math.max(Math.min(a, b), Math.min(v, Math.max(a, b)));
+    return { x: clamp(x, x0, x1), y: clamp(y, y0, y1) };
   }
 }
 
@@ -343,28 +367,59 @@ export function queryCuts(cuts) {
 /**
  * Where the query marker's name goes around its ★ at `star` = [x, y] (#172 re-review): the
  * first side whose `width` × `height` box (px) crosses none of `obstacles` ([x0, y0, x1, y1],
- * e.g. topic labels), tried above, below, right, then left; when every side is taken, the
- * least covered one. Returns the box center's offset {dx, dy} from the ★ in px.
+ * e.g. topic labels), tried above, below, right, left, then at its corners (below left, above
+ * left, below right, above right); when every spot is taken, the least covered one. Returns the box center's offset {dx, dy} from the ★ in px.
+ *
+ * With `bounds` ([x0, y0, x1, y1], the map's drawing box) the box never leaves the map (#181:
+ * next to its right edge only "Yo" showed): each side's box slides inside it, and a side that
+ * then lands on the ★ (`starRadius` px around it) is used only when every other side does too.
  */
-export function nameSpot([px, py], { width, height, obstacles = [], gap = 9 }) {
+export function nameSpot(
+  [px, py],
+  { width, height, obstacles = [], gap = 9, bounds = null, starRadius = 6 },
+) {
   const sides = [
     { dx: 0, dy: -13 },
     { dx: 0, dy: 14 },
     { dx: width / 2 + gap, dy: 0 },
     { dx: -(width / 2 + gap), dy: 0 },
+    // Then its corners, the box's own corner by the ★ (#181: by the map's edge a side or two
+    // are gone, and topic labels often take the rest)
+    { dx: -(width / 2 + gap / 2), dy: 14 },
+    { dx: -(width / 2 + gap / 2), dy: -13 },
+    { dx: width / 2 + gap / 2, dy: 14 },
+    { dx: width / 2 + gap / 2, dy: -13 },
   ];
+  const slide = (v, size, lo, hi) =>
+    Math.max(lo, Math.min(v, Math.max(lo, hi - size)));
   let best = null;
   for (const side of sides) {
-    const x0 = px + side.dx - width / 2;
-    const y0 = py + side.dy - height / 2;
+    let x0 = px + side.dx - width / 2;
+    let y0 = py + side.dy - height / 2;
+    let onStar = false;
+    if (bounds) {
+      x0 = slide(x0, width, bounds[0], bounds[2]);
+      y0 = slide(y0, height, bounds[1], bounds[3]);
+      onStar =
+        x0 < px + starRadius &&
+        x0 + width > px - starRadius &&
+        y0 < py + starRadius &&
+        y0 + height > py - starRadius;
+    }
     let covered = 0;
     for (const [a, b, c, d] of obstacles) {
       const w = Math.min(x0 + width, c) - Math.max(x0, a);
       const h = Math.min(y0 + height, d) - Math.max(y0, b);
       if (w > 0 && h > 0) covered += w * h;
     }
-    if (covered === 0) return side;
-    if (!best || covered < best.covered) best = { ...side, covered };
+    const spot = { dx: x0 + width / 2 - px, dy: y0 + height / 2 - py };
+    if (!onStar && covered === 0) return spot;
+    if (
+      !best ||
+      (best.onStar && !onStar) ||
+      (best.onStar === onStar && covered < best.covered)
+    )
+      best = { ...spot, onStar, covered };
   }
   return { dx: best.dx, dy: best.dy };
 }
