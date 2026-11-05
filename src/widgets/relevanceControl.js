@@ -57,7 +57,7 @@ export function relevanceControl(
     aria-labelledby=${labelId}
   >
     <span class="relevance-label-row"
-      ><span id=${labelId} class="relevance-label"
+      ><span id=${labelId} class="relevance-label" aria-hidden="true"
         >Match to your ${subject}:</span
       >${info}</span
     >

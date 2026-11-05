@@ -98,7 +98,9 @@ export function paperPanel(
           })
       : null,
   });
-  const onKey = (event) => event.key === "Escape" && route.close();
+  // An Escape another layer already handled (a toggletip, #177) closes only that layer
+  const onKey = (event) =>
+    event.key === "Escape" && !event.defaultPrevented && route.close();
   addEventListener("keydown", onKey);
   // The map's positions changed (`key`: e.g. projection and alignment): redraw the mini-map.
   // The first key is the one it was drawn with.

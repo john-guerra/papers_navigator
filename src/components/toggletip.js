@@ -34,16 +34,18 @@ export function toggletip({ label, content }) {
   const el = html`<span class="toggletip">${button}${status}</span>`;
 
   const isOpen = () => button.getAttribute("aria-expanded") === "true";
+  // A re-render can drop the element while it is open: it then stops listening
+  const detached = () => !el.isConnected && (close(), true);
   const onKey = (event) => {
-    if (event.key !== "Escape" || !isOpen()) return;
+    if (detached() || event.key !== "Escape" || !isOpen()) return;
     event.preventDefault();
     close();
   };
   const onPointer = (event) => {
-    if (!el.contains(event.target)) close();
+    if (!detached() && !el.contains(event.target)) close();
   };
   const onFocus = (event) => {
-    if (!el.contains(event.target)) close();
+    if (!detached() && !el.contains(event.target)) close();
   };
   const open = () => {
     button.setAttribute("aria-expanded", "true");

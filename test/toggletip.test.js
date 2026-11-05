@@ -73,4 +73,17 @@ describe("toggletip (#176)", () => {
     outside.focus();
     expect(button.getAttribute("aria-expanded")).toBe("false");
   });
+
+  it("stops listening once removed from the page while open (a re-render)", () => {
+    const { el, button } = make();
+    button.click();
+    el.remove();
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    document.body.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
 });
