@@ -39,7 +39,8 @@
   "deployDir": "papersNavigator/ieeevis2026",
   "legacyDirs": ["ieeevis2026Papers"],
   "siteUrl": "https://johnguerra.co/viz/papersNavigator/ieeevis2026/",
-  "ogImage": "og.png",
+  "ogImage": "og-v2.png",
+  "city": "Boston",
   "excludeTypeLabels": ["Keynote", "Capstone", "Plenary Session"],
   "defaultTypes": ["full", "short", "tvcg", "cg&a"],
   "typeNames": {
