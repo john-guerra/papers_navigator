@@ -370,6 +370,15 @@ export function scatterSpec(
       },
       ...(size && {
         size: {
+          // Papers below the relevance level are context (viz-dim): the smallest dot, as when
+          // the domain started at the level cut (#184 review)
+          ...(sizeCopy &&
+            scoreDomain && {
+              condition: {
+                test: "levelCut != null && datum.score < levelCut",
+                value: sizeRange[0],
+              },
+            }),
           field: sizeCopy ? "__size" : size,
           type: "quantitative",
           scale: {

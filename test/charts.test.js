@@ -714,6 +714,47 @@ describe("fixed ramp domain (#184: the same color is the same % at every level)"
   });
 });
 
+describe("papers below the relevance level (#184 review)", () => {
+  it("are drawn at the smallest size, as before the fixed domain", async () => {
+    const options = {
+      color: "score",
+      colorType: "quantitative",
+      size: "score",
+      sizeRange: [12, 240],
+      scoreDomain: [0, 0.6],
+    };
+    const size = scatterSpec(data, options).encoding.size;
+    expect(size.condition).toEqual({
+      test: "levelCut != null && datum.score < levelCut",
+      value: 12,
+    });
+    // Rendered: at levelCut 0.45 the 0.2 and 0.5 papers differ only by the cut
+    const widget = await BrushableScatterPlot(data, {
+      ...options,
+      renderer: "svg",
+      width: 300,
+      height: 200,
+    });
+    document.body.append(widget);
+    try {
+      await widget.view.signal("levelCut", 0.45).runAsync();
+      const sizes = {};
+      const walk = (node) => {
+        if (node.marktype === "symbol")
+          for (const item of node.items)
+            if (item.datum?.id) sizes[item.datum.id] = item.size;
+        for (const child of node.items ?? []) if (child.items) walk(child);
+      };
+      walk(widget.view.scenegraph().root);
+      expect(sizes.b).toBe(12);
+      expect(sizes.c).toBeGreaterThan(12);
+      await widget.view.signal("levelCut", null).runAsync();
+    } finally {
+      widget.remove();
+    }
+  });
+});
+
 describe("tapered legend in the map's background (#168)", () => {
   it("is drawn under the points: before the marks, which stack above it", async () => {
     const widget = await BrushableScatterPlot(data, {
