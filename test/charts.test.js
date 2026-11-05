@@ -724,3 +724,32 @@ describe("live ramp domain (#166 review: CHI maps the scheme over the shown scor
     await expect(widget.setScoreDomain([0, 1])).resolves.toBeUndefined();
   });
 });
+
+describe("tapered legend in the map's background (#168)", () => {
+  it("is drawn under the points: before the marks, which stack above it", async () => {
+    const widget = await BrushableScatterPlot(data, {
+      renderer: "svg",
+      width: 300,
+      height: 200,
+      color: "score",
+      colorType: "quantitative",
+      size: "score",
+      scoreDomain: [0.3, 0.9],
+      legendLabels: ["less similar", "more similar"],
+      colorTitle: "Similarity",
+    });
+    document.body.append(widget);
+    try {
+      await new Promise((r) => setTimeout(r, 100));
+      const legend = widget.querySelector(".similarity-legend");
+      const marks = widget.querySelector(".marks");
+      expect(legend).not.toBeNull();
+      expect(legend.parentElement).toBe(marks.parentElement);
+      expect(legend.nextElementSibling).toBe(marks);
+      expect(marks.style.position).toBe("relative");
+      expect(legend.dataset.corner).toBe("top-right");
+    } finally {
+      widget.remove();
+    }
+  });
+});
