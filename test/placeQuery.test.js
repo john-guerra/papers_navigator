@@ -353,6 +353,30 @@ describe("matchArea (#167: where the matching papers are, as smooth contours)", 
     expect(matchArea([], box)).toBeNull();
   });
 
+  it("away from the edges, the same area and peak as without the margin (#181 review)", () => {
+    let seed = 1;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const pts = Array.from({ length: 60 }, () => ({
+      x: 4 + rnd() * 2,
+      y: 4 + rnd() * 2,
+      weight: rnd(),
+    }));
+    const big = {
+      width: 820,
+      height: 1000,
+      xDomain: [0, 10],
+      yDomain: [0, 10],
+    };
+    const plain = matchArea(pts, { ...big, margin: 0 });
+    const padded = matchArea(pts, big);
+    const a = plain.polygons.flat(3);
+    const b = padded.polygons.flat(3);
+    expect(b).toHaveLength(a.length);
+    a.forEach((v, i) => expect(b[i]).toBeCloseTo(v, 9));
+    expect(padded.peak.x).toBeCloseTo(plain.peak.x, 9);
+    expect(padded.peak.y).toBeCloseTo(plain.peak.y, 9);
+  });
+
   // #181: matches at the plot's edge drew a blob cut by a straight line, the grid's edge
   describe("matches at the plot's edge: a whole, round blob, not cut by the grid", () => {
     const edges = {

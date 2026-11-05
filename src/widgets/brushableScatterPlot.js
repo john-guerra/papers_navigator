@@ -15,6 +15,7 @@ import {
 } from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
 import { matchArea, nameSpot } from "../lib/placeQuery.js";
+import { bleedBox } from "../lib/bleedBox.js";
 import { quietCorner } from "../lib/quietCorner.js";
 import {
   domainAt,
@@ -605,8 +606,41 @@ const NEIGHBOURS_DATA = "nn";
 const QUERY_DATA = "query";
 // Named dataset of the paper in focus in the list (#136), replaced with view.change (no redraw)
 const FOCUS_DATA = "focus";
-// How far (px) the search area may reach past the chart's box, into the page's margins (#181)
+// How far (px) the search area may reach past the chart's box, into the page's margins (#181):
+// Explore's column gap (style.css .explore-layout, 24px), so it stops at the list
 const AREA_BLEED = 24;
+// Its fade at the layer's border (style.css .query-area --fade): the layer reaches this far
+// above and below the chart, so the fade starts outside the plot (#181 review)
+const AREA_FADE = 16;
+
+/**
+ * Where `el`'s ancestors and the window let a layer in it show, as bleedBox limits (viewport
+ * px): each ancestor that clips or scrolls limits it sideways to its padding box and, when it
+ * clips vertically too, to its content's height (it scrolls that way); the window sideways.
+ */
+function clippingBoxes(el) {
+  const limits = [
+    [0, -Infinity, document.documentElement.clientWidth || Infinity, Infinity],
+  ];
+  for (
+    let a = el.parentElement;
+    a && a !== document.body;
+    a = a.parentElement
+  ) {
+    const { overflowX, overflowY } = getComputedStyle(a);
+    if (overflowX === "visible" && overflowY === "visible") continue;
+    const r = a.getBoundingClientRect();
+    const x0 = r.left + a.clientLeft;
+    const y0 = r.top + a.clientTop - a.scrollTop;
+    limits.push([
+      x0,
+      overflowY === "visible" ? -Infinity : y0,
+      x0 + a.clientWidth,
+      overflowY === "visible" ? Infinity : y0 + a.scrollHeight,
+    ]);
+  }
+  return limits;
+}
 // Opacity of a query marker placed among barely similar papers (heavy filters)
 const FAINT_OPACITY = 0.4;
 
@@ -1451,6 +1485,7 @@ export async function BrushableScatterPlot(data, options = {}) {
     target.finished.then(() => (areaLayer.style.opacity = ""));
   }
   let areaTries = 0;
+  let boxScroll = null;
   const drawAreas = () => {
     const surface = chart.querySelector(".marks");
     if (!surface) return;
@@ -1461,28 +1496,42 @@ export async function BrushableScatterPlot(data, options = {}) {
     }
     // An area around matches at the plot's edge reaches past the plot (#181). The layer sits
     // in the widget, under (before) vega-embed's box, which scrolls and so would clip it: it
-    // spans that box's height and BLEED px more on each side, within the window
+    // covers that box, AREA_BLEED px more on each side and AREA_FADE px above and below (so
+    // its fade starts outside the plot), within the window and any box that clips or scrolls
+    // (#181 review: a short window's sticky map column would scroll sideways)
     if (getComputedStyle(target).position === "static")
       target.style.position = "relative";
     // Positioned too, so it paints after (over) the layer
     if (getComputedStyle(chart).position === "static")
       chart.style.position = "relative";
     if (areaLayer.parentElement !== target) target.prepend(areaLayer);
+    const box = surface.closest(".vega-embed-wrapper") ?? surface.parentElement;
+    if (!boxScroll) {
+      // vega-embed's box can scroll a few px sideways: follow it
+      boxScroll = () => areas.length && drawAreas();
+      box.addEventListener("scroll", boxScroll, { passive: true });
+    }
+    // Collapsed while measuring, so its own size doesn't count in the boxes it must fit in
+    areaLayer.style.height = "0px";
     const t = target.getBoundingClientRect();
     const s = surface.getBoundingClientRect();
-    const box = surface.closest(".vega-embed-wrapper") ?? surface.parentElement;
     const b = box.getBoundingClientRect();
-    const left = Math.max(b.left + box.clientLeft - AREA_BLEED, 0);
-    const right = Math.min(
-      b.left + box.clientLeft + (box.clientWidth || b.width) + AREA_BLEED,
-      document.documentElement.clientWidth || Infinity,
+    const bl = b.left + box.clientLeft;
+    const bt = b.top + box.clientTop;
+    const [left, top, right, bottom] = bleedBox(
+      [
+        bl,
+        bt,
+        bl + (box.clientWidth || b.width),
+        bt + (box.clientHeight || b.height),
+      ],
+      { x: AREA_BLEED, y: AREA_FADE, limits: clippingBoxes(target) },
     );
-    const top = b.top + box.clientTop;
     Object.assign(areaLayer.style, {
       left: `${left - t.left - target.clientLeft}px`,
       top: `${top - t.top - target.clientTop}px`,
-      width: `${Math.max(right - left, 0)}px`,
-      height: `${box.clientHeight || b.height}px`,
+      width: `${right - left}px`,
+      height: `${bottom - top}px`,
     });
     // The surface's pixels → the layer's
     const bx = left - s.left;

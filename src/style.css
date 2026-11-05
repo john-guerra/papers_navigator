@@ -3000,7 +3000,11 @@ body #vg-tooltip-element table tr td.value {
   position: absolute;
   overflow: hidden;
   pointer-events: none;
+  /* 16px = AREA_FADE in brushableScatterPlot.js */
   --fade: transparent, #000 16px, #000 calc(100% - 16px), transparent;
+  -webkit-mask-image:
+    linear-gradient(to right, var(--fade)), linear-gradient(var(--fade));
+  -webkit-mask-composite: source-in;
   mask-image:
     linear-gradient(to right, var(--fade)), linear-gradient(var(--fade));
   mask-composite: intersect;
