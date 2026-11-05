@@ -605,6 +605,8 @@ const NEIGHBOURS_DATA = "nn";
 const QUERY_DATA = "query";
 // Named dataset of the paper in focus in the list (#136), replaced with view.change (no redraw)
 const FOCUS_DATA = "focus";
+// How far (px) the search area may reach past the chart's box, into the page's margins (#181)
+const AREA_BLEED = 24;
 // Opacity of a query marker placed among barely similar papers (heavy filters)
 const FAINT_OPACITY = 0.4;
 
@@ -1457,23 +1459,35 @@ export async function BrushableScatterPlot(data, options = {}) {
       if (++areaTries < 120) nextFrame(drawAreas);
       return;
     }
-    const parent = surface.parentElement;
-    if (getComputedStyle(parent).position === "static")
-      parent.style.position = "relative";
-    // Positioned too, so it paints after (over) the layers that precede it
-    if (getComputedStyle(surface).position === "static")
-      surface.style.position = "relative";
-    if (areaLayer.parentElement !== parent)
-      parent.insertBefore(areaLayer, surface);
-    const [dx, dy] = surfaceOffset(surface);
-    // The marks' own size (Vega sets it), not the layout box
+    // An area around matches at the plot's edge reaches past the plot (#181). The layer sits
+    // in the widget, under (before) vega-embed's box, which scrolls and so would clip it: it
+    // spans that box's height and BLEED px more on each side, within the window
+    if (getComputedStyle(target).position === "static")
+      target.style.position = "relative";
+    // Positioned too, so it paints after (over) the layer
+    if (getComputedStyle(chart).position === "static")
+      chart.style.position = "relative";
+    if (areaLayer.parentElement !== target) target.prepend(areaLayer);
+    const t = target.getBoundingClientRect();
+    const s = surface.getBoundingClientRect();
+    const box = surface.closest(".vega-embed-wrapper") ?? surface.parentElement;
+    const b = box.getBoundingClientRect();
+    const left = Math.max(b.left + box.clientLeft - AREA_BLEED, 0);
+    const right = Math.min(
+      b.left + box.clientLeft + (box.clientWidth || b.width) + AREA_BLEED,
+      document.documentElement.clientWidth || Infinity,
+    );
+    const top = b.top + box.clientTop;
     Object.assign(areaLayer.style, {
-      left: `${dx}px`,
-      top: `${dy}px`,
-      width: `${surface.getAttribute("width") ?? surface.clientWidth}px`,
-      height: `${surface.getAttribute("height") ?? surface.clientHeight}px`,
+      left: `${left - t.left - target.clientLeft}px`,
+      top: `${top - t.top - target.clientTop}px`,
+      width: `${Math.max(right - left, 0)}px`,
+      height: `${box.clientHeight || b.height}px`,
     });
-    // Data units → the surface's pixels at the final scales (padding 10px, y up)
+    // The surface's pixels → the layer's
+    const bx = left - s.left;
+    const by = top - s.top;
+    // Data units → the layer's pixels at the final scales (padding 10px, y up)
     const [ox, oy] = chart.view.origin();
     const w = chart.view.width() - 20;
     const h = chart.view.height() - 20;
@@ -1483,8 +1497,8 @@ export async function BrushableScatterPlot(data, options = {}) {
     const [x0, x1] = extent(rows.map((d) => d[x]));
     const [y0, y1] = extent(rows.map((d) => d[y]));
     drawQueryArea(areaLayer, areas, markers, ([px, py]) => [
-      ox + 10 + ((px - x0) / (x1 - x0 || 1)) * w,
-      oy + 10 + h - ((py - y0) / (y1 - y0 || 1)) * h,
+      ox - bx + 10 + ((px - x0) / (x1 - x0 || 1)) * w,
+      oy - by + 10 + h - ((py - y0) / (y1 - y0 || 1)) * h,
     ]);
   };
   chart.view.addResizeListener?.(() => areas.length && drawAreas());
@@ -1521,6 +1535,8 @@ export async function BrushableScatterPlot(data, options = {}) {
         width: estimateWidth(name, 11) * (0.62 / 0.55),
         height: 13,
         obstacles: topics,
+        // Its marks clip to the plot (padding included): never past it, halo too (#181)
+        bounds: [2, 2, w + 18, h + 18],
       });
       return {
         ...m,

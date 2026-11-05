@@ -298,6 +298,9 @@ describe("search area behind the map (#167 review)", () => {
     expect(
       layer.compareDocumentPosition(marks) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Outside vega-embed's box, which scrolls and so clipped an area reaching past the plot (#181)
+    expect(marks.closest(".vega-embed-wrapper")).not.toBeNull();
+    expect(layer.closest(".vega-embed-wrapper")).toBeNull();
     expect(layer.querySelectorAll("path")).toHaveLength(1);
     expect(layer.querySelector("path").getAttribute("d")).toMatch(/^M.*Z/);
     // The ★ sits in the blob of the top match (nearest[0] = paper a at 0, 0), not at the mean
@@ -330,5 +333,21 @@ describe("search area behind the map (#167 review)", () => {
     // Not above the ★ (where the label is): below or beside it
     const sy = widget.view.scale("y");
     expect(sy(row.nameY)).toBeGreaterThanOrEqual(sy(row.y) - 1);
+  });
+
+  it("keeps its name on the map next to its edge (#181: only “Yo” showed)", async () => {
+    // Paper C at (0, 10): the top-left corner, where above and left leave the map
+    const widget = await build();
+    await widget.placeQuery([
+      { ...marker, matches: [], nearest: [marker.nearest[1]] },
+    ]);
+    const row = widget.view.data("query").find((r) => r.kind === "marker");
+    const sx = widget.view.scale("x");
+    const sy = widget.view.scale("y");
+    expect(sx(row.x)).toBeCloseTo(10);
+    expect(sy(row.y)).toBeCloseTo(10);
+    // Its box (about 62 × 13 px) inside the plot, which clips it
+    expect(sy(row.nameY) - 6.5).toBeGreaterThanOrEqual(0);
+    expect(sx(row.nameX) - 31).toBeGreaterThanOrEqual(0);
   });
 });

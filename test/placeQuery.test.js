@@ -352,6 +352,59 @@ describe("matchArea (#167: where the matching papers are, as smooth contours)", 
   it("is null without matches", () => {
     expect(matchArea([], box)).toBeNull();
   });
+
+  // #181: matches at the plot's edge drew a blob cut by a straight line, the grid's edge
+  describe("matches at the plot's edge: a whole, round blob, not cut by the grid", () => {
+    const edges = {
+      right: [
+        { x: 10, y: 5 },
+        { x: 10, y: 5.4 },
+      ],
+      left: [
+        { x: 0, y: 5 },
+        { x: 0, y: 5.4 },
+      ],
+      top: [
+        { x: 5, y: 10 },
+        { x: 5.4, y: 10 },
+      ],
+      bottom: [
+        { x: 5, y: 0 },
+        { x: 5.4, y: 0 },
+      ],
+    };
+    for (const [edge, pts] of Object.entries(edges))
+      it(edge, () => {
+        const area = matchArea(
+          pts.map((p) => ({ ...p, weight: 1 })),
+          box,
+        );
+        const ring = area.polygons.flat(2);
+        const horizontal = edge === "left" || edge === "right";
+        const across = ring.map(([x, y]) => (horizontal ? x : y));
+        const along = ring.map(([x, y]) => (horizontal ? y : x));
+        const outer = edge === "right" || edge === "top" ? Math.max : Math.min;
+        const reach = outer(...across);
+        // Past the edge by most of the kernel (22px = 2.2 units): the matches sit on it
+        expect(Math.abs(reach - (outer === Math.max ? 10 : 0))).toBeGreaterThan(
+          1.5,
+        );
+        // Round at its far end: the outline doesn't run along a straight line there (the
+        // points within 0.5px of its extreme span ~12px as anywhere on the map, not its whole
+        // side: 76px when the grid cut it)
+        const atEnd = along.filter(
+          (_, i) => Math.abs(across[i] - reach) < 0.05,
+        );
+        expect(Math.max(...atEnd) - Math.min(...atEnd)).toBeLessThan(2);
+        // The same shape as away from the edges (a mirror image of the right one)
+        expect(Math.max(...along) - Math.min(...along)).toBeGreaterThan(4);
+        // The ★ stays on the map (its padding holds it)
+        expect(area.peak.x).toBeGreaterThanOrEqual(0);
+        expect(area.peak.x).toBeLessThanOrEqual(10);
+        expect(area.peak.y).toBeGreaterThanOrEqual(0);
+        expect(area.peak.y).toBeLessThanOrEqual(10);
+      });
+  });
 });
 
 describe("queryMarkers matches (#167)", () => {
@@ -445,7 +498,19 @@ describe("nameSpot (#172 re-review: the name goes to a free side of the ★)", (
       nameSpot([100, 100], { ...size, obstacles: [above, below, right] }),
     ).toEqual({ dx: -39, dy: 0 });
   });
-  it("the least-covered side when all are taken", () => {
+  it("a free corner when every side is taken", () => {
+    const sides = [
+      [70, 80, 130, 95],
+      [96, 105, 130, 125],
+      [110, 90, 180, 110],
+      [20, 95, 90, 100],
+    ];
+    expect(nameSpot([100, 100], { ...size, obstacles: sides })).toEqual({
+      dx: -34.5,
+      dy: 14,
+    });
+  });
+  it("the least-covered spot when all are taken", () => {
     const big = [0, 0, 300, 300];
     const smallBelow = [95, 110, 105, 115];
     expect(nameSpot([100, 100], { ...size, obstacles: [big] })).toEqual({
@@ -455,8 +520,87 @@ describe("nameSpot (#172 re-review: the name goes to a free side of the ★)", (
     expect(
       nameSpot([100, 100], {
         ...size,
-        obstacles: [[60, 80, 140, 96], smallBelow],
+        // Its corners taken too
+        obstacles: [
+          [60, 80, 140, 96],
+          smallBelow,
+          [20, 100, 80, 130],
+          [120, 100, 180, 130],
+          [20, 70, 80, 100],
+          [120, 70, 180, 100],
+        ],
       }),
     ).toEqual({ dx: 0, dy: 14 });
+  });
+
+  // #181: next to the map's edge the name went off the map and showed only "Yo"
+  describe("never leaves the map (`bounds`, the plot's [x0, y0, x1, y1])", () => {
+    const bounds = [0, 0, 400, 300];
+    const inside = ([px, py], { dx, dy }) =>
+      px + dx - size.width / 2 >= bounds[0] &&
+      px + dx + size.width / 2 <= bounds[2] &&
+      py + dy - size.height / 2 >= bounds[1] &&
+      py + dy + size.height / 2 <= bounds[3];
+    it("right edge, above and below taken: left, not off the map", () => {
+      const star = [392, 150];
+      const spot = nameSpot(star, {
+        ...size,
+        bounds,
+        obstacles: [
+          [340, 120, 400, 145],
+          [340, 155, 400, 180],
+        ],
+      });
+      expect(spot).toEqual({ dx: -39, dy: 0 });
+    });
+    it("left edge, above and below taken: right", () => {
+      const spot = nameSpot([6, 150], {
+        ...size,
+        bounds,
+        obstacles: [
+          [0, 120, 60, 145],
+          [0, 155, 60, 180],
+        ],
+      });
+      expect(spot).toEqual({ dx: 39, dy: 0 });
+    });
+    it("top edge: below", () => {
+      expect(nameSpot([200, 4], { ...size, bounds })).toEqual({
+        dx: 0,
+        dy: 14,
+      });
+    });
+    it("bottom edge, above taken: right rather than off the map below", () => {
+      const spot = nameSpot([200, 296], {
+        ...size,
+        bounds,
+        obstacles: [[150, 260, 250, 292]],
+      });
+      expect(spot.dx).toBe(39);
+      expect(inside([200, 296], spot)).toBe(true);
+    });
+    it("right edge, every side taken: a free corner on the map", () => {
+      const star = [392, 150];
+      const spot = nameSpot(star, {
+        ...size,
+        bounds,
+        obstacles: [
+          [388, 120, 400, 145],
+          [300, 155, 400, 180],
+          [300, 145, 385, 155],
+        ],
+      });
+      expect(spot).toEqual({ dx: -34.5, dy: -13 });
+      expect(inside(star, spot)).toBe(true);
+    });
+    it("in a corner with every side taken or off the map: still whole on the map", () => {
+      const star = [396, 296];
+      const spot = nameSpot(star, {
+        ...size,
+        bounds,
+        obstacles: [[300, 200, 400, 300]],
+      });
+      expect(inside(star, spot)).toBe(true);
+    });
   });
 });
