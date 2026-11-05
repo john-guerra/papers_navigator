@@ -854,7 +854,7 @@ if (hasQuery && peopleCount > relevanceState.people && relevanceState.level !== 
 relevanceState.people = peopleCount;
 const cuts = cutsFor(scored.map((d) => d.score));
 const relevanceInput = hasQuery
-  ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level })
+  ? relevanceControl(relevanceCounts(map.brushed, cuts), { value: relevanceState.level, subject: researchMode ? "research" : "search" })
   : null;
 const relevance = relevanceInput ? Generators.input(relevanceInput) : "all";
 ```

@@ -2201,6 +2201,97 @@ details.missing > summary {
   }
 }
 
+/* #176 — "Match to your search: ⓘ" before the relevance control; the label row wraps above
+   the control when they don't fit (phones). Anchors the toggletip's bubble. */
+.relevance-field {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--spacing-sm, 8px);
+  margin: var(--spacing-xs, 4px) 0;
+}
+
+.relevance-field .relevance-control {
+  margin: 0;
+}
+
+.relevance-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs, 4px);
+}
+
+.relevance-label {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-label-md);
+}
+
+/* Toggletip (src/components/toggletip.js): a small ⓘ with a 28px hit area (44px on touch) */
+.toggletip-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-on-surface-muted);
+  cursor: pointer;
+}
+
+.toggletip-button > span {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentcolor;
+  border-radius: 50%;
+  font: italic 600 0.6875rem/1 var(--font-serif);
+}
+
+.toggletip-button:hover,
+.toggletip-button[aria-expanded="true"] {
+  color: var(--color-on-surface);
+}
+
+.toggletip-bubble {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 41; /* over the map and facet popovers (40) */
+  display: grid;
+  gap: 2px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(24rem, 100%);
+  margin-top: var(--spacing-xs, 4px);
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-md, 6px);
+  background: var(--color-surface);
+  box-shadow: var(--elevation-1);
+  color: var(--color-on-surface);
+  font: var(--typography-body-sm);
+}
+
+/* Content lines: a lede, then one line per item */
+:is(.toggletip-lede, .toggletip-item) {
+  display: block;
+}
+
+.toggletip-lede {
+  margin-bottom: var(--spacing-xs, 4px);
+}
+
+@media (max-width: 639.98px), (pointer: coarse) {
+  .toggletip-button {
+    min-width: var(--spacing-touch, 44px);
+    min-height: var(--spacing-touch, 44px);
+  }
+}
+
 /* Appearance (Auto / Light / Dark) — reuses the segmented relevance-control look */
 .theme-control {
   display: inline-flex;
