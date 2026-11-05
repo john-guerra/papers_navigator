@@ -2870,8 +2870,8 @@ body #vg-tooltip-element table tr td.value {
 }
 
 /* #130 — similarity legend: one bar for size and color. #168: drawn in the map's background,
-   under the points (the widget inserts it before the marks, in the corner with the fewest
-   points), so no box: no surface, no border, just the title, the bar and its end labels */
+   under the points (the widget inserts it before the marks, in the corner it covers the least:
+   papers, topic labels, the search area), so no box: no surface, no border, just the title, the bar and its end labels */
 .similarity-legend {
   box-sizing: border-box;
   padding: 4px;

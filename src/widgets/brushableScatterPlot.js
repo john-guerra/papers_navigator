@@ -951,17 +951,22 @@ export function taperedLegend({
   );
 }
 
+// The corner the last similarity legend chose (#168 review): a redrawn map (filters, projection)
+// keeps it unless another corner is clearly quieter
+let lastLegendCorner = null;
+
 /**
  * The tapered legend (#130), built from the view's own color and size scales so the bar is
  * exactly what the dots show. Drawn in the map's background (#168): inserted before the marks,
- * which stack above it, so the points are drawn over it, in the plot corner it covers the fewest
- * of `points()` ([x, y] data rows, lib/quietCorner.js; top-right when empty). `box()` is its
- * rectangle in overlay pixels (for the paper labels), or null.
+ * which stack above it, so the points are drawn over it, in the plot corner it covers the least
+ * (lib/quietCorner.js): `points()` ([x, y] data rows) and `obstacles(sx, sy)` (topic-label and
+ * search-area boxes in plot pixels); it keeps its corner unless another is clearly quieter.
+ * `box()` is its rectangle in overlay pixels (for the paper labels), or null.
  */
 function attachTaperedLegend(
   target,
   view,
-  { title, labels, points = () => [] },
+  { title, labels, points = () => [], obstacles = () => [] },
 ) {
   const color = view.scale("color");
   const size = view.scale("size");
@@ -995,9 +1000,12 @@ function attachTaperedLegend(
         width: view.width(),
         height: view.height(),
         box: [el.offsetWidth, el.offsetHeight],
+        obstacles: obstacles(sx, sy),
+        // Stays put unless another corner is clearly quieter (also across redraws)
+        current: el.dataset.corner ?? lastLegendCorner,
       },
     );
-    el.dataset.corner = spot.corner;
+    el.dataset.corner = lastLegendCorner = spot.corner;
     const left = ox + spot.left;
     const top = oy + spot.top;
     const [dx, dy] = surfaceOffset(surface);
@@ -1231,6 +1239,27 @@ export async function BrushableScatterPlot(data, options = {}) {
           data
             .filter((d) => Number.isFinite(d[x]) && Number.isFinite(d[y]))
             .map((d) => [d[x], d[y]]),
+        // Topic labels (their wrapped boxes) and the search areas also occupy a corner
+        obstacles: (sx, sy) => [
+          ...(
+            visibleLabels(data, options.labels, {
+              x,
+              y,
+              width: options.width,
+              height: options.height,
+              labelSize: options.labelSize ?? 15,
+            }) ?? []
+          ).map((l) =>
+            topicLabelBox(
+              sx(l.x) + (l.dx ?? 0),
+              sy(l.y) + (l.dy ?? 0),
+              l.text,
+              options.labelSize ?? 15,
+              3,
+            ),
+          ),
+          ...(target.queryAreaBoxes?.(sx, sy) ?? []),
+        ],
       })
     : null;
 
@@ -1501,6 +1530,20 @@ export async function BrushableScatterPlot(data, options = {}) {
       };
     });
   };
+  /** Each search-area polygon's bounding box in plot pixels (for the legend's corner, #168). */
+  target.queryAreaBoxes = (sx, sy) =>
+    areas.flatMap((area) =>
+      (area?.polygons ?? []).map(([outer]) => {
+        const xs = outer.map((p) => sx(p[0]));
+        const ys = outer.map((p) => sy(p[1]));
+        return [
+          Math.min(...xs),
+          Math.min(...ys),
+          Math.max(...xs),
+          Math.max(...ys),
+        ];
+      }),
+    );
   target.queryMarkers = () => markers;
   target.placeQuery = (list = []) => {
     if (!options.query) return Promise.resolve();
@@ -1531,6 +1574,8 @@ export async function BrushableScatterPlot(data, options = {}) {
     });
     markers = withNameSpots(placed, grid);
     drawAreas();
+    // The legend's corner counts the search area (#168 review)
+    tapered?.place?.();
     return chart.view
       .change(
         QUERY_DATA,
