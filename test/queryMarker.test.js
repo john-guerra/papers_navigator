@@ -282,15 +282,20 @@ describe("query marker through a motion (#82)", () => {
   });
 });
 
-describe("search area behind the map (#167 review)", () => {
-  const matches = [
-    { x: 0, y: 0, weight: 1 },
-    { x: 1, y: 1, weight: 1 },
-    { x: 10, y: 10, weight: 1 },
+describe("similarity topo map behind the map (#182)", () => {
+  // A dense patch of papers around (1.5, 1.5) scoring 0.5, the middle one 0.55
+  const scores = [
+    ...Array.from({ length: 25 }, (_, i) => ({
+      x: 1.5 + ((i % 5) - 2) * 0.3,
+      y: 1.5 + (Math.floor(i / 5) - 2) * 0.3,
+      // The best paper in its middle
+      score: i === 12 ? 0.55 : 0.5,
+    })),
   ];
-  it("is one path per marker inserted before the marks, and the ★ moves to its peak", async () => {
+  const levels = [0.3, 0.35, 0.4, 0.45, 0.5];
+  it("is one path per level inserted before the marks, and the ★ moves to its peak", async () => {
     const widget = await build();
-    await widget.placeQuery([{ ...marker, matches }]);
+    await widget.placeQuery([{ ...marker, scores, levels }]);
     const marks = widget.querySelector(".marks");
     const layer = widget.querySelector("svg.query-area");
     expect(layer).not.toBeNull();
@@ -301,24 +306,82 @@ describe("search area behind the map (#167 review)", () => {
     // Outside vega-embed's box, which scrolls and so clipped an area reaching past the plot (#181)
     expect(marks.closest(".vega-embed-wrapper")).not.toBeNull();
     expect(layer.closest(".vega-embed-wrapper")).toBeNull();
-    expect(layer.querySelectorAll("path")).toHaveLength(1);
-    expect(layer.querySelector("path").getAttribute("d")).toMatch(/^M.*Z/);
-    // The ★ sits in the blob of the top match (nearest[0] = paper a at 0, 0), not at the mean
+    const paths = layer.querySelectorAll("path.query-level");
+    expect(paths.length).toBeGreaterThan(1);
+    expect(paths.length).toBeLessThanOrEqual(levels.length);
+    expect(paths[0].getAttribute("d")).toMatch(/^M.*Z/);
+    // Stacked from the lowest level up, and no level labels (#182 review)
+    expect([...paths].map((p) => Number(p.dataset.level))).toEqual(
+      [...levels].slice(0, paths.length),
+    );
+    expect(layer.querySelectorAll("text")).toHaveLength(0);
+    // The ★ sits on the peak (the best paper, 1.5, 1.5), not at the placement (2, 3)
     const [m] = widget.queryMarkers();
-    expect(Math.hypot(m.x - 0.5, m.y - 0.5)).toBeLessThan(1.5);
+    expect(Math.hypot(m.x - 1.5, m.y - 1.5)).toBeLessThan(0.5);
     expect(
       widget.view.data("query").find((r) => r.kind === "marker"),
     ).toMatchObject({ x: m.x, y: m.y });
+    // The legend's corner sees the lowest isoline
+    const sx = widget.view.scale("x");
+    const sy = widget.view.scale("y");
+    const boxes = widget.queryAreaBoxes(sx, sy);
+    expect(boxes).toHaveLength(1);
+    expect(boxes[0][0]).toBeLessThan(sx(1.5));
+    expect(boxes[0][2]).toBeGreaterThan(sx(1.5));
     // Replaced, then removed with []
-    await widget.placeQuery([{ ...marker, matches }]);
-    expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(1);
+    await widget.placeQuery([{ ...marker, scores, levels }]);
+    expect(widget.querySelectorAll("svg.query-area path").length).toBe(
+      paths.length,
+    );
     await widget.placeQuery([]);
     expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(0);
+    expect(widget.querySelectorAll("svg.query-area text")).toHaveLength(0);
   });
 
-  it("without an area, sits on the top match, never in empty space (#172 re-review)", async () => {
+  it("is the map's bottom-most layer: under the legend, the points and topic labels, the paper labels (#182 review)", async () => {
+    const widget = await BrushableScatterPlot(
+      data.map((d, i) => ({ ...d, score: 0.1 * i })),
+      {
+        renderer: "svg",
+        width: 200,
+        height: 200,
+        query: true,
+        color: "score",
+        colorType: "quantitative",
+        size: "score",
+        scoreDomain: [0, 0.6],
+        legendLabels: ["less similar", "more similar"],
+        colorTitle: "Similarity",
+      },
+    );
+    document.body.append(widget);
+    widgets.push(widget);
+    await widget.placeQuery([{ ...marker, scores, levels }]);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(widget.querySelector(".similarity-legend")).not.toBeNull();
+    const layer = widget.querySelector("svg.query-area");
+    const before = (el) =>
+      !!(layer.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    // Every other element of the map comes after it in paint order (same stacking context:
+    // positioned, z-index auto, so DOM order decides)
+    expect(widget.firstElementChild).toBe(layer);
+    for (const el of widget.querySelectorAll(
+      ".marks, .similarity-legend, .paper-labels",
+    ))
+      expect(before(el)).toBe(true);
+    expect(getComputedStyle(layer).zIndex).not.toMatch(/^[1-9]/);
+  });
+
+  it("few similar papers visible: the whole terrain is faded", async () => {
     const widget = await build();
-    await widget.placeQuery([{ ...marker, matches: [] }]);
+    await widget.placeQuery([{ ...marker, scores, levels, faint: true }]);
+    const group = widget.querySelector("svg.query-area g");
+    expect(group.hasAttribute("data-faint")).toBe(true);
+  });
+
+  it("without terrain, sits on the top match, never in empty space (#172 re-review)", async () => {
+    const widget = await build();
+    await widget.placeQuery([{ ...marker, scores: [], levels: [] }]);
     expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(0);
     // nearest[0] = Paper A at (0, 0), not the weighted mean (2, 3)
     expect(widget.queryMarkers()[0]).toMatchObject({ x: 0, y: 0 });
@@ -328,7 +391,7 @@ describe("search area behind the map (#167 review)", () => {
     // A topic label right above where the ★ lands (paper a at 0, 0 → bottom-left corner)
     const labels = [{ text: "Topic here", x: 0.6, y: 0.9 }];
     const widget = await build({ labels });
-    await widget.placeQuery([{ ...marker, matches: [] }]);
+    await widget.placeQuery([{ ...marker, scores: [], levels: [] }]);
     const row = widget.view.data("query").find((r) => r.kind === "marker");
     // Not above the ★ (where the label is): below or beside it
     const sy = widget.view.scale("y");
@@ -339,7 +402,7 @@ describe("search area behind the map (#167 review)", () => {
     // Paper C at (0, 10): the top-left corner, where above and left leave the map
     const widget = await build();
     await widget.placeQuery([
-      { ...marker, matches: [], nearest: [marker.nearest[1]] },
+      { ...marker, scores: [], levels: [], nearest: [marker.nearest[1]] },
     ]);
     const row = widget.view.data("query").find((r) => r.kind === "marker");
     const sx = widget.view.scale("x");

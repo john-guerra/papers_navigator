@@ -54,6 +54,7 @@
   --color-viz-reliability-2: #5f74bf;
   --color-viz-reliability-3: #28377a;
   --color-viz-dim: #e1ddd8;
+  --terrain-alpha: 0.07; /* similarity terrain band opacity (#182) */
   --color-viz-neutral: #605954;
   --color-viz-followed-ring: #241e1a;
   --color-viz-cat-1: #2a78d6;
@@ -146,6 +147,7 @@
   --color-viz-reliability-2: #6f84cf;
   --color-viz-reliability-3: #b4c3ff;
   --color-viz-dim: #3b3734;
+  --terrain-alpha: 0.13; /* similarity terrain band opacity (#182) */
   --color-viz-neutral: #aeaaa4;
   --color-viz-followed-ring: #eeebe5;
   --color-viz-cat-1: #3987e5;
@@ -179,6 +181,7 @@
     --color-viz-reliability-2: #6f84cf;
     --color-viz-reliability-3: #b4c3ff;
     --color-viz-dim: #3b3734;
+    --terrain-alpha: 0.13; /* similarity terrain band opacity (#182) */
     --color-viz-neutral: #aeaaa4;
     --color-viz-followed-ring: #eeebe5;
     --color-viz-cat-1: #3987e5;
@@ -3137,11 +3140,28 @@ body #vg-tooltip-element table tr td.value {
   transition: opacity var(--motion-duration) var(--motion-ease);
 }
 
-.query-area-path {
-  fill: var(--color-primary);
-  opacity: 0.12;
+/* The similarity terrain (#182): nested filled bands in a muted primary, one per level, stacked
+   from the lowest (Good) up, so each level adds a little more tint (a hypsometric tint), with a
+   faint edge so neighbouring levels read apart. The layer is the map's bottom-most: dots and
+   labels keep their full color over it. */
+.query-area g {
+  --terrain-ink: color-mix(
+    in srgb,
+    var(--color-primary) 70%,
+    var(--color-on-surface-muted)
+  );
 }
 
-.query-area-path[data-faint] {
-  opacity: 0.048;
+.query-level {
+  fill: var(--terrain-ink);
+  fill-opacity: var(--terrain-alpha, 0.07);
+  stroke: var(--terrain-ink);
+  stroke-opacity: 0.14;
+  stroke-width: 0.5px;
+  stroke-linejoin: round;
+}
+
+/* Few similar papers visible: the whole terrain at 40% (FAINT_OPACITY) */
+.query-area g[data-faint] {
+  opacity: 0.4;
 }

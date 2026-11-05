@@ -1,8 +1,9 @@
 import { polygonContains } from "d3";
 import { describe, expect, it } from "vitest";
 import {
-  matchArea,
   placeByNeighbours,
+  similarityTerrain,
+  terrainLevels,
   queryAnnouncement,
   queryCuts,
   nameSpot,
@@ -292,146 +293,149 @@ describe("queryAnnouncement", () => {
   });
 });
 
-describe("matchArea (#167: where the matching papers are, as smooth contours)", () => {
-  const box = { width: 100, height: 100, xDomain: [0, 10], yDomain: [0, 10] };
-  // Inside the outer ring of any polygon of the multipolygon
-  const covers = (area, px, py) =>
-    area.polygons.some(([outer]) => polygonContains(outer, [px, py]));
+describe("terrainLevels (#182: an isoline every 0.05 from the Good cut)", () => {
+  it("from Good up to the best visible score, in 0.05 steps", () => {
+    expect(terrainLevels(0.3, 0.52)).toEqual([0.3, 0.35, 0.4, 0.45, 0.5]);
+    expect(terrainLevels(0.3, 0.45)).toEqual([0.3, 0.35, 0.4, 0.45]);
+  });
+  it("My research: from its own Good cut", () => {
+    expect(terrainLevels(0.47, 0.6)).toEqual([0.47, 0.52, 0.57]);
+  });
+  it("none when nothing reaches Good, or without a Good cut", () => {
+    expect(terrainLevels(0.3, 0.29)).toEqual([]);
+    expect(terrainLevels(null, 0.6)).toEqual([]);
+    expect(terrainLevels(0.3, null)).toEqual([]);
+  });
+});
 
-  it("one polygon per group of matches, nothing between them", () => {
-    const area = matchArea(
+describe("similarityTerrain (#182: a topo map of the match %, the highest nearby score)", () => {
+  // 20 px per unit
+  const box = { width: 200, height: 200, xDomain: [0, 10], yDomain: [0, 10] };
+  const covers = (level, px, py) =>
+    level.polygons.some(([outer]) => polygonContains(outer, [px, py]));
+
+  it("each paper's own score is the height at its dot, whatever its neighbours score", () => {
+    // A 0.5 paper among weak ones: an average would sink it under Good
+    const weak = Array.from({ length: 24 }, (_, i) => ({
+      x: 5 + Math.cos(i) * (0.6 + (i % 3) * 0.3),
+      y: 5 + Math.sin(i) * (0.6 + (i % 3) * 0.3),
+      score: 0.1,
+    }));
+    const t = similarityTerrain([{ x: 5.1, y: 5.1, score: 0.5 }, ...weak], {
+      ...box,
+      levels: terrainLevels(0.3, 0.5),
+    });
+    expect(t.valueAt(5.1, 5.1)).toBeGreaterThan(0.48);
+    expect(t.levels.map((l) => l.value)).toEqual([0.3, 0.35, 0.4, 0.45]);
+    // Levels nest around it, and the ★ is on its dot
+    for (const level of t.levels) expect(covers(level, 5.1, 5.1)).toBe(true);
+    expect(Math.hypot(t.peak.x - 5.1, t.peak.y - 5.1)).toBeLessThan(0.3);
+  });
+
+  it("falls off with distance: a Gaussian of 25px (1.25 units here)", () => {
+    const t = similarityTerrain([{ x: 5, y: 5, score: 0.6 }], {
+      ...box,
+      levels: [0.3],
+    });
+    // 0.6 · exp(-d² / 2σ²) = 0.3 at d = σ·√(2 ln 2) ≈ 1.47 units
+    const xs = t.levels[0].polygons.flat(2).map(([x]) => x);
+    expect(Math.max(...xs) - 5).toBeCloseTo(1.47, 1);
+    expect(t.valueAt(5, 9)).toBeLessThan(0.01);
+  });
+
+  it("levels merge where Good papers cluster, stay apart when they are far, nothing between", () => {
+    const near = similarityTerrain(
       [
-        { x: 1, y: 1, weight: 1 },
-        { x: 1.5, y: 1, weight: 1 },
-        { x: 9, y: 9, weight: 1 },
+        { x: 4.6, y: 5, score: 0.4 },
+        { x: 5.4, y: 5, score: 0.4 },
       ],
-      box,
+      { ...box, levels: [0.3] },
     );
-    expect(area.polygons).toHaveLength(2);
-    expect(covers(area, 1.2, 1)).toBe(true);
-    expect(covers(area, 9, 9)).toBe(true);
-    expect(covers(area, 5, 5)).toBe(false);
-    expect(covers(area, 9, 1)).toBe(false);
-    // Smooth outlines in data units: not on a 0.4-unit (4px) cell lattice
-    const xs = area.polygons.flat(2).map(([x]) => x);
-    expect(xs.some((x) => Math.abs(x / 0.4 - Math.round(x / 0.4)) > 0.01)).toBe(
+    expect(near.levels[0].polygons).toHaveLength(1);
+    const far = similarityTerrain(
+      [
+        { x: 2, y: 5, score: 0.4 },
+        { x: 8, y: 5, score: 0.4 },
+      ],
+      { ...box, levels: [0.3] },
+    );
+    expect(far.levels[0].polygons).toHaveLength(2);
+    expect(far.valueAt(5, 5)).toBeLessThan(0.05);
+    expect(covers(far.levels[0], 5, 5)).toBe(false);
+  });
+
+  it("only the levels that show, lowest first, smooth, in data units", () => {
+    const t = similarityTerrain(
+      [
+        { x: 3, y: 3, score: 0.52 },
+        { x: 3.6, y: 3.2, score: 0.41 },
+      ],
+      { ...box, levels: [0.3, 0.35, 0.4, 0.45, 0.5, 0.55] },
+    );
+    expect(t.levels.map((l) => l.value)).toEqual([0.3, 0.35, 0.4, 0.45, 0.5]);
+    const xs = t.levels[0].polygons.flat(2).map(([x]) => x);
+    expect(xs.some((x) => Math.abs(x / 0.2 - Math.round(x / 0.2)) > 0.01)).toBe(
       true,
     );
   });
 
-  it("keeps the densest region holding `mass` of the weight: a light match can drop out", () => {
-    const area = matchArea(
+  it("the ★ goes to the highest peak, inside the top level", () => {
+    const t = similarityTerrain(
       [
-        { x: 2, y: 2, weight: 1 },
-        { x: 8, y: 8, weight: 0.02 },
+        { x: 2.5, y: 2.5, score: 0.38 },
+        { x: 7, y: 7, score: 0.52 },
       ],
-      { ...box, mass: 0.8 },
+      { ...box, levels: terrainLevels(0.3, 0.52) },
     );
-    expect(covers(area, 2, 2)).toBe(true);
-    expect(covers(area, 8, 8)).toBe(false);
+    expect(Math.hypot(t.peak.x - 7, t.peak.y - 7)).toBeLessThan(0.3);
+    expect(covers(t.levels.at(-1), t.peak.x, t.peak.y)).toBe(true);
   });
 
-  it("peaks inside the blob that holds the top match", () => {
+  it("no ★ peak when no level rises above Good (the ★ then sits on the top match)", () => {
+    const t = similarityTerrain([{ x: 5, y: 5, score: 0.33 }], {
+      ...box,
+      levels: terrainLevels(0.3, 0.33),
+    });
+    expect(t.levels).toHaveLength(1);
+    expect(t.peak).toBeNull();
+  });
+
+  it("a paper under Good draws nothing; null without papers", () => {
+    expect(
+      similarityTerrain([{ x: 5, y: 5, score: 0.29 }], {
+        ...box,
+        levels: [0.3],
+      }).levels,
+    ).toEqual([]);
+    expect(similarityTerrain([], { ...box, levels: [0.3] })).toBeNull();
+  });
+
+  it("past the plot's edge it falls off like anywhere else (#181: not cut by the grid)", () => {
+    const pts = [{ x: 9.8, y: 5, score: 0.6 }];
+    const t = similarityTerrain(pts, { ...box, levels: [0.3, 0.35] });
+    const xs = t.levels[0].polygons.flat(2).map(([x]) => x);
+    expect(Math.max(...xs)).toBeGreaterThan(11);
+    // The ★ stays on the map
+    expect(t.peak.x).toBeLessThanOrEqual(10);
+  });
+
+  it("inside the map, the same field as without the margin (#181 review)", () => {
     const pts = [
-      { x: 1, y: 1, weight: 1 },
-      { x: 1.3, y: 1.2, weight: 1 },
-      { x: 9, y: 9, weight: 0.8 },
-      { x: 8.7, y: 9.2, weight: 0.8 },
+      { x: 5, y: 5, score: 0.5 },
+      { x: 4.3, y: 5.6, score: 0.4 },
     ];
-    const near = (p, x, y) => Math.hypot(p.x - x, p.y - y) < 1;
-    expect(
-      near(matchArea(pts, { ...box, top: { x: 9, y: 9 } }).peak, 9, 9),
-    ).toBe(true);
-    expect(
-      near(matchArea(pts, { ...box, top: { x: 1, y: 1 } }).peak, 1.1, 1.1),
-    ).toBe(true);
-    // Without a top match: the global peak
-    expect(near(matchArea(pts, box).peak, 1.1, 1.1)).toBe(true);
-  });
-
-  it("is null without matches", () => {
-    expect(matchArea([], box)).toBeNull();
-  });
-
-  it("away from the edges, the same area and peak as without the margin (#181 review)", () => {
-    let seed = 1;
-    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const pts = Array.from({ length: 60 }, () => ({
-      x: 4 + rnd() * 2,
-      y: 4 + rnd() * 2,
-      weight: rnd(),
-    }));
-    const big = {
-      width: 820,
-      height: 1000,
-      xDomain: [0, 10],
-      yDomain: [0, 10],
-    };
-    const plain = matchArea(pts, { ...big, margin: 0 });
-    const padded = matchArea(pts, big);
-    const a = plain.polygons.flat(3);
-    const b = padded.polygons.flat(3);
-    expect(b).toHaveLength(a.length);
-    a.forEach((v, i) => expect(b[i]).toBeCloseTo(v, 9));
-    expect(padded.peak.x).toBeCloseTo(plain.peak.x, 9);
-    expect(padded.peak.y).toBeCloseTo(plain.peak.y, 9);
-  });
-
-  // #181: matches at the plot's edge drew a blob cut by a straight line, the grid's edge
-  describe("matches at the plot's edge: a whole, round blob, not cut by the grid", () => {
-    const edges = {
-      right: [
-        { x: 10, y: 5 },
-        { x: 10, y: 5.4 },
-      ],
-      left: [
-        { x: 0, y: 5 },
-        { x: 0, y: 5.4 },
-      ],
-      top: [
-        { x: 5, y: 10 },
-        { x: 5.4, y: 10 },
-      ],
-      bottom: [
-        { x: 5, y: 0 },
-        { x: 5.4, y: 0 },
-      ],
-    };
-    for (const [edge, pts] of Object.entries(edges))
-      it(edge, () => {
-        const area = matchArea(
-          pts.map((p) => ({ ...p, weight: 1 })),
-          box,
-        );
-        const ring = area.polygons.flat(2);
-        const horizontal = edge === "left" || edge === "right";
-        const across = ring.map(([x, y]) => (horizontal ? x : y));
-        const along = ring.map(([x, y]) => (horizontal ? y : x));
-        const outer = edge === "right" || edge === "top" ? Math.max : Math.min;
-        const reach = outer(...across);
-        // Past the edge by most of the kernel (22px = 2.2 units): the matches sit on it
-        expect(Math.abs(reach - (outer === Math.max ? 10 : 0))).toBeGreaterThan(
-          1.5,
-        );
-        // Round at its far end: the outline doesn't run along a straight line there (the
-        // points within 0.5px of its extreme span ~12px as anywhere on the map, not its whole
-        // side: 76px when the grid cut it)
-        const atEnd = along.filter(
-          (_, i) => Math.abs(across[i] - reach) < 0.05,
-        );
-        expect(Math.max(...atEnd) - Math.min(...atEnd)).toBeLessThan(2);
-        // The same shape as away from the edges (a mirror image of the right one)
-        expect(Math.max(...along) - Math.min(...along)).toBeGreaterThan(4);
-        // The ★ stays on the map (its padding holds it)
-        expect(area.peak.x).toBeGreaterThanOrEqual(0);
-        expect(area.peak.x).toBeLessThanOrEqual(10);
-        expect(area.peak.y).toBeGreaterThanOrEqual(0);
-        expect(area.peak.y).toBeLessThanOrEqual(10);
-      });
+    const plain = similarityTerrain(pts, { ...box, levels: [0.3], margin: 0 });
+    const padded = similarityTerrain(pts, { ...box, levels: [0.3] });
+    for (const [x, y] of [
+      [5, 5],
+      [4, 6],
+      [6.5, 5.5],
+    ])
+      expect(padded.valueAt(x, y)).toBeCloseTo(plain.valueAt(x, y), 9);
   });
 });
 
-describe("queryMarkers matches (#167)", () => {
+describe("queryMarkers terrain inputs (#182)", () => {
   const papers = ["a", "b", "c", "d", "e", "f"].map((id) => ({
     id,
     title: id,
@@ -442,7 +446,7 @@ describe("queryMarkers matches (#167)", () => {
     y: positions[i][1],
   }));
 
-  it("carries the shown papers at or above the Strong cut, weighted by their margin over Good", () => {
+  it("carries every shown paper's score and the levels from Good to the best visible", () => {
     const [m] = queryMarkers({
       vectors: [unit([1, 0.2, 0.2])],
       matrix,
@@ -453,29 +457,17 @@ describe("queryMarkers matches (#167)", () => {
       goodCut: 0.5,
       strongCut: 0.9,
     });
-    // b and c (group 1, very similar) are Strong; a is not shown; group 2 is far below
-    expect(m.matches.map((d) => [d.x, d.y])).toEqual([
-      [1, 0],
-      [0, 1],
-    ]);
-    for (const d of m.matches) expect(d.weight).toBeGreaterThan(0.4);
+    expect(m.scores).toHaveLength(5);
+    const top = m.scores.find(
+      (d) => d.x === m.nearest[0].x && d.y === m.nearest[0].y,
+    );
+    expect(top.score).toBeCloseTo(m.nearest[0].similarity, 6);
+    expect(m.levels[0]).toBe(0.5);
+    expect(m.levels.at(-1)).toBeLessThanOrEqual(m.nearest[0].similarity);
+    expect(m.levels.at(-1)).toBeGreaterThan(m.nearest[0].similarity - 0.05);
   });
 
-  it("leaves the area out with a single Strong match on the map", () => {
-    const [m] = queryMarkers({
-      vectors: [unit([1, 0.2, 0.2])],
-      matrix,
-      papers,
-      shown: shown.filter((d) => d.id !== "a" && d.id !== "b"),
-      k: 3,
-      dims: DIMS,
-      goodCut: 0.5,
-      strongCut: 0.9,
-    });
-    expect(m.matches).toEqual([]);
-  });
-
-  it("without cuts, falls back to its nearest papers", () => {
+  it("no terrain without cuts", () => {
     const [m] = queryMarkers({
       vectors: [unit([1, 0.2, 0.2])],
       matrix,
@@ -484,7 +476,7 @@ describe("queryMarkers matches (#167)", () => {
       k: 3,
       dims: DIMS,
     });
-    expect(m.matches).toHaveLength(3);
+    expect(m.levels).toEqual([]);
   });
 });
 
@@ -554,7 +546,32 @@ describe("nameSpot (#172 re-review: the name goes to a free side of the ★)", (
           [120, 70, 180, 100],
         ],
       }),
-    ).toEqual({ dx: 0, dy: 14 });
+      // Every spot by the ★ is covered by more than a 3px strip: just past the obstacles below
+      // it (#182 review)
+    ).toEqual({ dx: 0, dy: 37.5 });
+  });
+
+  it("past a topic label around the ★: further below or right before the least covered (#182 review)", () => {
+    // A three-line topic label with the ★ on its last line (left edge of the map)
+    const label = [20, 64, 160, 116];
+    expect(
+      nameSpot([60, 100], {
+        ...size,
+        obstacles: [label],
+        bounds: [0, 0, 400, 300],
+      }),
+    ).toEqual({ dx: 0, dy: 23.5 });
+    // Below taken too: right, past the label (it ends 60px right of the ★)
+    expect(
+      nameSpot([60, 100], {
+        ...size,
+        obstacles: [
+          [20, 64, 120, 116],
+          [0, 116, 400, 300],
+        ],
+        bounds: [0, 0, 400, 300],
+      }),
+    ).toEqual({ dx: 92, dy: 0 });
   });
 
   // #181: next to the map's edge the name went off the map and showed only "Yo"
@@ -600,7 +617,8 @@ describe("nameSpot (#172 re-review: the name goes to a free side of the ★)", (
         bounds,
         obstacles: [[150, 260, 250, 292]],
       });
-      expect(spot.dx).toBe(39);
+      // Right of the ★ the box would cross the label by 5px: right of the label (#182 review)
+      expect(spot.dx).toBe(82);
       expect(inside([200, 296], spot)).toBe(true);
     });
     it("right edge, every side taken: a free corner on the map", () => {
