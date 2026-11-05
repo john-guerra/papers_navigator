@@ -1,7 +1,11 @@
+import { polygonContains } from "d3";
 import { describe, expect, it } from "vitest";
 import {
+  matchArea,
   placeByNeighbours,
   queryAnnouncement,
+  queryCuts,
+  nameSpot,
   queryMarkers,
 } from "../src/lib/placeQuery.js";
 
@@ -285,5 +289,174 @@ describe("queryAnnouncement", () => {
       "My research 1 lands near: A (approximate). My research 2 lands near: B (approximate, few similar papers visible).",
     );
     expect(queryAnnouncement([])).toBe("");
+  });
+});
+
+describe("matchArea (#167: where the matching papers are, as smooth contours)", () => {
+  const box = { width: 100, height: 100, xDomain: [0, 10], yDomain: [0, 10] };
+  // Inside the outer ring of any polygon of the multipolygon
+  const covers = (area, px, py) =>
+    area.polygons.some(([outer]) => polygonContains(outer, [px, py]));
+
+  it("one polygon per group of matches, nothing between them", () => {
+    const area = matchArea(
+      [
+        { x: 1, y: 1, weight: 1 },
+        { x: 1.5, y: 1, weight: 1 },
+        { x: 9, y: 9, weight: 1 },
+      ],
+      box,
+    );
+    expect(area.polygons).toHaveLength(2);
+    expect(covers(area, 1.2, 1)).toBe(true);
+    expect(covers(area, 9, 9)).toBe(true);
+    expect(covers(area, 5, 5)).toBe(false);
+    expect(covers(area, 9, 1)).toBe(false);
+    // Smooth outlines in data units: not on a 0.4-unit (4px) cell lattice
+    const xs = area.polygons.flat(2).map(([x]) => x);
+    expect(xs.some((x) => Math.abs(x / 0.4 - Math.round(x / 0.4)) > 0.01)).toBe(
+      true,
+    );
+  });
+
+  it("keeps the densest region holding `mass` of the weight: a light match can drop out", () => {
+    const area = matchArea(
+      [
+        { x: 2, y: 2, weight: 1 },
+        { x: 8, y: 8, weight: 0.02 },
+      ],
+      { ...box, mass: 0.8 },
+    );
+    expect(covers(area, 2, 2)).toBe(true);
+    expect(covers(area, 8, 8)).toBe(false);
+  });
+
+  it("peaks inside the blob that holds the top match", () => {
+    const pts = [
+      { x: 1, y: 1, weight: 1 },
+      { x: 1.3, y: 1.2, weight: 1 },
+      { x: 9, y: 9, weight: 0.8 },
+      { x: 8.7, y: 9.2, weight: 0.8 },
+    ];
+    const near = (p, x, y) => Math.hypot(p.x - x, p.y - y) < 1;
+    expect(
+      near(matchArea(pts, { ...box, top: { x: 9, y: 9 } }).peak, 9, 9),
+    ).toBe(true);
+    expect(
+      near(matchArea(pts, { ...box, top: { x: 1, y: 1 } }).peak, 1.1, 1.1),
+    ).toBe(true);
+    // Without a top match: the global peak
+    expect(near(matchArea(pts, box).peak, 1.1, 1.1)).toBe(true);
+  });
+
+  it("is null without matches", () => {
+    expect(matchArea([], box)).toBeNull();
+  });
+});
+
+describe("queryMarkers matches (#167)", () => {
+  const papers = ["a", "b", "c", "d", "e", "f"].map((id) => ({
+    id,
+    title: id,
+  }));
+  const shown = papers.map((p, i) => ({
+    ...p,
+    x: positions[i][0],
+    y: positions[i][1],
+  }));
+
+  it("carries the shown papers at or above the Strong cut, weighted by their margin over Good", () => {
+    const [m] = queryMarkers({
+      vectors: [unit([1, 0.2, 0.2])],
+      matrix,
+      papers,
+      shown: shown.filter((d) => d.id !== "a"),
+      k: 3,
+      dims: DIMS,
+      goodCut: 0.5,
+      strongCut: 0.9,
+    });
+    // b and c (group 1, very similar) are Strong; a is not shown; group 2 is far below
+    expect(m.matches.map((d) => [d.x, d.y])).toEqual([
+      [1, 0],
+      [0, 1],
+    ]);
+    for (const d of m.matches) expect(d.weight).toBeGreaterThan(0.4);
+  });
+
+  it("leaves the area out with a single Strong match on the map", () => {
+    const [m] = queryMarkers({
+      vectors: [unit([1, 0.2, 0.2])],
+      matrix,
+      papers,
+      shown: shown.filter((d) => d.id !== "a" && d.id !== "b"),
+      k: 3,
+      dims: DIMS,
+      goodCut: 0.5,
+      strongCut: 0.9,
+    });
+    expect(m.matches).toEqual([]);
+  });
+
+  it("without cuts, falls back to its nearest papers", () => {
+    const [m] = queryMarkers({
+      vectors: [unit([1, 0.2, 0.2])],
+      matrix,
+      papers,
+      shown,
+      k: 3,
+      dims: DIMS,
+    });
+    expect(m.matches).toHaveLength(3);
+  });
+});
+
+describe("queryCuts", () => {
+  it("maps relevance cuts to queryMarkers options, none without a ranking", () => {
+    expect(queryCuts({ weak: 0.2, good: 0.3, strong: 0.45 })).toEqual({
+      weakCut: 0.2,
+      goodCut: 0.3,
+      strongCut: 0.45,
+    });
+    expect(queryCuts(null)).toEqual({});
+  });
+});
+
+describe("nameSpot (#172 re-review: the name goes to a free side of the ★)", () => {
+  const size = { width: 60, height: 13 };
+  it("above the ★ when free", () => {
+    expect(nameSpot([100, 100], { ...size, obstacles: [] })).toEqual({
+      dx: 0,
+      dy: -13,
+    });
+  });
+  it("below, then right, then left when the sides before are taken", () => {
+    const above = [70, 80, 130, 95];
+    expect(nameSpot([100, 100], { ...size, obstacles: [above] })).toEqual({
+      dx: 0,
+      dy: 14,
+    });
+    const below = [70, 105, 130, 125];
+    expect(
+      nameSpot([100, 100], { ...size, obstacles: [above, below] }),
+    ).toEqual({ dx: 39, dy: 0 });
+    const right = [110, 90, 180, 110];
+    expect(
+      nameSpot([100, 100], { ...size, obstacles: [above, below, right] }),
+    ).toEqual({ dx: -39, dy: 0 });
+  });
+  it("the least-covered side when all are taken", () => {
+    const big = [0, 0, 300, 300];
+    const smallBelow = [95, 110, 105, 115];
+    expect(nameSpot([100, 100], { ...size, obstacles: [big] })).toEqual({
+      dx: 0,
+      dy: -13,
+    });
+    expect(
+      nameSpot([100, 100], {
+        ...size,
+        obstacles: [[60, 80, 140, 96], smallBelow],
+      }),
+    ).toEqual({ dx: 0, dy: 14 });
   });
 });

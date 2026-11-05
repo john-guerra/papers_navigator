@@ -14,6 +14,7 @@ import {
   token,
 } from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
+import { matchArea, nameSpot } from "../lib/placeQuery.js";
 import {
   domainAt,
   easeExpr,
@@ -517,15 +518,17 @@ export function scatterSpec(
   const f = focus ? focusLayers({ xScale, yScale, tween, transition }) : null;
   const layers = [
     ...(shade ? [shade] : []),
+    // #167: the search area and "★ Your search" sit under the points
+    ...(q ? q.under : []),
     points,
-    ...(q ? q.below : []),
+    ...(q ? q.over : []),
     // Under the neighbour preview and the query marker, which stay on top (DESIGN.md)
     ...(f ?? []),
     ...(nn ? nn.below : []),
     ...(rings ? [rings] : []),
     ...textLayers,
     ...(nn ? nn.above : []),
-    ...(q ? q.above : []),
+    ...(q ? q.top : []),
   ];
 
   return {
@@ -616,14 +619,15 @@ const settleFade = (tween, transition) => (opacity) =>
     : opacity;
 
 /**
- * Query marker marks (#100), all from the `query` dataset (rows from queryRows: kind "halo",
+ * Query marker marks (#100, #167), all from the `query` dataset (rows from queryRows: kind
  * "line" or "marker", `m` = marker index), never under the pointer (the widget shows their
- * tooltip itself):
- * - below the rings and labels: the uncertainty halo, a light primary disc with a dashed rim
- *   whose radius is the neighbours' spread ("approximate"), and, while the pointer is on marker
- *   `queryHover`, thin lines from it to its nearest papers;
- * - on top of everything: a primary diamond outlined in the page background (readable on any
- *   point color) and its label ("★ Your search") in primary on a background halo.
+ * tooltip itself). The search area is not here: it is one SVG path per marker behind the map
+ * (drawQueryArea), so it costs nothing per frame.
+ * - `under` the points, quiet: a small primary ★ where the query lands;
+ * - `over` the points, only while the pointer is on marker `queryHover`: thin lines from it to
+ *   its nearest papers (transient, so they must read);
+ * - on `top` of everything, topic labels included: its name ("Your search") in primary on a
+ *   background halo, so it is never hidden.
  * Mid-motion they stay hidden and fade in as the motion settles, like the neighbour marks.
  */
 function queryLayers({ xScale, yScale, tween, transition }) {
@@ -634,113 +638,73 @@ function queryLayers({ xScale, yScale, tween, transition }) {
   };
   // Marks with `opacity: faded`: full, or FAINT_OPACITY when few similar papers are visible
   // (datum.faint, lib/placeQuery.js); both fade in after a motion
-  const faded = Symbol("faded");
-  const fadedOpacity = {
-    condition: { test: "datum.faint", value: fade(FAINT_OPACITY) },
-    value: fade(1),
-  };
-  const layer = (filter, { opacity, ...mark }, encoding = {}) => ({
+  const faded = (full = 1) => ({
+    condition: { test: "datum.faint", value: fade(full * FAINT_OPACITY) },
+    value: fade(full),
+  });
+  const layer = (filter, mark, encoding = {}) => ({
     data: { name: QUERY_DATA },
     transform: [{ filter }],
-    mark: {
-      interactive: false,
-      clip: true,
-      ...mark,
-      ...(opacity !== faded && opacity !== undefined && { opacity }),
-    },
-    encoding: {
-      tooltip: null,
-      ...position,
-      ...(opacity === faded && { opacity: fadedOpacity }),
-      ...encoding,
-    },
+    mark: { interactive: false, clip: true, ...mark },
+    encoding: { tooltip: null, ...position, ...encoding },
   });
   const primary = token("color-primary", "#903129");
   const background = token("color-background", "#fcf9f3");
-  const label = (mark) =>
+  const text = (mark, encoding) =>
     layer(
       "datum.kind === 'marker'",
       {
         type: "text",
-        dy: -15,
-        fontSize: 12,
-        fontWeight: 700,
         font: token("font-sans", "sans-serif"),
-        opacity: faded,
         ...mark,
       },
-      { text: { field: "label" } },
+      { opacity: faded(), ...encoding },
+    );
+  // At (nameX, nameY): the free side of the ★ (lib/placeQuery.js nameSpot, #172 re-review)
+  const name = (mark) =>
+    text(
+      { fontSize: 11, fontWeight: 600, baseline: "middle", ...mark },
+      {
+        text: { field: "name" },
+        x: { ...position.x, field: "nameX" },
+        y: { ...position.y, field: "nameY" },
+      },
     );
   return {
-    below: [
-      layer(
-        "datum.kind === 'halo'",
-        {
-          type: "point",
-          shape: "circle",
-          filled: true,
-          fill: primary,
-          fillOpacity: 0.1,
-          stroke: primary,
-          strokeOpacity: 0.55,
-          strokeWidth: 1,
-          strokeDash: [3, 3],
-          opacity: faded,
-        },
-        { size: { field: "size", type: "quantitative", scale: null } },
+    under: [
+      text(
+        { fontSize: 13, baseline: "middle", fill: primary },
+        { text: { value: "★" } },
       ),
+    ],
+    // Above everything, topic labels included, so it is never hidden (#167 review)
+    top: [
+      name({
+        fill: background,
+        stroke: background,
+        strokeWidth: 3,
+        strokeJoin: "round",
+      }),
+      name({ fill: primary }),
+    ],
+    over: [
       layer(
         "datum.kind === 'line' && datum.m === queryHover",
         { type: "rule", strokeWidth: 1, color: primary, opacity: fade(0.6) },
         { x2: { field: "x2" }, y2: { field: "y2" } },
       ),
     ],
-    above: [
-      layer("datum.kind === 'marker'", {
-        type: "point",
-        shape: "diamond",
-        filled: true,
-        size: 260,
-        fill: primary,
-        stroke: background,
-        strokeWidth: 2,
-        opacity: faded,
-      }),
-      label({
-        fill: background,
-        stroke: background,
-        strokeWidth: 4,
-        strokeJoin: "round",
-      }),
-      label({ fill: primary }),
-    ],
   };
 }
 
 /**
- * Rows for the `query` dataset from queryMarkers (lib/placeQuery.js): per marker its halo (the
- * `spread` in map units times `pixelsPerUnit`, capped at `maxRadius` px, as a symbol area; left
- * out under 10 px, where the diamond covers it), lines to its nearest papers and the marker,
- * markers last so they are drawn on top.
+ * Rows for the `query` dataset from queryMarkers (lib/placeQuery.js): per marker, lines to its
+ * nearest papers and the marker itself (`name` = its label without the star, drawn apart).
  */
-export function queryRows(
-  markers,
-  { pixelsPerUnit = 1, maxRadius = Infinity } = {},
-) {
-  const halos = [];
+export function queryRows(markers) {
   const lines = [];
   const marks = [];
   markers.forEach((m, i) => {
-    const radius = Math.min(m.spread * pixelsPerUnit, maxRadius);
-    if (radius >= 10)
-      halos.push({
-        kind: "halo",
-        m: i,
-        x: m.x,
-        y: m.y,
-        size: (2 * radius) ** 2,
-        faint: Boolean(m.faint),
-      });
     for (const n of m.nearest)
       lines.push({ kind: "line", m: i, x: m.x, y: m.y, x2: n.x, y2: n.y });
     marks.push({
@@ -749,10 +713,47 @@ export function queryRows(
       x: m.x,
       y: m.y,
       label: m.label,
+      name: m.label.replace(/^★\s*/, ""),
+      nameX: m.nameX ?? m.x,
+      nameY: m.nameY ?? m.y,
       faint: Boolean(m.faint),
     });
   });
-  return [...halos, ...lines, ...marks];
+  return [...lines, ...marks];
+}
+
+/**
+ * The search areas (#167) as one SVG path per marker in `layer` (an <svg> laid behind the map's
+ * marks), in plot pixels at the final scales: `areas[i]` = matchArea(...) or null. `toPixel`
+ * maps data units to the layer's pixels.
+ */
+function drawQueryArea(layer, areas, markers, toPixel) {
+  layer.replaceChildren();
+  areas.forEach((area, i) => {
+    if (!area?.polygons.length) return;
+    const d = area.polygons
+      .flatMap((polygon) =>
+        polygon.map(
+          (ring) =>
+            "M" +
+            ring
+              .map((p) =>
+                toPixel(p)
+                  .map((v) => v.toFixed(1))
+                  .join(","),
+              )
+              .join("L") +
+            "Z",
+        ),
+      )
+      .join("");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill-rule", "evenodd");
+    path.setAttribute("class", "query-area-path");
+    if (markers[i]?.faint) path.setAttribute("data-faint", "");
+    layer.append(path);
+  });
 }
 
 /** The map tooltip of a query marker: what it is, that it is approximate, its nearest papers. */
@@ -1380,35 +1381,139 @@ export async function BrushableScatterPlot(data, options = {}) {
   // finds the marker near the pointer itself, for the tooltip and the lines to its neighbours.
   let markers = [];
   let hoveredMarker = -1;
-  target.queryMarkers = () => markers;
-  target.placeQuery = (list = []) => {
-    if (!options.query) return Promise.resolve();
-    markers = list;
-    hoveredMarker = -1;
-    // Map units → pixels at the final scales (the halo is hidden mid-motion), the geometric mean
-    // of both axes: one circle, whatever the map's aspect ratio
+  let areas = [];
+  // One <svg> behind the marks (like the similarity legend, #168) holding a path per search
+  // area: drawn once per placement, never per animation frame (#167 review)
+  const areaLayer = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg",
+  );
+  areaLayer.setAttribute("class", "query-area");
+  areaLayer.setAttribute("aria-hidden", "true");
+  // Mid-motion it describes the final layout: hidden until the motion settles, then fades in
+  if (transition) {
+    areaLayer.style.opacity = "0";
+    target.finished.then(() => (areaLayer.style.opacity = ""));
+  }
+  let areaTries = 0;
+  const drawAreas = () => {
+    const surface = chart.querySelector(".marks");
+    if (!surface) return;
+    // Measured once the map is on the page (placeQuery can run before it is attached)
+    if (!target.isConnected) {
+      if (++areaTries < 120) nextFrame(drawAreas);
+      return;
+    }
+    const parent = surface.parentElement;
+    if (getComputedStyle(parent).position === "static")
+      parent.style.position = "relative";
+    // Positioned too, so it paints after (over) the layers that precede it
+    if (getComputedStyle(surface).position === "static")
+      surface.style.position = "relative";
+    if (areaLayer.parentElement !== parent)
+      parent.insertBefore(areaLayer, surface);
+    const [dx, dy] = surfaceOffset(surface);
+    // The marks' own size (Vega sets it), not the layout box
+    Object.assign(areaLayer.style, {
+      left: `${dx}px`,
+      top: `${dy}px`,
+      width: `${surface.getAttribute("width") ?? surface.clientWidth}px`,
+      height: `${surface.getAttribute("height") ?? surface.clientHeight}px`,
+    });
+    // Data units → the surface's pixels at the final scales (padding 10px, y up)
+    const [ox, oy] = chart.view.origin();
+    const w = chart.view.width() - 20;
+    const h = chart.view.height() - 20;
     const rows = data.filter(
       (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
     );
     const [x0, x1] = extent(rows.map((d) => d[x]));
     const [y0, y1] = extent(rows.map((d) => d[y]));
-    const w = chart.view.width() - 20;
-    const h = chart.view.height() - 20;
-    const pixelsPerUnit = Math.sqrt(
-      (w / (x1 - x0 || 1)) * (h / (y1 - y0 || 1)),
+    drawQueryArea(areaLayer, areas, markers, ([px, py]) => [
+      ox + 10 + ((px - x0) / (x1 - x0 || 1)) * w,
+      oy + 10 + h - ((py - y0) / (y1 - y0 || 1)) * h,
+    ]);
+  };
+  chart.view.addResizeListener?.(() => areas.length && drawAreas());
+  // Each marker's name goes to the free side of its ★, off the topic labels (#172 re-review):
+  // nameX/nameY in data units, nameOffset [dx, dy] in px, at the final scales
+  const withNameSpots = (list, { width: w, height: h, xDomain, yDomain }) => {
+    const [x0, x1] = xDomain;
+    const [y0, y1] = yDomain;
+    const kx = w / (x1 - x0 || 1);
+    const ky = h / (y1 - y0 || 1);
+    const toPlot = ([px, py]) => [10 + (px - x0) * kx, 10 + h - (py - y0) * ky];
+    const labelSize = options.labelSize ?? 15;
+    const topics = (
+      visibleLabels(data, options.labels, {
+        x,
+        y,
+        width: options.width,
+        height: options.height,
+        labelSize,
+      }) ?? []
+    ).map((l) => {
+      const [px, py] = toPlot([l.x, l.y]);
+      return topicLabelBox(
+        px + (l.dx ?? 0),
+        py + (l.dy ?? 0),
+        l.text,
+        labelSize,
+        2,
+      );
+    });
+    return list.map((m) => {
+      const name = m.label.replace(/^★\s*/, "");
+      const { dx, dy } = nameSpot(toPlot([m.x, m.y]), {
+        width: estimateWidth(name, 11) * (0.62 / 0.55),
+        height: 13,
+        obstacles: topics,
+      });
+      return {
+        ...m,
+        nameX: m.x + dx / kx,
+        nameY: m.y - dy / ky,
+        nameOffset: [dx, dy],
+      };
+    });
+  };
+  target.queryMarkers = () => markers;
+  target.placeQuery = (list = []) => {
+    if (!options.query) return Promise.resolve();
+    markers = list;
+    hoveredMarker = -1;
+    // The search area (#167): matchArea on the plot's pixels at the final scales; the ★ moves
+    // to the densest point of the blob holding the top match (#167 review)
+    const rows = data.filter(
+      (d) => Number.isFinite(d[x]) && Number.isFinite(d[y]),
     );
+    const grid = {
+      width: chart.view.width() - 20,
+      height: chart.view.height() - 20,
+      xDomain: extent(rows.map((d) => d[x])),
+      yDomain: extent(rows.map((d) => d[y])),
+    };
+    areas = list.map((m) =>
+      matchArea(
+        m.matches ?? m.nearest.map(({ x, y }) => ({ x, y, weight: 1 })),
+        { ...grid, top: m.nearest[0] },
+      ),
+    );
+    // Without an area (one Strong match, or none) it sits on the top match: never in empty
+    // space (#172 re-review)
+    const placed = list.map((m, i) => {
+      const at = areas[i]?.peak ?? m.nearest[0];
+      return at ? { ...m, x: at.x, y: at.y } : m;
+    });
+    markers = withNameSpots(placed, grid);
+    drawAreas();
     return chart.view
       .change(
         QUERY_DATA,
         chart.view
           .changeset()
           .remove(() => true)
-          .insert(
-            queryRows(markers, {
-              pixelsPerUnit,
-              maxRadius: 0.35 * Math.min(w, h),
-            }),
-          ),
+          .insert(queryRows(markers)),
       )
       .signal("queryHover", -1)
       .runAsync()
@@ -1568,9 +1673,11 @@ export async function BrushableScatterPlot(data, options = {}) {
         }),
         ...markers.flatMap((m) => {
           const [px, py] = toPixel([m.x, m.y]);
+          // The 13px ★ and its 11px semibold name 13px above it (#167)
+          const [dx, dy] = m.nameOffset ?? [0, -13];
           return [
-            [px - 10, py - 10, px + 10, py + 10],
-            box(px, py - 15, m.label, 12, 0.65),
+            [px - 7, py - 8, px + 7, py + 8],
+            box(px + dx, py + dy, m.label.replace(/^★\s*/, ""), 11, 0.62),
           ];
         }),
         ...legendBoxes(chart.view),

@@ -2992,3 +2992,22 @@ body #vg-tooltip-element table tr td.value {
   border: 1px solid var(--color-outline);
   border-radius: var(--rounded-sm, 2px);
 }
+
+/* #167 — the search area: one path per search behind the map's marks (inserted by the widget),
+   a light primary wash; 40% of that when few similar papers are visible. Hidden mid-motion,
+   it fades in as the motion settles. */
+.query-area {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity var(--motion-duration) var(--motion-ease);
+}
+
+.query-area-path {
+  fill: var(--color-primary);
+  opacity: 0.12;
+}
+
+.query-area-path[data-faint] {
+  opacity: 0.048;
+}

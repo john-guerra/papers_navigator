@@ -26,22 +26,22 @@ const marker = {
 };
 
 describe("queryRows", () => {
-  it("a halo sized from the spread, lines to the nearest papers, the marker last", () => {
-    const rows = queryRows([marker], { pixelsPerUnit: 10 });
-    expect(rows.map((r) => r.kind)).toEqual(["halo", "line", "line", "marker"]);
-    // Radius 2 units × 10 px = 20 px: symbol area (2r)²
-    expect(rows[0]).toMatchObject({ x: 2, y: 3, size: 1600 });
-    expect(rows[1]).toMatchObject({ x: 2, y: 3, x2: 0, y2: 0, m: 0 });
-    expect(rows[3]).toMatchObject({ label: "★ Your search", m: 0 });
-  });
-
-  it("caps the halo, and leaves out one the diamond covers", () => {
-    expect(
-      queryRows([marker], { pixelsPerUnit: 100, maxRadius: 50 })[0].size,
-    ).toBe(10000);
-    expect(
-      queryRows([marker], { pixelsPerUnit: 2 }).some((r) => r.kind === "halo"),
-    ).toBe(false);
+  it("lines to the nearest papers, then the marker (the area is drawn apart, #167 review)", () => {
+    const rows = queryRows([marker]);
+    expect([...new Set(rows.map((r) => r.kind))]).toEqual(["line", "marker"]);
+    expect(rows.find((r) => r.kind === "line")).toMatchObject({
+      x: 2,
+      y: 3,
+      x2: 0,
+      y2: 0,
+      m: 0,
+    });
+    // The star and the name are drawn apart (the star marks the spot)
+    expect(rows.at(-1)).toMatchObject({
+      label: "★ Your search",
+      name: "Your search",
+      m: 0,
+    });
   });
 
   it("numbers markers by index", () => {
@@ -49,6 +49,7 @@ describe("queryRows", () => {
     expect(rows.filter((r) => r.kind === "marker").map((r) => r.m)).toEqual([
       0, 1,
     ]);
+    expect(rows.at(-1).name).toBe("My research 2");
   });
 });
 
@@ -71,35 +72,51 @@ describe("queryTooltip", () => {
 
 describe("faint marker", () => {
   it("rows carry `faint`, and the marker layers fade it", async () => {
-    const rows = queryRows([{ ...marker, faint: true }], { pixelsPerUnit: 10 });
+    const rows = queryRows([{ ...marker, faint: true }]);
     expect(
       rows.filter((r) => r.kind !== "line").every((r) => r.faint === true),
     ).toBe(true);
     const spec = scatterSpec(data, { width: 200, height: 200, query: true });
-    const diamond = spec.layer.find((l) => l.mark.shape === "diamond");
-    expect(diamond.encoding.opacity).toEqual({
+    const star = spec.layer.find(
+      (l) => l.data?.name === "query" && l.encoding.text?.value === "★",
+    );
+    expect(star.encoding.opacity).toEqual({
       condition: { test: "datum.faint", value: 0.4 },
       value: 1,
     });
-    expect(diamond.mark.opacity).toBeUndefined();
+    expect(star.mark.opacity).toBeUndefined();
   });
 
   it("is drawn at lower opacity", async () => {
     const widget = await build();
     await widget.placeQuery([{ ...marker, faint: true }]);
-    const svg = widget.querySelector("svg").innerHTML;
+    const svg = widget.querySelector("svg.marks").innerHTML;
     expect(svg).toMatch(/opacity="0.4"/);
   });
 });
 
 describe("scatterSpec with a query layer", () => {
-  it("adds the empty `query` dataset, the hover param and its layers on top", () => {
+  it("adds the empty `query` dataset, the hover param, and its marks under the points (#167)", () => {
     const spec = scatterSpec(data, { width: 200, height: 200, query: true });
     expect(spec.datasets).toEqual({ query: [] });
     expect(spec.params.map((p) => p.name)).toContain("queryHover");
-    const last = spec.layer.at(-1);
-    expect(last.data).toEqual({ name: "query" });
-    expect(last.mark.type).toBe("text");
+    const pointsAt = spec.layer.findIndex(
+      (l) => l.mark.type === "point" && !l.data,
+    );
+    const queryAt = (test) =>
+      spec.layer.findIndex((l) => l.data?.name === "query" && test(l));
+    // The star sits under the points, the hover lines over them…
+    expect(queryAt((l) => l.encoding.text?.value === "★")).toBeLessThan(
+      pointsAt,
+    );
+    expect(queryAt((l) => l.mark.type === "rule")).toBeGreaterThan(pointsAt);
+    // …and the name above everything, topic labels included (#167 review)
+    const nameAt = queryAt((l) => l.encoding.text?.field === "name");
+    expect(nameAt).toBeGreaterThan(pointsAt);
+    expect(spec.layer.at(-1).encoding.text?.field).toBe("name");
+    // No diamond, no area cells in Vega (the area is one SVG path behind the map)
+    expect(spec.layer.some((l) => l.mark.shape === "diamond")).toBe(false);
+    expect(queryAt((l) => l.mark.type === "rect")).toBe(-1);
     expect(
       spec.layer.every(
         (l) => l.data?.name !== "query" || l.mark.interactive === false,
@@ -150,7 +167,7 @@ async function build(options = {}) {
 function screen(widget, d) {
   const view = widget.view;
   const [ox, oy] = view.origin();
-  const rect = widget.querySelector("svg").getBoundingClientRect();
+  const rect = widget.querySelector("svg.marks").getBoundingClientRect();
   return [
     rect.left + ox + view.scale("x")(d.x),
     rect.top + oy + view.scale("y")(d.y),
@@ -160,12 +177,15 @@ function screen(widget, d) {
 describe("BrushableScatterPlot query marker (#100)", () => {
   it("is hidden until placed, then drawn without a redraw, and hidden again with []", async () => {
     const widget = await build();
-    const svgBefore = widget.querySelector("svg");
+    const svgBefore = widget.querySelector("svg.marks");
     expect(widget.view.data("query")).toEqual([]);
     await widget.placeQuery([marker]);
     expect(widget.view.data("query").map((r) => r.kind)).toContain("marker");
-    expect(widget.querySelector("svg")).toBe(svgBefore);
-    expect(widget.querySelector("svg").textContent).toContain("★ Your search");
+    expect(widget.querySelector("svg.marks")).toBe(svgBefore);
+    expect(widget.querySelector("svg.marks").textContent).toContain(
+      "Your search",
+    );
+    expect(widget.querySelector("svg.marks").textContent).toContain("★");
     await widget.placeQuery([]);
     expect(widget.view.data("query")).toEqual([]);
   });
@@ -186,7 +206,7 @@ describe("BrushableScatterPlot query marker (#100)", () => {
   it("finds the marker near a screen position", async () => {
     const widget = await build();
     await widget.placeQuery([marker]);
-    const [cx, cy] = screen(widget, marker);
+    const [cx, cy] = screen(widget, widget.queryMarkers()[0]);
     expect(widget.queryAt(cx + 3, cy - 3)).toBe(0);
     const [ax, ay] = screen(widget, data[3]);
     expect(widget.queryAt(ax, ay)).toBe(-1);
@@ -206,7 +226,7 @@ describe("BrushableScatterPlot query marker (#100)", () => {
         Object.defineProperty(event, "pointerType", { value: "mouse" });
       widget.dispatchEvent(event);
     };
-    move(screen(widget, marker));
+    move(screen(widget, widget.queryMarkers()[0]));
     await new Promise((r) => setTimeout(r, 40));
     expect(widget.view.signal("queryHover")).toBe(0);
     expect(widget.neighbours.focus).toBeNull();
@@ -259,5 +279,56 @@ describe("query marker through a motion (#82)", () => {
     await view.runAsync();
     expect(await view.toSVG()).toContain("Your search");
     view.finalize();
+  });
+});
+
+describe("search area behind the map (#167 review)", () => {
+  const matches = [
+    { x: 0, y: 0, weight: 1 },
+    { x: 1, y: 1, weight: 1 },
+    { x: 10, y: 10, weight: 1 },
+  ];
+  it("is one path per marker inserted before the marks, and the ★ moves to its peak", async () => {
+    const widget = await build();
+    await widget.placeQuery([{ ...marker, matches }]);
+    const marks = widget.querySelector(".marks");
+    const layer = widget.querySelector("svg.query-area");
+    expect(layer).not.toBeNull();
+    // Before the marks, so the points paint over it
+    expect(
+      layer.compareDocumentPosition(marks) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(layer.querySelectorAll("path")).toHaveLength(1);
+    expect(layer.querySelector("path").getAttribute("d")).toMatch(/^M.*Z/);
+    // The ★ sits in the blob of the top match (nearest[0] = paper a at 0, 0), not at the mean
+    const [m] = widget.queryMarkers();
+    expect(Math.hypot(m.x - 0.5, m.y - 0.5)).toBeLessThan(1.5);
+    expect(
+      widget.view.data("query").find((r) => r.kind === "marker"),
+    ).toMatchObject({ x: m.x, y: m.y });
+    // Replaced, then removed with []
+    await widget.placeQuery([{ ...marker, matches }]);
+    expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(1);
+    await widget.placeQuery([]);
+    expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(0);
+  });
+
+  it("without an area, sits on the top match, never in empty space (#172 re-review)", async () => {
+    const widget = await build();
+    await widget.placeQuery([{ ...marker, matches: [] }]);
+    expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(0);
+    // nearest[0] = Paper A at (0, 0), not the weighted mean (2, 3)
+    expect(widget.queryMarkers()[0]).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("moves its name off a topic label it would cross (#172 re-review)", async () => {
+    // A topic label right above where the ★ lands (paper a at 0, 0 → bottom-left corner)
+    const labels = [{ text: "Topic here", x: 0.6, y: 0.9 }];
+    const widget = await build({ labels });
+    await widget.placeQuery([{ ...marker, matches: [] }]);
+    const row = widget.view.data("query").find((r) => r.kind === "marker");
+    // Not above the ★ (where the label is): below or beside it
+    const sy = widget.view.scale("y");
+    expect(sy(row.nameY)).toBeGreaterThanOrEqual(sy(row.y) - 1);
   });
 });
