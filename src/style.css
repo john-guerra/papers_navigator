@@ -918,6 +918,7 @@ a.navbar-brand {
 
 .site-footer-social ul {
   display: flex;
+  max-width: none; /* Framework caps lists at 600px */
   flex-wrap: wrap;
   column-gap: var(--spacing-md);
   row-gap: var(--spacing-xs);
@@ -1197,6 +1198,11 @@ a.navbar-brand {
 .papers-list .paper {
   padding: 14px 0;
   border-bottom: 1px solid var(--color-outline);
+}
+
+/* The footer's hairline closes the list: no second rule right above it (#189) */
+.papers-list .paper:last-child {
+  border-bottom-color: transparent;
 }
 
 /* #136 — the row ringed on the map (brushing and linking): a thin primary rule in the gutter */
