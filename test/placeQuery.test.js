@@ -5,6 +5,7 @@ import {
   placeByNeighbours,
   queryAnnouncement,
   queryCuts,
+  nameSpot,
   queryMarkers,
 } from "../src/lib/placeQuery.js";
 
@@ -418,5 +419,44 @@ describe("queryCuts", () => {
       strongCut: 0.45,
     });
     expect(queryCuts(null)).toEqual({});
+  });
+});
+
+describe("nameSpot (#172 re-review: the name goes to a free side of the ★)", () => {
+  const size = { width: 60, height: 13 };
+  it("above the ★ when free", () => {
+    expect(nameSpot([100, 100], { ...size, obstacles: [] })).toEqual({
+      dx: 0,
+      dy: -13,
+    });
+  });
+  it("below, then right, then left when the sides before are taken", () => {
+    const above = [70, 80, 130, 95];
+    expect(nameSpot([100, 100], { ...size, obstacles: [above] })).toEqual({
+      dx: 0,
+      dy: 14,
+    });
+    const below = [70, 105, 130, 125];
+    expect(
+      nameSpot([100, 100], { ...size, obstacles: [above, below] }),
+    ).toEqual({ dx: 39, dy: 0 });
+    const right = [110, 90, 180, 110];
+    expect(
+      nameSpot([100, 100], { ...size, obstacles: [above, below, right] }),
+    ).toEqual({ dx: -39, dy: 0 });
+  });
+  it("the least-covered side when all are taken", () => {
+    const big = [0, 0, 300, 300];
+    const smallBelow = [95, 110, 105, 115];
+    expect(nameSpot([100, 100], { ...size, obstacles: [big] })).toEqual({
+      dx: 0,
+      dy: -13,
+    });
+    expect(
+      nameSpot([100, 100], {
+        ...size,
+        obstacles: [[60, 80, 140, 96], smallBelow],
+      }),
+    ).toEqual({ dx: 0, dy: 14 });
   });
 });

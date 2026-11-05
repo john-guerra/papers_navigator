@@ -14,7 +14,7 @@ import {
   token,
 } from "../lib/similarityScheme.js";
 import { estimateWidth, textBox } from "../lib/paperLabels.js";
-import { matchArea } from "../lib/placeQuery.js";
+import { matchArea, nameSpot } from "../lib/placeQuery.js";
 import {
   domainAt,
   easeExpr,
@@ -660,10 +660,15 @@ function queryLayers({ xScale, yScale, tween, transition }) {
       },
       { opacity: faded(), ...encoding },
     );
+  // At (nameX, nameY): the free side of the ★ (lib/placeQuery.js nameSpot, #172 re-review)
   const name = (mark) =>
     text(
-      { dy: -13, fontSize: 11, fontWeight: 600, ...mark },
-      { text: { field: "name" } },
+      { fontSize: 11, fontWeight: 600, baseline: "middle", ...mark },
+      {
+        text: { field: "name" },
+        x: { ...position.x, field: "nameX" },
+        y: { ...position.y, field: "nameY" },
+      },
     );
   return {
     under: [
@@ -709,6 +714,8 @@ export function queryRows(markers) {
       y: m.y,
       label: m.label,
       name: m.label.replace(/^★\s*/, ""),
+      nameX: m.nameX ?? m.x,
+      nameY: m.nameY ?? m.y,
       faint: Boolean(m.faint),
     });
   });
@@ -1428,6 +1435,48 @@ export async function BrushableScatterPlot(data, options = {}) {
     ]);
   };
   chart.view.addResizeListener?.(() => areas.length && drawAreas());
+  // Each marker's name goes to the free side of its ★, off the topic labels (#172 re-review):
+  // nameX/nameY in data units, nameOffset [dx, dy] in px, at the final scales
+  const withNameSpots = (list, { width: w, height: h, xDomain, yDomain }) => {
+    const [x0, x1] = xDomain;
+    const [y0, y1] = yDomain;
+    const kx = w / (x1 - x0 || 1);
+    const ky = h / (y1 - y0 || 1);
+    const toPlot = ([px, py]) => [10 + (px - x0) * kx, 10 + h - (py - y0) * ky];
+    const labelSize = options.labelSize ?? 15;
+    const topics = (
+      visibleLabels(data, options.labels, {
+        x,
+        y,
+        width: options.width,
+        height: options.height,
+        labelSize,
+      }) ?? []
+    ).map((l) => {
+      const [px, py] = toPlot([l.x, l.y]);
+      return topicLabelBox(
+        px + (l.dx ?? 0),
+        py + (l.dy ?? 0),
+        l.text,
+        labelSize,
+        2,
+      );
+    });
+    return list.map((m) => {
+      const name = m.label.replace(/^★\s*/, "");
+      const { dx, dy } = nameSpot(toPlot([m.x, m.y]), {
+        width: estimateWidth(name, 11) * (0.62 / 0.55),
+        height: 13,
+        obstacles: topics,
+      });
+      return {
+        ...m,
+        nameX: m.x + dx / kx,
+        nameY: m.y - dy / ky,
+        nameOffset: [dx, dy],
+      };
+    });
+  };
   target.queryMarkers = () => markers;
   target.placeQuery = (list = []) => {
     if (!options.query) return Promise.resolve();
@@ -1450,9 +1499,13 @@ export async function BrushableScatterPlot(data, options = {}) {
         { ...grid, top: m.nearest[0] },
       ),
     );
-    markers = list.map((m, i) =>
-      areas[i]?.peak ? { ...m, x: areas[i].peak.x, y: areas[i].peak.y } : m,
-    );
+    // Without an area (one Strong match, or none) it sits on the top match: never in empty
+    // space (#172 re-review)
+    const placed = list.map((m, i) => {
+      const at = areas[i]?.peak ?? m.nearest[0];
+      return at ? { ...m, x: at.x, y: at.y } : m;
+    });
+    markers = withNameSpots(placed, grid);
     drawAreas();
     return chart.view
       .change(
@@ -1621,9 +1674,10 @@ export async function BrushableScatterPlot(data, options = {}) {
         ...markers.flatMap((m) => {
           const [px, py] = toPixel([m.x, m.y]);
           // The 13px ★ and its 11px semibold name 13px above it (#167)
+          const [dx, dy] = m.nameOffset ?? [0, -13];
           return [
             [px - 7, py - 8, px + 7, py + 8],
-            box(px, py - 13, m.label.replace(/^★\s*/, ""), 11, 0.62),
+            box(px + dx, py + dy, m.label.replace(/^★\s*/, ""), 11, 0.62),
           ];
         }),
         ...legendBoxes(chart.view),

@@ -182,7 +182,9 @@ describe("BrushableScatterPlot query marker (#100)", () => {
     await widget.placeQuery([marker]);
     expect(widget.view.data("query").map((r) => r.kind)).toContain("marker");
     expect(widget.querySelector("svg.marks")).toBe(svgBefore);
-    expect(widget.querySelector("svg.marks").textContent).toContain("Your search");
+    expect(widget.querySelector("svg.marks").textContent).toContain(
+      "Your search",
+    );
     expect(widget.querySelector("svg.marks").textContent).toContain("★");
     await widget.placeQuery([]);
     expect(widget.view.data("query")).toEqual([]);
@@ -311,10 +313,22 @@ describe("search area behind the map (#167 review)", () => {
     expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(0);
   });
 
-  it("keeps the old placement and draws no area without matches", async () => {
+  it("without an area, sits on the top match, never in empty space (#172 re-review)", async () => {
     const widget = await build();
     await widget.placeQuery([{ ...marker, matches: [] }]);
     expect(widget.querySelectorAll("svg.query-area path")).toHaveLength(0);
-    expect(widget.queryMarkers()[0]).toMatchObject({ x: 2, y: 3 });
+    // nearest[0] = Paper A at (0, 0), not the weighted mean (2, 3)
+    expect(widget.queryMarkers()[0]).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("moves its name off a topic label it would cross (#172 re-review)", async () => {
+    // A topic label right above where the ★ lands (paper a at 0, 0 → bottom-left corner)
+    const labels = [{ text: "Topic here", x: 0.6, y: 0.9 }];
+    const widget = await build({ labels });
+    await widget.placeQuery([{ ...marker, matches: [] }]);
+    const row = widget.view.data("query").find((r) => r.kind === "marker");
+    // Not above the ★ (where the label is): below or beside it
+    const sy = widget.view.scale("y");
+    expect(sy(row.nameY)).toBeGreaterThanOrEqual(sy(row.y) - 1);
   });
 });

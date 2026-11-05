@@ -339,3 +339,32 @@ export function queryCuts(cuts) {
     ? { weakCut: cuts.weak, goodCut: cuts.good, strongCut: cuts.strong }
     : {};
 }
+
+/**
+ * Where the query marker's name goes around its ★ at `star` = [x, y] (#172 re-review): the
+ * first side whose `width` × `height` box (px) crosses none of `obstacles` ([x0, y0, x1, y1],
+ * e.g. topic labels), tried above, below, right, then left; when every side is taken, the
+ * least covered one. Returns the box center's offset {dx, dy} from the ★ in px.
+ */
+export function nameSpot([px, py], { width, height, obstacles = [], gap = 9 }) {
+  const sides = [
+    { dx: 0, dy: -13 },
+    { dx: 0, dy: 14 },
+    { dx: width / 2 + gap, dy: 0 },
+    { dx: -(width / 2 + gap), dy: 0 },
+  ];
+  let best = null;
+  for (const side of sides) {
+    const x0 = px + side.dx - width / 2;
+    const y0 = py + side.dy - height / 2;
+    let covered = 0;
+    for (const [a, b, c, d] of obstacles) {
+      const w = Math.min(x0 + width, c) - Math.max(x0, a);
+      const h = Math.min(y0 + height, d) - Math.max(y0, b);
+      if (w > 0 && h > 0) covered += w * h;
+    }
+    if (covered === 0) return side;
+    if (!best || covered < best.covered) best = { ...side, covered };
+  }
+  return { dx: best.dx, dy: best.dy };
+}
