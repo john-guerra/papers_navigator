@@ -361,8 +361,9 @@ copy.
 
 - **The "Include" control.** In "All my papers", next to Search, Sort by and Group by: **"Include"**
   with two checkboxes, **both off by default**:
+  - **"Rated or attended, not in My Papers (n)"**: papers with stars or attended that aren't in
+    your list (e.g. a rated paper you removed)
   - **"👎 Not for me (n)"**
-  - **"Attended, not in My Papers (n)"**
 
   Hidden when both counts are 0. Picking 👎 in the rating filter turns the first box on, so that
   filter never shows an empty list. The choices are remembered per device.
@@ -411,9 +412,10 @@ copy.
 
 ### Live page lists
 
-- "Papers I rated" and "Papers I attended" on Live become a **short summary for today**: today's
-  rated and attended papers. Under each, **"Review all in My Papers →"** opens My Papers with
-  Include on and the matching group (rating, or attended).
+- "Papers I rated" and "Papers I attended" on Live **stay complete**, with their filters and
+  Bluesky Post (builder check: a today-only summary would hide yesterday's papers and their Post,
+  and "rated today" needs times the ratings don't store). Under each, **"Review all in My Papers
+  →"** opens My Papers with both Include boxes on and grouped by rating, or by attended.
 - Rows for papers not in My Papers, on Live's lists, get the "Add to My Papers" toggle (UX
   review).
 
@@ -450,6 +452,24 @@ copy.
   "On iPhone, Safari may delete this site's data after 7 days without a visit: add it to your Home
   Screen or export." Worded as "may": WebKit announced the 7-day rule in 2020, and it hasn't been
   re-verified (Claude's call).
+
+### Settled from the builder check (Claude's calls)
+
+- **Reason groups** (Group by reason and the "Show" filter) go by the reason's marker:
+  - ★ Rated, ★ Added on Live, ✨ Recommended ("✨ Like …"), 📱 Shared, 👤 From an author
+  - 👥 / 🏫 / 🔍 rules, one group per rule, as "Show" lists them today
+  - Not in My Papers
+  - anything else, e.g. "★ <search>" or imported text: **★ Added by hand**
+- **Scope.** "Show", the rating filter and "Include" apply to **"All my papers" only**. The
+  itinerary is unchanged. Included papers appear only when "Show" is "All".
+- **Rows.** Compact rows reuse `compactPaperRow`, so they keep the author names and a "📍 room ·
+  day time" line, and Sort by time or room stays visible.
+- **The banner.** The storage-failure banner shows on every page that writes your data: Explore,
+  My Papers, Researchers, Live.
+  - Its button exports on My Papers. Elsewhere it is "Open My Papers to export" (a link to
+    `my-papers.html#export`, which scrolls to and highlights Export).
+  - It counts failures only for your data: followed, rules, notes, ratings, disliked, attended.
+    Not view settings, Bluesky handles, the Live clock or cached vectors.
 
 ### Non-goals (Stage E)
 
