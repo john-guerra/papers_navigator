@@ -244,6 +244,9 @@ attended**.
 - **Window: the next two talks in each room.** Talks are back-to-back, 9–12 minutes each (VIS
   2026: all 300 timed talks, start-to-start = length). So the window is the two talks after the one on
   now in each parallel session of the slot, about 18–24 minutes. It is not a fixed number of minutes.
+  A talk that started less than **2 minutes** ago also counts, as "just started". Other talks
+  already under way are not in the rows and don't count toward the badge: they show, with their
+  reason chips, in "On now" (builder check).
   Workshops and posters have no talk times, so their sessions contribute nothing.
 - **"Worth moving for".** A talk in the window counts when any of these hold:
   - it's in My Papers, labelled **"★ My Papers"** if added by hand, or with the rule that keeps it:
@@ -254,7 +257,7 @@ attended**.
   1. reason: My Papers (any) first, then award
   2. start time
 - **Rows.**
-  - "in 8 min · 10:48 · 📍 Room", or "now · 📍 Room" for the talk on now when it qualifies
+  - "in 8 min · 10:48 · 📍 Room", or "just started · 📍 Room" for a talk under 2 minutes in
   - the type pill, award icon and title (a link opening the details)
   - the reason chips
   - **"Go there →"**, which commits to that session (the same as Switch room today), keeps every
@@ -274,8 +277,14 @@ attended**.
 - **Control.** Next to the five stars, a **"👎"** toggle (labelled "Not for me", `aria-pressed`). It
   is mutually exclusive with stars: tapping 👎 clears the stars, and tapping a star clears 👎. Tap
   again to clear it.
-- **Storage.** In the same ratings store, as the value **-1**. `cleanRatings` accepts -1 and 1–5.
-  Export / Import carries it. Older builds drop -1 on import, which is harmless.
+- **Storage (builder check).** A separate store, **`papersNavigator:<id>:disliked`**, `{paperId:
+  true}`, not -1 in the ratings.
+  - Why: today's ratings store re-reads and cleans before every write, so an older tab still open on
+    the current build would silently delete every -1 the next time a star is tapped there.
+  - The two stores are kept mutually exclusive by the controls: setting one clears the other for
+    that paper.
+  - Export / Import carry it as an optional `disliked` field, merged like ratings (yours win).
+  - Add the key to the About page's storage list.
 - **Where it shows.**
   - "👎" after the title in list rows (the ★n marker's place)
   - in paper details next to "Your rating"
@@ -285,9 +294,14 @@ attended**.
 
 ### Attended papers (decided: automatic + manual)
 
-- **Automatic.** While checked in to a session, a talk of that session is marked attended once it has
-  been on for **5 minutes** (by the page's time). It is only marked while the page is open: no
-  background work. A 9–12 minute talk you sat in for at least 5 minutes counts.
+- **Automatic (builder check).** While checked in to a session, a talk of that session is marked
+  attended when you were checked in for at least **5 minutes** of it. That is the overlap of the talk
+  with the time from `checkIn.at` to now.
+  - It is computed on each tick from the **real clock only**. Nothing is marked while the time is
+    set by hand.
+  - So after the phone sleeps, the talks it slept through are marked on the next tick if you were
+    still checked in, and talks that ended before the check-in never are.
+  - No background work.
 - **Manual.**
   - Each talk in the session view has **"✓ Attended"** (`aria-pressed`) to untick it if you stepped
     out, or tick it.
@@ -311,7 +325,8 @@ attended**.
 ### Calls made by Claude (open to change)
 
 - **"Soon"** as the button label, and the badge counting only other rooms.
-- **-1** in the ratings store for 👎.
+- A separate `disliked` store for 👎 (builder check: older tabs would erase -1 ratings).
+- Automatic attendance: real clock only, by overlap with the check-in; 2-minute "just started".
 - **5 minutes** for automatic attendance.
 - **"Rate it?"** for attended papers you haven't rated.
 - **Sort:** My Papers first, then award, then time.
