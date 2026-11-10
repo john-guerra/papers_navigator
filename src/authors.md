@@ -140,6 +140,8 @@ const paperDetail = paperPanel(paperParam, {
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
   notes: notesStore,
   ratings: ratingsStore,
+  disliked: dislikedStore,
+  onRated: rateAdds,
 });
 invalidation.then(paperDetail.dispose);
 ```
@@ -155,11 +157,19 @@ import { createNotesStore } from "./lib/notes.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
 import { bindRatingMarkers } from "./components/ratingMarkers.js";
 import { createRatingsStore } from "./lib/ratings.js";
+import { createDislikedStore } from "./lib/disliked.js";
+import { createAttendedStore } from "./lib/attended.js";
+import { addOnRate } from "./components/verdict.js";
 const notesStore = createNotesStore(conference.id);
 invalidation.then(() => notesStore.dispose());
 invalidation.then(bindNoteMarkers(document.querySelector(".author-page"), notesStore));
 // Ratings (#203): "★4" on rated rows; also the stars in paper details
 const ratingsStore = createRatingsStore(conference.id);
+// 👎 Not for me and attended papers (#208); a star rating adds the paper to My Papers
+const dislikedStore = createDislikedStore(conference.id);
+const attendedStore = createAttendedStore(conference.id);
+invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
+const rateAdds = addOnRate({ store, addWithUndo, toast: showToast });
 invalidation.then(() => ratingsStore.dispose());
-invalidation.then(bindRatingMarkers(document.querySelector(".author-page"), ratingsStore));
+invalidation.then(bindRatingMarkers(document.querySelector(".author-page"), ratingsStore, { disliked: dislikedStore, attended: attendedStore }));
 ```

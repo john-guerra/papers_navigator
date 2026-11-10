@@ -73,3 +73,37 @@ describe("bindRatingMarkers (#203 Stage B)", () => {
     );
   });
 });
+
+describe("markers for Not for me and attended (#208)", () => {
+  const keyed = (initial) => {
+    const s = new EventTarget();
+    let v = { ...initial };
+    s.has = (id) => v[id] === true;
+    s.isAttended = (id) => Boolean(v[id]);
+    s.replace = (next) => {
+      v = next;
+      s.dispatchEvent(new Event("input"));
+    };
+    return s;
+  };
+  it("shows 👎 instead of stars, and ✓ for attended papers; follows the stores", () => {
+    const root = document.createElement("div");
+    root.append(listRow("a"), listRow("b"));
+    const disliked = keyed({ a: true });
+    const attended = keyed({ b: true });
+    bindRatingMarkers(root, fakeRatings({}), { disliked, attended });
+    expect(
+      root.querySelector('[data-paper-id="a"] .rating-marker').textContent,
+    ).toBe("👎");
+    expect(root.querySelector('[data-paper-id="a"] .rating-marker').title).toBe(
+      "Not for me",
+    );
+    const tick = root.querySelector('[data-paper-id="b"] .attended-marker');
+    expect(tick.textContent).toBe("✓");
+    expect(tick.title).toBe("You attended");
+    attended.replace({});
+    expect(root.querySelector(".attended-marker")).toBeNull();
+    disliked.replace({});
+    expect(root.querySelector(".rating-marker")).toBeNull();
+  });
+});

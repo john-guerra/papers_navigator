@@ -130,3 +130,17 @@ describe("Papers I rated keeps open Post panels across redraws (#203 Stage C rev
     expect(el.querySelector('[data-paper-id="b"] .post-panel')).toBeNull();
   });
 });
+
+describe("Not for me in Papers I rated (#208)", () => {
+  it("lists disliked papers after the starred ones, and 4★ and up hides them", () => {
+    const el = render({ dislikedIds: ["unrated"] });
+    const section = el.querySelector(".rated-disliked");
+    expect(section.textContent).toContain("Not for me");
+    expect(section.querySelector('[data-paper-id="unrated"]')).toBeTruthy();
+    expect(
+      render({ dislikedIds: ["unrated"], minRating: 4 }).querySelector(
+        ".rated-disliked",
+      ),
+    ).toBeNull();
+  });
+});

@@ -2,7 +2,7 @@ import { html } from "htl";
 import { formatTime } from "../lib/time.js";
 import { talkAt } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
-import { starRating } from "../widgets/starRating.js";
+import { verdict } from "./verdict.js";
 import { quickNote } from "./quickNote.js";
 import { soonWidget } from "./soonWidget.js";
 import { titleLink } from "./liveBreak.js";
@@ -39,6 +39,9 @@ export function renderSessionView(
     onClosePost,
     // My Papers entries by id (why each is there), for Soon (#208)
     mine = new Map(),
+    // 👎 Not for me (#208) and what a star rating does (adds to My Papers)
+    disliked = null,
+    onRated,
   },
 ) {
   const now = talkAt(session, at);
@@ -55,13 +58,9 @@ export function renderSessionView(
   });
   const disposers = [];
   const rows = session.items.map((p) => {
-    const stars = starRating(ratings.get(p.id), {
-      label: `Rate ${p.title}`,
-    });
-    stars.addEventListener("input", () => ratings.set(p.id, stars.value));
-    const followRating = () => (stars.value = ratings.get(p.id));
-    ratings.addEventListener("input", followRating);
-    disposers.push(() => ratings.removeEventListener("input", followRating));
+    // Stars or 👎 Not for me (#208); stars add the paper to My Papers (onRated)
+    const stars = verdict(p, { ratings, disliked, onRated });
+    disposers.push(() => stars.dispose());
     const note = quickNote(p, { notes });
     // Details in place, collapsed (abstract, affiliations, links) and a jump to the full panel
     const details = inPlaceDetails(p, { authorHref: authorUrl, onOpen });

@@ -8,6 +8,9 @@ import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { createNotesStore } from "./lib/notes.js";
 import { createRatingsStore } from "./lib/ratings.js";
+import { createDislikedStore } from "./lib/disliked.js";
+import { createAttendedStore } from "./lib/attended.js";
+import { addOnRate } from "./components/verdict.js";
 import { createLiveClock } from "./lib/liveClock.js";
 import { activeSession, createCheckInStore, programDays, slotOf, slotsAt } from "./lib/live.js";
 import { addWithUndo } from "./lib/selection.js";
@@ -47,6 +50,12 @@ invalidation.then(bindMyPapersBadge(store));
 // all on this device only, never in a URL (#203)
 const notesStore = createNotesStore(conference.id);
 const ratingsStore = createRatingsStore(conference.id);
+// 👎 Not for me and attended papers (#208); a star rating adds the paper to My Papers
+const dislikedStore = createDislikedStore(conference.id);
+const attendedStore = createAttendedStore(conference.id);
+invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
+const dislikedState = Generators.input(dislikedStore);
+const rateAdds = addOnRate({ store, addWithUndo, toast: showToast });
 const clock = createLiveClock(conference.id, { tz });
 const checkIn = createCheckInStore(conference.id);
 invalidation.then(() => (notesStore.dispose(), ratingsStore.dispose(), checkIn.dispose()));
@@ -140,6 +149,8 @@ const paperDetail = paperPanel(paperParam, {
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
   notes: notesStore,
   ratings: ratingsStore,
+  disliked: dislikedStore,
+  onRated: rateAdds,
 });
 invalidation.then(paperDetail.dispose);
 ```
@@ -180,6 +191,8 @@ liveView.show(
           mineIds,
           mine,
           ratings: ratingsStore,
+          disliked: dislikedStore,
+          onRated: rateAdds,
           notes: notesStore,
           onSwitch: commit,
           onLeave: () => checkIn.leave(),
@@ -228,6 +241,7 @@ const drawRated = () => {
   ratedBox.replaceChildren(
     renderRatedPapers(papers, {
       ratings: ratingsState,
+      dislikedIds: Object.keys(dislikedState),
       notes: notesState,
       tz,
       ...ratedState,

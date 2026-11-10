@@ -31,6 +31,7 @@ import { createDislikedStore, importedDislikedText } from "./lib/disliked.js";
 import { createAttendedStore, importedAttendedText } from "./lib/attended.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
 import { bindRatingMarkers } from "./components/ratingMarkers.js";
+import { addOnRate } from "./components/verdict.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { arrangeMyPapers } from "./components/myPapersLayout.js";
@@ -410,8 +411,8 @@ invalidation.then(
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-list"), notesStore, { text: true }));
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-schedule"), notesStore));
 // Ratings (#203): "★4" on rated rows
-invalidation.then(bindRatingMarkers(document.querySelector(".mp-list"), ratingsStore));
-invalidation.then(bindRatingMarkers(document.querySelector(".mp-schedule"), ratingsStore));
+invalidation.then(bindRatingMarkers(document.querySelector(".mp-list"), ratingsStore, { disliked: dislikedStore, attended: attendedStore }));
+invalidation.then(bindRatingMarkers(document.querySelector(".mp-schedule"), ratingsStore, { disliked: dislikedStore, attended: attendedStore }));
 ```
 
 ```js
@@ -547,6 +548,8 @@ const paperDetail = paperPanel(paperParam, {
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
   notes: notesStore,
   ratings: ratingsStore,
+  disliked: dislikedStore,
+  onRated: addOnRate({ store, addWithUndo, toast: showToast }),
 });
 invalidation.then(paperDetail.dispose);
 ```
