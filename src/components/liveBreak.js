@@ -39,6 +39,21 @@ export function livePaperRow(p, { mineIds, detailsHref, onOpen, toggles }) {
   </li>`;
 }
 
+/** "Details on ieeevis.org ↗" for a session without papers (plenary, panel, meetup). */
+export function eventLink(session) {
+  return /^https?:\/\//i.test(session.event?.url ?? "")
+    ? html`<p class="live-event-note">
+        <a
+          class="live-event-link"
+          href=${session.event.url}
+          target="_blank"
+          rel="noopener"
+          >Details on ieeevis.org ↗</a
+        >
+      </p>`
+    : "";
+}
+
 function sessionCard(
   session,
   { tz, mineIds, onGoing, detailsHref, onOpen, toggles },
@@ -78,15 +93,23 @@ function sessionCard(
           ${formatTime(session.start, tz)}–${formatTime(session.end, tz)}
         </div>
       </div>
-      <div class=${`live-mine${session.mine ? "" : " is-zero"}`}>
-        <strong>${session.mine}</strong> of yours
-      </div>
+      ${
+        session.event
+          ? ""
+          : html`<div class=${`live-mine${session.mine ? "" : " is-zero"}`}>
+              <strong>${session.mine}</strong> of yours
+            </div>`
+      }
     </header>
     <p class="live-summary">${sessionSummary(session)}</p>
-    <details class="live-expand">
-      <summary>Papers</summary>
-      ${list}
-    </details>
+    ${
+      session.event
+        ? eventLink(session)
+        : html`<details class="live-expand">
+            <summary>Papers</summary>
+            ${list}
+          </details>`
+    }
     ${going}
   </article>`;
 }
@@ -187,6 +210,8 @@ export function renderBreakView(
       if (!session) continue;
       const n = session.items.filter((p) => ids.has(p.id)).length;
       const box = card.querySelector(".live-mine");
+      // A plenary or panel has no papers, so no "of yours"
+      if (!box) continue;
       box.querySelector("strong").textContent = String(n);
       box.classList.toggle("is-zero", !n);
     }

@@ -2,15 +2,70 @@ import { groupIntoSlots } from "./schedule.js";
 import { dayKey } from "./time.js";
 import { AWARD_TIERS } from "./paperMeta.js";
 
+const ms = (iso) => (iso ? new Date(iso).getTime() : NaN);
+
 /**
  * The Live page's program (#203): every paper session (not only My Papers) grouped into days
  * and slots of parallel sessions, with schedule.js's grouping. Slot and session times are ms.
+ * `sessions` (pipeline/fetch_sessions.py) adds the ones without papers: plenaries, panels,
+ * tutorials, meetups, as sessions with no `items` and an `event` {type, typeLabel, url}. One
+ * joins every paper slot it overlaps without stretching it (an all-day exhibition doesn't merge
+ * the day into one slot); one with no paper session on gets its own slot (merged with the
+ * events it overlaps). Sessions already in the papers (by id, or listing one of their papers)
+ * are skipped.
  */
-export function programDays(papers, tz) {
-  return groupIntoSlots(papers, tz).days;
+export function programDays(papers, tz, sessions = []) {
+  const days = groupIntoSlots(papers, tz).days;
+  const paperIds = new Set(papers.map((p) => p.id));
+  const sessionIds = new Set(papers.map((p) => p.sessionId));
+  const events = sessions
+    .filter(
+      (s) =>
+        !sessionIds.has(s.sessionId) &&
+        !(s.paperIds ?? []).some((id) => paperIds.has(id)) &&
+        Number.isFinite(ms(s.start)) &&
+        Number.isFinite(ms(s.end)),
+    )
+    .map((s) => ({
+      sessionId: s.sessionId,
+      sessionName: s.title,
+      room: s.room ?? null,
+      items: [],
+      start: ms(s.start),
+      end: ms(s.end),
+      firstTalk: Infinity,
+      event: { type: s.type, typeLabel: s.typeLabel, url: s.url },
+    }))
+    .sort((a, b) => a.start - b.start);
+  const own = new Map();
+  for (const e of events) {
+    const overlapping = days
+      .flatMap((d) => d.slots)
+      .filter((slot) => slot.start < e.end && e.start < slot.end);
+    for (const slot of overlapping) slot.sessions.push(e);
+    if (overlapping.length) continue;
+    const date = dayKey(new Date(e.start), tz);
+    if (!own.has(date)) own.set(date, []);
+    const slots = own.get(date);
+    const last = slots.at(-1);
+    if (last && e.start < last.end) {
+      last.sessions.push(e);
+      last.end = Math.max(last.end, e.end);
+    } else slots.push({ start: e.start, end: e.end, sessions: [e] });
+  }
+  for (const [date, slots] of own) {
+    let day = days.find((d) => d.date === date);
+    if (!day) days.push((day = { date, slots: [] }));
+    for (const slot of slots)
+      day.slots.push({
+        ...slot,
+        recommended: slot.sessions[0],
+        alternatives: slot.sessions.slice(1),
+      });
+    day.slots.sort((a, b) => a.start - b.start);
+  }
+  return days.sort((a, b) => a.date.localeCompare(b.date));
 }
-
-const ms = (iso) => (iso ? new Date(iso).getTime() : NaN);
 
 /**
  * Where `at` falls: `now` (the slot running), `next` (the first slot today starting after
@@ -36,9 +91,13 @@ export function slotsAt(days, at, tz) {
   };
 }
 
+/** A plenary first (nothing else is on), then paper sessions, then panels, meetups, tutorials. */
+const kindRank = (s) => (!s.event ? 1 : s.event.type === "plenary" ? 0 : 2);
+
 /**
  * The slot's sessions with `mine` (how many of their papers are in My Papers, `mineIds`), the
- * most first, then by room; the first is `recommended` when it has any of yours.
+ * most first, then a plenary, paper sessions, other events, each by start and room; the first
+ * is `recommended` when it has any of yours.
  */
 export function rankSessions(slot, mineIds) {
   const ranked = slot.sessions
@@ -49,7 +108,10 @@ export function rankSessions(slot, mineIds) {
     }))
     .sort(
       (a, b) =>
-        b.mine - a.mine || String(a.room ?? "").localeCompare(b.room ?? ""),
+        b.mine - a.mine ||
+        kindRank(a) - kindRank(b) ||
+        a.start - b.start ||
+        String(a.room ?? "").localeCompare(b.room ?? ""),
     );
   if (ranked[0]?.mine > 0) ranked[0].recommended = true;
   return ranked;
@@ -66,6 +128,8 @@ function counts(values) {
 
 /** "7 papers · 2 Full · 1 Short · 🏆 1 · Perception; Uncertainty" (topic labels contain commas) (empty parts left out). */
 export function sessionSummary(session) {
+  // A plenary, panel or meetup (no papers): its type, as the VIS program names it
+  if (session.event) return session.event.typeLabel ?? "";
   const items = session.items ?? [];
   const n = items.length;
   const parts = [`${n} ${n === 1 ? "paper" : "papers"}`];
@@ -144,15 +208,26 @@ export function createCheckInStore(
   return store;
 }
 
-/** The checked-in session while it runs today (by `at`), else null (ended, unknown, none). */
+/**
+ * The checked-in session while it runs today (by `at`), else null (ended, unknown, none). An
+ * event in several slots (an all-day exhibition) ends with the slot you checked in during, so
+ * the break view comes back (review).
+ */
 export function activeSession(checkIn, days, at, tz) {
   if (!checkIn) return null;
   const today = days.find((d) => d.date === dayKey(at, tz))?.slots ?? [];
   const t = at.getTime();
   for (const slot of today)
-    for (const session of slot.sessions)
-      if (session.sessionId === checkIn.sessionId && t < session.end)
-        return session;
+    for (const session of slot.sessions) {
+      if (session.sessionId !== checkIn.sessionId) continue;
+      const end = session.event
+        ? Math.min(
+            session.end,
+            slotOf(session, days, new Date(checkIn.at))?.end ?? Infinity,
+          )
+        : session.end;
+      return t < end ? session : null;
+    }
   return null;
 }
 
@@ -169,13 +244,23 @@ export function checkedInSession(checkIn, days) {
   return null;
 }
 
-/** The slot (today) that contains `session`. */
-export function slotOf(session, days) {
-  for (const day of days)
-    for (const slot of day.slots)
-      if (slot.sessions.some((s) => s.sessionId === session.sessionId))
-        return slot;
-  return null;
+/**
+ * The slot that contains `session`; with `at`, the one running then (an all-day event is in
+ * several slots), else the next one to start, else the first.
+ */
+export function slotOf(session, days, at) {
+  const slots = days
+    .flatMap((day) => day.slots)
+    .filter((slot) =>
+      slot.sessions.some((s) => s.sessionId === session.sessionId),
+    );
+  const t = at?.getTime();
+  return (
+    slots.find((slot) => slot.start <= t && t < slot.end) ??
+    slots.find((slot) => slot.start > t) ??
+    slots[0] ??
+    null
+  );
 }
 
 /** Chips for the award groups (#208), like the row's award mark. */

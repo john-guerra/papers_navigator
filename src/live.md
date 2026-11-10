@@ -35,6 +35,8 @@ import { createBooleanSetting } from "./lib/booleanSetting.js";
 ```js
 const conference = FileAttachment("data/conference.json").json();
 const papers = FileAttachment("data/papers.json").json();
+// Plenaries, panels, meetups: the sessions without papers, shown in the program too
+const programSessions = FileAttachment("data/sessions.json").json();
 // Only when a paper's details need related papers (precached with the page)
 const embeddingsFile = FileAttachment("data/embeddings.bin");
 ```
@@ -66,7 +68,7 @@ const checkInState = Generators.input(checkIn);
 const ratingsState = Generators.input(ratingsStore);
 const notesState = Generators.input(notesStore);
 // Every paper session of the program, by day and slot of parallel sessions
-const days = programDays(papers, tz);
+const days = programDays(papers, tz, programSessions);
 const loadMatrix = lazyLoader(async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length));
 // Survive re-renders: the rated list's filters, and the views kept while only time moves
 const ratedState = { minRating: 0, day: null };
@@ -206,7 +208,7 @@ liveView.show(
   () =>
     session
       ? renderSessionView(session, {
-          slot: slotOf(session, days),
+          slot: slotOf(session, days, at),
           at,
           tz,
           mineIds,

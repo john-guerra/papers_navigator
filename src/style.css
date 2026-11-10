@@ -3353,6 +3353,11 @@ body #vg-tooltip-element table tr td.value {
 .live-summary {
   margin: var(--spacing-xs) 0;
 }
+/* A plenary, panel or meetup (no papers): its link to the VIS program */
+.live-event-note {
+  margin: var(--spacing-xs) 0;
+  font: var(--typography-body-sm);
+}
 .live-mine {
   flex: none;
   text-align: right;
