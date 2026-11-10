@@ -23,6 +23,8 @@ export function renderRecommended(
     onShowMore,
     onRetry,
     authorHref = authorUrl,
+    // Link to a paper's details on this page (paperRoute.href: keeps e.g. a profile's ?name=)
+    detailsHref = (p) => `?paper=${encodeURIComponent(p.shortId ?? p.id)}`,
     // Researcher profiles (#150): their own row actions (a toggle, no Dismiss) and wording
     actions = null,
     loadingText = "Finding papers like yours…",
@@ -65,10 +67,7 @@ export function renderRecommended(
   function renderRow(p) {
     // A real link to its details URL (inline, wraps with the text); a plain click opens the
     // panel in place, a modified click opens a new tab
-    const why = html`<a
-      href=${`?paper=${encodeURIComponent(p.because.shortId ?? p.because.id)}`}
-      >${p.because.title}</a
-    >`;
+    const why = html`<a href=${detailsHref(p.because)}>${p.because.title}</a>`;
     why.onclick = (event) => {
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.button)
         return;
@@ -81,6 +80,7 @@ export function renderRecommended(
         tzLabel,
         authorHref,
         onOpen,
+        href: detailsHref,
         titleClass: "recommended-open",
         meta: `${Math.round(p.score * 100)}% similar`,
         extra: html`<span class="recommended-why">✨ Like ${why}</span>`,

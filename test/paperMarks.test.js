@@ -148,3 +148,22 @@ describe("compactPaperRow (#199)", () => {
     expect(row.querySelector(".act")).toBeTruthy();
   });
 });
+
+describe("compactPaperRow links (#199 review)", () => {
+  it("links the title with the page's href(p), else ?paper=", () => {
+    const base = { tz: "US/Eastern", onOpen: () => {} };
+    expect(
+      compactPaperRow(paper, base)
+        .querySelector(".compact-title")
+        .getAttribute("href"),
+    ).toBe("?paper=s1");
+    expect(
+      compactPaperRow(paper, {
+        ...base,
+        href: (p) => `authors.html?name=Ann&paper=${p.shortId}`,
+      })
+        .querySelector(".compact-title")
+        .getAttribute("href"),
+    ).toBe("authors.html?name=Ann&paper=s1");
+  });
+});

@@ -141,3 +141,24 @@ describe("renderRecommended rows (#199)", () => {
     );
   });
 });
+
+describe("renderRecommended links (#199 review)", () => {
+  it("uses detailsHref for the title and the why link (keeps the page's params)", () => {
+    const el = renderRecommended(
+      { status: "ready", recs: [recs[0]] },
+      {
+        tz: "US/Eastern",
+        onOpen: vi.fn(),
+        onAdd: vi.fn(),
+        onDismiss: vi.fn(),
+        detailsHref: (p) => `?name=Ann&paper=${p.shortId}`,
+      },
+    );
+    expect(el.querySelector(".recommended-open").getAttribute("href")).toBe(
+      "?name=Ann&paper=s0",
+    );
+    expect(el.querySelector(".recommended-why a").getAttribute("href")).toBe(
+      "?name=Ann&paper=sm1",
+    );
+  });
+});

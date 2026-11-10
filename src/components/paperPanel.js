@@ -84,6 +84,8 @@ export function paperPanel(
       }
     },
     onOpen: open,
+    // Related titles link to their details on this page, its other params kept
+    detailsHref: route.href && ((p) => route.href(p.shortId ?? p.id)),
     onClose: () => route.close(),
     note: notes ? renderPaperNote(paper, { notes, toast }) : null,
     miniMap: miniMap

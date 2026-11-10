@@ -2836,14 +2836,6 @@ details.missing > summary {
   border-bottom: 1px solid var(--color-outline);
 }
 
-.related-open {
-  flex: 1 1 100%;
-  justify-content: flex-start;
-  text-align: left;
-  white-space: normal;
-  font-weight: 600;
-}
-
 .paper-actions {
   display: inline-flex;
   flex-wrap: wrap;
@@ -2865,14 +2857,6 @@ details.missing > summary {
   gap: 2px var(--spacing-sm, 8px);
   padding: var(--spacing-sm, 8px) 0;
   border-bottom: 1px solid var(--color-outline);
-}
-
-.recommended-open {
-  flex: 1 1 100%;
-  justify-content: flex-start;
-  text-align: left;
-  white-space: normal;
-  font-family: var(--font-serif);
 }
 
 .recommended-why {
@@ -3190,6 +3174,7 @@ body #vg-tooltip-element table tr td.value {
   line-height: 1.35;
   white-space: nowrap;
   vertical-align: 0.12em;
+  padding-right: 6px;
 }
 .type-pill::before {
   content: "";
@@ -3197,9 +3182,6 @@ body #vg-tooltip-element table tr td.value {
   width: 5px;
   margin-right: 4px;
   background: var(--pill-color);
-}
-.type-pill {
-  padding-right: 6px;
 }
 .type-pill[data-color="full"] {
   --pill-color: var(--color-type-full);

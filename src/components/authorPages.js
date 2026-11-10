@@ -237,6 +237,7 @@ export function renderAuthorProfile(
     likeToggles = followToggles({ inMyPapers, onToggle });
     likeBody.replaceChildren(
       renderRecommended(likeState, {
+        detailsHref,
         tz,
         tzLabel,
         shown: likeState.shown,

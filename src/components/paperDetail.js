@@ -21,6 +21,8 @@ export function renderPaperDetail(
     onOpen,
     onClose,
     authorHref = authorUrl,
+    // Link to a related paper's details on this page (paperRoute.href), for its title
+    detailsHref,
     // (related papers) => the neighbourhood mini-map (#101) with .highlight(id), or null
     miniMap = null,
     // "My note" (#152): an element shown before the abstract, or null
@@ -61,6 +63,7 @@ export function renderPaperDetail(
             tzLabel,
             authorHref,
             onOpen: (d) => onOpen(d.id),
+            ...(detailsHref && { href: detailsHref }),
             titleClass: "related-open",
             meta: `${Math.round(p.score * 100)}% similar`,
             actions: toggle(p),

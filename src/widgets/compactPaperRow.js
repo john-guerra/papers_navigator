@@ -20,6 +20,8 @@ export function compactPaperRow(
     authorHref,
     onOpen,
     titleClass = "",
+    // Link to the paper's details on this page, keeping its other params (paperRoute.href)
+    href = (d) => `?paper=${encodeURIComponent(d.shortId ?? d.id)}`,
     meta = "",
     extra = "",
     actions = "",
@@ -27,9 +29,7 @@ export function compactPaperRow(
 ) {
   // A real link to the details URL, so the title wraps like text next to the pill (a button is
   // an atomic box) and cmd/ctrl-click opens a new tab; a plain click opens the details in place
-  const open = html`<a
-    class=${`compact-title ${titleClass}`}
-    href=${`?paper=${encodeURIComponent(p.shortId ?? p.id)}`}
+  const open = html`<a class=${`compact-title ${titleClass}`} href=${href(p)}
     >${p.title}</a
   >`;
   open.onclick = (event) => {
