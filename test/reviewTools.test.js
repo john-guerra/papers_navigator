@@ -160,3 +160,29 @@ describe("renderReviewList (Stage E)", () => {
     expect(el.querySelectorAll("li.paper")).toHaveLength(1);
   });
 });
+
+describe("review rows keep New and Added (review fix)", () => {
+  it("shows the New badge and the Added date for papers in My Papers", () => {
+    const row = {
+      id: "n",
+      shortId: "s-n",
+      title: "N",
+      authors: [],
+      typeShort: "Full",
+      reasons: ["👥 Ann"],
+      new: true,
+      addedOn: "2026-11-10T12:00:00Z",
+      notInMine: false,
+    };
+    const el = renderReviewList([{ key: "", label: "", rows: [row] }], {
+      tz: "US/Eastern",
+      inMyPapers: () => true,
+      onToggle: vi.fn(),
+      onOpen: vi.fn(),
+      detailsHref: () => "#",
+    });
+    const li = el.querySelector("li.paper");
+    expect(li.querySelector(".new-badge").textContent).toBe("New");
+    expect(li.textContent).toContain("Added ");
+  });
+});

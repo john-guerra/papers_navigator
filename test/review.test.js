@@ -183,3 +183,19 @@ describe("groupRows (Stage E)", () => {
     ]);
   });
 });
+
+describe("groupRows reason uses watch rules, not reason text (review fix)", () => {
+  it("a hand-added paper with a 🔍 search reason isn't put in a fake watch group", () => {
+    const rules = [{ id: "affiliation:mit", type: "affiliation", value: "MIT" }];
+    const rows = [
+      { id: "h", manual: true, reasons: ["🔍 heatmaps"], ruleIds: [], notInMine: false },
+      { id: "m", manual: false, reasons: ["🏫 MIT"], ruleIds: ["affiliation:mit"], notInMine: false },
+      { id: "x", manual: true, reasons: ["🏫 MIT"], ruleIds: [], notInMine: false },
+    ];
+    const groups = groupRows(rows, "reason", { rules });
+    expect(groups.map((g) => [g.label, g.rows.map((r) => r.id)])).toEqual([
+      ["★ Added by hand", ["h", "x"]],
+      ["🏫 MIT", ["m"]],
+    ]);
+  });
+});

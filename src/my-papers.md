@@ -80,8 +80,9 @@ const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
 const attendedState = Generators.input(attendedStore);
 const dislikedState = Generators.input(dislikedStore);
-// Stage E: how many things you'd lose without a backup (ratings, notes, 👎, attended)
+// Stage E: how many things you'd lose without a backup (your list, ratings, notes, 👎, attended)
 const dataTotal = () =>
+  followedStore.value.length +
   Object.keys(ratingsStore.value).length +
   Object.keys(notesStore.value).length +
   Object.keys(dislikedStore.value).length +
@@ -419,7 +420,7 @@ const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
 // Also your note (#152); read from the store so typing a note doesn't redraw the list
 const text = (p) =>
   [p.title, p.authorNames, p.affiliations, p.reason, p.sessionName, p.room, notesStore.get(p.id)].join(" ").toLowerCase();
-const ctx = { ratings: ratingsState, disliked: dislikedState, attended: attendedState };
+const ctx = { ratings: ratingsState, disliked: dislikedState, attended: attendedState, rules: rulesState.rules };
 // Show (top of page) narrows your list; papers outside it come in only when Show is "All"
 const rows = reviewRows({ items: shownItems, papers, ...ctx, include: reasonChoice.key === "all" ? review.include : {} });
 const searched = filterByRating(rows, review.ratingKeys, ctx).filter((p) => terms.every((term) => text(p).includes(term)));
@@ -715,8 +716,8 @@ if (recommendState.focus != null) {
 // Your data stays in this browser (Stage E): the standing note, a backup nudge when it's time,
 // and a banner if the browser stops saving. Refreshed when your data changes.
 const dataSafetyBox = html`<div class="data-safety"></div>`;
-const banner = storageBanner({ onExport: () => exportNow() });
-invalidation.then(() => banner.dispose());
+const storageAlert = storageBanner({ onExport: () => exportNow() });
+invalidation.then(() => storageAlert.dispose());
 const readJson = (key) => {
   try {
     return JSON.parse(localStorage.getItem(key) ?? "null");
@@ -734,7 +735,7 @@ dataSafetyBox.refresh = () => {
     tz,
   });
   dataSafetyBox.replaceChildren(
-    banner,
+    storageAlert,
     dataNote({
       onExport: () => exportNow(),
       nudge,

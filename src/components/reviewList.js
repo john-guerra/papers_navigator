@@ -16,7 +16,13 @@ export function renderReviewList(
   const row = (p) => {
     const why = p.notInMine
       ? html`<span class="not-in-mine muted">Not in My Papers</span>`
-      : html`${(p.reasons ?? [p.reason]).filter(Boolean).map((r) => html`<span class="reason-chip">${r}</span> `)}`;
+      : html`${p.new ? html`<span class="new-badge">New</span> ` : ""}${(p.reasons ?? [p.reason]).filter(Boolean).map((r) => html`<span class="reason-chip">${r}</span> `)}`;
+    const added =
+      !p.notInMine && p.addedOn
+        ? html`<span class="muted">
+            · Added ${new Date(p.addedOn).toLocaleDateString()}</span
+          >`
+        : "";
     return html`<li class="paper review-row" data-paper-id=${p.id}>
       ${compactPaperRow(p, {
         tz,
@@ -24,7 +30,7 @@ export function renderReviewList(
         authorHref,
         onOpen,
         href: detailsHref,
-        extra: why,
+        extra: html`${why}${added}`,
         actions: toggles.toggle(p),
       })}
     </li>`;

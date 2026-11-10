@@ -118,3 +118,18 @@ describe("helpers (Stage E)", () => {
     await expect(requestPersistence(undefined)).resolves.toBeUndefined();
   });
 });
+
+describe("backupNudge counts your list too (review fix)", () => {
+  it("a list with no ratings or notes still gets the last-day reminder", () => {
+    expect(
+      backupNudge({
+        total: 80,
+        lastExport: null,
+        dismissedAt: null,
+        now: new Date("2026-11-13T15:00:00Z"),
+        lastDay: "2026-11-13",
+        tz: "US/Eastern",
+      }),
+    ).toBe(true);
+  });
+});

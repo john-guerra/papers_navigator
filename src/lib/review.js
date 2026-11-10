@@ -1,5 +1,5 @@
 import { formatDay } from "./time.js";
-import { manualGroupKeys, reasonGroup } from "./rules.js";
+import { manualGroupKeys, reasonGroup, ruleReason } from "./rules.js";
 
 /**
  * My Papers as the place to review (Stage E): which papers "All my papers" shows, how the
@@ -158,6 +158,9 @@ export function groupRows(rows, by, ctx = {}) {
       return byValue(rows, (r) => r.sessionName, "No session");
     case "reason": {
       const groups = new Map();
+      const rulesById = new Map(
+        (ctx.rules ?? []).map((rule) => [rule.id, rule]),
+      );
       const add = (key, label, row) => {
         if (!groups.has(key)) groups.set(key, { key, label, rows: [] });
         groups.get(key).rows.push(row);
@@ -171,10 +174,14 @@ export function groupRows(rows, by, ctx = {}) {
           const own = (r.reasons ?? []).find((x) => reasonGroup(x).key === k);
           add(`m:${k}`, own ? reasonGroup(own).label : "★ Added by hand", r);
         }
-        for (const reason of (r.reasons ?? []).filter((x) =>
-          RULE_REASON.test(x),
-        ))
-          add(`r:${reason}`, reason, r);
+        // Watch rules by id (hand-added papers carry 🔍/🏫 reasons from Explore too)
+        for (const id of r.ruleIds ?? []) {
+          const rule = rulesById.get(id);
+          const label = rule
+            ? ruleReason(rule)
+            : ((r.reasons ?? []).find((x) => RULE_REASON.test(x)) ?? id);
+          add(`r:${id}`, label, r);
+        }
       }
       const rank = (g) =>
         g.key === "out"
