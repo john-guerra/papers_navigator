@@ -144,3 +144,25 @@ describe("Not for me in Papers I rated (#208)", () => {
     ).toBeNull();
   });
 });
+
+describe("typingIn (#206 quick review: filters apply at once)", () => {
+  it("is true only while a text field inside the box has focus", async () => {
+    const { typingIn } = await import("../src/components/ratedPapers.js");
+    const box = document.createElement("div");
+    const area = document.createElement("textarea");
+    const select = document.createElement("select");
+    const box2 = document.createElement("input");
+    box2.type = "checkbox";
+    box.append(area, select, box2);
+    document.body.append(box);
+    select.focus();
+    expect(typingIn(box)).toBe(false);
+    box2.focus();
+    expect(typingIn(box)).toBe(false);
+    area.focus();
+    expect(typingIn(box)).toBe(true);
+    area.blur();
+    expect(typingIn(box)).toBe(false);
+    box.remove();
+  });
+});

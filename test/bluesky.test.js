@@ -371,3 +371,23 @@ describe("affiliationMatch and profileUrl (#203 Stage C)", () => {
     );
   });
 });
+
+describe("affiliationMatch ignores field and place words (#206 quick review)", () => {
+  it("doesn't hint on data, visualization, computing or places alone", () => {
+    expect(
+      affiliationMatch("I do data visualization", "Data Visualization Lab"),
+    ).toBeNull();
+    expect(
+      affiliationMatch(
+        "Living in California",
+        "University of California, Davis",
+      ),
+    ).toBeNull();
+    expect(
+      affiliationMatch("Computer science at NYU", "New York University"),
+    ).toBeNull();
+    expect(
+      affiliationMatch("Prof at UC Davis", "University of California, Davis"),
+    ).toBe("University of California, Davis");
+  });
+});

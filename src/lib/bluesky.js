@@ -193,9 +193,10 @@ const words = (s) =>
   plain(s)
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
-// Words too common in affiliations to tell people apart
+// Words too common in affiliations (or in vis people's bios: field and place words) to tell
+// people apart (#206 quick review)
 const GENERIC = new Set(
-  "university universitat universite universidad universita of the and at for de la le du der fur institute institut technology college school department dept lab laboratory research center centre national science sciences state polytechnic inc ltd group".split(
+  "university universitat universite universidad universita of the and at for de la le du der fur institute institut technology college school department dept lab laboratory research center centre national science sciences state polytechnic inc ltd group data visual visualization visualisation vis analytics information computer computing engineering california new york usa uk city north south east west san los saint st".split(
     " ",
   ),
 );

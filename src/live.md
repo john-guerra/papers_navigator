@@ -23,7 +23,7 @@ import { showToast } from "./components/toast.js";
 import { liveClockControl } from "./components/liveClockControl.js";
 import { renderBreakView } from "./components/liveBreak.js";
 import { renderSessionView } from "./components/liveSession.js";
-import { renderRatedPapers } from "./components/ratedPapers.js";
+import { renderRatedPapers, typingIn } from "./components/ratedPapers.js";
 import { renderAttendedPapers } from "./components/attendedPapers.js";
 import { createViewHost } from "./components/liveViewHost.js";
 import { renderPostPanel } from "./components/postPanel.js";
@@ -239,10 +239,11 @@ if (!session) viewState.scrolledFor = null;
 
 ```js
 // Redrawn when ratings, notes or the discussion links change, and in place when a filter
-// changes; open Post panels come back (ratedPosts). Not while you type in it: after you leave.
+// changes; open Post panels come back (ratedPosts). Not while you type in a draft there: after you
+// leave it (filters apply at once).
 const ratedBox = html`<div></div>`;
 const drawRated = () => {
-  if (ratedBox.contains(document.activeElement)) {
+  if (typingIn(ratedBox)) {
     ratedBox.addEventListener("focusout", () => setTimeout(drawRated), { once: true });
     return;
   }
