@@ -63,8 +63,21 @@ export function interactiveLegends(vgSpec) {
     if (!node || typeof node !== "object") return;
     for (const legend of node.legends ?? []) {
       legend.encode ??= {};
-      for (const part of ["symbols", "labels"])
-        legend.encode[part] = { ...legend.encode[part], interactive: true };
+      for (const part of ["symbols", "labels"]) {
+        const prev = legend.encode[part] ?? {};
+        // The picked category (#203 Stage B) stays as it was; the other entries fade
+        const base = prev.update?.opacity?.value ?? 1;
+        legend.encode[part] = {
+          ...prev,
+          interactive: true,
+          update: {
+            ...prev.update,
+            opacity: {
+              signal: `legendPick == null || datum.value === legendPick ? ${base} : ${+(base * 0.35).toFixed(3)}`,
+            },
+          },
+        };
+      }
     }
     for (const mark of node.marks ?? []) visit(mark);
   };
@@ -1836,6 +1849,7 @@ export async function BrushableScatterPlot(data, options = {}) {
       brush: () => target.brush(),
       levelCut: () => chart.view.signal("levelCut"),
       matchIds: () => (options.matches ? chart.view.signal("matchIds") : null),
+      keep: () => target.labelKeep?.() ?? null,
       pinned: () => target.neighbours?.pinned ?? null,
       focusIds: () => {
         const n = target.neighbours;
@@ -1881,6 +1895,9 @@ export async function BrushableScatterPlot(data, options = {}) {
     target.addEventListener("input", labels.schedule);
     target.addEventListener("neighbours", labels.schedule);
     chart.view.addSignalListener("levelCut", labels.schedule);
+    // A legend pick (#203 Stage B) changes which papers may carry a label
+    if (chart.view.getState().signals?.legendPick !== undefined)
+      chart.view.addSignalListener("legendPick", labels.schedule);
   }
 
   /**
@@ -1904,6 +1921,25 @@ export async function BrushableScatterPlot(data, options = {}) {
   target.toggleCategory = (value) => {
     pinned = pinned === value ? null : value;
     return target.highlightCategory(pinned);
+  };
+  /** Esc (#203 Stage B): drops a pinned category. */
+  target.clearCategory = () => {
+    pinned = null;
+    return target.highlightCategory(null);
+  };
+  // The categories the map colors (the rest is Other), to tell which papers a pick keeps
+  const colored =
+    picking &&
+    (options.categories ?? topCategories(data, options.color)).slice(
+      0,
+      MAX_CATEGORIES,
+    );
+  /** Paper labels follow the pick (#203 Stage B): a predicate on rows, or null without a pick. */
+  target.labelKeep = () => {
+    const pick = picking ? chart.view.signal("legendPick") : null;
+    if (pick == null) return null;
+    const field = options.color;
+    return (d) => (colored.includes(d[field]) ? d[field] : OTHER) === pick;
   };
   // The category of a legend node (its symbol or label carries Vega's item); undefined elsewhere
   const legendValueOf = (node) => {

@@ -222,3 +222,18 @@ describe("labelBudget", () => {
     expect(labelBudget(360, 300)).toBe(7);
   });
 });
+
+describe("labelFilter keep (#203 Stage B: the legend's pick)", () => {
+  it("ANDs an extra predicate when given", () => {
+    const rows = [
+      { id: "a", x: 0, y: 0, type: "t1" },
+      { id: "b", x: 1, y: 1, type: "t2" },
+    ];
+    const allowed = labelFilter({ keep: (d) => d.type === "t2" });
+    expect(rows.filter(allowed).map((d) => d.id)).toEqual(["b"]);
+    expect(rows.filter(labelFilter({ keep: null })).map((d) => d.id)).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+});

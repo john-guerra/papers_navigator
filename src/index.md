@@ -822,7 +822,12 @@ invalidation.then(neighboursCard.dispose);
   const onSettings = () => mapInput.neighbourSettings(neighbourStore.value);
   neighbourStore.addEventListener("input", onSettings);
   // Esc unpins, unless an open details panel or the Options drawer takes it first
-  const onKey = (event) => shouldUnpinOnEscape(event, { detailOpen: Boolean(document.querySelector(".paper-detail")) }) && mapInput.unpinNeighbours();
+  // Esc unpins a paper; with none pinned, it drops a category pinned in the legend (#203 Stage B)
+  const onKey = (event) => {
+    if (!shouldUnpinOnEscape(event, { detailOpen: Boolean(document.querySelector(".paper-detail")) })) return;
+    if (mapInput.neighbours?.pinned != null) mapInput.unpinNeighbours();
+    else mapInput.clearCategory?.();
+  };
   document.addEventListener("keydown", onKey);
   // Keyboard (and focus) on a paper row previews its neighbours
   const list = document.querySelector(".explore-list");

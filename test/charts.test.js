@@ -856,8 +856,13 @@ describe("interactiveLegends (#200)", () => {
       legends: [{ encode: { symbols: { update: { opacity: { value: 1 } } } } }],
       marks: [{ legends: [{}] }],
     });
+    // keeps the encode; opacity becomes the pick's dimming (#203 Stage B)
     expect(spec.legends[0].encode.symbols).toEqual({
-      update: { opacity: { value: 1 } },
+      update: {
+        opacity: {
+          signal: "legendPick == null || datum.value === legendPick ? 1 : 0.35",
+        },
+      },
       interactive: true,
     });
     expect(spec.legends[0].encode.labels.interactive).toBe(true);
@@ -964,5 +969,51 @@ describe("legend events stay in the legend (#202 review)", () => {
     await new Promise((r) => setTimeout(r));
     expect(w.view.signal("legendPick")).toBeNull();
     w.remove();
+  });
+});
+
+describe("legend pick: shown in the legend, labels, Esc (#203 Stage B)", () => {
+  it("interactiveLegends dims the other entries while a category is picked, keeping their base opacity", async () => {
+    const { interactiveLegends } =
+      await import("../src/widgets/brushableScatterPlot.js");
+    const spec = interactiveLegends({
+      legends: [
+        {
+          encode: {
+            symbols: {
+              update: { opacity: { value: 0.7 }, fill: { value: "t" } },
+            },
+          },
+        },
+      ],
+    });
+    const { symbols, labels } = spec.legends[0].encode;
+    expect(symbols.update.fill).toEqual({ value: "t" });
+    expect(symbols.update.opacity.signal).toBe(
+      "legendPick == null || datum.value === legendPick ? 0.7 : 0.245",
+    );
+    expect(labels.update.opacity.signal).toBe(
+      "legendPick == null || datum.value === legendPick ? 1 : 0.35",
+    );
+  });
+
+  it("labelKeep: only the picked category's papers may keep a label; clearCategory resets the pick", async () => {
+    const rows = ["a", "a", "b"].map((t, i) => ({
+      id: `p${i}`,
+      x: i,
+      y: i,
+      type: t,
+    }));
+    const w = await BrushableScatterPlot(rows, { color: "type" });
+    expect(w.labelKeep()).toBeNull();
+    await w.toggleCategory("a");
+    const keep = w.labelKeep();
+    expect(rows.map(keep)).toEqual([true, true, false]);
+    await w.clearCategory();
+    expect(w.view.signal("legendPick")).toBeNull();
+    expect(w.labelKeep()).toBeNull();
+    // after clearing, a click on "a" pins it again (not unpins)
+    await w.toggleCategory("a");
+    expect(w.view.signal("legendPick")).toBe("a");
   });
 });
