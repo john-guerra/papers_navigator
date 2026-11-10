@@ -159,9 +159,46 @@ describe("quickNote says Saved (Stage E)", () => {
     vi.advanceTimersByTime(100);
     const status = el.querySelector(".quick-note-status");
     expect(status.textContent).toBe("Saved");
-    expect(status.getAttribute("aria-live")).toBe("polite");
+    // announced through .quick-note-live (minor 4); this one is visual
+    expect(status.getAttribute("aria-hidden")).toBe("true");
     vi.advanceTimersByTime(2100);
     expect(status.textContent).toBe("");
+    el.remove();
+    vi.useRealTimers();
+  });
+});
+
+describe("quickNote tells screen readers Saved once per edit (minor 4)", () => {
+  it("announces the first save after focus, not every autosave; again after leaving", () => {
+    vi.useFakeTimers();
+    const notes = new EventTarget();
+    notes.get = () => "";
+    notes.set = vi.fn(() => true);
+    const el = quickNote({ id: "p1" }, { notes, delay: 100 });
+    document.body.append(el);
+    const input = el.querySelector("textarea");
+    const live = el.querySelector(".quick-note-live");
+    const shown = el.querySelector(".quick-note-status");
+    expect(live.getAttribute("aria-live")).toBe("polite");
+    expect(shown.getAttribute("aria-hidden")).toBe("true");
+    input.dispatchEvent(new Event("focus"));
+    const type = (text) => {
+      input.value = text;
+      input.dispatchEvent(new Event("input"));
+      vi.advanceTimersByTime(100);
+    };
+    type("a");
+    expect(live.textContent).toBe("Saved");
+    expect(shown.textContent).toBe("Saved");
+    vi.advanceTimersByTime(2100);
+    expect(live.textContent).toBe("");
+    type("ab");
+    expect(shown.textContent).toBe("Saved");
+    expect(live.textContent).toBe("");
+    input.dispatchEvent(new Event("blur"));
+    input.dispatchEvent(new Event("focus"));
+    type("abc");
+    expect(live.textContent).toBe("Saved");
     el.remove();
     vi.useRealTimers();
   });
