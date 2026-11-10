@@ -1059,6 +1059,12 @@ if (splitRoom != null) {
     if (!phone.matches || layout.classList.contains("select-mode")) return;
     // Taps on controls in the map area (Color by, labels) aren't point taps
     if (event.target.closest("button, select, input, label, a")) return;
+    // A tap on the category legend (#202 review) toggles that category, never a paper under it
+    const legendValue = mapInput.legendValueAt?.(event.clientX, event.clientY);
+    if (legendValue !== undefined) {
+      if (legendValue !== null) mapInput.toggleCategory(legendValue);
+      return;
+    }
     const paper = mapInput.pointAt(event.clientX, event.clientY);
     if (paper) mapInput.pinNeighbours(paper.id);
     else {

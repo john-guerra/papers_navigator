@@ -1890,37 +1890,94 @@ export async function BrushableScatterPlot(data, options = {}) {
   /**
    * Color by a category (#200): only `value`'s papers keep their color, the rest are viz-dim;
    * null shows them all. Pointing at a legend entry previews it; a click pins it (again: unpins).
+   * Legend events are handled here, in the capture phase, and stopped (#202 review): the brush,
+   * the point click, neighbour pinning and the tooltip never see them, so clicking the legend
+   * keeps a selected region and a pinned paper. Phones (the chart takes no touches) hit-test a
+   * tap with `legendValueAt(x, y)` and call `toggleCategory(value)`.
    */
   const picking = chart.view.getState().signals?.legendPick !== undefined;
+  let pinned = null;
   target.highlightCategory = (value = null) =>
     picking
       ? chart.view.signal("legendPick", value).runAsync()
       : Promise.resolve();
-  if (picking) {
-    let pinned = null;
-    // The legend entry's category: its symbol, label or entry group carries the scale value
-    const legendValue = (item) => {
-      for (let it = item; it; it = it.mark?.group)
-        if (
-          /^legend-/.test(it.mark?.role ?? "") &&
-          it.datum?.value !== undefined
-        )
-          return it.datum.value;
+  target.toggleCategory = (value) => {
+    pinned = pinned === value ? null : value;
+    return target.highlightCategory(pinned);
+  };
+  // The category of a legend node (its symbol or label carries Vega's item); undefined elsewhere
+  const legendValueOf = (node) => {
+    for (let el = node; el && el !== target; el = el.parentNode) {
+      const item = el.__data__;
+      if (
+        /^legend-/.test(item?.mark?.role ?? "") &&
+        item.datum?.value !== undefined
+      )
+        return item.datum.value;
+    }
+    return undefined;
+  };
+  const inLegend = (node) => Boolean(node?.closest?.(".role-legend"));
+  const inside = (r, x, y) =>
+    x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  /** The legend entry at a viewport point: its value, null in the legend between entries, else undefined. */
+  target.legendValueAt = (x, y) => {
+    const legend = picking && target.querySelector(".role-legend");
+    if (!legend || !inside(legend.getBoundingClientRect(), x, y))
       return undefined;
+    for (const node of target.querySelectorAll(
+      ".role-legend-symbol path, .role-legend-label text",
+    )) {
+      const r = node.getBoundingClientRect();
+      // The whole row: from the legend's left edge, a little taller than the text
+      if (y >= r.top - 3 && y <= r.bottom + 3)
+        return legendValueOf(node) ?? null;
+    }
+    return null;
+  };
+  if (picking) {
+    let previewing = false;
+    const stop = (event) => {
+      if (!inLegend(event.target)) return false;
+      event.stopPropagation();
+      return true;
     };
-    chart.view.addEventListener("mouseover", (_, item) => {
-      const v = legendValue(item);
-      if (v !== undefined) target.highlightCategory(v);
+    target.addEventListener(
+      "pointermove",
+      (event) => {
+        if (stop(event)) {
+          const v = legendValueOf(event.target);
+          if (v !== undefined) {
+            previewing = true;
+            target.highlightCategory(v);
+          }
+        } else if (previewing) {
+          previewing = false;
+          target.highlightCategory(pinned);
+        }
+      },
+      { capture: true },
+    );
+    target.addEventListener("pointerleave", () => {
+      if (previewing) ((previewing = false), target.highlightCategory(pinned));
     });
-    chart.view.addEventListener("mouseout", (_, item) => {
-      if (legendValue(item) !== undefined) target.highlightCategory(pinned);
-    });
-    chart.view.addEventListener("click", (_, item) => {
-      const v = legendValue(item);
-      if (v === undefined) return;
-      pinned = pinned === v ? null : v;
-      target.highlightCategory(pinned);
-    });
+    for (const type of [
+      "pointerdown",
+      "mousedown",
+      "mouseup",
+      "pointerup",
+      "dblclick",
+    ])
+      target.addEventListener(type, stop, { capture: true });
+    target.addEventListener(
+      "click",
+      (event) => {
+        if (!stop(event)) return;
+        const v = legendValueOf(event.target);
+        if (v !== undefined) target.toggleCategory(v);
+      },
+      { capture: true },
+    );
   }
 
   target.highlightMatches = (ids = null) => {

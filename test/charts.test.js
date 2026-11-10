@@ -876,3 +876,93 @@ describe("category legend on narrow maps (#200)", () => {
     expect(legend("container").labelLimit).toBeUndefined();
   });
 });
+
+describe("legend events stay in the legend (#202 review)", () => {
+  const rows = ["a", "b", "c"].map((t, i) => ({
+    id: `p${i}`,
+    x: i,
+    y: i,
+    type: t,
+  }));
+  const mount = async () => {
+    const w = await BrushableScatterPlot(rows, {
+      color: "type",
+      width: 400,
+      height: 300,
+    });
+    document.body.append(w);
+    return w;
+  };
+  const fire = (node, type) =>
+    node.dispatchEvent(
+      new MouseEvent(type, { bubbles: true, cancelable: true }),
+    );
+
+  it("a legend click pins the category and never reaches the brush, the point click or the page", async () => {
+    const w = await mount();
+    const svg = w.querySelector("svg");
+    const seen = [];
+    svg.addEventListener("click", () => seen.push("svg"));
+    w.addEventListener("click", () => seen.push("widget"));
+    svg.addEventListener("pointerdown", () => seen.push("svg-down"));
+    const symbol = w.querySelector(".role-legend-symbol path");
+    fire(symbol, "pointerdown");
+    fire(symbol, "click");
+    expect(seen).toEqual([]);
+    await new Promise((r) => setTimeout(r));
+    expect(w.view.signal("legendPick")).toBe("a");
+    // pointing elsewhere keeps the pin; a second click unpins
+    fire(w.querySelector("svg"), "pointermove");
+    await new Promise((r) => setTimeout(r));
+    expect(w.view.signal("legendPick")).toBe("a");
+    fire(symbol, "click");
+    await new Promise((r) => setTimeout(r));
+    expect(w.view.signal("legendPick")).toBeNull();
+    w.remove();
+  });
+
+  it("pointing at an entry previews it (no tooltip or neighbour lines underneath); leaving restores", async () => {
+    const w = await mount();
+    const moves = [];
+    w.addEventListener("pointermove", () => moves.push("widget"));
+    const label = w.querySelectorAll(".role-legend-label text")[1];
+    fire(label, "pointermove");
+    await new Promise((r) => setTimeout(r));
+    expect(w.view.signal("legendPick")).toBe("b");
+    expect(moves).toEqual([]);
+    fire(w.querySelector("svg"), "pointermove");
+    await new Promise((r) => setTimeout(r));
+    expect(w.view.signal("legendPick")).toBeNull();
+    w.remove();
+  });
+
+  it("legendValueAt finds the entry under a point (phones: taps hit the page, not the chart)", async () => {
+    const w = await mount();
+    const legend = w.querySelector(".role-legend");
+    const rect = (x, y, width, height) => () => ({
+      left: x,
+      top: y,
+      right: x + width,
+      bottom: y + height,
+      width,
+      height,
+    });
+    legend.getBoundingClientRect = rect(300, 0, 100, 100);
+    const labels = w.querySelectorAll(".role-legend-label text");
+    labels.forEach(
+      (t, i) => (t.getBoundingClientRect = rect(316, 10 + i * 16, 60, 12)),
+    );
+    expect(w.legendValueAt(320, 28)).toBe("b");
+    // inside the legend box but between entries: in the legend, no value
+    // (4 rows: a, b, c, Other at 10–70)
+    expect(w.legendValueAt(305, 90)).toBeNull();
+    expect(w.legendValueAt(10, 10)).toBeUndefined();
+    w.toggleCategory("c");
+    await new Promise((r) => setTimeout(r));
+    expect(w.view.signal("legendPick")).toBe("c");
+    w.toggleCategory("c");
+    await new Promise((r) => setTimeout(r));
+    expect(w.view.signal("legendPick")).toBeNull();
+    w.remove();
+  });
+});
