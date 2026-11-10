@@ -112,6 +112,16 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("Add to My Papers updates its own row (no rebuild): the button goes away", () => {
+    const { el, onAdd } = setup();
+    const row = el.querySelectorAll(".live-talk")[1];
+    row.querySelector(".live-add").click();
+    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(row.querySelector(".live-add")).toBeNull();
+    expect(row.isConnected).toBe(true);
+    el.remove();
+  });
+
   it("Switch room lists the other rooms with their talk now and your next paper there", () => {
     const { el, onSwitch } = setup();
     const bar = el.querySelector(".live-switch");

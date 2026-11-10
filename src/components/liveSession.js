@@ -82,7 +82,10 @@ export function renderSessionView(
       add = html`<button type="button" class="btn-text live-add">
         Add to My Papers
       </button>`;
-      add.onclick = () => onAdd(p);
+      add.onclick = () => {
+        onAdd(p);
+        add.remove();
+      };
     }
     return html`<li
       class=${`live-talk${p === now ? " is-now" : ""}`}
