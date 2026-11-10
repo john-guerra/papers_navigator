@@ -119,3 +119,31 @@ describe("createDismissedStore", () => {
     expect(store.value).toEqual(["z"]);
   });
 });
+
+describe("recommendationInputs: your verdicts shape recommendations (UX review)", () => {
+  it("seeds from papers you didn't rate low or dislike, and never recommends what you disliked", async () => {
+    const { recommendationInputs } = await import("../src/lib/recommend.js");
+    const { seeds, exclude } = recommendationInputs({
+      myIds: ["a", "b", "c", "d", "e"],
+      ratings: { a: 5, b: 3, c: 2, d: 1 },
+      disliked: { e: true, x: true },
+      dismissed: ["z"],
+    });
+    // a (5★), b (3★) seed; c (2★), d (1★) and e (👎) don't
+    expect(seeds).toEqual(["a", "b"]);
+    // never recommended: your 👎, dismissed papers, and your own low-rated papers (still in My Papers)
+    expect([...exclude].sort()).toEqual(["c", "d", "e", "x", "z"]);
+  });
+
+  it("unrated papers in My Papers still seed", async () => {
+    const { recommendationInputs } = await import("../src/lib/recommend.js");
+    expect(
+      recommendationInputs({
+        myIds: ["u"],
+        ratings: {},
+        disliked: {},
+        dismissed: [],
+      }).seeds,
+    ).toEqual(["u"]);
+  });
+});

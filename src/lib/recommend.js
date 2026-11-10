@@ -47,6 +47,33 @@ export function recommendPapers(
   return recs.sort((x, y) => y.score - x.score);
 }
 
+/** Ratings below this don't seed recommendations ("✨ Like" a paper you rated 2★ is odd). */
+const MIN_SEED_RATING = 3;
+
+/**
+ * What recommendations start from and skip (UX review, #208 follow-up): seeds are your My Papers
+ * minus papers you rated under 3★ or marked 👎; never recommended: papers you dismissed, marked
+ * 👎, or have in My Papers (the low-rated ones too). `ratings`, `disliked`: the stores' values.
+ */
+export function recommendationInputs({
+  myIds,
+  ratings = {},
+  disliked = {},
+  dismissed = [],
+}) {
+  const seeds = myIds.filter(
+    (id) =>
+      !disliked[id] && !(ratings[id] > 0 && ratings[id] < MIN_SEED_RATING),
+  );
+  const seeded = new Set(seeds);
+  const exclude = new Set([
+    ...dismissed,
+    ...Object.keys(disliked),
+    ...myIds.filter((id) => !seeded.has(id)),
+  ]);
+  return { seeds, exclude };
+}
+
 /** True when the paper's talk (else its session) ended before `now`; never without a time. */
 export function isOver(paper, now) {
   const end = Date.parse(paper.end ?? paper.sessionEnd ?? "");

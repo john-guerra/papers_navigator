@@ -11,7 +11,7 @@ import { renderWatching } from "./components/watching.js";
 import { showToast } from "./components/toast.js";
 import { groupIntoSlots, nowNext, scheduleSummary } from "./lib/schedule.js";
 import { afterFirstPaint, startTopicRefresh } from "./lib/researchTopics.js";
-import { createDismissedStore, recommendPapers, recommendReason } from "./lib/recommend.js";
+import { createDismissedStore, recommendPapers, recommendReason, recommendationInputs } from "./lib/recommend.js";
 import { addWithUndo } from "./lib/selection.js";
 import { renderRecommended } from "./components/recommended.js";
 import { getEmbedder } from "./lib/embedder.js";
@@ -75,6 +75,7 @@ const dislikedStore = createDislikedStore(conference.id);
 const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
 const attendedState = Generators.input(attendedStore);
+const dislikedState = Generators.input(dislikedStore);
 // The embeddings, loaded once on first need (a failed load, e.g. offline, is retried)
 const loadMatrix = lazyLoader(async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length));
 // Research topics (#24): their cached matches show right away; after first paint the model
@@ -607,7 +608,11 @@ const recommendations = !items.length
   ? { status: "empty" }
   : recommendMatrix.status !== "ready"
     ? recommendMatrix
-    : { status: "ready", recs: recommendPapers(items.map((d) => d.id), recommendMatrix.matrix, papers, { exclude: new Set(dismissed), now }) };
+    : (() => {
+        // Your verdicts shape them (UX review): no 👎 papers, and "✨ Like" never a paper you rated under 3★
+        const { seeds, exclude } = recommendationInputs({ myIds: items.map((d) => d.id), ratings: ratingsState, disliked: dislikedState, dismissed });
+        return { status: "ready", recs: recommendPapers(seeds, recommendMatrix.matrix, papers, { exclude, now }) };
+      })();
 const drawRecommended = () => {
   recommendedSection.replaceChildren(
     renderRecommended(recommendations, {
