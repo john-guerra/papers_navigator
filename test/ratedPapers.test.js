@@ -166,3 +166,20 @@ describe("typingIn (#206 quick review: filters apply at once)", () => {
     box.remove();
   });
 });
+
+describe("Papers I rated → My Papers (Stage E)", () => {
+  it("links to review everything in My Papers, and rows get the My Papers toggle", () => {
+    const onToggle = vi.fn();
+    const el = render({ inMyPapers: (id) => id === "b", onToggle });
+    const link = el.querySelector("a.review-all");
+    expect(link.textContent).toContain("Review all in My Papers →");
+    expect(link.getAttribute("href")).toBe("my-papers.html#review=rating");
+    const c = el.querySelector('[data-paper-id="c"] .follow-toggle');
+    expect(c.textContent).toContain("Add to My Papers");
+    c.click();
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: "c" }));
+    expect(
+      el.querySelector('[data-paper-id="b"] .follow-toggle').textContent,
+    ).toContain("In My Papers");
+  });
+});

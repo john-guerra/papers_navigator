@@ -1,3 +1,4 @@
+import { reportStorageFailure } from "./storageHealth.js";
 /**
  * Watch rules: standing rules (a person, an institution, a topic) whose papers are always
  * in My Papers (DESIGN.md "Vocabulary"). Pure matching + a persisted store + a combined
@@ -262,6 +263,7 @@ export function createRulesStore(
       storage?.setItem(key, JSON.stringify(value));
     } catch (error) {
       console.warn("Could not save watch rules", error);
+      reportStorageFailure();
     }
     store.dispatchEvent(new Event("input"));
   };
@@ -526,7 +528,14 @@ export function reasonOptions(items, rules) {
   const count = (key) => filterByReason(items, key).length;
   return [
     { key: "all", label: `All reasons (${items.length})` },
-    { key: "manual", label: `★ Added by hand (${count("manual")})` },
+    // The ways you added papers yourself, split as Group by reason splits them (Stage E)
+    // (Added by hand is always offered, as before; the others when they have papers)
+    ...MANUAL_GROUPS.filter((g) => g.key === "manual" || count(g.key)).map(
+      (g) => ({
+        key: g.key,
+        label: `${g.label} (${count(g.key)})`,
+      }),
+    ),
     ...rules.map((rule) => ({
       key: rule.id,
       label: `${ruleReason(rule)} (${count(rule.id)})`,
@@ -534,10 +543,50 @@ export function reasonOptions(items, rules) {
   ];
 }
 
-/** Items kept for a reason key ("all", "manual" or a rule id). */
+/** Ways you add papers yourself, by the reason's marker (Stage E); the rest is "Added by hand". */
+const MANUAL_GROUPS = [
+  { key: "manual", label: "★ Added by hand" },
+  { key: "rated", label: "★ Rated", test: (r) => r === "★ Rated" },
+  {
+    key: "live",
+    label: "★ Added on Live",
+    test: (r) => r === "★ Added on Live",
+  },
+  {
+    key: "recommended",
+    label: "✨ Recommended",
+    test: (r) => r.startsWith("✨"),
+  },
+  { key: "shared", label: "📱 Shared", test: (r) => r.startsWith("📱") },
+  {
+    key: "author",
+    label: "👤 From an author",
+    test: (r) => r.startsWith("👤"),
+  },
+];
+const RULE_REASON = /^(👥|🏫|🔍)/u;
+
+/** The group of a reason you gave a paper yourself: `{key, label}` (Stage E). */
+export function reasonGroup(reason) {
+  const r = String(reason ?? "").trim();
+  const g = MANUAL_GROUPS.find((x) => x.test?.(r)) ?? MANUAL_GROUPS[0];
+  return { key: g.key, label: g.label };
+}
+
+/** The group keys of an item's own (non-rule) reasons; "manual" when it has none written. */
+export function manualGroupKeys(item) {
+  if (!item.manual) return [];
+  const own = (item.reasons ?? []).filter((r) => !RULE_REASON.test(r));
+  return own.length
+    ? [...new Set(own.map((r) => reasonGroup(r).key))]
+    : ["manual"];
+}
+
+/** Items kept for a reason key ("all", a manual group key, or a rule id). */
 export function filterByReason(items, key) {
   if (key === "all") return items;
-  if (key === "manual") return items.filter((d) => d.manual);
+  if (MANUAL_GROUPS.some((g) => g.key === key))
+    return items.filter((d) => manualGroupKeys(d).includes(key));
   return items.filter((d) => d.ruleIds?.includes(key));
 }
 

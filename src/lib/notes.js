@@ -1,3 +1,4 @@
+import { reportStorageFailure } from "./storageHealth.js";
 /**
  * Paper notes (#152): a private note on any paper, whether or not it is in My Papers.
  *
@@ -98,6 +99,7 @@ export function createNotesStore(
     } catch (error) {
       saved = false;
       console.warn("Could not save notes on this device", error);
+      reportStorageFailure();
     }
     store.dispatchEvent(new Event("input"));
     return saved;

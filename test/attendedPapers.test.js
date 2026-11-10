@@ -111,3 +111,34 @@ describe("renderAttendedPapers (#208)", () => {
     );
   });
 });
+
+describe("Papers I attended → My Papers (Stage E)", () => {
+  it("links to review attended papers in My Papers, with the My Papers toggle on rows", () => {
+    const onToggle = vi.fn();
+    const el = renderAttendedPapers(
+      [
+        {
+          id: "a",
+          shortId: "s-a",
+          title: "A",
+          day: "2026-11-11",
+          start: "2026-11-11T15:00:00Z",
+          typeShort: "Full",
+        },
+      ],
+      {
+        attended: { a: { at: "x", how: "auto" } },
+        tz: "US/Eastern",
+        onOpen: vi.fn(),
+        detailsHref: () => "#",
+        inMyPapers: () => false,
+        onToggle,
+      },
+    );
+    expect(el.querySelector("a.review-all").getAttribute("href")).toBe(
+      "my-papers.html#review=attended",
+    );
+    el.querySelector(".follow-toggle").click();
+    expect(onToggle).toHaveBeenCalled();
+  });
+});

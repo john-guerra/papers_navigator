@@ -3,6 +3,7 @@ import { formatDay } from "../lib/time.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { titleLink } from "./liveBreak.js";
 import { discussionLink, postToggle } from "./livePost.js";
+import { followToggles } from "./followToggles.js";
 
 const when = (p) => p.start ?? p.sessionStart ?? "~";
 
@@ -29,6 +30,9 @@ export function renderRatedPapers(
     onClosePost,
     // 👎 Not for me (#208): listed after the starred papers
     dislikedIds = [],
+    // Stage E: the My Papers toggle on rows (Add / In My Papers)
+    inMyPapers,
+    onToggle,
   },
 ) {
   const rated = papers
@@ -64,6 +68,7 @@ export function renderRatedPapers(
     onFilter({ minRating: box.checked ? 4 : 0, day: select.value || null });
   select.onchange = report;
   box.onchange = report;
+  const toggles = onToggle ? followToggles({ inMyPapers, onToggle }) : null;
   const rows = shown.map((p) => {
     const n = ratings[p.id];
     const post = postToggle(p, postPanel, {
@@ -80,13 +85,18 @@ export function renderRatedPapers(
       </div>
       ${notes[p.id] ? html`<p class="rated-note">📝 ${notes[p.id]}</p>` : ""}
       <div class="rated-actions">
-        ${post.button}
+        ${toggles ? toggles.toggle(p) : ""} ${post.button}
         ${discussion?.get(p.id) ? discussionLink(discussion.get(p.id)) : ""}
       </div>
       ${post.slot}
     </li>`;
   });
   return html`<section class="rated-papers">
+    <p>
+      <a class="review-all" href="my-papers.html#review=rating"
+        >Review all in My Papers →</a
+      >
+    </p>
     <div class="rated-filters">
       <label class="rated-day">Day ${select}</label>
       <label class="rated-min">${box} 4★ and up</label>

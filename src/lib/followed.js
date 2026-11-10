@@ -1,3 +1,4 @@
+import { reportStorageFailure } from "./storageHealth.js";
 const SEPARATOR = " · ";
 
 export const isEntry = (d) => d && typeof d.id === "string" && d.id.length > 0;
@@ -87,6 +88,7 @@ export function createFollowedStore(
       storage?.setItem(key, JSON.stringify(value));
     } catch (error) {
       console.warn("Could not save followed papers", error);
+      reportStorageFailure();
     }
     store.dispatchEvent(new Event("input"));
   };

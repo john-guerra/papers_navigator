@@ -2,6 +2,7 @@ import { html } from "htl";
 import { formatDay, formatTime } from "../lib/time.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { titleLink } from "./liveBreak.js";
+import { followToggles } from "./followToggles.js";
 
 /**
  * "Mark attended" / "✓ Attended" (#208; in details "I was there" / "✓ I was there"): a toggle
@@ -51,8 +52,12 @@ export function renderAttendedPapers(
     tz,
     onOpen,
     detailsHref,
+    // Stage E: the My Papers toggle on rows (Add / In My Papers)
+    inMyPapers,
+    onToggle,
   },
 ) {
+  const toggles = onToggle ? followToggles({ inMyPapers, onToggle }) : null;
   const list = papers
     .filter((p) => isOn(attended[p.id]))
     .sort((a, b) => (when(a) < when(b) ? -1 : 1));
@@ -85,6 +90,11 @@ export function renderAttendedPapers(
     return rate;
   };
   return html`<section class="attended-papers">
+    <p>
+      <a class="review-all" href="my-papers.html#review=attended"
+        >Review all in My Papers →</a
+      >
+    </p>
     ${days.map(
       (day) =>
         html`<section class="attended-day">
@@ -101,7 +111,7 @@ export function renderAttendedPapers(
                     <span class="paper-head"
                       >${typePill(p)}${awardMark(p)}${titleLink(p, { detailsHref, onOpen })}</span
                     >
-                    ${verdictOf(p)}
+                    ${verdictOf(p)} ${toggles ? toggles.toggle(p) : ""}
                     ${notes[p.id] ? html`<p class="rated-note">📝 ${notes[p.id]}</p>` : ""}
                   </li>`,
               )}

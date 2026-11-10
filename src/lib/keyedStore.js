@@ -1,3 +1,4 @@
+import { reportStorageFailure } from "./storageHealth.js";
 /**
  * A per-paper store in localStorage (#208): `{paperId: entry}` under `key`, validated by `clean`,
  * reactive (`.value`, `input` events, also from other tabs). Every write re-reads storage first,
@@ -26,6 +27,7 @@ export function createKeyedStore(
       storage?.setItem(key, JSON.stringify(next));
     } catch (error) {
       console.warn(`Could not save ${key} on this device`, error);
+      reportStorageFailure();
     }
     store.dispatchEvent(new Event("input"));
   };

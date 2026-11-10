@@ -42,6 +42,18 @@ export const STORAGE_ITEMS = [
     key: "papersNavigator:<id>:attended",
     what: "Papers you attended (marked while checked in on the Live page, or by hand)",
   },
+  {
+    key: "papersNavigator:<id>:reviewInclude",
+    what: "Which lists My Papers shows for review (its List filter)",
+  },
+  {
+    key: "papersNavigator:<id>:lastExport",
+    what: "When you last exported (for the backup reminder)",
+  },
+  {
+    key: "papersNavigator:<id>:backupDismissed",
+    what: "When you last dismissed the backup reminder",
+  },
 
   {
     key: "papersNavigator:<id>:liveCheckIn",

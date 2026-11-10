@@ -3915,3 +3915,88 @@ body #vg-tooltip-element table tr td.value {
 .live-paper-actions {
   margin-top: var(--spacing-xs);
 }
+/* Stage E: My Papers as the place to review */
+.review-tools-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+}
+.review-tools-row .facet-strip {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.review-count {
+  margin: 0 0 var(--spacing-sm);
+}
+.review-list {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.review-row {
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-outline);
+}
+.review-group-box > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-height: 44px;
+  cursor: pointer;
+  font: var(--typography-label-caps, var(--typography-meta));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.not-in-mine {
+  font: var(--typography-meta);
+  font-style: italic;
+}
+/* Your data stays in this browser */
+.data-note {
+  margin-top: var(--spacing-sm);
+  font: var(--typography-body-sm);
+}
+.backup-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--rounded-sm, 4px);
+  background: var(--color-surface-sunken);
+  color: var(--color-on-surface);
+}
+.backup-ios {
+  flex-basis: 100%;
+  color: var(--color-on-surface-muted);
+}
+.storage-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--rounded-md);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  font: var(--typography-body-sm);
+}
+.storage-banner[hidden] {
+  display: none;
+}
+.storage-banner p {
+  margin: 0;
+}
+.storage-dismiss,
+.backup-dismiss {
+  min-width: 44px;
+  min-height: 44px;
+}
+.is-highlighted {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

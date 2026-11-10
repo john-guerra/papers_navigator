@@ -538,3 +538,69 @@ describe("clamped research topic thresholds", () => {
     expect(Object.keys(rule.matches)).toEqual(["a"]);
   });
 });
+
+describe("reason groups (Stage E: Show agrees with Group by reason)", () => {
+  const items = [
+    { id: "1", manual: true, reasons: ["★ Rated"], ruleIds: [] },
+    { id: "2", manual: true, reasons: ["★ Added on Live"], ruleIds: [] },
+    { id: "3", manual: true, reasons: ["✨ Like Some Paper"], ruleIds: [] },
+    {
+      id: "4",
+      manual: true,
+      reasons: ["★ my search", "👥 Friend: Ann"],
+      ruleIds: ["author:ann"],
+    },
+    {
+      id: "5",
+      manual: false,
+      reasons: ["👥 Friend: Ann"],
+      ruleIds: ["author:ann"],
+    },
+    { id: "6", manual: true, reasons: ["📱 shared"], ruleIds: [] },
+    { id: "7", manual: true, ruleIds: [] },
+  ];
+  const rules = [{ id: "author:ann", type: "author", value: "Ann" }];
+
+  it("reasonGroup classifies a reason by its marker; anything else is Added by hand", async () => {
+    const { reasonGroup } = await import("../src/lib/rules.js");
+    expect(reasonGroup("★ Rated").key).toBe("rated");
+    expect(reasonGroup("★ Added on Live").key).toBe("live");
+    expect(reasonGroup("✨ Like X")).toEqual({
+      key: "recommended",
+      label: "✨ Recommended",
+    });
+    expect(reasonGroup("📱 shared").key).toBe("shared");
+    expect(reasonGroup("👤 Ann").key).toBe("author");
+    expect(reasonGroup("★ data literacy")).toEqual({
+      key: "manual",
+      label: "★ Added by hand",
+    });
+    expect(reasonGroup("imported free text").key).toBe("manual");
+  });
+
+  it("Show lists the manual groups present, then the rules", async () => {
+    const { reasonOptions } = await import("../src/lib/rules.js");
+    expect(reasonOptions(items, rules)).toEqual([
+      { key: "all", label: "All reasons (7)" },
+      { key: "manual", label: "★ Added by hand (2)" },
+      { key: "rated", label: "★ Rated (1)" },
+      { key: "live", label: "★ Added on Live (1)" },
+      { key: "recommended", label: "✨ Recommended (1)" },
+      { key: "shared", label: "📱 Shared (1)" },
+      { key: "author:ann", label: "👥 Friend: Ann (2)" },
+    ]);
+  });
+
+  it("filters by the new keys", async () => {
+    const { filterByReason } = await import("../src/lib/rules.js");
+    expect(filterByReason(items, "rated").map((d) => d.id)).toEqual(["1"]);
+    expect(filterByReason(items, "manual").map((d) => d.id)).toEqual([
+      "4",
+      "7",
+    ]);
+    expect(filterByReason(items, "author:ann").map((d) => d.id)).toEqual([
+      "4",
+      "5",
+    ]);
+  });
+});
