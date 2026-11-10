@@ -5,6 +5,8 @@ import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { starRating } from "../widgets/starRating.js";
 import { quickNote } from "./quickNote.js";
 import { titleLink } from "./liveBreak.js";
+import { inPlaceDetails } from "../widgets/compactPaperRow.js";
+import { authorUrl } from "../lib/authors.js";
 
 const ms = (iso) => (iso ? new Date(iso).getTime() : NaN);
 
@@ -80,6 +82,8 @@ export function renderSessionView(
     ratings.addEventListener("input", followRating);
     disposers.push(() => ratings.removeEventListener("input", followRating));
     const note = quickNote(p, { notes });
+    // Details in place, collapsed (abstract, affiliations, links) and a jump to the full panel
+    const details = inPlaceDetails(p, { authorHref: authorUrl, onOpen });
     disposers.push(() => note.dispose());
     let add = "";
     if (!mineIds.has(p.id)) {
@@ -105,8 +109,8 @@ export function renderSessionView(
       <div class="live-paper-meta">
         ${(p.authors ?? []).map((a) => a.name).join(", ")}
       </div>
-      <div class="live-talk-actions">${stars}${add}</div>
-      ${note}
+      <div class="live-talk-actions">${stars}${add}${details.toggle}</div>
+      ${note} ${details.panel}
     </li>`;
   });
   const leave = html`<button type="button" class="btn-text live-leave">

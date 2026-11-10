@@ -48,6 +48,23 @@ export function compactPaperRow(
   const where = [p.room && `📍 ${p.room}`, paperWhen(p, tz, tzLabel), meta]
     .filter(Boolean)
     .join(" · ");
+  const { toggle, panel } = inPlaceDetails(p, { authorHref, onOpen });
+  return html`<div class="compact-paper">
+    ${paperHead(p, open)}
+    ${names.length ? html`<div class="compact-authors">${authorsLine(names, authorHref)}</div>` : ""}
+    ${where ? html`<div class="compact-meta">${where}</div>` : ""}
+    ${extra ? html`<div class="compact-extra">${extra}</div>` : ""}
+    <div class="compact-actions">${actions}${toggle}</div>
+    ${panel}
+  </div>`;
+}
+
+/**
+ * "Details ▾" and the panel it opens in place (#199; the Live page's talks too, #203): session ·
+ * type, the full award, authors with affiliations (linking to `authorHref`), abstract, links and
+ * "Open full details →" (`onOpen(p)`). Collapsed at first. Returns `{toggle, panel}`.
+ */
+export function inPlaceDetails(p, { authorHref, onOpen } = {}) {
   const id = `compact-details-${++uid}`;
   const toggle = html`<button
     class="btn-text compact-details-toggle"
@@ -79,12 +96,5 @@ export function compactPaperRow(
     toggle.setAttribute("aria-expanded", String(expanded));
     toggle.textContent = expanded ? "Details ▴" : "Details ▾";
   };
-  return html`<div class="compact-paper">
-    ${paperHead(p, open)}
-    ${names.length ? html`<div class="compact-authors">${authorsLine(names, authorHref)}</div>` : ""}
-    ${where ? html`<div class="compact-meta">${where}</div>` : ""}
-    ${extra ? html`<div class="compact-extra">${extra}</div>` : ""}
-    <div class="compact-actions">${actions}${toggle}</div>
-    ${panel}
-  </div>`;
+  return { toggle, panel };
 }
