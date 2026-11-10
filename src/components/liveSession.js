@@ -133,7 +133,13 @@ export function renderSessionView(
     el.querySelector(".is-now")?.scrollIntoView?.({ block: "center" });
   disposers.push(() => soon.dispose());
   /** My Papers changed (#208): Soon's reasons follow, without rebuilding the view. */
-  el.setMine = (next) => soon.update(undefined, next);
+  el.setMine = (next) => {
+    soon.update(undefined, next);
+    // A paper that joined My Papers (e.g. by rating it) loses its Add button (#208 review)
+    for (const row of el.querySelectorAll(".live-talk"))
+      if (next.has(row.dataset.paperId))
+        row.querySelector(".live-add")?.remove();
+  };
   el.dispose = () => disposers.forEach((d) => d());
   /** "💬 Discussion" links (#203 Stage C), once the official account's posts are known. */
   el.setDiscussion = (map) => {

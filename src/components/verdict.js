@@ -26,11 +26,12 @@ export function verdict(
     nope.setAttribute("aria-pressed", String(Boolean(disliked?.has(paper.id))));
   };
   stars.addEventListener("input", () => {
+    const previous = ratings.get(paper.id);
     const n = stars.value;
     ratings.set(paper.id, n);
     if (n) {
       disliked?.set(paper.id, false);
-      onRated?.(paper, n);
+      onRated?.(paper, n, previous);
     }
     show();
   });
@@ -56,8 +57,9 @@ export function verdict(
  * My Papers (reason "★ Rated", Undo toast). Not for me and attended papers are never added.
  */
 export function addOnRate({ store, addWithUndo, toast }) {
-  return (paper, n) => {
-    if (!n || store.value.some((d) => d.id === paper.id)) return;
+  // Only a first rating adds: changing 4★ to 5★ never brings back a paper you removed (#208 review)
+  return (paper, n, previous = 0) => {
+    if (!n || previous || store.value.some((d) => d.id === paper.id)) return;
     const undo = addWithUndo(store, [paper], "★ Rated");
     toast("Rated and added to My Papers", {
       actionLabel: "Undo",

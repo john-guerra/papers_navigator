@@ -102,3 +102,21 @@ describe("autoAttended (#208): checked in for 5+ minutes of a talk", () => {
     ).toEqual(["t1", "t2", "t3", "t4"]);
   });
 });
+
+describe("autoAttended review fixes (#208)", () => {
+  const session = { items: [talk("t1", "10:00"), talk("t2", "10:12")] };
+  it("never marks for a check-in made while the time was set by hand", () => {
+    expect(
+      autoAttended(
+        session,
+        { at: et("10:00"), override: true },
+        new Date(et("10:30")),
+      ),
+    ).toEqual([]);
+  });
+  it("never marks when the check-in is later than now (made at a time set ahead)", () => {
+    expect(
+      autoAttended(session, { at: et("10:20") }, new Date(et("10:10"))),
+    ).toEqual([]);
+  });
+});

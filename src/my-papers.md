@@ -286,7 +286,8 @@ importInput.querySelector("input").onchange = async (event) => {
   const noteCount = Object.keys(parsed.notes).length;
   const ratingCount = Object.keys(parsed.ratings).length;
   const attendedCount = Object.values(parsed.attended).filter((e) => !e.off).length;
-  const contents = `${parsed.followed.length} papers${watchesOf(parsed.rules.length)}${noteCount ? `, ${notesCount(noteCount)}` : ""}${ratingCount ? `, ${ratingCount} ${ratingCount === 1 ? "rating" : "ratings"}` : ""}${attendedCount ? `, ${attendedCount} attended` : ""}`;
+  const dislikedCount = Object.keys(parsed.disliked).length;
+  const contents = `${parsed.followed.length} papers${watchesOf(parsed.rules.length)}${noteCount ? `, ${notesCount(noteCount)}` : ""}${ratingCount ? `, ${ratingCount} ${ratingCount === 1 ? "rating" : "ratings"}` : ""}${dislikedCount ? `, ${dislikedCount} not for me` : ""}${attendedCount ? `, ${attendedCount} attended` : ""}`;
   const choices = () => importStatus.replaceChildren(`Import “${file.name}” (${contents}): `, merge, " ", replace);
   merge.onclick = () => run(false);
   // Inline confirm before replacing (no native dialog)

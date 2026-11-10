@@ -104,7 +104,11 @@ export function createCheckInStore(
     try {
       const v = JSON.parse(storage?.getItem(key) ?? "null");
       return v && typeof v.sessionId === "string" && typeof v.at === "string"
-        ? { sessionId: v.sessionId, at: v.at }
+        ? {
+            sessionId: v.sessionId,
+            at: v.at,
+            ...(v.override === true && { override: true }),
+          }
         : null;
     } catch {
       return null;
@@ -128,7 +132,13 @@ export function createCheckInStore(
   };
   events?.addEventListener?.("storage", onStorage);
   Object.defineProperty(store, "value", { get: () => value });
-  store.commit = (sessionId, at) => save({ sessionId, at: at.toISOString() });
+  // `override`: made while the time was set by hand (#208 review): never marks attendance
+  store.commit = (sessionId, at, { override = false } = {}) =>
+    save({
+      sessionId,
+      at: at.toISOString(),
+      ...(override && { override: true }),
+    });
   store.leave = () => save(null);
   store.dispose = () => events?.removeEventListener?.("storage", onStorage);
   return store;
@@ -143,6 +153,19 @@ export function activeSession(checkIn, days, at, tz) {
     for (const session of slot.sessions)
       if (session.sessionId === checkIn.sessionId && t < session.end)
         return session;
+  return null;
+}
+
+/**
+ * The checked-in session wherever it is in the program, even after it ended (#208 review: a phone
+ * that slept through a session still marks its talks attended on waking). Null if unknown.
+ */
+export function checkedInSession(checkIn, days) {
+  if (!checkIn) return null;
+  for (const day of days)
+    for (const slot of day.slots)
+      for (const s of slot.sessions)
+        if (s.sessionId === checkIn.sessionId) return s;
   return null;
 }
 
@@ -213,9 +236,11 @@ export function worthMoving(slot, session, at, mine) {
         chips: now ? reasonChips(now, mine.get(now.id)) : [],
       });
   }
+  const awarded = (r) => Number(Boolean(AWARD_CHIPS[r.paper.awardTier]));
   rows.sort(
     (a, b) =>
       Number(b.mine) - Number(a.mine) ||
+      awarded(b) - awarded(a) ||
       ms(a.paper.start) - ms(b.paper.start) ||
       String(a.session.room ?? "").localeCompare(b.session.room ?? ""),
   );

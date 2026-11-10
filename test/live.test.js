@@ -284,3 +284,40 @@ describe("worthMoving (#208)", () => {
     expect(none.badge).toBe(0);
   });
 });
+
+describe("checkedInSession (#208 review)", () => {
+  it("finds the checked-in session even after it ended (phone slept through it)", async () => {
+    const { checkedInSession } = await import("../src/lib/live.js");
+    expect(
+      checkedInSession({ sessionId: "B", at: et("10:30") }, days).sessionId,
+    ).toBe("B");
+    expect(
+      checkedInSession({ sessionId: "gone", at: et("10:30") }, days),
+    ).toBeNull();
+    expect(checkedInSession(null, days)).toBeNull();
+  });
+});
+
+describe("worthMoving sort: My Papers, then award, then time (#208 review)", () => {
+  it("puts an awarded talk of yours before your other talks", async () => {
+    const { worthMoving } = await import("../src/lib/live.js");
+    const ps = [
+      talk("x1", "X", "R1", "10:30", "10:42"),
+      talk("x2", "X", "R1", "10:42", "10:54"),
+      talk("y1", "Y", "R2", "10:30", "10:44"),
+      talk("y2", "Y", "R2", "10:44", "10:56", {
+        awardTier: "best",
+        award: "best paper",
+      }),
+      talk("z1", "Z", "R3", "10:30", "10:42"),
+    ];
+    const [s] = programDays(ps, TZ)[0].slots;
+    const Z = s.sessions.find((x) => x.sessionId === "Z");
+    const mine = new Map(
+      ["x2", "y2"].map((id) => [id, { id, manual: true, reasons: [] }]),
+    );
+    const { rows } = worthMoving(s, Z, new Date(et("10:40")), mine);
+    // y2 starts later (10:44) than x2 (10:42) but is awarded: first
+    expect(rows.map((r) => r.paper.id)).toEqual(["y2", "x2"]);
+  });
+});

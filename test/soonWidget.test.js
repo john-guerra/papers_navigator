@@ -142,3 +142,18 @@ describe("soonWidget (#208)", () => {
     el.remove();
   });
 });
+
+describe("Soon keeps your place when the clock ticks (#208 review)", () => {
+  it("an expanded On now room stays open and focus stays on its Go there", () => {
+    const { el } = setup();
+    button(el).click();
+    const line = el.querySelector(".soon-now");
+    line.open = true;
+    line.querySelector(".soon-go").focus();
+    el.update(new Date(et("10:41")), mine);
+    const again = el.querySelector(".soon-now");
+    expect(again.open).toBe(true);
+    expect(document.activeElement).toBe(again.querySelector(".soon-go"));
+    el.remove();
+  });
+});

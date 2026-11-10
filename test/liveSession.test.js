@@ -217,6 +217,15 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("setMine hides Add to My Papers for papers now in My Papers (#208 review)", () => {
+    const { el } = setup();
+    const row = el.querySelectorAll(".live-talk")[1];
+    expect(row.querySelector(".live-add")).toBeTruthy();
+    el.setMine(new Map([["b2", { id: "b2", manual: true, reasons: [] }]]));
+    expect(row.querySelector(".live-add")).toBeNull();
+    el.remove();
+  });
+
   it("setNow updates Soon in place", () => {
     const { el } = setup();
     el.setNow(new Date(et("11:05")));

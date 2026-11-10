@@ -63,6 +63,8 @@ export function autoAttended(
   now,
   { minMinutes = MIN_OVERLAP } = {},
 ) {
+  // A check-in made while the time was set by hand never counts (#208 review)
+  if (checkIn?.override) return [];
   const from = ms(checkIn?.at);
   const to = now.getTime();
   if (!Number.isFinite(from)) return [];

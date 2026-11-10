@@ -41,7 +41,7 @@ describe("verdict: stars or Not for me (#208)", () => {
     expect(ratings.set).toHaveBeenLastCalledWith("p", 5);
     expect(disliked.set).toHaveBeenLastCalledWith("p", false);
     expect(nope.getAttribute("aria-pressed")).toBe("false");
-    expect(onRated).toHaveBeenCalledWith(paper, 5);
+    expect(onRated).toHaveBeenCalledWith(paper, 5, 0);
     // a second tap on 👎 clears it
     nope.click();
     nope.click();
@@ -92,6 +92,23 @@ describe("addOnRate: rated with stars → My Papers (#208)", () => {
     );
     onRated({ id: "new" }, 5);
     onRated({ id: "already" }, 3);
+    expect(addWithUndo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("onRated only on a first rating (#208 review)", () => {
+  it("passes the previous rating, and addOnRate adds only from unrated", () => {
+    const ratings = keyed({ p: 4 });
+    const onRated = vi.fn();
+    const el = verdict(paper, { ratings, disliked: keyed(), onRated });
+    stars(el)[4].click();
+    expect(onRated).toHaveBeenCalledWith(paper, 5, 4);
+    const store = { value: [] };
+    const addWithUndo = vi.fn(() => () => {});
+    const add = addOnRate({ store, addWithUndo, toast: vi.fn() });
+    add({ id: "removed" }, 5, 4);
+    expect(addWithUndo).not.toHaveBeenCalled();
+    add({ id: "fresh" }, 3, 0);
     expect(addWithUndo).toHaveBeenCalledTimes(1);
   });
 });

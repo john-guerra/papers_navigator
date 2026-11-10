@@ -77,6 +77,37 @@ export function soonWidget({
           >${list.map((c) => html`<span class="soon-chip">${c}</span>`)}</span
         >`
       : "";
+  // Redraws keep your place (#208 review): which On now rooms are open, and what had focus
+  const place = () => {
+    const open = new Set(
+      [...body.querySelectorAll(".soon-now[open]")].map(
+        (d) => d.dataset.sessionId,
+      ),
+    );
+    const active = body.contains(document.activeElement)
+      ? document.activeElement
+      : null;
+    const holder = active?.closest("[data-session-id], [data-paper-id]");
+    const focus = holder && {
+      key: holder.dataset.sessionId ?? holder.dataset.paperId,
+      attr: holder.dataset.sessionId ? "session-id" : "paper-id",
+      cls: [...active.classList].join("."),
+    };
+    return { open, focus };
+  };
+  const restore = ({ open, focus }) => {
+    for (const d of body.querySelectorAll(".soon-now"))
+      if (open.has(d.dataset.sessionId)) d.open = true;
+    if (focus) {
+      const holder = body.querySelector(
+        `[data-${focus.attr}="${CSS.escape(focus.key)}"]`,
+      );
+      const target = focus.cls
+        ? holder?.querySelector(`.${focus.cls}`)
+        : holder;
+      target?.focus();
+    }
+  };
   const draw = (time, papersOf) => {
     const {
       rows,
@@ -87,6 +118,7 @@ export function soonWidget({
     badge.hidden = !n;
     if (!n) badge.remove();
     else if (!badge.isConnected) button.append(badge);
+    const kept = place();
     body.replaceChildren(
       rows.length
         ? html`<ol class="soon-rows">
@@ -110,7 +142,10 @@ export function soonWidget({
       onNow.length ? html`<h3 class="soon-subtitle">On now</h3>` : "",
       ...onNow.map(
         (line) =>
-          html`<details class="soon-now">
+          html`<details
+            class="soon-now"
+            data-session-id=${line.session.sessionId}
+          >
             <summary>
               📍 ${line.session.room ?? "Room TBA"} ·
               ${line.talk ? line.talk.title : html`<span class="muted">No timed talks</span>`}
@@ -131,6 +166,7 @@ export function soonWidget({
           </details>`,
       ),
     );
+    restore(kept);
   };
 
   const onKey = (event) => {

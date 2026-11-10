@@ -12,7 +12,7 @@ import { createDislikedStore } from "./lib/disliked.js";
 import { autoAttended, createAttendedStore } from "./lib/attended.js";
 import { addOnRate } from "./components/verdict.js";
 import { createLiveClock } from "./lib/liveClock.js";
-import { activeSession, createCheckInStore, programDays, slotOf, slotsAt } from "./lib/live.js";
+import { activeSession, checkedInSession, createCheckInStore, programDays, slotOf, slotsAt } from "./lib/live.js";
 import { addWithUndo } from "./lib/selection.js";
 import { lazyLoader, relatedPapers, toMatrix } from "./lib/search.js";
 import { conferenceZone } from "./lib/time.js";
@@ -182,7 +182,8 @@ const slots = slotsAt(days, at, tz);
 const key = session
   ? `in:${session.sessionId}`
   : `break:${slots.now?.start}:${slots.next?.start}:${slots.nextDay?.slot.start}:${[...mineIds].join()}`;
-const commit = (s) => checkIn.commit(s.sessionId, clock.value.at);
+// A check-in made while the time is set by hand is flagged: it never marks attendance (#208 review)
+const commit = (s) => checkIn.commit(s.sessionId, clock.value.at, { override: clock.value.override });
 liveView.show(
   key,
   () =>
@@ -221,8 +222,10 @@ liveView.show(
 );
 // Attended (#208): the checked-in session's talks you were there for 5+ minutes, on the real
 // clock only (never while the time is set by hand); papers you unticked stay unticked
-if (session && !clockState.override)
-  attendedStore.markAuto(autoAttended(session, checkInState, at), at);
+// (the checked-in session even after it ended: a phone that slept through it marks it on waking)
+const attendedIn = checkedInSession(checkInState, days);
+if (attendedIn && !clockState.override)
+  attendedStore.markAuto(autoAttended(attendedIn, checkInState, at), at);
 // My Papers changed: Soon's reasons follow (#208)
 liveView.current?.setMine?.(mine);
 // Discussion links, once known (a rebuilt view gets them again here)
