@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  filterByRating,
-  groupRows,
-  includeCounts,
-  ratingKey,
-  reviewRows,
-} from "../src/lib/review.js";
+import { groupRows, ratingKey, reviewRows } from "../src/lib/review.js";
 
 const paper = (id, extra = {}) => ({
   id,
@@ -69,12 +63,6 @@ describe("reviewRows (Stage E)", () => {
       "d",
     ]);
   });
-  it("counts what each Include box would add", () => {
-    expect(includeCounts({ items, papers, ...ctx })).toEqual({
-      ratedOrAttended: 2,
-      disliked: 1,
-    });
-  });
   it("with nothing in My Papers, the included papers still show", () => {
     expect(
       ids(
@@ -94,25 +82,6 @@ describe("ratings (Stage E)", () => {
     expect(ratingKey("a", ctx)).toBe("5");
     expect(ratingKey("d", ctx)).toBe("no");
     expect(ratingKey("e", ctx)).toBe("none");
-  });
-  it("filterByRating keeps any of the chosen keys; none chosen keeps all", () => {
-    const rows = papers;
-    expect(ids(filterByRating(rows, new Set(), ctx))).toEqual([
-      "a",
-      "b",
-      "c",
-      "d",
-      "e",
-    ]);
-    expect(ids(filterByRating(rows, new Set(["5", "4"]), ctx))).toEqual([
-      "a",
-      "c",
-    ]);
-    expect(ids(filterByRating(rows, new Set(["no", "none"]), ctx))).toEqual([
-      "b",
-      "d",
-      "e",
-    ]);
   });
 });
 
@@ -186,11 +155,31 @@ describe("groupRows (Stage E)", () => {
 
 describe("groupRows reason uses watch rules, not reason text (review fix)", () => {
   it("a hand-added paper with a 🔍 search reason isn't put in a fake watch group", () => {
-    const rules = [{ id: "affiliation:mit", type: "affiliation", value: "MIT" }];
+    const rules = [
+      { id: "affiliation:mit", type: "affiliation", value: "MIT" },
+    ];
     const rows = [
-      { id: "h", manual: true, reasons: ["🔍 heatmaps"], ruleIds: [], notInMine: false },
-      { id: "m", manual: false, reasons: ["🏫 MIT"], ruleIds: ["affiliation:mit"], notInMine: false },
-      { id: "x", manual: true, reasons: ["🏫 MIT"], ruleIds: [], notInMine: false },
+      {
+        id: "h",
+        manual: true,
+        reasons: ["🔍 heatmaps"],
+        ruleIds: [],
+        notInMine: false,
+      },
+      {
+        id: "m",
+        manual: false,
+        reasons: ["🏫 MIT"],
+        ruleIds: ["affiliation:mit"],
+        notInMine: false,
+      },
+      {
+        id: "x",
+        manual: true,
+        reasons: ["🏫 MIT"],
+        ruleIds: [],
+        notInMine: false,
+      },
     ];
     const groups = groupRows(rows, "reason", { rules });
     expect(groups.map((g) => [g.label, g.rows.map((r) => r.id)])).toEqual([

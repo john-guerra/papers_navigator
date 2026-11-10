@@ -39,9 +39,9 @@ import { clearMyPapers } from "./components/clearMyPapers.js";
 import { segmentedControl } from "./widgets/segmentedControl.js";
 import { conferenceZone } from "./lib/time.js";
 import { PHONE_QUERY, matches } from "./lib/breakpoints.js";
-import { reviewTools } from "./components/reviewTools.js";
+import { facetFilter, facetStrip } from "./widgets/facetStrip.js";
 import { renderReviewList } from "./components/reviewList.js";
-import { filterByRating, groupRows, includeCounts, reviewRows } from "./lib/review.js";
+import { REVIEW_DEFAULT, groupRows, listFromStorage, reviewFacets, reviewRows } from "./lib/review.js";
 import { dataNote, storageBanner } from "./components/dataSafety.js";
 import { backupNudge, isIosSafariTab, requestPersistence } from "./lib/storageHealth.js";
 ```
@@ -367,7 +367,7 @@ ${recommendedSection}
 ## All my papers
 
 <div class="my-papers-tools">${searchInput} ${sortInput}</div>
-<div class="review-tools-row">${reviewToolsInput}</div>
+<div class="review-tools-row">${reviewFacetsInput}<div class="review-group">${groupInput}</div></div>
 <p class="review-count muted">${reviewCountLine}</p>
 
 ```js
@@ -388,31 +388,51 @@ const sortBy = Generators.input(sortInput);
 ```
 
 ```js
-// Review tools (Stage E): Include papers outside your list, filter by rating, group. Include is
-// remembered on this device; a link from Live (#review=rating|attended) turns both on and groups
-const includeKey = `papersNavigator:${conference.id}:reviewInclude`;
-const savedInclude = (() => {
+// Review tools (Stage E): the Explore facet strip (List, Rating, Attended, Day, …) and Group by.
+// The picks live here, in a cell that doesn't depend on your list, so they survive it changing.
+// The List facet is remembered on this device; a link from Live (#review=rating|attended) shows
+// everything and groups, once (the hash is then dropped, so it doesn't come back).
+const reviewKey = `papersNavigator:${conference.id}:reviewInclude`;
+const reviewLink = /(?:^|[#&])review=(rating|attended)/.exec(location.hash)?.[1];
+if (reviewLink) history.replaceState(history.state, "", location.href.replace(/#.*$/, ""));
+const savedList = (() => {
   try {
-    return JSON.parse(localStorage.getItem(includeKey) ?? "{}") ?? {};
+    return JSON.parse(localStorage.getItem(reviewKey) ?? "null");
   } catch {
-    return {};
+    return null;
   }
 })();
-const reviewLink = /(?:^|[#&])review=(rating|attended)/.exec(location.hash)?.[1];
-const reviewToolsInput = reviewTools({
-  include: reviewLink ? { ratedOrAttended: true, disliked: true } : savedInclude,
-  counts: includeCounts({ items, papers, ratings: ratingsStore.value, disliked: dislikedStore.value, attended: attendedStore.value }),
-  groupBy: reviewLink ?? "none",
-  phone: isSmall,
+const reviewState = { value: { list: reviewLink ? ["mine", "rated", "disliked"] : listFromStorage(savedList) } };
+const groupInput = Inputs.select(
+  new Map([["None", "none"], ["Day", "day"], ["Reason", "reason"], ["Topic", "topic"], ["Rating", "rating"], ["Attended", "attended"], ["Type", "type"], ["Session", "session"], ["Award", "award"]]),
+  { label: "Group by", value: reviewLink ?? "none" },
+);
+const groupBy = Generators.input(groupInput);
+```
+
+```js
+// The strip over your list plus, when Show is "All", rated/attended and 👎 papers outside it;
+// rebuilt when they change, starting from the current picks (reviewState)
+const ctx = { ratings: ratingsState, disliked: dislikedState, attended: attendedState, rules: rulesState.rules };
+const universe = reviewRows({ items: shownItems, papers, ...ctx, include: reasonChoice.key === "all" ? { ratedOrAttended: true, disliked: true } : {} });
+const reviewFacetsList = reviewFacets(ctx);
+const reviewFacetsInput = facetStrip(universe, {
+  facets: reviewFacetsList,
+  value: reviewState.value,
+  defaultValue: REVIEW_DEFAULT,
+  header: "Among the papers listed",
+  sheetLabel: "Filter",
+  phoneQuery: PHONE_QUERY,
 });
-reviewToolsInput.addEventListener("input", () => {
+reviewFacetsInput.addEventListener("input", () => {
+  reviewState.value = reviewFacetsInput.value;
   try {
-    localStorage.setItem(includeKey, JSON.stringify(reviewToolsInput.value.include));
+    localStorage.setItem(reviewKey, JSON.stringify(reviewFacetsInput.value.list ?? ["mine"]));
   } catch {
     // a view setting: fine to lose
   }
 });
-const review = Generators.input(reviewToolsInput);
+const reviewFilter = Generators.input(reviewFacetsInput);
 ```
 
 ```js
@@ -420,16 +440,13 @@ const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
 // Also your note (#152); read from the store so typing a note doesn't redraw the list
 const text = (p) =>
   [p.title, p.authorNames, p.affiliations, p.reason, p.sessionName, p.room, notesStore.get(p.id)].join(" ").toLowerCase();
-const ctx = { ratings: ratingsState, disliked: dislikedState, attended: attendedState, rules: rulesState.rules };
-// Show (top of page) narrows your list; papers outside it come in only when Show is "All"
-const rows = reviewRows({ items: shownItems, papers, ...ctx, include: reasonChoice.key === "all" ? review.include : {} });
-const searched = filterByRating(rows, review.ratingKeys, ctx).filter((p) => terms.every((term) => text(p).includes(term)));
+const searched = facetFilter(universe, reviewFacetsList, reviewFilter).filter((p) => terms.every((term) => text(p).includes(term)));
 const key = (p) => (sortBy === "start" ? (p.start ?? p.sessionStart ?? "~") : (p[sortBy] ?? "~"));
 const sorted = [...searched].sort((a, b) => d3.ascending(key(a), key(b)));
 const outside = sorted.filter((p) => p.notInMine).length;
 reviewCountLine.textContent = `${sorted.length - outside} in My Papers${outside ? ` · +${outside} not in My Papers` : ""}`;
 display(
-  renderReviewList(groupRows(sorted, review.groupBy, ctx), {
+  renderReviewList(groupRows(sorted, groupBy, ctx), {
     tz,
     tzLabel,
     authorHref: authorUrl,

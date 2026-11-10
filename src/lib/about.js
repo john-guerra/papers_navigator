@@ -44,7 +44,7 @@ export const STORAGE_ITEMS = [
   },
   {
     key: "papersNavigator:<id>:reviewInclude",
-    what: "Which papers outside your list My Papers shows for review (Include)",
+    what: "Which lists My Papers shows for review (its List filter)",
   },
   {
     key: "papersNavigator:<id>:lastExport",

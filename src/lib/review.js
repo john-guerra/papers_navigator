@@ -1,4 +1,5 @@
 import { formatDay } from "./time.js";
+import { AWARD_TIERS } from "./paperMeta.js";
 import { manualGroupKeys, reasonGroup, ruleReason } from "./rules.js";
 
 /**
@@ -24,51 +25,23 @@ export function reviewRows({
   include = {},
 }) {
   const mine = new Set(items.map((d) => d.id));
-  const rows = items.map((d) => ({ ...d, notInMine: false }));
-  const outside = (test) =>
+  const rows = items.map((d) => ({ ...d, notInMine: false, list: "mine" }));
+  const outside = (test, list) =>
     papers
       .filter((p) => !mine.has(p.id) && test(p.id))
-      .map((p) => ({ ...p, notInMine: true }));
+      .map((p) => ({ ...p, notInMine: true, list }));
   const ratedOrAttended = (id) =>
     !disliked[id] && (ratings[id] > 0 || isAttended(attended, id));
-  if (include.ratedOrAttended) rows.push(...outside(ratedOrAttended));
-  if (include.disliked) rows.push(...outside((id) => Boolean(disliked[id])));
+  if (include.ratedOrAttended) rows.push(...outside(ratedOrAttended, "rated"));
+  if (include.disliked)
+    rows.push(...outside((id) => Boolean(disliked[id]), "disliked"));
   return rows;
-}
-
-/** How many papers each Include box would add. */
-export function includeCounts({
-  items,
-  papers,
-  ratings = {},
-  disliked = {},
-  attended = {},
-}) {
-  const count = (box) =>
-    reviewRows({
-      items,
-      papers,
-      ratings,
-      disliked,
-      attended,
-      include: { [box]: true },
-    }).length - items.length;
-  return {
-    ratedOrAttended: count("ratedOrAttended"),
-    disliked: count("disliked"),
-  };
 }
 
 /** "5" … "1", "no" (👎 Not for me) or "none" (not rated). */
 export function ratingKey(id, { ratings = {}, disliked = {} } = {}) {
   if (ratings[id] > 0) return String(ratings[id]);
   return disliked[id] ? "no" : "none";
-}
-
-/** Rows whose rating key is in `keys`; an empty set keeps every row. */
-export function filterByRating(rows, keys, ctx) {
-  if (!keys?.size) return rows;
-  return rows.filter((r) => keys.has(ratingKey(r.id, ctx)));
 }
 
 const RATING_GROUPS = [
@@ -194,4 +167,99 @@ export function groupRows(rows, by, ctx = {}) {
     default:
       return [{ key: "", label: "", rows }];
   }
+}
+
+const LISTS = [
+  ["mine", "In My Papers"],
+  ["rated", "Rated or attended, not in My Papers"],
+  ["disliked", "👎 Not for me"],
+];
+const LIST_KEYS = LISTS.map(([key]) => key);
+const RATING_KEYS = RATING_GROUPS.map(([key]) => key);
+const AWARD_KEYS = Object.keys(AWARD_TIERS);
+const inOrder = (keys) => (a, b) =>
+  keys.indexOf(a.value) - keys.indexOf(b.value);
+
+/** What the review facets start at, and what Clear all goes back to: your list. */
+export const REVIEW_DEFAULT = Object.freeze({ list: Object.freeze(["mine"]) });
+
+/**
+ * The facet strip on My Papers (Stage E; the Explore widget, src/widgets/facetStrip.js) over
+ * reviewRows with both Includes on: List (your list, rated or attended papers outside it, 👎),
+ * Rating, Attended, Day, Type, Award, Topic, Session. `ctx`: {ratings, disliked, attended}.
+ */
+export function reviewFacets(ctx = {}) {
+  const fixedFacet = (id, label, keys, format, accessor) => ({
+    id,
+    label,
+    accessor,
+    format,
+    search: false,
+    sort: inOrder(keys),
+  });
+  return [
+    fixedFacet(
+      "list",
+      "List",
+      LIST_KEYS,
+      (v) => new Map(LISTS).get(v) ?? v,
+      (r) => r.list,
+    ),
+    fixedFacet(
+      "rating",
+      "Rating",
+      RATING_KEYS,
+      (v) => new Map(RATING_GROUPS).get(v) ?? v,
+      (r) => ratingKey(r.id, ctx),
+    ),
+    fixedFacet(
+      "attended",
+      "Attended",
+      ["yes", "no"],
+      (v) => (v === "yes" ? "✓ Attended" : "Not attended"),
+      (r) => (isAttended(ctx.attended, r.id) ? "yes" : "no"),
+    ),
+    {
+      id: "days",
+      label: "Day",
+      accessor: (r) => r.day,
+      format: formatDay,
+      search: false,
+      sort: (a, b) => String(a.value).localeCompare(String(b.value)),
+    },
+    {
+      id: "types",
+      label: "Type",
+      accessor: (r) => r.typeShort ?? r.typeLabel,
+      search: false,
+    },
+    fixedFacet(
+      "awards",
+      "Award",
+      AWARD_KEYS,
+      (v) =>
+        `${AWARD_TIERS[v]?.icon ?? ""} ${AWARD_TIERS[v]?.label ?? v}`.trim(),
+      (r) => r.awardTier,
+    ),
+    { id: "topics", label: "Topic", accessor: (r) => r.clusterLabel },
+    { id: "sessions", label: "Session", accessor: (r) => r.sessionName },
+  ];
+}
+
+/**
+ * The List facet as remembered on this device (`reviewInclude`): an array of list keys; the
+ * first Stage E build stored `{ratedOrAttended, disliked}`. Anything else: your list.
+ */
+export function listFromStorage(saved) {
+  if (Array.isArray(saved)) {
+    const keys = saved.filter((k) => LIST_KEYS.includes(k));
+    return keys.length ? keys : ["mine"];
+  }
+  if (saved && typeof saved === "object")
+    return [
+      "mine",
+      ...(saved.ratedOrAttended ? ["rated"] : []),
+      ...(saved.disliked ? ["disliked"] : []),
+    ];
+  return ["mine"];
 }
