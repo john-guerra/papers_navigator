@@ -402,7 +402,8 @@ const savedList = (() => {
     return null;
   }
 })();
-const reviewState = { value: { list: reviewLink ? ["mine", "rated", "disliked"] : listFromStorage(savedList) } };
+// `closed`: groups you collapsed, per Group by, so redraws (e.g. after rating) keep them closed
+const reviewState = { value: { list: reviewLink ? ["mine", "rated", "disliked"] : listFromStorage(savedList) }, closed: new Map() };
 const groupInput = Inputs.select(
   new Map([["None", "none"], ["Day", "day"], ["Reason", "reason"], ["Topic", "topic"], ["Rating", "rating"], ["Attended", "attended"], ["Type", "type"], ["Session", "session"], ["Award", "award"]]),
   { label: "Group by", value: reviewLink ?? "none" },
@@ -447,6 +448,13 @@ const outside = sorted.filter((p) => p.notInMine).length;
 reviewCountLine.textContent = `${sorted.length - outside} in My Papers${outside ? ` · +${outside} not in My Papers` : ""}`;
 display(
   renderReviewList(groupRows(sorted, groupBy, ctx), {
+    closed: reviewState.closed.get(groupBy) ?? new Set(),
+    onFold: (key, open) => {
+      const closed = reviewState.closed.get(groupBy) ?? new Set();
+      if (open) closed.delete(key);
+      else closed.add(key);
+      reviewState.closed.set(groupBy, closed);
+    },
     tz,
     tzLabel,
     authorHref: authorUrl,
