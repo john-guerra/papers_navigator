@@ -347,6 +347,8 @@ Papers". Papers already added as "★ Rated" stay. The original decision, for th
 
 ## Stage E: My Papers as the place to review, and keeping your data safe
 
+**Status:** built on branch `stage-e-review` (plan `docs/superpowers/plans/2026-11-10-stage-e-review.md`).
+
 ### Why
 
 After a session, at the end of a day, and after the conference, John wants one place to see
