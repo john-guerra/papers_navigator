@@ -26,7 +26,9 @@ import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "
 import { withParams } from "./lib/urlState.js";
 import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { createNotesStore, importedNotesText, notesCount } from "./lib/notes.js";
+import { createRatingsStore, importedRatingsText } from "./lib/ratings.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
+import { bindRatingMarkers } from "./components/ratingMarkers.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { arrangeMyPapers } from "./components/myPapersLayout.js";
@@ -61,6 +63,10 @@ invalidation.then(bindMyPapersBadge(store));
 const notesStore = createNotesStore(conference.id);
 invalidation.then(() => notesStore.dispose());
 const notesState = Generators.input(notesStore);
+// Ratings (#203, Live page): on this device only, in the export file (Stage B)
+const ratingsStore = createRatingsStore(conference.id);
+invalidation.then(() => ratingsStore.dispose());
+const ratingsState = Generators.input(ratingsStore);
 // The embeddings, loaded once on first need (a failed load, e.g. offline, is retried)
 const loadMatrix = lazyLoader(async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length));
 // Research topics (#24): their cached matches show right away; after first paint the model
@@ -222,7 +228,7 @@ const shareButton = renderShareButton({
 const exportButton = html`<button>Export JSON</button>`;
 exportButton.onclick = () => {
   const blob = new Blob(
-    [exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions, notes: notesStore.value })],
+    [exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions, notes: notesStore.value, ratings: ratingsStore.value })],
     { type: "application/json" },
   );
   const a = Object.assign(document.createElement("a"), {
@@ -257,16 +263,19 @@ importInput.querySelector("input").onchange = async (event) => {
     const rulesResult = applyRules(store, rulesStore, parsed.rules, replace ? parsed.exceptions : []);
     // Notes (#152) are always merged, even on Replace: a different note on both sides keeps both
     const notesResult = notesStore.merge(parsed.notes);
-    const undo = () => (undoList(), rulesResult.undo(), notesResult.undo());
+    // Ratings (#203) are merged the same way; a rating you already have wins
+    const ratingsResult = ratingsStore.merge(parsed.ratings);
+    const undo = () => (undoList(), rulesResult.undo(), notesResult.undo(), ratingsResult.undo());
     importStatus.textContent = (replace
       ? `Replaced your list with ${followedStore.value.length} papers${watchesOf(rulesResult.added)}.`
-      : `Added ${followedStore.value.length - before} papers${watchesOf(rulesResult.added)} (${store.value.length} total in My Papers).`) + importedNotesText(notesResult);
+      : `Added ${followedStore.value.length - before} papers${watchesOf(rulesResult.added)} (${store.value.length} total in My Papers).`) + importedNotesText(notesResult) + importedRatingsText(ratingsResult.added);
     if (replace) showToast("Replaced your list from the file", { actionLabel: "Undo", onAction: undo, focusAction: true });
   };
   const merge = html`<button>Merge into my list</button>`;
   const replace = html`<button>Replace my list</button>`;
   const noteCount = Object.keys(parsed.notes).length;
-  const contents = `${parsed.followed.length} papers${watchesOf(parsed.rules.length)}${noteCount ? `, ${notesCount(noteCount)}` : ""}`;
+  const ratingCount = Object.keys(parsed.ratings).length;
+  const contents = `${parsed.followed.length} papers${watchesOf(parsed.rules.length)}${noteCount ? `, ${notesCount(noteCount)}` : ""}${ratingCount ? `, ${ratingCount} ${ratingCount === 1 ? "rating" : "ratings"}` : ""}`;
   const choices = () => importStatus.replaceChildren(`Import “${file.name}” (${contents}): `, merge, " ", replace);
   merge.onclick = () => run(false);
   // Inline confirm before replacing (no native dialog)
@@ -390,6 +399,9 @@ invalidation.then(
 // Notes (#152): the list shows each note; the itinerary marks papers with one ("📝 Note")
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-list"), notesStore, { text: true }));
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-schedule"), notesStore));
+// Ratings (#203): "★4" on rated rows
+invalidation.then(bindRatingMarkers(document.querySelector(".mp-list"), ratingsStore));
+invalidation.then(bindRatingMarkers(document.querySelector(".mp-schedule"), ratingsStore));
 ```
 
 ```js
@@ -503,7 +515,7 @@ if (clearState.focusAfterUndo) (clearState.focusAfterUndo = false), clearControl
 ```js
 // My research topics (#27): their abstracts leave the browser only through Export, so say so
 // (its own cell: follows the rules without rebuilding the Share/Export buttons)
-const exportNoteText = exportNote(rulesState.rules, notesState) ? html` <span class="muted export-note">${exportNote(rulesState.rules, notesState)}</span>` : "";
+const exportNoteText = exportNote(rulesState.rules, notesState, ratingsState) ? html` <span class="muted export-note">${exportNote(rulesState.rules, notesState, ratingsState)}</span>` : "";
 ```
 
 ```js
@@ -524,6 +536,7 @@ const paperDetail = paperPanel(paperParam, {
   route: paperRoute,
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
   notes: notesStore,
+  ratings: ratingsStore,
 });
 invalidation.then(paperDetail.dispose);
 ```

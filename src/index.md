@@ -42,6 +42,8 @@ import { PapersList, conferenceLink, paperScore } from "./widgets/papersList.js"
 import { authorUrl } from "./lib/authors.js";
 import { createNotesStore } from "./lib/notes.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
+import { bindRatingMarkers } from "./components/ratingMarkers.js";
+import { createRatingsStore } from "./lib/ratings.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
@@ -88,6 +90,10 @@ const rulesState = Generators.input(rulesStore);
 const notesStore = createNotesStore(conference.id);
 invalidation.then(() => notesStore.dispose());
 invalidation.then(bindNoteMarkers(document.querySelector(".explore-list"), notesStore));
+// Ratings (#203): "★4" on rated rows; also the stars in paper details
+const ratingsStore = createRatingsStore(conference.id);
+invalidation.then(() => ratingsStore.dispose());
+invalidation.then(bindRatingMarkers(document.querySelector(".explore-list"), ratingsStore));
 // "My research" (#27): pasted abstracts, kept in this browser only
 const researchStore = createResearchStore(conference.id);
 const research = Generators.input(researchStore);
@@ -816,7 +822,12 @@ invalidation.then(neighboursCard.dispose);
   const onSettings = () => mapInput.neighbourSettings(neighbourStore.value);
   neighbourStore.addEventListener("input", onSettings);
   // Esc unpins, unless an open details panel or the Options drawer takes it first
-  const onKey = (event) => shouldUnpinOnEscape(event, { detailOpen: Boolean(document.querySelector(".paper-detail")) }) && mapInput.unpinNeighbours();
+  // Esc unpins a paper; with none pinned, it drops a category pinned in the legend (#203 Stage B)
+  const onKey = (event) => {
+    if (!shouldUnpinOnEscape(event, { detailOpen: Boolean(document.querySelector(".paper-detail")) })) return;
+    if (mapInput.neighbours?.pinned != null) mapInput.unpinNeighbours();
+    else mapInput.clearCategory?.();
+  };
   document.addEventListener("keydown", onKey);
   // Keyboard (and focus) on a paper row previews its neighbours
   const list = document.querySelector(".explore-list");
@@ -1178,6 +1189,7 @@ const paperDetail = paperPanel(paperParam, {
   mapRows: () => mapState.everyPaper ?? papers,
   animation: animationStore,
   notes: notesStore,
+  ratings: ratingsStore,
 });
 invalidation.then(paperDetail.dispose);
 ```

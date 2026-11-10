@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { cleanRatings, createRatingsStore } from "../src/lib/ratings.js";
+import {
+  cleanRatings,
+  createRatingsStore,
+  importedRatingsText,
+  mergeRatings,
+} from "../src/lib/ratings.js";
 
 const KEY = "papersNavigator:ieeevis2026:ratings";
 const memoryStorage = () => {
@@ -85,5 +90,55 @@ describe("createRatingsStore", () => {
     expect(store.value).toEqual({ x: 5 });
     expect(n).toBe(1);
     store.dispose();
+  });
+});
+
+describe("merging imported ratings (#203 Stage B)", () => {
+  it("adds ratings for new papers; yours win", () => {
+    expect(mergeRatings({ a: 2 }, { a: 5, b: 4, c: 9 })).toEqual({
+      ratings: { a: 2, b: 4 },
+      added: 1,
+    });
+  });
+
+  it("store.merge adds and its undo removes only unchanged added ratings", () => {
+    const store = createRatingsStore(
+      "ieeevis2026",
+      memoryStorage(),
+      fakeEvents(),
+    );
+    store.set("a", 2);
+    const { added, undo } = store.merge({ a: 5, b: 4, c: 3 });
+    expect(added).toBe(2);
+    expect(store.value).toEqual({ a: 2, b: 4, c: 3 });
+    store.set("c", 1);
+    undo();
+    expect(store.value).toEqual({ a: 2, c: 1 });
+  });
+
+  it("importedRatingsText", () => {
+    expect(importedRatingsText(0)).toBe("");
+    expect(importedRatingsText(1)).toBe(" · 1 rating added");
+    expect(importedRatingsText(3)).toBe(" · 3 ratings added");
+  });
+});
+
+describe("a stale tab doesn't drop newer ratings (#203 Stage B review)", () => {
+  it("re-reads storage before writing", () => {
+    const storage = memoryStorage();
+    // two pages on the same storage; the stale one never hears storage events
+    const fresh = createRatingsStore("ieeevis2026", storage, fakeEvents());
+    const stale = createRatingsStore("ieeevis2026", storage, fakeEvents());
+    fresh.set("p1", 4);
+    stale.set("p2", 2);
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({ p1: 4, p2: 2 });
+    stale.merge({ p3: 5 });
+    fresh.set("p4", 1);
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({
+      p1: 4,
+      p2: 2,
+      p3: 5,
+      p4: 1,
+    });
   });
 });

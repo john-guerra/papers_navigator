@@ -107,7 +107,9 @@ export function chooseLabels(
  * papers drawn in color (DESIGN.md: dimmed points recede, so their labels would add clutter):
  * inside the region selection (`brush`, {x: [lo, hi], y: [lo, hi]} in data units), at or above the
  * relevance cut (`levelCut` on `score`), among the keyword matches while the map highlights
- * them (`matchIds`, #125) and, with a pinned paper, only it and its neighbours (`focusIds`).
+ * them (`matchIds`, #125), with a pinned paper only it and its neighbours (`focusIds`) and, with
+ * a category picked in the legend (#203 Stage B), only that category's papers (`keep`, a
+ * predicate, or null).
  */
 export function labelFilter({
   enabled = true,
@@ -115,6 +117,7 @@ export function labelFilter({
   levelCut = null,
   focusIds = null,
   matchIds = null,
+  keep = null,
   x = "x",
   y = "y",
   id = "id",
@@ -130,7 +133,8 @@ export function labelFilter({
         d[y] <= brush.y[1])) &&
     (levelCut == null || d.score >= levelCut) &&
     (!matched || matched.has(d[id])) &&
-    (!focus || focus.has(d[id]));
+    (!focus || focus.has(d[id])) &&
+    (!keep || keep(d));
 }
 
 /**

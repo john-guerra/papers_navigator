@@ -175,3 +175,13 @@ describe("liveClockControl (#203)", () => {
     expect(clock.reset).toHaveBeenCalled();
   });
 });
+
+describe("renderBreakView in the day's last slot (#203 Stage B)", () => {
+  it("says Nothing after this today under a running last slot", () => {
+    const { el } = setup(et("14:10"));
+    expect(el.querySelector(".live-now")).toBeTruthy();
+    expect(el.textContent).toContain("Nothing after this today");
+    expect(el.textContent).not.toContain("No more sessions today");
+    el.remove();
+  });
+});

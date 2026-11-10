@@ -22,6 +22,9 @@ const talk = (id, sessionId, room, from, to) => ({
   end: et(to),
   typeShort: "Full",
   typeColor: "full",
+  typeLabel: "Full VIS Paper",
+  abstract: `Abstract of ${id}`,
+  url: `https://ieeevis.org/${id}`,
 });
 const papers = [
   talk("b1", "B", "Room 3", "10:30", "10:45"),
@@ -147,6 +150,41 @@ describe("renderSessionView (#203)", () => {
     expect(rows[2].classList).toContain("is-now");
     expect(rows[1].classList).not.toContain("is-now");
     expect([...el.querySelectorAll(".live-talk")]).toEqual(rows);
+    el.remove();
+  });
+
+  it("picking a room closes the Switch room list first (#203 Stage B)", () => {
+    const seen = [];
+    const { el } = setup({
+      onSwitch: () => seen.push(el.querySelector(".live-switch").open),
+    });
+    const bar = el.querySelector(".live-switch");
+    bar.open = true;
+    bar.querySelector(".live-switch-option").click();
+    expect(seen).toEqual([false]);
+    el.remove();
+  });
+
+  it("each talk has Details in place (collapsed) and a jump to the full details", () => {
+    const { el, onOpen } = setup();
+    const row = el.querySelectorAll(".live-talk")[1];
+    const toggle = row.querySelector(".compact-details-toggle");
+    const panel = row.querySelector(".compact-details");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(panel.hidden).toBe(true);
+    toggle.click();
+    expect(panel.hidden).toBe(false);
+    expect(panel.textContent).toContain("Abstract of b2");
+    expect(panel.textContent).toContain("Full VIS Paper");
+    expect(panel.textContent).toContain("Author b2");
+    expect(
+      panel.querySelector('a[href="https://ieeevis.org/b2"]'),
+    ).toBeTruthy();
+    panel.querySelector(".compact-details-open").click();
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "b2" }));
+    // the stars and the note stay in the row, next to the details
+    expect(row.querySelector(".star-rating")).toBeTruthy();
+    expect(row.querySelector(".quick-note")).toBeTruthy();
     el.remove();
   });
 

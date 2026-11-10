@@ -118,12 +118,12 @@ The fonts (Newsreader and Source Sans 3) are served by this site itself.
 ### Share links, QR codes and files
 
 - **Share list** and **Send to my phone** build a link that carries your list inside the link itself, after the <code>#</code> (for example <code>…/my-papers.html#follow=…</code>). Browsers never send that part to the server; whoever you give the link to sees the list. The QR code is drawn in your browser. Your notes and My research abstracts are never put in a link.
-- **Export JSON** saves a file on your device (it includes your notes and the abstracts of research topics you watch). **Import JSON** reads a file you pick; nothing is uploaded.
+- **Export JSON** saves a file on your device (it includes your notes, your ratings and the abstracts of research topics you watch). **Import JSON** reads a file you pick; nothing is uploaded.
 
 ### Delete your data
 
 - One thing at a time: **Remove** a paper, **Delete note** in a paper's details, **Stop watching** a rule in My Papers → Watching, or **Delete from this device** in My research.
-- Everything at once: clear this site's data in your browser's settings (site settings for johnguerra.co: "Delete data" or "Clear site data"). That removes your lists, watches, notes, abstracts, settings and cached files. Export JSON first if you want to keep your list.
+- Everything at once: clear this site's data in your browser's settings (site settings for johnguerra.co: "Delete data" or "Clear site data"). That removes your lists, watches, notes, ratings, abstracts, settings and cached files. Export JSON first if you want to keep your list.
 
 ## Explore
 
@@ -161,6 +161,7 @@ Every dot is a paper; similar papers sit close together.
 - Click a paper's title (in the list, in My Papers or on a researcher profile) or its dot on the map to open its details: abstract, authors and institutions, session, room and time, links, and **Related papers**. Each paper's details have their own address, so you can bookmark or send them. A copied paper title link opens just that paper, without your search and filters.
 - **Conference page ↗** opens the paper on the conference website.
 - **📝 My note:** write a note on any paper in its details (questions to ask, why it matters to you). It saves as you type, only on this device, and doesn't add the paper to My Papers; empty it or use **Delete note** to remove it. Papers with a note show “📝 Note” in the list and on researcher profiles; My Papers shows the note itself, and its search finds words in your notes. Notes are never put in a link; Export JSON carries them to another device.
+- **Your rating:** 1–5 stars on any paper, in its details or on the Live page (one tap; tap the same star again to clear it). Rated papers show “★4” after their title in lists. Ratings stay on this device, are never put in a link, and Export JSON carries them to another device (on import, a rating you already have wins).
 - **Map neighbourhood:** above Related papers, a small map zoomed in around the paper (the ringed dot in the accent color). Its related papers are the darker dots. Point at a related paper (or move to it with the keyboard) to draw a line to it; if it's far away on the map, the small map zooms out to show it. Click a dot to open that paper. On Explore it uses the map's current projection; on My Papers and Researchers, the default one.
 
 ### Map reliability

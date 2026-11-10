@@ -124,3 +124,23 @@ describe("quickNote (#203)", () => {
     expect(notes.set).toHaveBeenCalledWith("p1", "x");
   });
 });
+
+describe("quickNote fits an existing note (#203 Stage B)", () => {
+  it("grows to a multi-line note after a frame", () => {
+    const frames = [];
+    const raf = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = (f) => frames.push(f);
+    const notes = new EventTarget();
+    notes.get = () => "a\nb\nc";
+    notes.set = () => true;
+    const el = quickNote({ id: "p1" }, { notes });
+    document.body.append(el);
+    const input = el.querySelector("textarea");
+    Object.defineProperty(input, "scrollHeight", { value: 66 });
+    expect(input.style.height).toBe("");
+    frames.forEach((f) => f());
+    expect(input.style.height).toBe("66px");
+    globalThis.requestAnimationFrame = raf;
+    el.remove();
+  });
+});

@@ -3436,6 +3436,10 @@ body #vg-tooltip-element table tr td.value {
   font: var(--typography-body-sm);
   font-weight: 600;
 }
+/* Open, the list isn't sticky: on a short phone it would cover the talks */
+.live-switch[open] {
+  position: static;
+}
 .live-switch-options {
   display: grid;
   gap: var(--spacing-xs);
@@ -3524,4 +3528,26 @@ body #vg-tooltip-element table tr td.value {
 .brushable-scatterplot .role-legend-symbol,
 .brushable-scatterplot .role-legend-label {
   cursor: pointer;
+}
+/* #203 Stage B: "★4" after a rated paper's title (paper rows, itinerary) */
+.rating-marker {
+  margin-left: var(--spacing-xs);
+  color: var(--color-on-surface);
+  font: var(--typography-meta);
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* #203 Stage B: "Your rating" in paper details, before My note */
+.paper-detail-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+}
+.paper-detail-rating-label {
+  font: var(--typography-label-caps, var(--typography-meta));
+  color: var(--color-on-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }

@@ -27,6 +27,8 @@ export function renderPaperDetail(
     miniMap = null,
     // "My note" (#152): an element shown before the abstract, or null
     note = null,
+    // "Your rating" (#203 Stage B): an element shown before the note, or null
+    rating = null,
   },
 ) {
   const { toggle, update } = followToggles({ inMyPapers, onToggle });
@@ -135,7 +137,7 @@ export function renderPaperDetail(
       ${paper.url ? html`<a href=${paper.url} target="_blank" rel="noopener">Conference page ↗</a>` : ""}
       ${(paper.links ?? []).map((l) => html` · <a href=${l.url} target="_blank" rel="noopener">${l.label}</a>`)}
     </p>
-    ${note ?? ""}
+    ${rating ?? ""} ${note ?? ""}
     ${paper.abstract ? html`<div class="paper-detail-abstract">${paper.abstract}</div>` : ""}
     ${relatedSection}
   </aside>`;
@@ -157,6 +159,7 @@ export function renderPaperDetail(
     disposed = true;
     mini?.dispose?.();
     note?.dispose?.();
+    rating?.dispose?.();
   };
   return el;
 }

@@ -134,7 +134,9 @@ export function renderBreakView(
         </button>`
       : "";
     if (button) button.onclick = () => onPickSlot(nextDay.slot);
-    tail = html`<p class="live-empty">No more sessions today. ${button}</p>`;
+    tail = html`<p class="live-empty">
+      ${now ? "Nothing after this today." : "No more sessions today."} ${button}
+    </p>`;
   }
   return html`<div class="live-break">
     ${now ? slotSection(now, "Now", options) : ""}
