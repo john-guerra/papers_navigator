@@ -109,7 +109,7 @@ const now = Generators.observe((notify) => {
 ```js
 const { items, missing } = resolveFollowed(followed, papers);
 // Reason filter (#7, US5.5): the itinerary and the list show papers kept for one reason
-const reasonKeys = new Set(["all", "manual", ...rulesState.rules.map((r) => r.id)]);
+const reasonKeys = new Set(["all", "manual", "rated", "live", "recommended", "shared", "author", ...rulesState.rules.map((r) => r.id)]);
 if (!reasonKeys.has(reasonState.key)) reasonState.key = "all";
 // One options array: Inputs.select matches the value by identity
 const reasonChoices = reasonOptions(items, rulesState.rules);
