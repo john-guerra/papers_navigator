@@ -142,7 +142,10 @@ export function matchDiscussion(feed = [], papers = []) {
   return map;
 }
 
-/** Accounts from a typeahead response: [{handle, name, avatar}]. */
+/**
+ * Accounts from a search response: [{handle, name, avatar, bio, followers, posts, joined}];
+ * the counts and join date are null until a profiles response fills them (withProfiles).
+ */
 export function parseAccounts(json) {
   return (json?.actors ?? [])
     .filter((a) => typeof a?.handle === "string")
@@ -150,7 +153,65 @@ export function parseAccounts(json) {
       handle: a.handle,
       name: a.displayName ?? "",
       avatar: a.avatar ?? "",
+      bio: a.description ?? "",
+      followers: null,
+      posts: null,
+      joined: null,
     }));
+}
+
+/** Accounts with followers, posts and join date from a getProfiles response (by handle). */
+function withProfiles(accounts, json) {
+  const byHandle = new Map((json?.profiles ?? []).map((p) => [p.handle, p]));
+  return accounts.map((a) => {
+    const p = byHandle.get(a.handle);
+    return p
+      ? {
+          ...a,
+          bio: a.bio || (p.description ?? ""),
+          followers: Number.isFinite(p.followersCount)
+            ? p.followersCount
+            : null,
+          posts: Number.isFinite(p.postsCount) ? p.postsCount : null,
+          joined: p.createdAt ?? null,
+        }
+      : a;
+  });
+}
+
+/** An account's page on Bluesky. */
+export function profileUrl(handle) {
+  return `https://bsky.app/profile/${handle}`;
+}
+
+const plain = (s) =>
+  String(s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+const words = (s) =>
+  plain(s)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+// Words too common in affiliations to tell people apart
+const GENERIC = new Set(
+  "university universitat universite universidad universita of the and at for de la le du der fur institute institut technology college school department dept lab laboratory research center centre national science sciences state polytechnic inc ltd group".split(
+    " ",
+  ),
+);
+
+/**
+ * The author's affiliation (from the paper) when a Bluesky bio mentions one of its distinctive
+ * words ("Utrecht", "Zurich", "Notre"): a hint for picking the right account, never a pick.
+ * The affiliation, or null.
+ */
+export function affiliationMatch(bio, affiliation) {
+  const distinctive = words(affiliation).filter(
+    (w) => w.length >= 3 && !GENERIC.has(w),
+  );
+  if (!distinctive.length) return null;
+  const said = new Set(words(bio));
+  return distinctive.some((w) => said.has(w)) ? affiliation : null;
 }
 
 async function getJson(url, fetch) {
@@ -159,10 +220,24 @@ async function getJson(url, fetch) {
   return response.json();
 }
 
-/** Bluesky accounts matching an author's name (the only thing sent), up to 5. */
+/**
+ * Bluesky accounts matching an author's name (the only thing sent), up to 5, with their bios;
+ * then one request for those accounts' followers, posts and join date (if it fails, the
+ * accounts come without them).
+ */
 export async function searchAccounts(name, { fetch = globalThis.fetch } = {}) {
-  const url = `${API}/app.bsky.actor.searchActorsTypeahead?q=${encodeURIComponent(name)}&limit=5`;
-  return parseAccounts(await getJson(url, fetch));
+  const url = `${API}/app.bsky.actor.searchActors?q=${encodeURIComponent(name)}&limit=5`;
+  const accounts = parseAccounts(await getJson(url, fetch));
+  if (!accounts.length) return accounts;
+  try {
+    const profiles = await getJson(
+      `${API}/app.bsky.actor.getProfiles?${accounts.map((a) => `actors=${encodeURIComponent(a.handle)}`).join("&")}`,
+      fetch,
+    );
+    return withProfiles(accounts, profiles);
+  } catch {
+    return accounts;
+  }
 }
 
 /** The official account's discussion posts, matched to `papers` (reads up to `pages` × 100 posts). */

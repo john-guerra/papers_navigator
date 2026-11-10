@@ -9,6 +9,8 @@ import {
   paperIdFromLink,
   parseAccounts,
   postUrl,
+  profileUrl,
+  affiliationMatch,
   searchAccounts,
 } from "../src/lib/bluesky.js";
 
@@ -172,26 +174,73 @@ describe("matchDiscussion (#203 Stage C)", () => {
 });
 
 describe("network wrappers (#203 Stage C)", () => {
-  it("searchAccounts encodes the name and parses the accounts", async () => {
-    const fetch = vi.fn(async () => ({
+  it("searchAccounts: full search (bios), then one profiles request (counts, joined)", async () => {
+    const fetch = vi.fn(async (url) => ({
       ok: true,
-      json: async () => ({
-        actors: [
-          {
-            handle: "ann.bsky.social",
-            displayName: "Ann",
-            avatar: "https://a/x.jpg",
-          },
-        ],
-      }),
+      json: async () =>
+        url.includes("searchActors?")
+          ? {
+              actors: [
+                {
+                  handle: "ann.bsky.social",
+                  displayName: "Ann",
+                  avatar: "https://a/x.jpg",
+                  description: "Vis at Utrecht",
+                },
+                { handle: "other.bsky.social", displayName: "Ann B" },
+              ],
+            }
+          : {
+              profiles: [
+                {
+                  handle: "ann.bsky.social",
+                  followersCount: 66,
+                  postsCount: 27,
+                  createdAt: "2024-11-15T00:00:00.000Z",
+                },
+              ],
+            },
     }));
     const accounts = await searchAccounts("Ann Lee", { fetch });
     expect(fetch.mock.calls[0][0]).toBe(
-      "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=Ann%20Lee&limit=5",
+      "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=Ann%20Lee&limit=5",
+    );
+    expect(fetch.mock.calls[1][0]).toBe(
+      "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?actors=ann.bsky.social&actors=other.bsky.social",
     );
     expect(accounts).toEqual([
-      { handle: "ann.bsky.social", name: "Ann", avatar: "https://a/x.jpg" },
+      {
+        handle: "ann.bsky.social",
+        name: "Ann",
+        avatar: "https://a/x.jpg",
+        bio: "Vis at Utrecht",
+        followers: 66,
+        posts: 27,
+        joined: "2024-11-15T00:00:00.000Z",
+      },
+      {
+        handle: "other.bsky.social",
+        name: "Ann B",
+        avatar: "",
+        bio: "",
+        followers: null,
+        posts: null,
+        joined: null,
+      },
     ]);
+  });
+
+  it("searchAccounts keeps the accounts when the profiles request fails", async () => {
+    const fetch = vi.fn(async (url) =>
+      url.includes("searchActors?")
+        ? {
+            ok: true,
+            json: async () => ({ actors: [{ handle: "h", displayName: "H" }] }),
+          }
+        : { ok: false, status: 502, json: async () => ({}) },
+    );
+    const [a] = await searchAccounts("x", { fetch });
+    expect(a).toMatchObject({ handle: "h", followers: null });
   });
 
   it("searchAccounts rejects on an HTTP error", async () => {
@@ -205,7 +254,15 @@ describe("network wrappers (#203 Stage C)", () => {
 
   it("parseAccounts tolerates missing fields", () => {
     expect(parseAccounts({ actors: [{ handle: "h" }] })).toEqual([
-      { handle: "h", name: "", avatar: "" },
+      {
+        handle: "h",
+        name: "",
+        avatar: "",
+        bio: "",
+        followers: null,
+        posts: null,
+        joined: null,
+      },
     ]);
     expect(parseAccounts(null)).toEqual([]);
   });
@@ -281,5 +338,36 @@ describe("composePost review fixes (#203 Stage C)", () => {
     expect(r.text).toMatch(/"W+…" by Ann/);
     expect(r.length).toBeLessThanOrEqual(300);
     expect(r.over).toBe(false);
+  });
+});
+
+describe("affiliationMatch and profileUrl (#203 Stage C)", () => {
+  it("finds the paper's affiliation in a bio by its distinctive words, ignoring case and accents", () => {
+    expect(
+      affiliationMatch("PhD student @ utrecht uni, vis", "Utrecht University"),
+    ).toBe("Utrecht University");
+    expect(affiliationMatch("Researcher at ETH Zürich", "ETH Zurich")).toBe(
+      "ETH Zurich",
+    );
+    expect(
+      affiliationMatch("Professor at Notre Dame", "University of Notre Dame"),
+    ).toBe("University of Notre Dame");
+  });
+
+  it("doesn't match on generic words alone", () => {
+    expect(
+      affiliationMatch("I love my university", "Utrecht University"),
+    ).toBeNull();
+    expect(
+      affiliationMatch("Institute of something", "Institute of Technology"),
+    ).toBeNull();
+    expect(affiliationMatch("", "Utrecht University")).toBeNull();
+    expect(affiliationMatch("Utrecht", "")).toBeNull();
+  });
+
+  it("profileUrl", () => {
+    expect(profileUrl("ann.bsky.social")).toBe(
+      "https://bsky.app/profile/ann.bsky.social",
+    );
   });
 });

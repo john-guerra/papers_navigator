@@ -7,7 +7,10 @@ const paper = {
   shortId: "s1",
   title: "QueerTravel",
   url: "https://ieeevis.org/year/2026/program/content/p1",
-  authors: [{ name: "Başak Oral" }, { name: "Evanthia Dimara" }],
+  authors: [
+    { name: "Başak Oral", affiliation: "Utrecht University" },
+    { name: "Evanthia Dimara", affiliation: "Utrecht University" },
+  ],
 };
 const fakeHandles = (initial = {}) => {
   const store = new EventTarget();
@@ -34,14 +37,35 @@ const setup = (options = {}) => {
   const deps = {
     handles: fakeHandles(),
     linkSetting: fakeSetting(),
-    fetch: vi.fn(async () => ({
+    fetch: vi.fn(async (url) => ({
       ok: true,
-      json: async () => ({
-        actors: [
-          { handle: "dimara.bsky.social", displayName: "Evanthia Dimara" },
-          { handle: "someone.bsky.social", displayName: "Someone" },
-        ],
-      }),
+      json: async () =>
+        url.includes("getProfiles")
+          ? {
+              profiles: [
+                {
+                  handle: "dimara.bsky.social",
+                  followersCount: 1200,
+                  postsCount: 45,
+                  createdAt: "2023-05-02T00:00:00.000Z",
+                },
+              ],
+            }
+          : {
+              actors: [
+                {
+                  handle: "dimara.bsky.social",
+                  displayName: "Evanthia Dimara",
+                  description:
+                    "Assistant prof, Utrecht University. Decision making & vis.",
+                },
+                {
+                  handle: "someone.bsky.social",
+                  displayName: "Someone",
+                  description: "Cats.",
+                },
+              ],
+            },
     })),
     share: {},
     clipboard: { writeText: vi.fn(async () => {}) },
@@ -270,6 +294,37 @@ describe("renderPostPanel review fixes (#203 Stage C)", () => {
     });
     area.dispatchEvent(new Event("input"));
     expect(area.style.height).toBe("180px");
+    el.remove();
+  });
+});
+
+describe("account details in search results (#203 Stage C)", () => {
+  it("shows bio, followers, posts, joined, a View on Bluesky link and the affiliation hint", async () => {
+    const { el } = setup();
+    const row = el.querySelectorAll(".post-author")[1];
+    row.querySelector(".post-find").click();
+    await tick();
+    await tick();
+    const [first, second] = row.querySelectorAll(".post-result");
+    expect(first.querySelector(".post-bio").textContent).toContain(
+      "Decision making",
+    );
+    expect(first.querySelector(".post-stats").textContent).toBe(
+      "1,200 followers · 45 posts · since May 2023",
+    );
+    expect(first.querySelector(".post-hint").textContent).toContain(
+      "Matches the paper: Utrecht University",
+    );
+    const view = first.querySelector("a.post-view");
+    expect(view.getAttribute("href")).toBe(
+      "https://bsky.app/profile/dimara.bsky.social",
+    );
+    expect(view.getAttribute("target")).toBe("_blank");
+    // no hint, no counts when unknown
+    expect(second.querySelector(".post-hint")).toBeNull();
+    expect(second.querySelector(".post-stats")).toBeNull();
+    // the hint never picks: nothing is set until a tap
+    expect(el.querySelector(".post-text").value).not.toContain("@dimara");
     el.remove();
   });
 });

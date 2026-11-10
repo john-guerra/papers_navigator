@@ -4,6 +4,8 @@ import {
   composePost,
   composeUrl,
   graphemes,
+  affiliationMatch,
+  profileUrl,
   searchAccounts,
 } from "../lib/bluesky.js";
 
@@ -37,6 +39,9 @@ export function renderPostPanel(
 ) {
   const id = ++uid;
   const names = (paper.authors ?? []).map((a) => a.name).filter(Boolean);
+  const affiliationOf = new Map(
+    (paper.authors ?? []).map((a) => [a.name, a.affiliation ?? ""]),
+  );
   const area = html`<textarea
     class="post-text"
     rows="5"
@@ -144,17 +149,32 @@ export function renderPostPanel(
       const list = results?.length
         ? html`<div class="post-accounts">
             ${results.map((a) => {
+              // Who is this? bio, activity and the paper's affiliation help pick the right one
+              const hint = affiliationMatch(a.bio, affiliationOf.get(name));
+              const stats = accountStats(a);
               const b = html`<button type="button" class="post-account">
-                ${a.avatar ? html`<img src=${a.avatar} alt="" width="24" height="24" loading="lazy" />` : ""}
-                <span>${a.name || a.handle}</span>
-                <span class="muted">@${a.handle}</span>
+                ${a.avatar ? html`<img src=${a.avatar} alt="" width="32" height="32" loading="lazy" />` : ""}
+                <span class="post-account-text">
+                  <span class="post-account-name">${a.name || a.handle}</span>
+                  <span class="muted">@${a.handle}</span>
+                  ${a.bio ? html`<span class="post-bio">${a.bio}</span>` : ""}
+                  ${stats ? html`<span class="post-stats muted">${stats}</span>` : ""}
+                  ${hint ? html`<span class="post-hint">✓ Matches the paper: ${hint}</span>` : ""}
+                </span>
               </button>`;
               b.onclick = () => {
                 handles.set(name, a.handle);
                 draw();
                 refresh();
               };
-              return b;
+              const view = html`<a
+                class="post-view"
+                href=${profileUrl(a.handle)}
+                target="_blank"
+                rel="noopener"
+                >View on Bluesky ↗</a
+              >`;
+              return html`<div class="post-result">${b}${view}</div>`;
             })}
             ${(() => {
               const none = html`<button
@@ -292,4 +312,26 @@ export function renderPostPanel(
     for (const store of watch) store.removeEventListener("input", refresh);
   };
   return el;
+}
+
+const count = new Intl.NumberFormat("en-US");
+const month = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+/** "1,200 followers · 45 posts · since May 2023" (what's known), or "". */
+function accountStats({ followers, posts, joined }) {
+  const plural = (n, noun) => `${count.format(n)} ${noun}${n === 1 ? "" : "s"}`;
+  const since =
+    joined && !Number.isNaN(Date.parse(joined))
+      ? month.format(new Date(joined))
+      : "";
+  return [
+    followers != null && plural(followers, "follower"),
+    posts != null && plural(posts, "post"),
+    since && `since ${since}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
