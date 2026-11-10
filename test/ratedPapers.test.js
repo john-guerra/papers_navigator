@@ -71,8 +71,9 @@ describe("renderRatedPapers (#203)", () => {
     ]);
     select.value = "2026-11-11";
     select.dispatchEvent(new Event("change"));
+    // the box is still checked
     expect(onFilter).toHaveBeenLastCalledWith({
-      minRating: 0,
+      minRating: 4,
       day: "2026-11-11",
     });
   });
