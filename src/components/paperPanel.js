@@ -49,7 +49,7 @@ export function paperPanel(
     notes = null,
     // Ratings store (#203 Stage B): "Your rating" stars before the note
     ratings = null,
-    // 👎 Not for me (#208), and what a star rating does (addOnRate: adds to My Papers)
+    // 👎 Not for me (#208), and an optional callback for a star rating
     disliked = null,
     onRated,
     // Attended papers (#208): "I was there" for any paper

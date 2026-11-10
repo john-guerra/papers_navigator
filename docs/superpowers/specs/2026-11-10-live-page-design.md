@@ -332,7 +332,11 @@ attended**.
 - **Sort:** My Papers first, then award, then time.
 - The sheet height (60%) and the desktop popover width (320px).
 
-### Rated papers join My Papers (John, Stage D)
+### Rated papers join My Papers (John, Stage D), reversed later the same day
+
+**Reversed (John, after the Add to My Papers toggle reached every Live talk):** nothing adds a
+paper to My Papers by itself. Not stars, not 👎, not notes, not attending; only "Add to My
+Papers". Papers already added as "★ Rated" stay. The original decision, for the record:
 
 - **Stars add the paper to My Papers.** Rating a paper with **stars** (1–5), from the Live page or
   from paper details on any page, adds it to My Papers if it isn't there yet. The reason is **"★

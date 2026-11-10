@@ -4,7 +4,8 @@ import { starRating } from "../widgets/starRating.js";
 /**
  * Your verdict on a paper (#208): 1–5 stars or "👎 Not for me", one or the other. A star clears
  * Not for me and 👎 clears the stars (the two live in separate stores: `ratings`, `disliked`). A
- * star rating calls `onRated(paper, n)` (the pages add it to My Papers: addOnRate). Follows both
+ * star rating calls `onRated(paper, n, previous)` if given (nothing adds to My Papers by itself:
+ * John). Follows both
  * stores; `el.dispose()` stops that.
  */
 export function verdict(
@@ -50,20 +51,4 @@ export function verdict(
     disliked?.removeEventListener("input", show);
   };
   return el;
-}
-
-/**
- * Rated with stars → My Papers (#208, John): `onRated` for `verdict` that adds a paper not yet in
- * My Papers (reason "★ Rated", Undo toast). Not for me and attended papers are never added.
- */
-export function addOnRate({ store, addWithUndo, toast }) {
-  // Only a first rating adds: changing 4★ to 5★ never brings back a paper you removed (#208 review)
-  return (paper, n, previous = 0) => {
-    if (!n || previous || store.value.some((d) => d.id === paper.id)) return;
-    const undo = addWithUndo(store, [paper], "★ Rated");
-    toast("Rated and added to My Papers", {
-      actionLabel: "Undo",
-      onAction: undo,
-    });
-  };
 }

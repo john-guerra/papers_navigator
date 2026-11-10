@@ -69,7 +69,7 @@ export function renderSessionView(
     onToggle: onToggle ?? onAdd,
   });
   const rows = session.items.map((p) => {
-    // Stars or 👎 Not for me (#208); stars add the paper to My Papers (onRated)
+    // Stars or 👎 Not for me (#208)
     const stars = verdict(p, { ratings, disliked, onRated });
     disposers.push(() => stars.dispose());
     const was = attended ? attendedToggle(p, attended) : "";
