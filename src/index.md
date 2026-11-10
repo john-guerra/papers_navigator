@@ -54,7 +54,8 @@ import { watchSplitMap } from "./lib/splitLayout.js";
 import { createPaperLabelSettings, emphasisIds } from "./lib/paperLabels.js";
 import { controlsHeight, mapSize, watchIntroRoom, watchSplitScreen, watchStickyViewport } from "./lib/mapSize.js";
 import { stickyListHeader } from "./lib/stickyList.js";
-import { conferenceZone } from "./lib/time.js";
+import { conferenceZone, formatDay } from "./lib/time.js";
+import { AWARD_TIERS } from "./lib/paperMeta.js";
 // Explicit, so the page uses the same d3 as the widgets (node_modules) instead of a second copy
 // from npm (#124: ~100 KB and 35 requests on the first load)
 import * as d3 from "d3";
@@ -384,9 +385,15 @@ const defaultTypes = (conference.defaultTypes ?? []).filter((t) => typeLabels.ha
 const mainTracks = (values) =>
   defaultTypes.length && sameSet(values, defaultTypes) ? (conference.defaultTypesLabel ?? "Main tracks") : null;
 const facet = (id, label, options) => ({ id, label, accessor: filterAccessor(id), ...options });
+// Day (conference timezone) and Award group (#199): values from paperMeta.js, in program order
+const dayLabel = (key) => formatDay(key);
+const awardOrder = Object.keys(AWARD_TIERS);
+const awardLabel = (tier) => `${AWARD_TIERS[tier].icon} ${AWARD_TIERS[tier].label}`;
 const facetsInput = facetStrip(papers, {
   facets: [
     facet("types", "Type", { format: (v) => typeLabels.get(v) ?? v, search: false, summary: mainTracks }),
+    facet("days", "Day", { format: dayLabel, search: false, sort: (a, b) => d3.ascending(a.value, b.value) }),
+    facet("awards", "Award", { format: awardLabel, search: false, sort: (a, b) => awardOrder.indexOf(a.value) - awardOrder.indexOf(b.value) }),
     facet("authors", "Author"),
     facet("affiliations", "Institution"),
     facet("keywords", "Keyword"),
@@ -425,11 +432,11 @@ const facetSelection = Generators.input(facetsInput);
 ```
 
 ```js
-const { types, authors, affiliations, keywords, sessions, topics = [] } = facetSelection;
+const { types, authors, affiliations, keywords, sessions, topics = [], days = [], awards = [] } = facetSelection;
 ```
 
 ```js
-const filtered = applyFilters(scored, { types, authors, affiliations, keywords, sessions, topics });
+const filtered = applyFilters(scored, { types, authors, affiliations, keywords, sessions, topics, days, awards });
 ```
 
 ```js
@@ -930,6 +937,8 @@ const addReason = selectionReason({
   keywords,
   sessions,
   topics,
+  days: days.map(dayLabel),
+  awards: awards.map(awardLabel),
   types,
   defaultTypes,
   typeLabel: (t) => typeLabels.get(t) ?? t,
@@ -937,7 +946,7 @@ const addReason = selectionReason({
 });
 // With nothing narrowing the list, one click would add the whole program: ask to narrow first
 const narrowed =
-  rankingMode !== "none" || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || topics.length || !sameSet(types, defaultTypes);
+  rankingMode !== "none" || regionActive || authors.length || affiliations.length || keywords.length || sessions.length || topics.length || days.length || awards.length || !sameSet(types, defaultTypes);
 const addBar = renderAddBar(planAdd(selected, new Set(followed.map((d) => d.id))), {
   disabledHint: narrowed ? null : "Search, filter or select a map region to add papers in bulk",
   onTop: listHeader.scrollToTop,

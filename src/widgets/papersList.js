@@ -1,13 +1,6 @@
 import { html } from "htl";
 import { formatWhen } from "../lib/time.js";
-
-/** Awards as DESIGN.md markers, always followed by their name (Emoji & Iconography). */
-export const AWARDS = {
-  best: "🏆 Best paper",
-  honorable: "🏅 Honorable mention",
-  BEST_PAPER: "🏆 Best paper",
-  HONORABLE_MENTION: "🏅 Honorable mention",
-};
+import { awardMark, typePill } from "./paperMarks.js";
 
 /** "Tue Nov 10 10:00 ET": when the paper (or its session) starts, in the conference timezone. */
 export function paperWhen(p, tz, tzLabel) {
@@ -81,9 +74,9 @@ function renderPaper(
   p,
   { tz, tzLabel, actions, preamble, authorHref, details },
 ) {
-  // DESIGN.md → Paper row: meta line = (award) · type · session · 📍 room · day, time ET
+  // DESIGN.md → Paper row: type pill and award before the title (#199); meta line = type ·
+  // session · 📍 room · day, time ET
   const where = [
-    AWARDS[p.award],
     p.typeLabel ?? p.type,
     p.sessionName,
     p.room && `📍 ${p.room}`,
@@ -92,8 +85,9 @@ function renderPaper(
     .filter(Boolean)
     .join(" · ");
   const row = html`<div class="paper" data-paper-id=${p.id}>
-    <div class="paper-title">
-      ${titleLink(p, details)} ${actions ? actions(p) : ""}
+    <div class="paper-title paper-head">
+      ${typePill(p)}${awardMark(p)}${titleLink(p, details)}
+      ${actions ? actions(p) : ""}
     </div>
     ${preamble ? html`<div class="paper-preamble">${preamble(p)}</div>` : ""}
     <div class="paper-authors">${authorsLine(p.authors, authorHref)}</div>

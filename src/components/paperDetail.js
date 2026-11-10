@@ -1,5 +1,7 @@
 import { html } from "htl";
-import { AWARDS, authorsLine, paperWhen } from "../widgets/papersList.js";
+import { authorsLine, paperWhen } from "../widgets/papersList.js";
+import { awardLine, typePill } from "../widgets/paperMarks.js";
+import { compactPaperRow } from "../widgets/compactPaperRow.js";
 import { authorUrl } from "../lib/authors.js";
 import { followToggles } from "./followToggles.js";
 import { INFERRED_TOPIC_HINT, filterChip } from "./filterChips.js";
@@ -52,16 +54,17 @@ export function renderPaperDetail(
     shownRelated = papers;
     const list = html`<ul class="related-papers">
       ${papers.map((p) => {
-        const open = html`<button class="btn-text related-open">
-          ${p.title}
-        </button>`;
-        open.onclick = () => onOpen(p.id);
+        // Same compact row as Recommended (#199): pill, award, authors, Details in place
         const row = html`<li class="related-paper" data-paper-id=${p.id}>
-          ${open}
-          <span class="related-meta"
-            >${[p.room && `📍 ${p.room}`, paperWhen(p, tz, tzLabel), `${Math.round(p.score * 100)}% similar`].filter(Boolean).join(" · ")}</span
-          >
-          ${toggle(p)}
+          ${compactPaperRow(p, {
+            tz,
+            tzLabel,
+            authorHref,
+            onOpen: (d) => onOpen(d.id),
+            titleClass: "related-open",
+            meta: `${Math.round(p.score * 100)}% similar`,
+            actions: toggle(p),
+          })}
         </li>`;
         // Hover or keyboard focus on a row shows that paper on the mini-map (#101)
         row.addEventListener("pointerenter", () => highlight(p.id));
@@ -117,7 +120,9 @@ export function renderPaperDetail(
       ${toggle(paper)}
     </div>
     ${paper.shortLabel ? html`<p class="paper-detail-where paper-detail-label">${paper.shortLabel}</p>` : ""}
-    ${paper.award && AWARDS[paper.award] ? html`<p class="paper-detail-award">${AWARDS[paper.award]}</p>` : ""}
+    <p class="paper-detail-marks">
+      ${typePill(paper)}${paper.awardTier ? html`<span class="paper-detail-award">${awardLine(paper)}</span>` : ""}
+    </p>
     <p class="paper-detail-authors">
       ${authorsLine(paper.authors, authorHref)}
     </p>

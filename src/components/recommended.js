@@ -1,11 +1,12 @@
 import { html } from "htl";
-import { paperWhen } from "../widgets/papersList.js";
+import { authorUrl } from "../lib/authors.js";
+import { compactPaperRow } from "../widgets/compactPaperRow.js";
 
 const STEP = 10;
 
 /**
- * Recommended papers (#26): the top `shown` recommendations, each with its room/time and
- * similarity, "why" (the most similar paper in My Papers, opening its details), "Add to My
+ * Recommended papers (#26): the top `shown` recommendations, each a compact paper row (#199: type
+ * pill, award, authors linking to `authorHref(name)`, Details in place) with its similarity, "why" (the most similar paper in My Papers, opening its details), "Add to My
  * Papers" and "Dismiss". `state.status`: "empty" (My Papers is empty), "loading", "error"
  * (the embeddings didn't load) or "ready" with `state.recs`. `actions(p)` replaces Add and Dismiss.
  */
@@ -21,6 +22,7 @@ export function renderRecommended(
     onOpen,
     onShowMore,
     onRetry,
+    authorHref = authorUrl,
     // Researcher profiles (#150): their own row actions (a toggle, no Dismiss) and wording
     actions = null,
     loadingText = "Finding papers like yours…",
@@ -61,10 +63,6 @@ export function renderRecommended(
   })();
 
   function renderRow(p) {
-    const open = html`<button class="btn-text recommended-open">
-      ${p.title}
-    </button>`;
-    open.onclick = () => onOpen(p);
     // A real link to its details URL (inline, wraps with the text); a plain click opens the
     // panel in place, a modified click opens a new tab
     const why = html`<a
@@ -77,20 +75,19 @@ export function renderRecommended(
       event.preventDefault();
       onOpen(p.because);
     };
-    const meta = [
-      p.room && `📍 ${p.room}`,
-      paperWhen(p, tz, tzLabel),
-      `${Math.round(p.score * 100)}% similar`,
-    ]
-      .filter(Boolean)
-      .join(" · ");
     return html`<li class="recommended-paper" data-paper-id=${p.id}>
-      ${open}
-      <span class="recommended-meta">${meta}</span>
-      <span class="recommended-why">✨ Like ${why}</span>
-      <span class="paper-actions"
-        >${actions ? actions(p) : addAndDismiss(p)}</span
-      >
+      ${compactPaperRow(p, {
+        tz,
+        tzLabel,
+        authorHref,
+        onOpen,
+        titleClass: "recommended-open",
+        meta: `${Math.round(p.score * 100)}% similar`,
+        extra: html`<span class="recommended-why">✨ Like ${why}</span>`,
+        actions: html`<span class="paper-actions"
+          >${actions ? actions(p) : addAndDismiss(p)}</span
+        >`,
+      })}
     </li>`;
   }
 

@@ -43,6 +43,17 @@
   "city": "Boston",
   "excludeTypeLabels": ["Keynote", "Capstone", "Plenary Session"],
   "defaultTypes": ["full", "short", "tvcg", "cg&a"],
+  "typeStyles": {
+    "full": { "label": "Full", "color": "full" },
+    "tvcg": { "label": "Full", "color": "full" },
+    "cg&a": { "label": "Full", "color": "full" },
+    "short": { "label": "Short", "color": "short" },
+    "visap": { "label": "Arts", "color": "arts" },
+    "workshop": { "label": "Workshop" },
+    "challenge": { "label": "Challenge" },
+    "poster": { "label": "Poster" },
+    "invited-talk": { "label": "Talk" }
+  },
   "typeNames": {
     "workshop": "Workshop Paper"
   },

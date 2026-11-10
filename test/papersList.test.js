@@ -42,18 +42,33 @@ describe("PapersList", () => {
     );
   });
 
-  it("names awards in words after their marker (🏆 / 🏅), never a bare emoji", () => {
+  it("leads with the type pill and award (the icon, its name on hover, #199)", () => {
     const list = PapersList(
       [
-        { ...papers[0], id: "x", award: "best" },
-        { ...papers[0], id: "y", award: "HONORABLE_MENTION" },
+        { ...papers[0], id: "x", award: "best paper", awardTier: "best" },
+        {
+          ...papers[0],
+          id: "y",
+          award: "honorable mention",
+          awardTier: "honorable",
+          typeShort: "Short",
+          typeColor: "short",
+        },
       ],
       { tz: "US/Eastern" },
     );
-    const [best, honorable] = list.querySelectorAll(".paper-where");
-    expect(best.textContent).toContain("🏆 Best paper");
-    expect(honorable.textContent).toContain("🏅 Honorable mention");
-    expect(list.querySelector(".paper-title").textContent).not.toMatch(/🏆|🏅/);
+    const [best, honorable] = list.querySelectorAll(".paper-title");
+    expect(best.querySelector(".award-mark").textContent).toBe("🏆");
+    expect(best.querySelector(".award-mark").title).toBe("Best paper");
+    expect(honorable.querySelector(".award-mark").textContent).toBe("🏅");
+    expect(
+      honorable.querySelector(".award-mark").getAttribute("aria-label"),
+    ).toBe("Award: Honorable mention");
+    expect(honorable.querySelector(".type-pill").textContent).toContain(
+      "Short",
+    );
+    // the pill and award come before the title
+    expect(honorable.firstElementChild.classList).toContain("type-pill");
   });
 
   it("renders actions and preamble for each paper", () => {

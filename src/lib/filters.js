@@ -11,6 +11,9 @@ const ACCESSORS = {
   sessionName: (p) => unique([p.sessionName]),
   // Topic cluster label (pipeline/clusters.py); noise papers have none
   clusterLabel: (p) => unique([p.clusterLabel]),
+  // "YYYY-MM-DD" in the conference timezone and the award group, both from paperMeta.js (#199)
+  day: (p) => unique([p.day]),
+  awardTier: (p) => unique([p.awardTier]),
 };
 
 /** Filter option name → facet key. */
@@ -21,6 +24,8 @@ const FILTER_FACETS = {
   keywords: "keywords",
   sessions: "sessionName",
   topics: "clusterLabel",
+  days: "day",
+  awards: "awardTier",
 };
 
 /** paper → its values for a filter option name (e.g. "authors"), as applyFilters matches them. */

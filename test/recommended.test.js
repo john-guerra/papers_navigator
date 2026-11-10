@@ -113,3 +113,31 @@ describe("renderRecommended", () => {
     expect(loading.textContent).toContain("Finding papers like theirs…");
   });
 });
+
+describe("renderRecommended rows (#199)", () => {
+  it("show the type pill, award, linked authors and Details", () => {
+    const rec = {
+      ...recs[0],
+      typeShort: "Short",
+      typeColor: "short",
+      award: "best paper",
+      awardTier: "best",
+      authors: [{ name: "Ann", affiliation: "MIT" }],
+      abstract: "About it",
+    };
+    const el = renderRecommended(
+      { status: "ready", recs: [rec] },
+      { tz: "US/Eastern", onOpen: vi.fn(), onAdd: vi.fn(), onDismiss: vi.fn() },
+    );
+    const row = el.querySelector(".recommended-paper");
+    expect(row.querySelector(".type-pill").textContent).toContain("Short");
+    expect(row.querySelector(".award-mark").textContent).toBe("🏆");
+    expect(
+      row.querySelector(".compact-authors a").getAttribute("href"),
+    ).toContain("authors.html?name=Ann");
+    row.querySelector(".compact-details-toggle").click();
+    expect(row.querySelector(".compact-details").textContent).toContain(
+      "About it",
+    );
+  });
+});

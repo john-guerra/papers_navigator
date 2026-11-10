@@ -217,3 +217,26 @@ describe("paper details: many keywords (#155 review)", () => {
     el.remove();
   });
 });
+
+describe("renderPaperDetail awards and type (#199)", () => {
+  it("shows the type pill and the award icon with the program's full name", () => {
+    const el = renderPaperDetail(
+      {
+        id: "z",
+        title: "Z",
+        authors: [],
+        typeShort: "Full",
+        typeColor: "full",
+        award: "mini-challenge 2: award for x",
+        awardTier: "other",
+      },
+      { tz: "US/Eastern", inMyPapers: () => false },
+    );
+    expect(
+      el.querySelector(".paper-detail-marks .type-pill").textContent,
+    ).toContain("Full");
+    expect(el.querySelector(".paper-detail-award").textContent).toBe(
+      "🎖️ Mini-challenge 2: award for x",
+    );
+  });
+});
