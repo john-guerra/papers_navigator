@@ -29,18 +29,30 @@ describe("My Papers file", () => {
       exceptions: ["x"],
       notes: {},
       ratings: {},
+      disliked: {},
+      attended: {},
     });
   });
   it("reads the new format and the old plain list", () => {
     expect(
       parseMyPapersFile(exportMyPapers({ followed, rules, exceptions: [] })),
-    ).toEqual({ followed, rules, exceptions: [], notes: {}, ratings: {} });
+    ).toEqual({
+      followed,
+      rules,
+      exceptions: [],
+      notes: {},
+      ratings: {},
+      disliked: {},
+      attended: {},
+    });
     expect(parseMyPapersFile(JSON.stringify(followed))).toEqual({
       followed,
       rules: [],
       exceptions: [],
       notes: {},
       ratings: {},
+      disliked: {},
+      attended: {},
     });
   });
   it("rejects files that are not My Papers", () => {
@@ -156,5 +168,27 @@ describe("ratings in the My Papers file (#203 Stage B)", () => {
     expect(exportNote([], { a: "x" }, { a: 1 })).toBe(
       "Includes your notes and your ratings",
     );
+  });
+});
+
+describe("disliked and attended in the My Papers file (#208)", () => {
+  it("round-trips and cleans them; old files have none", () => {
+    const text = exportMyPapers({
+      followed: [],
+      disliked: { a: true },
+      attended: { b: { at: "2026-11-11T15:00:00.000Z", how: "auto" } },
+    });
+    const parsed = parseMyPapersFile(text);
+    expect(parsed.disliked).toEqual({ a: true });
+    expect(parsed.attended).toEqual({
+      b: { at: "2026-11-11T15:00:00.000Z", how: "auto" },
+    });
+    expect(parseMyPapersFile(JSON.stringify([{ id: "p" }])).attended).toEqual(
+      {},
+    );
+    expect(
+      parseMyPapersFile(JSON.stringify({ followed: [], disliked: { x: 2 } }))
+        .disliked,
+    ).toEqual({});
   });
 });

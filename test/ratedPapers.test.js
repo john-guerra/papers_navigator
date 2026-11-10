@@ -131,6 +131,20 @@ describe("Papers I rated keeps open Post panels across redraws (#203 Stage C rev
   });
 });
 
+describe("Not for me in Papers I rated (#208)", () => {
+  it("lists disliked papers after the starred ones, and 4★ and up hides them", () => {
+    const el = render({ dislikedIds: ["unrated"] });
+    const section = el.querySelector(".rated-disliked");
+    expect(section.textContent).toContain("Not for me");
+    expect(section.querySelector('[data-paper-id="unrated"]')).toBeTruthy();
+    expect(
+      render({ dislikedIds: ["unrated"], minRating: 4 }).querySelector(
+        ".rated-disliked",
+      ),
+    ).toBeNull();
+  });
+});
+
 describe("typingIn (#206 quick review: filters apply at once)", () => {
   it("is true only while a text field inside the box has focus", async () => {
     const { typingIn } = await import("../src/components/ratedPapers.js");

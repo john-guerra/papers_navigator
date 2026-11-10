@@ -8,8 +8,11 @@ import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { createNotesStore } from "./lib/notes.js";
 import { createRatingsStore } from "./lib/ratings.js";
+import { createDislikedStore } from "./lib/disliked.js";
+import { autoAttended, createAttendedStore } from "./lib/attended.js";
+import { addOnRate } from "./components/verdict.js";
 import { createLiveClock } from "./lib/liveClock.js";
-import { activeSession, createCheckInStore, programDays, slotOf, slotsAt } from "./lib/live.js";
+import { activeSession, checkedInSession, createCheckInStore, programDays, slotOf, slotsAt } from "./lib/live.js";
 import { addWithUndo } from "./lib/selection.js";
 import { lazyLoader, relatedPapers, toMatrix } from "./lib/search.js";
 import { conferenceZone } from "./lib/time.js";
@@ -21,6 +24,7 @@ import { liveClockControl } from "./components/liveClockControl.js";
 import { renderBreakView } from "./components/liveBreak.js";
 import { renderSessionView } from "./components/liveSession.js";
 import { renderRatedPapers, typingIn } from "./components/ratedPapers.js";
+import { renderAttendedPapers } from "./components/attendedPapers.js";
 import { createViewHost } from "./components/liveViewHost.js";
 import { renderPostPanel } from "./components/postPanel.js";
 import { createHandlesStore, loadDiscussion } from "./lib/bluesky.js";
@@ -47,6 +51,13 @@ invalidation.then(bindMyPapersBadge(store));
 // all on this device only, never in a URL (#203)
 const notesStore = createNotesStore(conference.id);
 const ratingsStore = createRatingsStore(conference.id);
+// 👎 Not for me and attended papers (#208); a star rating adds the paper to My Papers
+const dislikedStore = createDislikedStore(conference.id);
+const attendedStore = createAttendedStore(conference.id);
+invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
+const dislikedState = Generators.input(dislikedStore);
+const attendedState = Generators.input(attendedStore);
+const rateAdds = addOnRate({ store, addWithUndo, toast: showToast });
 const clock = createLiveClock(conference.id, { tz });
 const checkIn = createCheckInStore(conference.id);
 invalidation.then(() => (notesStore.dispose(), ratingsStore.dispose(), checkIn.dispose()));
@@ -140,6 +151,9 @@ const paperDetail = paperPanel(paperParam, {
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
   notes: notesStore,
   ratings: ratingsStore,
+  disliked: dislikedStore,
+  onRated: rateAdds,
+  attended: attendedStore,
 });
 invalidation.then(paperDetail.dispose);
 ```
@@ -161,12 +175,15 @@ display(liveView);
 // keeps its focus. In a session, "Add to My Papers" updates its own row (no rebuild).
 const at = clockState.at;
 const mineIds = new Set(followed.map((d) => d.id));
+// Why each paper is in My Papers (hand-added, watch rules), for Soon's reason chips (#208)
+const mine = new Map(followed.map((d) => [d.id, d]));
 const session = activeSession(checkInState, days, at, tz);
 const slots = slotsAt(days, at, tz);
 const key = session
   ? `in:${session.sessionId}`
   : `break:${slots.now?.start}:${slots.next?.start}:${slots.nextDay?.slot.start}:${[...mineIds].join()}`;
-const commit = (s) => checkIn.commit(s.sessionId, clock.value.at);
+// A check-in made while the time is set by hand is flagged: it never marks attendance (#208 review)
+const commit = (s) => checkIn.commit(s.sessionId, clock.value.at, { override: clock.value.override });
 liveView.show(
   key,
   () =>
@@ -176,7 +193,11 @@ liveView.show(
           at,
           tz,
           mineIds,
+          mine,
           ratings: ratingsStore,
+          disliked: dislikedStore,
+          onRated: rateAdds,
+          attended: attendedStore,
           notes: notesStore,
           onSwitch: commit,
           onLeave: () => checkIn.leave(),
@@ -199,6 +220,14 @@ liveView.show(
         }),
   at,
 );
+// Attended (#208): the checked-in session's talks you were there for 5+ minutes, on the real
+// clock only (never while the time is set by hand); papers you unticked stay unticked
+// (the checked-in session even after it ended: a phone that slept through it marks it on waking)
+const attendedIn = checkedInSession(checkInState, days);
+if (attendedIn && !clockState.override)
+  attendedStore.markAuto(autoAttended(attendedIn, checkInState, at), at);
+// My Papers changed: Soon's reasons follow (#208)
+liveView.current?.setMine?.(mine);
 // Discussion links, once known (a rebuilt view gets them again here)
 if (discussion) liveView.current?.setDiscussion?.(discussion);
 // Scroll to the talk on now once per check-in
@@ -224,6 +253,7 @@ const drawRated = () => {
   ratedBox.replaceChildren(
     renderRatedPapers(papers, {
       ratings: ratingsState,
+      dislikedIds: Object.keys(dislikedState),
       notes: notesState,
       tz,
       ...ratedState,
@@ -239,6 +269,22 @@ const drawRated = () => {
 };
 drawRated();
 display(ratedBox);
+```
+
+<h2 class="live-rated-title">Papers I attended</h2>
+
+```js
+display(
+  renderAttendedPapers(papers, {
+    attended: attendedState,
+    ratings: ratingsState,
+    disliked: dislikedState,
+    notes: notesState,
+    tz,
+    onOpen: openPaper,
+    detailsHref,
+  }),
+);
 ```
 
 ${paperDetail}

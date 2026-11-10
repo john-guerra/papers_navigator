@@ -35,6 +35,15 @@ export const STORAGE_ITEMS = [
     what: "Your 1–5 star ratings of papers (Live page)",
   },
   {
+    key: "papersNavigator:<id>:disliked",
+    what: "Papers you marked Not for me",
+  },
+  {
+    key: "papersNavigator:<id>:attended",
+    what: "Papers you attended (marked while checked in on the Live page, or by hand)",
+  },
+
+  {
     key: "papersNavigator:<id>:liveCheckIn",
     what: "The session you chose with Going here on the Live page",
   },

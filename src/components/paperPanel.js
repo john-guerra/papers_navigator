@@ -5,7 +5,8 @@ import { showToast } from "./toast.js";
 import { addWithUndo as addWithUndoDefault } from "../lib/selection.js";
 import { createAnimationSettings } from "../lib/animationSettings.js";
 import { createMiniMap } from "../widgets/miniMap.js";
-import { starRating } from "../widgets/starRating.js";
+import { verdict } from "./verdict.js";
+import { attendedToggle } from "./attendedPapers.js";
 
 // Per route: the id of the paper whose panel is showing, to tell a redraw from an open (#152)
 const shown = new WeakMap();
@@ -48,6 +49,11 @@ export function paperPanel(
     notes = null,
     // Ratings store (#203 Stage B): "Your rating" stars before the note
     ratings = null,
+    // 👎 Not for me (#208), and what a star rating does (addOnRate: adds to My Papers)
+    disliked = null,
+    onRated,
+    // Attended papers (#208): "I was there" for any paper
+    attended = null,
   },
 ) {
   const paper = key
@@ -91,7 +97,10 @@ export function paperPanel(
     detailsHref: route.href && ((p) => route.href(p.shortId ?? p.id)),
     onClose: () => route.close(),
     note: notes ? renderPaperNote(paper, { notes, toast }) : null,
-    rating: ratings ? ratingControl(paper, ratings) : null,
+    rating:
+      ratings || attended
+        ? ratingControl(paper, { ratings, disliked, onRated, attended })
+        : null,
     miniMap: miniMap
       ? (relatedPapers) =>
           createMiniMap({
@@ -143,15 +152,18 @@ export function paperPanel(
   return el;
 }
 
-/** "Your rating": 1–5 stars bound to the ratings store, following it; `dispose()` stops that. */
-function ratingControl(paper, ratings) {
-  const stars = starRating(ratings.get(paper.id), { label: "Your rating" });
-  stars.addEventListener("input", () => ratings.set(paper.id, stars.value));
-  const follow = () => (stars.value = ratings.get(paper.id));
-  ratings.addEventListener("input", follow);
+/** "Your rating": stars or 👎 Not for me (#208), following the stores; `dispose()` stops that. */
+function ratingControl(paper, { ratings, disliked, onRated, attended }) {
+  const was = attended
+    ? attendedToggle(paper, attended, ["I was there", "✓ I was there"])
+    : "";
+  const control = ratings
+    ? verdict(paper, { ratings, disliked, onRated, label: "Your rating" })
+    : null;
   const box = html`<div class="paper-detail-rating">
-    <span class="paper-detail-rating-label">Your rating</span>${stars}
+    ${control ? html`<span class="paper-detail-rating-label">Your rating</span>${control}` : ""}
+    ${was}
   </div>`;
-  box.dispose = () => ratings.removeEventListener("input", follow);
+  box.dispose = () => (control?.dispose(), was?.dispose?.());
   return box;
 }

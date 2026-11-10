@@ -44,6 +44,9 @@ import { createNotesStore } from "./lib/notes.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
 import { bindRatingMarkers } from "./components/ratingMarkers.js";
 import { createRatingsStore } from "./lib/ratings.js";
+import { createDislikedStore } from "./lib/disliked.js";
+import { createAttendedStore } from "./lib/attended.js";
+import { addOnRate } from "./components/verdict.js";
 import { addWithUndo, planAdd, selectionReason } from "./lib/selection.js";
 import { showToast } from "./components/toast.js";
 import { renderAddBar } from "./components/addBar.js";
@@ -92,8 +95,13 @@ invalidation.then(() => notesStore.dispose());
 invalidation.then(bindNoteMarkers(document.querySelector(".explore-list"), notesStore));
 // Ratings (#203): "★4" on rated rows; also the stars in paper details
 const ratingsStore = createRatingsStore(conference.id);
+// 👎 Not for me and attended papers (#208); a star rating adds the paper to My Papers
+const dislikedStore = createDislikedStore(conference.id);
+const attendedStore = createAttendedStore(conference.id);
+invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
+const rateAdds = addOnRate({ store, addWithUndo, toast: showToast });
 invalidation.then(() => ratingsStore.dispose());
-invalidation.then(bindRatingMarkers(document.querySelector(".explore-list"), ratingsStore));
+invalidation.then(bindRatingMarkers(document.querySelector(".explore-list"), ratingsStore, { disliked: dislikedStore, attended: attendedStore }));
 // "My research" (#27): pasted abstracts, kept in this browser only
 const researchStore = createResearchStore(conference.id);
 const research = Generators.input(researchStore);
@@ -1190,6 +1198,9 @@ const paperDetail = paperPanel(paperParam, {
   animation: animationStore,
   notes: notesStore,
   ratings: ratingsStore,
+  disliked: dislikedStore,
+  onRated: rateAdds,
+  attended: attendedStore,
 });
 invalidation.then(paperDetail.dispose);
 ```
