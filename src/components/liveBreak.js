@@ -41,7 +41,7 @@ export function livePaperRow(p, { mineIds, detailsHref, onOpen, toggles }) {
 
 /** "Details on ieeevis.org ↗" for a session without papers (plenary, panel, meetup). */
 export function eventLink(session) {
-  return session.event?.url
+  return /^https?:\/\//i.test(session.event?.url ?? "")
     ? html`<p class="live-event-note">
         <a
           class="live-event-link"

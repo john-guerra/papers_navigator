@@ -208,15 +208,26 @@ export function createCheckInStore(
   return store;
 }
 
-/** The checked-in session while it runs today (by `at`), else null (ended, unknown, none). */
+/**
+ * The checked-in session while it runs today (by `at`), else null (ended, unknown, none). An
+ * event in several slots (an all-day exhibition) ends with the slot you checked in during, so
+ * the break view comes back (review).
+ */
 export function activeSession(checkIn, days, at, tz) {
   if (!checkIn) return null;
   const today = days.find((d) => d.date === dayKey(at, tz))?.slots ?? [];
   const t = at.getTime();
   for (const slot of today)
-    for (const session of slot.sessions)
-      if (session.sessionId === checkIn.sessionId && t < session.end)
-        return session;
+    for (const session of slot.sessions) {
+      if (session.sessionId !== checkIn.sessionId) continue;
+      const end = session.event
+        ? Math.min(
+            session.end,
+            slotOf(session, days, new Date(checkIn.at))?.end ?? Infinity,
+          )
+        : session.end;
+      return t < end ? session : null;
+    }
   return null;
 }
 
@@ -235,7 +246,7 @@ export function checkedInSession(checkIn, days) {
 
 /**
  * The slot that contains `session`; with `at`, the one running then (an all-day event is in
- * several slots), else the first.
+ * several slots), else the next one to start, else the first.
  */
 export function slotOf(session, days, at) {
   const slots = days
@@ -245,7 +256,10 @@ export function slotOf(session, days, at) {
     );
   const t = at?.getTime();
   return (
-    slots.find((slot) => slot.start <= t && t < slot.end) ?? slots[0] ?? null
+    slots.find((slot) => slot.start <= t && t < slot.end) ??
+    slots.find((slot) => slot.start > t) ??
+    slots[0] ??
+    null
   );
 }
 

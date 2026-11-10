@@ -260,3 +260,15 @@ describe("break view: sessions without papers (plenaries, panels)", () => {
     expect(() => el.setMine(new Set(["d1"]))).not.toThrow();
   });
 });
+
+describe("event links (security review)", () => {
+  it("links only http(s) addresses", async () => {
+    const { eventLink } = await import("../src/components/liveBreak.js");
+    expect(eventLink({ event: { url: "javascript:alert(1)" } })).toBe("");
+    expect(
+      eventLink({ event: { url: "https://ieeevis.org/s/x" } }).querySelector(
+        "a",
+      ).href,
+    ).toBe("https://ieeevis.org/s/x");
+  });
+});

@@ -451,3 +451,46 @@ describe("rankSessions with events", () => {
     ]);
   });
 });
+
+describe("checked in to an event in several slots (review)", () => {
+  const visap = {
+    sessionId: "visap",
+    type: "visap",
+    typeLabel: "Arts Program",
+    title: "VISAP Exhibition",
+    room: "Hall E",
+    start: et("09:00"),
+    end: et("18:00"),
+    url: null,
+    paperIds: [],
+  };
+  const all = programDays(papers, TZ, [visap]);
+  const checkIn = (hhmm) => ({ sessionId: "visap", at: et(hhmm) });
+
+  it("ends with the slot you checked in during, not at the event's end", () => {
+    expect(
+      activeSession(checkIn("10:40"), all, new Date(et("11:50")), TZ)
+        ?.sessionId,
+    ).toBe("visap");
+    expect(
+      activeSession(checkIn("10:40"), all, new Date(et("12:00")), TZ),
+    ).toBeNull();
+  });
+
+  it("checked in from Next (between slots) counts the slot that starts next", () => {
+    expect(
+      activeSession(checkIn("13:50"), all, new Date(et("14:30")), TZ)
+        ?.sessionId,
+    ).toBe("visap");
+    expect(
+      activeSession(checkIn("13:50"), all, new Date(et("15:30")), TZ),
+    ).toBeNull();
+  });
+
+  it("slotOf between slots is the one starting next", () => {
+    const event = all[0].slots[0].sessions.find((s) => s.sessionId === "visap");
+    expect(slotOf(event, all, new Date(et("13:50"))).start).toBe(
+      Date.parse(et("14:00")),
+    );
+  });
+});
