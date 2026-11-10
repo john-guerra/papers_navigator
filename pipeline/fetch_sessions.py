@@ -8,11 +8,22 @@ Writes conferences/<id>/data/sessions.json; the page is always re-downloaded (on
 
 import argparse
 import json
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
 from pipeline.fetch_ieeevis import ROOT, _text, fetch_cached, write_atomic
+
+
+def _program_url(href: str | None, base_url: str) -> str | None:
+    """The session's page, kept only as an http(s) link on the program's own host (the Live
+    page links to it)."""
+    if not href:
+        return None
+    url = urljoin(base_url, href)
+    parts = urlparse(url)
+    ok = parts.scheme in ("http", "https") and parts.hostname == urlparse(base_url).hostname
+    return url if ok else None
 
 
 def parse_sessions(html: str, base_url: str = "https://ieeevis.org") -> list[dict]:
@@ -38,7 +49,7 @@ def parse_sessions(html: str, base_url: str = "https://ieeevis.org") -> list[dic
                 "room": room or None,
                 "start": card.get("data-start") or None,
                 "end": card.get("data-end") or None,
-                "url": urljoin(base_url, link["href"]) if link else None,
+                "url": _program_url(link.get("href") if link else None, base_url),
                 "paperIds": (card.get("data-paper-ids") or "").split(),
             }
         )
