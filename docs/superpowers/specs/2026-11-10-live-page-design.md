@@ -213,3 +213,106 @@ Each stage is its own PR, reviewed independently, and deployed only with John's 
 The visual layout within the DESIGN.md tokens. Component boundaries. How the feed is paged
 and cached within one page load. Exact copy for empty states ("No more sessions today",
 "Offline: Bluesky search needs a connection").
+
+---
+
+## Stage D (John, 2026-11-10 afternoon): Worth moving for, Not for me, attended
+
+### Why
+
+In a boring talk, John wants to know, without losing his place, whether something better is
+starting soon in another room: **one of his papers, or an award paper**. The current "Switch room"
+list doesn't say why a talk matters, has to be scrolled to, and is visually broken (its buttons
+centre their content and keep text on one line, so the cards misalign and the titles are cut off).
+He also wants to say "I didn't like this" in his ratings and to keep track of **which papers he
+attended**.
+
+### Worth moving for (decided: placement A)
+
+- **Trigger.** The session view (checked in) gets a floating **"Soon"** button with a count badge. It
+  sits bottom-right above the tab bar on phones and top-right of the session on desktop. The badge
+  counts the "worth moving for" talks in **other rooms**. With 0, the button still shows, with no
+  badge, so "On now" can be reached.
+- **Opens over the current view, without losing context.**
+  - **Phone:** a bottom sheet covering about the lower 60% of the screen. The talk on now, its stars
+    and the note stay visible above it, under a light dim. Close it with a tap on the dim, ✕, Esc or a
+    swipe down.
+  - **Desktop:** a popover anchored to the button, about 320px wide, also closed with ✕, Esc or a
+    click outside.
+  - Focus moves into it and returns to the button on close.
+  - It never navigates and never rebuilds the session view: a note being typed keeps its text.
+- **Window: the next two talks in each room.** Talks are back-to-back, 9–12 minutes each (VIS
+  2026: all 300 timed talks, start-to-start = length). So the window is the two talks after the one on
+  now in each parallel session of the slot, about 18–24 minutes. It is not a fixed number of minutes.
+  Workshops and posters have no talk times, so their sessions contribute nothing.
+- **"Worth moving for".** A talk in the window counts when any of these hold:
+  - it's in My Papers, labelled **"★ My Papers"** if added by hand, or with the rule that keeps it:
+    **"👥 <person>"**, **"🏫 <institution>"**, **"🔍 <topic>"**
+  - it has an award, labelled with its icon and group (**"🏆 Best paper"** etc.)
+
+  Several labels may apply. The rows are sorted by:
+  1. reason: My Papers (any) first, then award
+  2. start time
+- **Rows.**
+  - "in 8 min · 10:48 · 📍 Room", or "now · 📍 Room" for the talk on now when it qualifies
+  - the type pill, award icon and title (a link opening the details)
+  - the reason chips
+  - **"Go there →"**, which commits to that session (the same as Switch room today), keeps every
+    rating and note, and closes the sheet
+
+  A qualifying talk in **this** room shows "this room" and has no Go button.
+- **"On now".** Under the rows, one line per other room: 📍 room · the talk on now (pill and title)
+  · its reason chips if any. Tapping a line opens that room's talks in place (as today), with "Go
+  there →".
+- **It replaces the "Switch room" list.** The new rows lay out left-aligned and wrap titles to at most
+  2 lines, and the alignment bug goes away with the old list.
+- **Live updates.** The content follows the clock (the same 30 s tick, or the time set by hand), My
+  Papers and the watch rules, without closing the sheet.
+
+### 👎 Not for me (decided)
+
+- **Control.** Next to the five stars, a **"👎"** toggle (labelled "Not for me", `aria-pressed`). It
+  is mutually exclusive with stars: tapping 👎 clears the stars, and tapping a star clears 👎. Tap
+  again to clear it.
+- **Storage.** In the same ratings store, as the value **-1**. `cleanRatings` accepts -1 and 1–5.
+  Export / Import carries it. Older builds drop -1 on import, which is harmless.
+- **Where it shows.**
+  - "👎" after the title in list rows (the ★n marker's place)
+  - in paper details next to "Your rating"
+  - in "Papers I rated", listed after the starred papers under "Not for me"
+  - the 4★-and-up filter hides it
+- **Bluesky.** Post on a 👎 paper drafts without stars. The 👎 is never put in a draft.
+
+### Attended papers (decided: automatic + manual)
+
+- **Automatic.** While checked in to a session, a talk of that session is marked attended once it has
+  been on for **5 minutes** (by the page's time). It is only marked while the page is open: no
+  background work. A 9–12 minute talk you sat in for at least 5 minutes counts.
+- **Manual.**
+  - Each talk in the session view has **"✓ Attended"** (`aria-pressed`) to untick it if you stepped
+    out, or tick it.
+  - Paper details on every page have **"I was there"** for any paper, including posters and talks you
+    didn't check in to.
+  - An untick is remembered: the automatic rule never re-marks a paper you unticked.
+- **Storage.** A new store **`papersNavigator:<id>:attended`**, `{paperId: {at, how: "auto" |
+  "manual"}}` plus `{paperId: {off: true}}` for unticked. Export / Import carry it as an optional
+  `attended` field. On import, your own entries win. Add the key to the About page's storage list.
+- **Where it shows.**
+  - **"Papers I attended"** on the Live page: by day and time, each with its rating or 👎, and its note
+  - "✓" after the title in list rows (Explore, My Papers, researchers)
+  - Attended papers you haven't rated get a gentle "Rate it?" in that list
+
+### Non-goals (Stage D)
+
+- Notifications or sounds. The badge is the only alert.
+- Any sync beyond Export / Import.
+- Computing "worth moving for" for papers outside the program's timed talks.
+
+### Calls made by Claude (open to change)
+
+- **"Soon"** as the button label, and the badge counting only other rooms.
+- **-1** in the ratings store for 👎.
+- **5 minutes** for automatic attendance.
+- **"Rate it?"** for attended papers you haven't rated.
+- **Sort:** My Papers first, then award, then time.
+- The sheet height (60%) and the desktop popover width (320px).
