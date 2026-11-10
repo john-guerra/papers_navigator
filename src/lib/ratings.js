@@ -18,6 +18,20 @@ export function cleanRatings(ratings) {
   return out;
 }
 
+/** Imported ratings for papers you haven't rated (yours win): `{ratings, added}`. */
+export function mergeRatings(current, incoming) {
+  const ratings = { ...current };
+  let added = 0;
+  for (const [id, n] of Object.entries(cleanRatings(incoming)))
+    if (!(id in ratings)) ((ratings[id] = n), added++);
+  return { ratings, added };
+}
+
+/** " · 3 ratings added" for the import message ("" for none). */
+export function importedRatingsText(added) {
+  return added ? ` · ${added} ${added === 1 ? "rating" : "ratings"} added` : "";
+}
+
 /**
  * Ratings, persisted per conference. Reactive store: `.value` is `{paperId: n}` and it emits
  * `input` on every change (also another tab's). `get(id)` is 0 when unrated; `set(id, 0)` clears
@@ -45,13 +59,7 @@ export function createRatingsStore(
   };
   events?.addEventListener?.("storage", onStorage);
   Object.defineProperty(store, "value", { get: () => value });
-  store.get = (id) => value[id] ?? 0;
-  store.set = (id, n) => {
-    if (n !== 0 && !isRating(n)) return;
-    if ((value[id] ?? 0) === n) return;
-    const next = { ...value };
-    if (n) next[id] = n;
-    else delete next[id];
+  const write = (next) => {
     value = next;
     try {
       storage?.setItem(key, JSON.stringify(next));
@@ -59,6 +67,29 @@ export function createRatingsStore(
       console.warn("Could not save ratings on this device", error);
     }
     store.dispatchEvent(new Event("input"));
+  };
+  store.get = (id) => value[id] ?? 0;
+  store.set = (id, n) => {
+    if (n !== 0 && !isRating(n)) return;
+    if ((value[id] ?? 0) === n) return;
+    const next = { ...value };
+    if (n) next[id] = n;
+    else delete next[id];
+    write(next);
+  };
+  // Imported ratings (Export / Import JSON); undo removes the ones it added, unless changed since
+  store.merge = (incoming) => {
+    const { ratings, added } = mergeRatings(value, incoming);
+    const addedIds = Object.keys(ratings).filter((id) => !(id in value));
+    if (added) write(ratings);
+    const undo = () => {
+      const next = { ...value };
+      let changed = false;
+      for (const id of addedIds)
+        if (next[id] === ratings[id]) (delete next[id], (changed = true));
+      if (changed) write(next);
+    };
+    return { added, undo };
   };
   store.dispose = () => events?.removeEventListener?.("storage", onStorage);
   return store;

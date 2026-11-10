@@ -28,17 +28,19 @@ describe("My Papers file", () => {
       rules,
       exceptions: ["x"],
       notes: {},
+      ratings: {},
     });
   });
   it("reads the new format and the old plain list", () => {
     expect(
       parseMyPapersFile(exportMyPapers({ followed, rules, exceptions: [] })),
-    ).toEqual({ followed, rules, exceptions: [], notes: {} });
+    ).toEqual({ followed, rules, exceptions: [], notes: {}, ratings: {} });
     expect(parseMyPapersFile(JSON.stringify(followed))).toEqual({
       followed,
       rules: [],
       exceptions: [],
       notes: {},
+      ratings: {},
     });
   });
   it("rejects files that are not My Papers", () => {
@@ -118,5 +120,41 @@ describe("exportNote with notes (#152)", () => {
       "Includes your notes and the abstracts of your research topics",
     );
     expect(exportNote(rules, {})).toBe("");
+  });
+});
+
+describe("ratings in the My Papers file (#203 Stage B)", () => {
+  it("round-trips ratings", () => {
+    const text = exportMyPapers({ followed: [], ratings: { a: 4 } });
+    expect(JSON.parse(text).ratings).toEqual({ a: 4 });
+    expect(parseMyPapersFile(text).ratings).toEqual({ a: 4 });
+  });
+
+  it("drops bad ratings and keeps the rest of the import", () => {
+    const parsed = parseMyPapersFile(
+      JSON.stringify({
+        version: 2,
+        followed: [{ id: "p" }],
+        ratings: { x: 6, y: 3, z: "5", w: { n: 1 } },
+      }),
+    );
+    expect(parsed.ratings).toEqual({ y: 3 });
+    expect(parsed.followed).toEqual([{ id: "p" }]);
+  });
+
+  it("old files have no ratings", () => {
+    expect(parseMyPapersFile(JSON.stringify([{ id: "p" }])).ratings).toEqual(
+      {},
+    );
+    expect(
+      parseMyPapersFile(JSON.stringify({ followed: [{ id: "p" }] })).ratings,
+    ).toEqual({});
+  });
+
+  it("the export note mentions ratings", () => {
+    expect(exportNote([], {}, { a: 1 })).toBe("Includes your ratings");
+    expect(exportNote([], { a: "x" }, { a: 1 })).toBe(
+      "Includes your notes and your ratings",
+    );
   });
 });
