@@ -833,7 +833,7 @@ a.navbar-brand {
     right: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     box-sizing: border-box;
     min-height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom)
@@ -3264,4 +3264,237 @@ body #vg-tooltip-element table tr td.value {
 }
 .itinerary-item .type-pill {
   vertical-align: 0.05em;
+}
+
+/* #203 Live — the conference page: break view, check-in, ratings */
+#observablehq-main:has(.live-clock) {
+  max-width: 720px;
+  margin-inline: auto;
+}
+.live-clock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  font: var(--typography-body-sm);
+}
+.live-clock-input,
+.live-clock button,
+.live-going,
+.live-later button,
+.live-next-day,
+.live-switch-option,
+.live-switch summary,
+.live-leave,
+.live-add {
+  min-height: 44px;
+}
+.live-clock-input {
+  font: var(--typography-body-sm);
+}
+.live-slot-title {
+  margin: var(--spacing-lg) 0 var(--spacing-sm);
+  font: var(--typography-headline);
+  font-style: italic;
+}
+.live-session {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-md);
+  background: var(--color-surface);
+}
+.live-session.is-recommended {
+  border-color: var(--color-on-surface-muted);
+}
+.live-session-head,
+.live-checked-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+.live-recommended {
+  color: var(--color-primary);
+  font: var(--typography-label-caps, var(--typography-meta));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.live-session-name {
+  margin: 0;
+  font: var(--typography-title-paper);
+}
+.live-where,
+.live-summary,
+.live-paper-meta,
+.live-switch-option span {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+.live-summary {
+  margin: var(--spacing-xs) 0;
+}
+.live-mine {
+  flex: none;
+  text-align: right;
+  font: var(--typography-body-sm);
+  white-space: nowrap;
+}
+.live-mine strong {
+  display: block;
+  font: var(--typography-display);
+}
+.live-mine.is-zero {
+  color: var(--color-on-surface-muted);
+}
+.live-expand summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font: var(--typography-body-sm);
+}
+.live-papers,
+.live-talks,
+.rated-list,
+.live-later ul {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.live-paper,
+.live-talk,
+.rated-paper {
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-outline);
+}
+.live-paper.is-mine .live-title {
+  font-weight: 600;
+}
+.live-in-mine {
+  color: var(--color-primary);
+}
+#observablehq-main a.live-title {
+  color: var(--color-on-surface);
+  font: var(--typography-title-paper);
+  font-size: 1rem;
+  text-decoration: none;
+}
+#observablehq-main a.live-title:hover {
+  text-decoration: underline;
+}
+.live-going {
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+.live-later li {
+  margin-bottom: var(--spacing-xs);
+}
+.live-later button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+/* Session view */
+.live-switch {
+  position: sticky;
+  top: var(--observablehq-header-height, 0);
+  z-index: 2;
+  margin: var(--spacing-sm) 0;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-md);
+  background: var(--color-surface);
+}
+.live-switch summary {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-md);
+  cursor: pointer;
+  font: var(--typography-body-sm);
+  font-weight: 600;
+}
+.live-switch-options {
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-sm) var(--spacing-sm);
+}
+.live-switch-option {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  width: 100%;
+  padding: var(--spacing-sm);
+  text-align: left;
+}
+.live-switch-option .live-switch-name {
+  color: var(--color-on-surface);
+}
+.live-talk.is-now {
+  margin-left: calc(-1 * var(--spacing-sm));
+  padding-left: calc(var(--spacing-sm) - 3px);
+  border-left: 3px solid var(--color-primary);
+}
+.live-talk-time {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-meta);
+}
+.live-now-label {
+  display: none;
+  margin-left: var(--spacing-xs);
+  color: var(--color-primary);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.live-talk.is-now .live-now-label {
+  display: inline;
+}
+.live-talk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-xs) 0;
+}
+.star-rating {
+  display: inline-flex;
+}
+.star-rating .star {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-outline);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.star-rating .star.on {
+  color: var(--color-on-surface);
+}
+.quick-note {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  resize: none;
+  overflow: hidden;
+  font: var(--typography-body-sm);
+}
+/* Papers I rated */
+.rated-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm) var(--spacing-md);
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  font: var(--typography-body-sm);
+}
+.rated-stars {
+  color: var(--color-on-surface);
+  letter-spacing: 0.1em;
+}
+.rated-note {
+  margin: var(--spacing-xs) 0 0;
+  font: var(--typography-body-sm);
 }

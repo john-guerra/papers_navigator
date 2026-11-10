@@ -31,7 +31,9 @@ export function starRating(value = 0, { label = "Rating" } = {}) {
   });
   Object.defineProperty(el, "value", {
     get: () => current,
-    set: (n) => show(Number.isInteger(n) && n >= 0 && n <= 5 ? n : 0),
+    set: (n) => {
+      show(Number.isInteger(n) && n >= 0 && n <= 5 ? n : 0);
+    },
   });
   show(value);
   return el;

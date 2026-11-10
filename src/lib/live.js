@@ -64,7 +64,7 @@ function counts(values) {
   );
 }
 
-/** "7 papers · 2 Full · 1 Short · 🏆 1 · Perception, Uncertainty" (empty parts left out). */
+/** "7 papers · 2 Full · 1 Short · 🏆 1 · Perception; Uncertainty" (topic labels contain commas) (empty parts left out). */
 export function sessionSummary(session) {
   const items = session.items ?? [];
   const n = items.length;
@@ -78,7 +78,7 @@ export function sessionSummary(session) {
   const topics = counts(items.map((p) => p.clusterLabel))
     .slice(0, 2)
     .map(([t]) => t);
-  if (topics.length) parts.push(topics.join(", "));
+  if (topics.length) parts.push(topics.join("; "));
   return parts.join(" · ");
 }
 

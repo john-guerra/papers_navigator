@@ -130,6 +130,16 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("setNow moves the highlight without rebuilding the rows (keeps typing)", () => {
+    const { el } = setup();
+    const rows = [...el.querySelectorAll(".live-talk")];
+    el.setNow(new Date(et("11:05")));
+    expect(rows[2].classList).toContain("is-now");
+    expect(rows[1].classList).not.toContain("is-now");
+    expect([...el.querySelectorAll(".live-talk")]).toEqual(rows);
+    el.remove();
+  });
+
   it("Leave session goes back to the break view", () => {
     const { el, onLeave } = setup();
     el.querySelector(".live-leave").click();

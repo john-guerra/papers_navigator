@@ -80,7 +80,7 @@ describe("sessionSummary", () => {
       { typeShort: "Short", awardTier: null, clusterLabel: null },
     ];
     expect(sessionSummary({ items })).toBe(
-      "4 papers · 3 Full · 1 Short · 🏆 1 · Perception, Color",
+      "4 papers · 3 Full · 1 Short · 🏆 1 · Perception; Color",
     );
   });
 

@@ -23,7 +23,7 @@
 // Bump the "v4" when the caching rules change; `npm run build` (scripts/buildSw.js)
 // appends a build id, so every deploy installs a new worker that re-precaches and
 // drops the previous deploy's cache.
-const VERSION = "v4";
+const VERSION = "v5";
 const CACHE_PREFIX = "papersNavigator-";
 const ASSET_DIRS = [
   "_file",
@@ -36,6 +36,7 @@ const ASSET_DIRS = [
 const PRECACHE_PAGES = [
   "./",
   "./my-papers.html",
+  "./live.html",
   "./authors.html",
   "./about.html",
 ];

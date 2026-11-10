@@ -31,6 +31,18 @@ export const STORAGE_ITEMS = [
     what: "Your notes on papers (My note in a paper's details)",
   },
   {
+    key: "papersNavigator:<id>:ratings",
+    what: "Your 1–5 star ratings of papers (Live page)",
+  },
+  {
+    key: "papersNavigator:<id>:liveCheckIn",
+    what: "The session you chose with Going here on the Live page",
+  },
+  {
+    key: "papersNavigator:<id>:liveClock",
+    what: "A time you set by hand on the Live page (forgotten the next day)",
+  },
+  {
     key: "papersNavigator:<id>:dismissed",
     what: "Recommended papers you dismissed",
   },

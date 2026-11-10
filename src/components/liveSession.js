@@ -43,7 +43,8 @@ function switchBar(session, { slot, at, tz, mineIds, onSwitch }) {
 
 /**
  * The Live page's session view (#203), once you're "Going here": the session's papers in talk
- * order, the talk at `at` highlighted (`is-now`, `el.scrollToNow()`), each with 1–5 stars
+ * order, the talk at `at` highlighted (`is-now`; `el.setNow(at)` moves it in place,
+ * `el.scrollToNow()`), each with 1–5 stars
  * (`ratings`), a quick note (`notes`) and "Add to My Papers" when it isn't there (`onAdd`);
  * "Switch room" (`onSwitch(session)`) and "Leave session" (`onLeave`). `el.dispose()` saves
  * pending notes and stops following the stores.
@@ -89,7 +90,7 @@ export function renderSessionView(
     >
       <div class="live-talk-time">
         ${Number.isFinite(ms(p.start)) ? formatTime(p.start, tz) : ""}
-        ${p === now ? html`<span class="live-now-label">Now</span>` : ""}
+        <span class="live-now-label">Now</span>
       </div>
       <div class="paper-head">
         ${typePill(p)}${awardMark(p)}${titleLink(p, { detailsHref, onOpen })}
@@ -121,6 +122,12 @@ export function renderSessionView(
       ${rows}
     </ol>
   </section>`;
+  // The clock ticks: move the highlight in place, so a note being typed keeps its focus
+  el.setNow = (time) => {
+    const current = talkAt(session, time);
+    for (const row of el.querySelectorAll(".live-talk"))
+      row.classList.toggle("is-now", row.dataset.paperId === current?.id);
+  };
   el.scrollToNow = () =>
     el.querySelector(".is-now")?.scrollIntoView?.({ block: "center" });
   el.dispose = () => disposers.forEach((d) => d());
