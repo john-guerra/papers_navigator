@@ -21,14 +21,27 @@ const attendedStore = (initial = {}) => {
 };
 
 describe("attendedToggle (#208)", () => {
+  it("in details it reads I was there / ✓ I was there", () => {
+    const attended = attendedStore();
+    const b = attendedToggle({ id: "p" }, attended, [
+      "I was there",
+      "✓ I was there",
+    ]);
+    expect(b.textContent.trim()).toBe("I was there");
+    b.click();
+    expect(b.textContent.trim()).toBe("✓ I was there");
+  });
+
   it("toggles attended and follows the store", () => {
     const attended = attendedStore();
-    const b = attendedToggle({ id: "p" }, attended, "✓ Attended");
-    expect(b.textContent).toContain("✓ Attended");
+    const b = attendedToggle({ id: "p" }, attended);
+    // the two states read differently, not just by weight
+    expect(b.textContent.trim()).toBe("Mark attended");
     expect(b.getAttribute("aria-pressed")).toBe("false");
     b.click();
     expect(attended.set).toHaveBeenLastCalledWith("p", true);
     expect(b.getAttribute("aria-pressed")).toBe("true");
+    expect(b.textContent.trim()).toBe("✓ Attended");
     b.click();
     expect(attended.set).toHaveBeenLastCalledWith("p", false);
     attended.replace({ p: { at: "x", how: "auto" } });

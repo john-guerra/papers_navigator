@@ -3878,6 +3878,9 @@ body #vg-tooltip-element table tr td.value {
 .attended-toggle {
   min-height: 44px;
 }
+.attended-toggle {
+  color: var(--color-on-surface-muted);
+}
 .attended-toggle[aria-pressed="true"] {
   color: var(--color-on-surface);
   font-weight: 600;

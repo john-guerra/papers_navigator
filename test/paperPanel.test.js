@@ -233,7 +233,7 @@ describe("paperPanel I was there (#208)", () => {
     });
     const { el } = setup("a", { attended: store });
     const b = el.querySelector(".attended-toggle");
-    expect(b.textContent).toContain("I was there");
+    expect(b.textContent.trim()).toBe("I was there");
     b.click();
     expect(store.set).toHaveBeenCalledWith("id-a", true);
     el.dispose();

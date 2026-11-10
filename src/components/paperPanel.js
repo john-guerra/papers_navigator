@@ -154,7 +154,9 @@ export function paperPanel(
 
 /** "Your rating": stars or 👎 Not for me (#208), following the stores; `dispose()` stops that. */
 function ratingControl(paper, { ratings, disliked, onRated, attended }) {
-  const was = attended ? attendedToggle(paper, attended, "I was there") : "";
+  const was = attended
+    ? attendedToggle(paper, attended, ["I was there", "✓ I was there"])
+    : "";
   const control = ratings
     ? verdict(paper, { ratings, disliked, onRated, label: "Your rating" })
     : null;

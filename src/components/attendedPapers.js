@@ -4,19 +4,25 @@ import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { titleLink } from "./liveBreak.js";
 
 /**
- * "✓ Attended" / "I was there" (#208): a toggle bound to the attended store (by hand: on, or
- * unticked so the automatic rule leaves it alone). Follows the store; `dispose()` stops that.
+ * "Mark attended" / "✓ Attended" (#208; in details "I was there" / "✓ I was there"): a toggle
+ * bound to the attended store (by hand: on, or unticked so the automatic rule leaves it alone).
+ * The two states read differently, not only by weight. Follows the store; `dispose()` stops that.
  */
-export function attendedToggle(paper, attended, label = "✓ Attended") {
+export function attendedToggle(
+  paper,
+  attended,
+  [off, on] = ["Mark attended", "✓ Attended"],
+) {
   const b = html`<button
     type="button"
     class="btn-text attended-toggle"
     aria-pressed="false"
-  >
-    ${label}
-  </button>`;
-  const show = () =>
-    b.setAttribute("aria-pressed", String(attended.isAttended(paper.id)));
+  ></button>`;
+  const show = () => {
+    const yes = attended.isAttended(paper.id);
+    b.setAttribute("aria-pressed", String(yes));
+    b.textContent = yes ? on : off;
+  };
   b.onclick = () => {
     attended.set(paper.id, !attended.isAttended(paper.id));
     show();
