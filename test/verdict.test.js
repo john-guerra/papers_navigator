@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { addOnRate, verdict } from "../src/components/verdict.js";
+import { verdict } from "../src/components/verdict.js";
 
 const keyed = (initial = {}) => {
   const s = new EventTarget();
@@ -73,42 +73,12 @@ describe("verdict: stars or Not for me (#208)", () => {
   });
 });
 
-describe("addOnRate: rated with stars → My Papers (#208)", () => {
-  it("adds a paper not in My Papers with reason ★ Rated and an Undo toast; never twice", () => {
-    const ids = new Set(["already"]);
-    const store = { value: [...ids].map((id) => ({ id })) };
-    const addWithUndo = vi.fn((s, list) => {
-      list.forEach((p) => ids.add(p.id));
-      store.value = [...ids].map((id) => ({ id }));
-      return () => {};
-    });
-    const toast = vi.fn();
-    const onRated = addOnRate({ store, addWithUndo, toast });
-    onRated({ id: "new" }, 4);
-    expect(addWithUndo).toHaveBeenCalledWith(store, [{ id: "new" }], "★ Rated");
-    expect(toast).toHaveBeenCalledWith(
-      "Rated and added to My Papers",
-      expect.objectContaining({ actionLabel: "Undo" }),
-    );
-    onRated({ id: "new" }, 5);
-    onRated({ id: "already" }, 3);
-    expect(addWithUndo).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("onRated only on a first rating (#208 review)", () => {
-  it("passes the previous rating, and addOnRate adds only from unrated", () => {
+describe("onRated gets the previous rating (#208 review)", () => {
+  it("passes the previous rating", () => {
     const ratings = keyed({ p: 4 });
     const onRated = vi.fn();
     const el = verdict(paper, { ratings, disliked: keyed(), onRated });
     stars(el)[4].click();
     expect(onRated).toHaveBeenCalledWith(paper, 5, 4);
-    const store = { value: [] };
-    const addWithUndo = vi.fn(() => () => {});
-    const add = addOnRate({ store, addWithUndo, toast: vi.fn() });
-    add({ id: "removed" }, 5, 4);
-    expect(addWithUndo).not.toHaveBeenCalled();
-    add({ id: "fresh" }, 3, 0);
-    expect(addWithUndo).toHaveBeenCalledTimes(1);
   });
 });

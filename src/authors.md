@@ -141,7 +141,6 @@ const paperDetail = paperPanel(paperParam, {
   notes: notesStore,
   ratings: ratingsStore,
   disliked: dislikedStore,
-  onRated: rateAdds,
   attended: attendedStore,
 });
 invalidation.then(paperDetail.dispose);
@@ -160,7 +159,6 @@ import { bindRatingMarkers } from "./components/ratingMarkers.js";
 import { createRatingsStore } from "./lib/ratings.js";
 import { createDislikedStore } from "./lib/disliked.js";
 import { createAttendedStore } from "./lib/attended.js";
-import { addOnRate } from "./components/verdict.js";
 const notesStore = createNotesStore(conference.id);
 invalidation.then(() => notesStore.dispose());
 invalidation.then(bindNoteMarkers(document.querySelector(".author-page"), notesStore));
@@ -170,7 +168,6 @@ const ratingsStore = createRatingsStore(conference.id);
 const dislikedStore = createDislikedStore(conference.id);
 const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
-const rateAdds = addOnRate({ store, addWithUndo, toast: showToast });
 invalidation.then(() => ratingsStore.dispose());
 invalidation.then(bindRatingMarkers(document.querySelector(".author-page"), ratingsStore, { disliked: dislikedStore, attended: attendedStore }));
 ```

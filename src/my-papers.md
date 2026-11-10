@@ -31,7 +31,6 @@ import { createDislikedStore, importedDislikedText } from "./lib/disliked.js";
 import { createAttendedStore, importedAttendedText } from "./lib/attended.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
 import { bindRatingMarkers } from "./components/ratingMarkers.js";
-import { addOnRate } from "./components/verdict.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { arrangeMyPapers } from "./components/myPapersLayout.js";
@@ -551,7 +550,6 @@ const paperDetail = paperPanel(paperParam, {
   notes: notesStore,
   ratings: ratingsStore,
   disliked: dislikedStore,
-  onRated: addOnRate({ store, addWithUndo, toast: showToast }),
   attended: attendedStore,
 });
 invalidation.then(paperDetail.dispose);
