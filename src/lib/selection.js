@@ -15,6 +15,9 @@ export function selectionReason({
   keywords = [],
   sessions = [],
   topics = [],
+  // Day and Award facets (#199), already as display text ("Tue Nov 10", "🏆 Best")
+  days = [],
+  awards = [],
   types = [],
   defaultTypes = [],
   typeLabel = (t) => t,
@@ -32,6 +35,8 @@ export function selectionReason({
       sessions.length && `Session: ${sessions.join(", ")}`,
       // topic labels contain commas themselves
       topics.length && `Topic: ${topics.join("; ")}`,
+      days.length && `Day: ${days.join(", ")}`,
+      awards.length && `Award: ${awards.join(", ")}`,
       !isDefaultTypes &&
         types.length &&
         `Type: ${types.map(typeLabel).join(", ")}`,

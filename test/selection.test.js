@@ -157,3 +157,11 @@ describe("showToast focusAction (#52)", () => {
     document.querySelector(".toast-action").click();
   });
 });
+
+describe("selectionReason Day and Award (#199)", () => {
+  it("names the picked days and award groups", () => {
+    expect(selectionReason({ days: ["Tue Nov 10"], awards: ["🏆 Best"] })).toBe(
+      "Day: Tue Nov 10 · Award: 🏆 Best",
+    );
+  });
+});

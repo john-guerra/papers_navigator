@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applyFilters, facetValues } from "../src/lib/filters.js";
+import {
+  applyFilters,
+  facetValues,
+  filterAccessor,
+} from "../src/lib/filters.js";
 
 const papers = [
   {
@@ -97,8 +101,39 @@ describe("typeNames", () => {
 describe("filterAccessor", () => {
   it("returns a paper's values for a filter name, as applyFilters sees them", async () => {
     const { filterAccessor } = await import("../src/lib/filters.js");
-    expect(filterAccessor("affiliations")(papers[1])).toEqual(["Northeastern", "MIT"]);
+    expect(filterAccessor("affiliations")(papers[1])).toEqual([
+      "Northeastern",
+      "MIT",
+    ]);
     expect(filterAccessor("sessions")(papers[2])).toEqual([]);
     expect(filterAccessor("types")(papers[0])).toEqual(["full"]);
+  });
+});
+
+describe("Day and Award facets (#199)", () => {
+  const dated = [
+    { id: "1", type: "full", day: "2026-11-10", awardTier: "best" },
+    { id: "2", type: "short", day: "2026-11-11", awardTier: null },
+    { id: "3", type: "workshop", day: "2026-11-09", awardTier: "honorable" },
+    { id: "4", type: "poster", day: null, awardTier: null },
+  ];
+
+  it("filters by day (OR within days)", () => {
+    expect(
+      applyFilters(dated, { days: ["2026-11-10", "2026-11-09"] }).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["1", "3"]);
+  });
+
+  it("filters by award group", () => {
+    expect(applyFilters(dated, { awards: ["best"] }).map((p) => p.id)).toEqual([
+      "1",
+    ]);
+  });
+
+  it("exposes accessors for the facet strip", () => {
+    expect(filterAccessor("days")(dated[0])).toEqual(["2026-11-10"]);
+    expect(filterAccessor("awards")(dated[1])).toEqual([]);
   });
 });

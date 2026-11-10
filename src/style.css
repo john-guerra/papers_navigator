@@ -61,6 +61,11 @@
   --color-viz-cat-2: #eb6834;
   --color-viz-cat-3: #1baf7a;
   --color-viz-cat-other: #c9c3bb;
+  /* Type pill caps (#199): the official program's hues, muted; decorative (the label is ink) */
+  --color-type-full: #5b7fae;
+  --color-type-short: #5e9e93;
+  --color-type-arts: #c4655a;
+  --color-type-other: #a9a39b;
 
   /* Typography */
   --font-serif: "Newsreader", Georgia, serif;
@@ -154,6 +159,10 @@
   --color-viz-cat-2: #d95926;
   --color-viz-cat-3: #199e70;
   --color-viz-cat-other: #5a554f;
+  --color-type-full: #7f9fcc;
+  --color-type-short: #7fbcb1;
+  --color-type-arts: #e0857a;
+  --color-type-other: #6f6a64;
   --elevation-1:
     0 12px 32px -12px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
   color-scheme: dark;
@@ -188,6 +197,10 @@
     --color-viz-cat-2: #d95926;
     --color-viz-cat-3: #199e70;
     --color-viz-cat-other: #5a554f;
+    --color-type-full: #7f9fcc;
+    --color-type-short: #7fbcb1;
+    --color-type-arts: #e0857a;
+    --color-type-other: #6f6a64;
     --elevation-1:
       0 12px 32px -12px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
     color-scheme: dark;
@@ -2823,19 +2836,6 @@ details.missing > summary {
   border-bottom: 1px solid var(--color-outline);
 }
 
-.related-open {
-  flex: 1 1 100%;
-  justify-content: flex-start;
-  text-align: left;
-  white-space: normal;
-  font-weight: 600;
-}
-
-.related-meta {
-  color: var(--color-on-surface-muted);
-  font: var(--typography-body-sm);
-}
-
 .paper-actions {
   display: inline-flex;
   flex-wrap: wrap;
@@ -2859,15 +2859,6 @@ details.missing > summary {
   border-bottom: 1px solid var(--color-outline);
 }
 
-.recommended-open {
-  flex: 1 1 100%;
-  justify-content: flex-start;
-  text-align: left;
-  white-space: normal;
-  font-family: var(--font-serif);
-}
-
-.recommended-meta,
 .recommended-why {
   color: var(--color-on-surface-muted);
   font: var(--typography-body-sm);
@@ -3164,4 +3155,113 @@ body #vg-tooltip-element table tr td.value {
 /* Few similar papers visible: the whole terrain at 40% (FAINT_OPACITY) */
 .query-area g[data-faint] {
   opacity: 0.4;
+}
+
+/* #199 — type pill and award mark, before the title of every paper row. The pill is a short label
+   with its type color as a cap on the left (like the official program's), sitting on the title's
+   first line: inline-flex aligned on the baseline, so it stays on line one when the title wraps */
+.type-pill {
+  --pill-color: var(--color-type-other);
+  display: inline-flex;
+  align-items: baseline;
+  margin-right: var(--spacing-xs, 4px);
+  overflow: hidden;
+  border: 1px solid var(--pill-color);
+  border-radius: 999px;
+  color: var(--color-on-surface);
+  font: var(--typography-meta);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  vertical-align: 0.12em;
+  padding-right: 6px;
+}
+.type-pill::before {
+  content: "";
+  align-self: stretch;
+  width: 5px;
+  margin-right: 4px;
+  background: var(--pill-color);
+}
+.type-pill[data-color="full"] {
+  --pill-color: var(--color-type-full);
+}
+.type-pill[data-color="short"] {
+  --pill-color: var(--color-type-short);
+}
+.type-pill[data-color="arts"] {
+  --pill-color: var(--color-type-arts);
+}
+
+.award-mark {
+  margin-right: var(--spacing-xs, 4px);
+  color: var(--color-on-surface-muted);
+  font: var(--typography-meta);
+  white-space: nowrap;
+}
+
+.paper-detail-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+  margin: var(--spacing-xs, 4px) 0;
+}
+.paper-detail-marks:not(:has(*)) {
+  display: none;
+}
+.paper-detail-marks .paper-detail-award {
+  font: var(--typography-meta);
+}
+
+/* Compact paper row (Recommended, Related papers): the title is a button that reads as text */
+.compact-paper {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.compact-paper .paper-head .compact-title {
+  color: var(--color-on-surface);
+  font: var(--typography-title-paper);
+  font-size: 1rem;
+  text-decoration: none;
+}
+.compact-paper .paper-head .compact-title:hover {
+  text-decoration: underline;
+}
+.compact-authors {
+  overflow: hidden;
+  color: var(--color-on-surface);
+  font: var(--typography-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-meta,
+.compact-extra {
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+.compact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+  margin-top: var(--spacing-xs, 4px);
+}
+.compact-details {
+  margin-top: var(--spacing-xs, 4px);
+  padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+  border-radius: var(--rounded-sm, 4px);
+  background: var(--color-surface-sunken);
+  font: var(--typography-body-sm);
+}
+.compact-details p {
+  margin: 4px 0;
+  max-width: none;
+}
+.compact-details-where,
+.compact-details-award {
+  color: var(--color-on-surface-muted);
+}
+.itinerary-item .type-pill {
+  vertical-align: 0.05em;
 }

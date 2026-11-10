@@ -255,6 +255,8 @@ describe("decodeExploreState", () => {
     expect(Object.keys(fresh().facets).sort()).toEqual([
       "affiliations",
       "authors",
+      "awards",
+      "days",
       "keywords",
       "sessions",
       "topics",
@@ -322,6 +324,8 @@ describe("withParams (in the fragment: it never reaches the server)", () => {
       "kw",
       "session",
       "topic",
+      "day",
+      "award",
       "color",
       "proj",
       "labels",

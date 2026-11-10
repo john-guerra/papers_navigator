@@ -583,6 +583,7 @@ const recommendations = !items.length
 const drawRecommended = () => {
   recommendedSection.replaceChildren(
     renderRecommended(recommendations, {
+      detailsHref: (p) => paperRoute.href(p.shortId ?? p.id),
       tz,
       tzLabel,
       shown: recommendState.shown,

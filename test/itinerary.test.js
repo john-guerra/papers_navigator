@@ -278,3 +278,25 @@ describe("nowNext statuses (#14)", () => {
     expect(text).toContain("next: Paper b");
   });
 });
+
+describe("renderItinerary marks (#199)", () => {
+  it("puts the type pill and award before each paper's title", () => {
+    const marked = groupIntoSlots(
+      [
+        {
+          ...items[0],
+          typeShort: "Short",
+          typeColor: "short",
+          award: "best paper",
+          awardTier: "best",
+        },
+      ],
+      TZ,
+    );
+    const li = renderItinerary(marked, { tz: TZ }).querySelector(
+      ".itinerary-item",
+    );
+    expect(li.querySelector(".type-pill").textContent).toContain("Short");
+    expect(li.querySelector(".award-mark").textContent).toBe("🏆");
+  });
+});

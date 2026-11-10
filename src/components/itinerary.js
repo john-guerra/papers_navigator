@@ -1,5 +1,6 @@
 import { conferenceLink } from "../widgets/papersList.js";
 import { html } from "htl";
+import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { dayKey, formatDay, formatTime } from "../lib/time.js";
 
 function renderItem(p, { tz, onUnfollow, onDetails, detailsHref }) {
@@ -36,8 +37,9 @@ function renderItem(p, { tz, onUnfollow, onDetails, detailsHref }) {
   const details = onDetails ? conferenceLink(p) : "";
   return html`<li class="itinerary-item" data-paper-id=${p.id}>
     <span class="time">${p.start ? formatTime(p.start, tz) : "—"}</span>
-    ${title} ${p.reason ? html`<span class="reason">${p.reason}</span>` : ""}
-    ${details} ${unfollow}
+    ${typePill(p)}${awardMark(p)}${title}
+    ${p.reason ? html`<span class="reason">${p.reason}</span>` : ""} ${details}
+    ${unfollow}
   </li>`;
 }
 

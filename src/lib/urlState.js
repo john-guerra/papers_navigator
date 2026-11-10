@@ -9,7 +9,7 @@
  * (paperRoute; a public paper id, so a query param) and the `#follow=` share hash (share.js).
  * The fragment (`#q=…&type=…`), not the query string: it never leaves the browser.
  *
- * State: { query, level, facets: {types, authors, affiliations, keywords, sessions, topics},
+ * State: { query, level, facets: {types, authors, affiliations, keywords, sessions, topics, days, awards},
  *          color, projection, labels, map, region: {projection, x: [x0, x1], y: [y0, y1]} | null }
  */
 
@@ -21,6 +21,8 @@ export const FACET_KEYS = {
   keywords: "kw",
   sessions: "session",
   topics: "topic",
+  days: "day",
+  awards: "award",
 };
 /** Color by field → URL value ("score", Similarity, is the default; live clusters aren't encodable). */
 const COLOR_CODES = {
