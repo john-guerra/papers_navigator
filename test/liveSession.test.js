@@ -188,6 +188,40 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("Post toggles a Bluesky panel under the talk (#203 Stage C)", () => {
+    const postPanel = vi.fn((p) => {
+      const el = document.createElement("section");
+      el.className = "post-panel";
+      el.dataset.for = p.id;
+      return el;
+    });
+    const { el } = setup({ postPanel });
+    const row = el.querySelectorAll(".live-talk")[1];
+    const post = row.querySelector(".live-post");
+    expect(post.getAttribute("aria-expanded")).toBe("false");
+    post.click();
+    expect(row.querySelector(".post-panel").dataset.for).toBe("b2");
+    expect(post.getAttribute("aria-expanded")).toBe("true");
+    post.click();
+    expect(row.querySelector(".post-panel")).toBeNull();
+    el.remove();
+  });
+
+  it("setDiscussion links a talk's Bluesky discussion in place", () => {
+    const { el } = setup();
+    el.setDiscussion(new Map([["b3", "https://bsky.app/profile/x/post/1"]]));
+    const links = el.querySelectorAll("a.live-discussion");
+    expect(links).toHaveLength(1);
+    expect(links[0].closest(".live-talk").dataset.paperId).toBe("b3");
+    expect(links[0].getAttribute("href")).toBe(
+      "https://bsky.app/profile/x/post/1",
+    );
+    // idempotent
+    el.setDiscussion(new Map([["b3", "https://bsky.app/profile/x/post/1"]]));
+    expect(el.querySelectorAll("a.live-discussion")).toHaveLength(1);
+    el.remove();
+  });
+
   it("Leave session goes back to the break view", () => {
     const { el, onLeave } = setup();
     el.querySelector(".live-leave").click();

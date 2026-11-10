@@ -22,6 +22,9 @@ import { renderBreakView } from "./components/liveBreak.js";
 import { renderSessionView } from "./components/liveSession.js";
 import { renderRatedPapers } from "./components/ratedPapers.js";
 import { createViewHost } from "./components/liveViewHost.js";
+import { renderPostPanel } from "./components/postPanel.js";
+import { createHandlesStore, loadDiscussion } from "./lib/bluesky.js";
+import { createBooleanSetting } from "./lib/booleanSetting.js";
 ```
 
 ```js
@@ -56,9 +59,61 @@ const days = programDays(papers, tz);
 const loadMatrix = lazyLoader(async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length));
 // Survive re-renders: the rated list's filters, and the views kept while only time moves
 const ratedState = { minRating: 0, day: null };
+// Bluesky (#203 Stage C): handles you picked for authors, and the draft's link choice
+const handlesStore = createHandlesStore(conference.id);
+const postLinkSetting = createBooleanSetting(`papersNavigator:${conference.id}:postToolLink`, false);
+const toolLink = (p) => new URL(`./?paper=${encodeURIComponent(p.shortId ?? p.id)}`, conference.siteUrl).href;
+// Opened from a talk or a rated paper. The draft follows your rating and note until you edit it;
+// open panels are kept here, so a redrawn list puts the same panel (draft, photos) back
+// (one cache per list, so a panel never moves from a talk to the rated list)
+const postPanels = () => {
+  const cache = new Map();
+  return {
+    cache,
+    open: (p) => {
+      if (!cache.has(p.id)) cache.set(p.id, newPostPanel(p));
+      return cache.get(p.id);
+    },
+    close: (p) => {
+      cache.get(p.id)?.dispose?.();
+      cache.delete(p.id);
+    },
+  };
+};
+const sessionPosts = postPanels();
+const ratedPosts = postPanels();
+const newPostPanel = (p) =>
+  renderPostPanel(p, {
+    rating: () => ratingsStore.get(p.id),
+    note: () => notesStore.get(p.id),
+    watch: [ratingsStore, notesStore],
+    toolLink: conference.siteUrl ? toolLink(p) : "",
+    handles: handlesStore,
+    linkSetting: postLinkSetting,
+    discussionUrl: discussionHolder.map?.get(p.id) ?? null,
+  });
+// Filled once the official account's posts are read (below; a cell can't reassign another's variable)
+const discussionHolder = { map: null };
 const viewState = { scrolledFor: null };
 // Displayed once (below): ticks update what's inside, so a note being typed keeps its focus
 const liveView = createViewHost();
+```
+
+```js
+// "💬 Discussion" (#203 Stage C): @papers.ieeevis.org's posts about papers, read once after the
+// first render (a public feed; nothing of yours is sent). Null until then, or if it fails.
+const discussion = Generators.observe((notify) => {
+  notify(null);
+  let stopped = false;
+  const go = () =>
+    loadDiscussion(papers).then(
+      (map) => !stopped && notify((discussionHolder.map = map)),
+      () => {},
+    );
+  const idle = globalThis.requestIdleCallback ?? ((f) => setTimeout(f, 1500));
+  idle(go);
+  return () => (stopped = true);
+});
 ```
 
 ```js
@@ -131,6 +186,8 @@ liveView.show(
           },
           onOpen: openPaper,
           detailsHref,
+          postPanel: sessionPosts.open,
+          onClosePost: sessionPosts.close,
         })
       : renderBreakView(slots, {
           tz,
@@ -142,6 +199,8 @@ liveView.show(
         }),
   at,
 );
+// Discussion links, once known (a rebuilt view gets them again here)
+if (discussion) liveView.current?.setDiscussion?.(discussion);
 // Scroll to the talk on now once per check-in
 if (session && viewState.scrolledFor !== session.sessionId) {
   viewState.scrolledFor = session.sessionId;
@@ -153,9 +212,14 @@ if (!session) viewState.scrolledFor = null;
 <h2 class="live-rated-title">Papers I rated</h2>
 
 ```js
-// Redrawn when ratings or notes change, and in place when a filter changes
+// Redrawn when ratings, notes or the discussion links change, and in place when a filter
+// changes; open Post panels come back (ratedPosts). Not while you type in it: after you leave.
 const ratedBox = html`<div></div>`;
-const drawRated = () =>
+const drawRated = () => {
+  if (ratedBox.contains(document.activeElement)) {
+    ratedBox.addEventListener("focusout", () => setTimeout(drawRated), { once: true });
+    return;
+  }
   ratedBox.replaceChildren(
     renderRatedPapers(papers, {
       ratings: ratingsState,
@@ -165,8 +229,13 @@ const drawRated = () =>
       onFilter: (next) => (Object.assign(ratedState, next), drawRated()),
       onOpen: openPaper,
       detailsHref,
+      postPanel: ratedPosts.open,
+      discussion,
+      openPosts: ratedPosts.cache,
+      onClosePost: ratedPosts.close,
     }),
   );
+};
 drawRated();
 display(ratedBox);
 ```

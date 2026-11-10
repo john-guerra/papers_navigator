@@ -43,6 +43,14 @@ export const STORAGE_ITEMS = [
     what: "A time you set by hand on the Live page (forgotten the next day)",
   },
   {
+    key: "papersNavigator:<id>:bskyHandles",
+    what: "Bluesky accounts you picked for authors (Post on the Live page)",
+  },
+  {
+    key: "papersNavigator:<id>:postToolLink",
+    what: "Whether your Bluesky drafts link to this tool or the conference page",
+  },
+  {
     key: "papersNavigator:<id>:dismissed",
     what: "Recommended papers you dismissed",
   },
