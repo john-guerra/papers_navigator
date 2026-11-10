@@ -99,7 +99,8 @@ describe("markers for Not for me and attended (#208)", () => {
       "Not for me",
     );
     const tick = root.querySelector('[data-paper-id="b"] .attended-marker');
-    expect(tick.textContent).toBe("✓");
+    // in words, not a bare ✓ (Stage E UX review)
+    expect(tick.textContent).toBe("✓ Attended");
     expect(tick.title).toBe("You attended");
     attended.replace({});
     expect(root.querySelector(".attended-marker")).toBeNull();

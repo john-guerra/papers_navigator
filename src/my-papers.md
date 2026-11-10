@@ -39,6 +39,11 @@ import { clearMyPapers } from "./components/clearMyPapers.js";
 import { segmentedControl } from "./widgets/segmentedControl.js";
 import { conferenceZone } from "./lib/time.js";
 import { PHONE_QUERY, matches } from "./lib/breakpoints.js";
+import { reviewTools } from "./components/reviewTools.js";
+import { renderReviewList } from "./components/reviewList.js";
+import { filterByRating, groupRows, includeCounts, reviewRows } from "./lib/review.js";
+import { dataNote, storageBanner } from "./components/dataSafety.js";
+import { backupNudge, isIosSafariTab, requestPersistence } from "./lib/storageHealth.js";
 ```
 
 ```js
@@ -75,6 +80,14 @@ const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
 const attendedState = Generators.input(attendedStore);
 const dislikedState = Generators.input(dislikedStore);
+// Stage E: how many things you'd lose without a backup (ratings, notes, 👎, attended)
+const dataTotal = () =>
+  Object.keys(ratingsStore.value).length +
+  Object.keys(notesStore.value).length +
+  Object.keys(dislikedStore.value).length +
+  Object.values(attendedStore.value).filter((e) => !e.off).length;
+// The review count line (filled by the list cell)
+const reviewCountLine = html`<span></span>`;
 // The embeddings, loaded once on first need (a failed load, e.g. offline, is retried)
 const loadMatrix = lazyLoader(async () => toMatrix(await embeddingsFile.arrayBuffer(), papers.length));
 // Research topics (#24): their cached matches show right away; after first paint the model
@@ -197,7 +210,7 @@ display(banner);
 <div class="my-papers-layout">
 <div class="mp-main">
 <div class="mp-view"><div class="my-papers-tools">${viewInput} ${reasonInput}</div>${newNotice}</div>
-<div class="mp-tools"><div class="my-papers-tools">${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton} ${clearControl}</div><div>${sharePanel}</div><div>${importStatus}</div></div>
+<div class="mp-tools"><div class="my-papers-tools">${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton} ${clearControl}</div><div>${sharePanel}</div><div>${importStatus}</div>${dataSafetyBox}</div>
 
 ```js
 // Created once (no dependency on the followed list) so following/unfollowing keeps the choice
@@ -234,7 +247,8 @@ const shareButton = renderShareButton({
   onFallback: toggleSharePanel,
 });
 const exportButton = html`<button>Export JSON</button>`;
-exportButton.onclick = () => {
+// Also from the data note, the backup nudge and the storage banner (Stage E)
+const exportNow = () => {
   const blob = new Blob(
     [exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions, notes: notesStore.value, ratings: ratingsStore.value, disliked: dislikedStore.value, attended: attendedStore.value })],
     { type: "application/json" },
@@ -245,7 +259,16 @@ exportButton.onclick = () => {
   });
   a.click();
   URL.revokeObjectURL(a.href);
+  // The backup nudge counts from here (Stage E)
+  try {
+    localStorage.setItem(`papersNavigator:${conference.id}:lastExport`, JSON.stringify({ at: new Date().toISOString(), count: dataTotal() }));
+  } catch {
+    // the nudge just shows again
+  }
+  // the data note listens (no reference back: cells can't depend on each other both ways)
+  dispatchEvent(new Event("papersnavigator:exported"));
 };
+exportButton.onclick = exportNow;
 const importInput = html`<label class="import">Import JSON <input type="file" accept="application/json,.json"></label>`;
 const importStatus = html`<span class="import-status"></span>`;
 importInput.querySelector("input").onchange = async (event) => {
@@ -343,6 +366,8 @@ ${recommendedSection}
 ## All my papers
 
 <div class="my-papers-tools">${searchInput} ${sortInput}</div>
+<div class="review-tools-row">${reviewToolsInput}</div>
+<p class="review-count muted">${reviewCountLine}</p>
 
 ```js
 // Inputs live in a cell that doesn't depend on the list, so (un)following keeps them
@@ -362,30 +387,62 @@ const sortBy = Generators.input(sortInput);
 ```
 
 ```js
+// Review tools (Stage E): Include papers outside your list, filter by rating, group. Include is
+// remembered on this device; a link from Live (#review=rating|attended) turns both on and groups
+const includeKey = `papersNavigator:${conference.id}:reviewInclude`;
+const savedInclude = (() => {
+  try {
+    return JSON.parse(localStorage.getItem(includeKey) ?? "{}") ?? {};
+  } catch {
+    return {};
+  }
+})();
+const reviewLink = /(?:^|[#&])review=(rating|attended)/.exec(location.hash)?.[1];
+const reviewToolsInput = reviewTools({
+  include: reviewLink ? { ratedOrAttended: true, disliked: true } : savedInclude,
+  counts: includeCounts({ items, papers, ratings: ratingsStore.value, disliked: dislikedStore.value, attended: attendedStore.value }),
+  groupBy: reviewLink ?? "none",
+  phone: isSmall,
+});
+reviewToolsInput.addEventListener("input", () => {
+  try {
+    localStorage.setItem(includeKey, JSON.stringify(reviewToolsInput.value.include));
+  } catch {
+    // a view setting: fine to lose
+  }
+});
+const review = Generators.input(reviewToolsInput);
+```
+
+```js
 const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
 // Also your note (#152); read from the store so typing a note doesn't redraw the list
 const text = (p) =>
   [p.title, p.authorNames, p.affiliations, p.reason, p.sessionName, p.room, notesStore.get(p.id)].join(" ").toLowerCase();
-const searched = shownItems.filter((p) => terms.every((term) => text(p).includes(term)));
+const ctx = { ratings: ratingsState, disliked: dislikedState, attended: attendedState };
+// Show (top of page) narrows your list; papers outside it come in only when Show is "All"
+const rows = reviewRows({ items: shownItems, papers, ...ctx, include: reasonChoice.key === "all" ? review.include : {} });
+const searched = filterByRating(rows, review.ratingKeys, ctx).filter((p) => terms.every((term) => text(p).includes(term)));
 const key = (p) => (sortBy === "start" ? (p.start ?? p.sessionStart ?? "~") : (p[sortBy] ?? "~"));
+const sorted = [...searched].sort((a, b) => d3.ascending(key(a), key(b)));
+const outside = sorted.filter((p) => p.notInMine).length;
+reviewCountLine.textContent = `${sorted.length - outside} in My Papers${outside ? ` · +${outside} not in My Papers` : ""}`;
 display(
-  PapersList(
-    [...searched].sort((a, b) => d3.ascending(key(a), key(b))),
-    {
-      tz,
-      tzLabel,
-      authorHref: authorUrl,
-      // The title opens the paper's details; "Conference page ↗" goes to the conference site
-      details: { href: (p) => paperRoute.href(p.shortId ?? p.id), open: (p) => openPaper(p) },
-      preamble: (p) =>
-        html`${p.new ? html`<span class="new-badge">New</span> ` : ""}${(p.reasons ?? [p.reason]).map((r) => html`<span class="reason-chip">${r}</span> `)}· Added ${new Date(p.addedOn).toLocaleDateString()}`,
-      actions: (p) => {
-        const button = html`<button class="follow-toggle" title="Remove from My Papers" aria-label="Remove from My Papers"><span class="ring" aria-hidden="true"></span>Remove</button>`;
-        button.onclick = () => unfollow(p.id);
-        return html`<span class="paper-actions">${button}${conferenceLink(p)}</span>`;
-      },
+  renderReviewList(groupRows(sorted, review.groupBy, ctx), {
+    tz,
+    tzLabel,
+    authorHref: authorUrl,
+    detailsHref: (p) => paperRoute.href(p.shortId ?? p.id),
+    onOpen: (p) => openPaper(p),
+    inMyPapers: (id) => store.value.some((d) => d.id === id),
+    onToggle: (p) => {
+      if (store.value.some((d) => d.id === p.id)) unfollow(p.id);
+      else {
+        const undo = addWithUndo(store, [p], "★ Added by hand");
+        showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
+      }
     },
-  ),
+  }),
 );
 ```
 
@@ -653,3 +710,62 @@ if (recommendState.focus != null) {
   });
 }
 ```
+
+```js
+// Your data stays in this browser (Stage E): the standing note, a backup nudge when it's time,
+// and a banner if the browser stops saving. Refreshed when your data changes.
+const dataSafetyBox = html`<div class="data-safety"></div>`;
+const banner = storageBanner({ onExport: () => exportNow() });
+invalidation.then(() => banner.dispose());
+const readJson = (key) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "null");
+  } catch {
+    return null;
+  }
+};
+dataSafetyBox.refresh = () => {
+  const nudge = backupNudge({
+    total: dataTotal(),
+    lastExport: readJson(`papersNavigator:${conference.id}:lastExport`),
+    dismissedAt: readJson(`papersNavigator:${conference.id}:backupDismissed`),
+    now: new Date(),
+    lastDay: conference.days?.at(-1),
+    tz,
+  });
+  dataSafetyBox.replaceChildren(
+    banner,
+    dataNote({
+      onExport: () => exportNow(),
+      nudge,
+      ios: isIosSafariTab(),
+      onDismiss: () => {
+        try {
+          localStorage.setItem(`papersNavigator:${conference.id}:backupDismissed`, JSON.stringify(new Date().toISOString()));
+        } catch {
+          // shows again next time
+        }
+      },
+    }),
+  );
+};
+```
+
+```js
+// Refresh the note when your data changes or you export; ask the browser to keep the data
+ratingsState, notesState, attendedState, dislikedState;
+dataSafetyBox.refresh();
+addEventListener("papersnavigator:exported", dataSafetyBox.refresh);
+invalidation.then(() => removeEventListener("papersnavigator:exported", dataSafetyBox.refresh));
+if (dataTotal() || items.length) requestPersistence();
+```
+
+```js
+// "Open My Papers to export" from other pages lands here (#export): show the Export button
+if (location.hash === "#export") {
+  exportButton.scrollIntoView({ block: "center" });
+  exportButton.classList.add("is-highlighted");
+  exportButton.focus();
+}
+```
+

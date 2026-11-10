@@ -39,7 +39,7 @@ export function bindRatingMarkers(root, ratings, { disliked, attended } = {}) {
     place(
       row,
       "attended-marker",
-      attended?.isAttended(id) ? "✓" : "",
+      attended?.isAttended(id) ? "✓ Attended" : "",
       "You attended",
       rating,
     );
