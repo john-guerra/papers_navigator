@@ -30,7 +30,11 @@ function switchBar(session, { slot, at, tz, mineIds, onSwitch }) {
       ${now ? html`<span class="live-switch-now">Now: ${now.title}</span>` : ""}
       ${yours ? html`<span class="live-switch-yours">Yours next: ${yours.title} · ${formatTime(yours.start, tz)}</span>` : ""}
     </button>`;
-    b.onclick = () => onSwitch(s);
+    b.onclick = () => {
+      // Close the list first: open, it can cover the talks on a short phone
+      b.closest("details").open = false;
+      onSwitch(s);
+    };
     return b;
   });
   return html`<details class="live-switch">

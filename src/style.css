@@ -3436,6 +3436,10 @@ body #vg-tooltip-element table tr td.value {
   font: var(--typography-body-sm);
   font-weight: 600;
 }
+/* Open, the list isn't sticky: on a short phone it would cover the talks */
+.live-switch[open] {
+  position: static;
+}
 .live-switch-options {
   display: grid;
   gap: var(--spacing-xs);

@@ -126,7 +126,7 @@ liveView.show(
           onSwitch: commit,
           onLeave: () => checkIn.leave(),
           onAdd: (p) => {
-            const undo = addWithUndo(store, [p], "★ Rated on Live");
+            const undo = addWithUndo(store, [p], "★ Added on Live");
             showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
           },
           onOpen: openPaper,

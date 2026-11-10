@@ -98,7 +98,7 @@ export default {
 <nav class="tabbar" aria-label="Pages">
   <a href="./">Explore</a>
   <a href="./my-papers">My Papers <span class="badge-my-papers" hidden></span></a>
-    <a href="./live">Live</a>
+  <a href="./live">Live</a>
   <a href="./authors">Researchers</a>
   <a href="./about">About</a>
 </nav>`,

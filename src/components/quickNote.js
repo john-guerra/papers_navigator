@@ -20,6 +20,8 @@ export function quickNote(paper, { notes, delay = 500 } = {}) {
     if (input.scrollHeight) input.style.height = `${input.scrollHeight}px`;
   };
   input.value = notes.get(paper.id);
+  // Fit an existing (multi-line) note once the field is in the page
+  (globalThis.requestAnimationFrame ?? ((f) => setTimeout(f)))(grow);
   let timer = null;
   const save = () => {
     clearTimeout(timer);

@@ -150,6 +150,18 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("picking a room closes the Switch room list first (#203 Stage B)", () => {
+    const seen = [];
+    const { el } = setup({
+      onSwitch: () => seen.push(el.querySelector(".live-switch").open),
+    });
+    const bar = el.querySelector(".live-switch");
+    bar.open = true;
+    bar.querySelector(".live-switch-option").click();
+    expect(seen).toEqual([false]);
+    el.remove();
+  });
+
   it("Leave session goes back to the break view", () => {
     const { el, onLeave } = setup();
     el.querySelector(".live-leave").click();
