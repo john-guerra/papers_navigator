@@ -142,3 +142,34 @@ describe("Papers I attended → My Papers (Stage E)", () => {
     expect(onToggle).toHaveBeenCalled();
   });
 });
+
+describe("Papers I attended toggles update in place (minor 3)", () => {
+  it("update() refreshes the same button", () => {
+    let mine = false;
+    const el = renderAttendedPapers(
+      [
+        {
+          id: "a",
+          shortId: "s-a",
+          title: "A",
+          day: "2026-11-11",
+          start: "2026-11-11T15:00:00Z",
+          typeShort: "Full",
+        },
+      ],
+      {
+        attended: { a: { at: "x", how: "auto" } },
+        tz: "US/Eastern",
+        onOpen: vi.fn(),
+        detailsHref: () => "#",
+        inMyPapers: () => mine,
+        onToggle: vi.fn(),
+      },
+    );
+    const button = el.querySelector(".follow-toggle");
+    mine = true;
+    el.update();
+    expect(el.querySelector(".follow-toggle")).toBe(button);
+    expect(button.textContent).toContain("In My Papers");
+  });
+});

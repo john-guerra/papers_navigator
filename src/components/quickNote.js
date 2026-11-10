@@ -24,10 +24,17 @@ export function quickNote(paper, { notes, delay = 500 } = {}) {
   (globalThis.requestAnimationFrame ?? ((f) => setTimeout(f)))(grow);
   let timer = null;
   let statusTimer = null;
+  // "Saved" on screen after every save; for screen readers only once per visit to the field
+  // (autosave runs every pause in typing, and repeating it would talk over the user)
   const status = html`<span
     class="quick-note-status muted"
+    aria-hidden="true"
+  ></span>`;
+  const live = html`<span
+    class="quick-note-live sr-only"
     aria-live="polite"
   ></span>`;
+  let announced = false;
   const save = () => {
     clearTimeout(timer);
     timer = null;
@@ -36,8 +43,13 @@ export function quickNote(paper, { notes, delay = 500 } = {}) {
       // A quiet "Saved" (Stage E); failures go to the page's storage banner
       if (saved !== false) {
         status.textContent = "Saved";
+        if (!announced) live.textContent = "Saved";
+        announced = true;
         clearTimeout(statusTimer);
-        statusTimer = setTimeout(() => (status.textContent = ""), 2000);
+        statusTimer = setTimeout(() => {
+          status.textContent = "";
+          live.textContent = "";
+        }, 2000);
       }
     }
   };
@@ -46,14 +58,18 @@ export function quickNote(paper, { notes, delay = 500 } = {}) {
     clearTimeout(timer);
     timer = setTimeout(save, delay);
   });
-  input.addEventListener("blur", save);
+  input.addEventListener("blur", () => {
+    save();
+    announced = false;
+  });
+  input.addEventListener("focus", () => (announced = false));
   const follow = () => {
     if (document.activeElement === input || timer) return;
     input.value = notes.get(paper.id);
     grow();
   };
   notes.addEventListener("input", follow);
-  const el = html`<div class="quick-note-field">${input}${status}</div>`;
+  const el = html`<div class="quick-note-field">${input}${status}${live}</div>`;
   el.flush = () => timer && save();
   el.dispose = () => {
     el.flush();

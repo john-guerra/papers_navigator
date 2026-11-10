@@ -183,3 +183,19 @@ describe("Papers I rated → My Papers (Stage E)", () => {
     ).toContain("In My Papers");
   });
 });
+
+describe("Papers I rated toggles update in place (minor 3)", () => {
+  it("update() refreshes the same buttons, so focus stays", () => {
+    let mine = new Set();
+    const el = render({ inMyPapers: (id) => mine.has(id), onToggle: vi.fn() });
+    document.body.append(el);
+    const button = el.querySelector('[data-paper-id="c"] .follow-toggle');
+    button.focus();
+    mine = new Set(["c"]);
+    el.update();
+    expect(el.querySelector('[data-paper-id="c"] .follow-toggle')).toBe(button);
+    expect(button.textContent).toContain("In My Papers");
+    expect(document.activeElement).toBe(button);
+    el.remove();
+  });
+});

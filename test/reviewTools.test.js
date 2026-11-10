@@ -105,3 +105,38 @@ describe("review rows keep New and Added (review fix)", () => {
     expect(li.textContent).toContain("Added ");
   });
 });
+
+describe("review groups stay collapsed across redraws (minor 2)", () => {
+  const row = (id) => ({
+    id,
+    shortId: `s-${id}`,
+    title: id,
+    authors: [],
+    typeShort: "Full",
+    notInMine: false,
+    reasons: ["★ Rated"],
+  });
+  const groups = [
+    { key: "5", label: "5★", rows: [row("a")] },
+    { key: "4", label: "4★", rows: [row("b")] },
+  ];
+  const opts = (closed, onFold) => ({
+    tz: "US/Eastern",
+    inMyPapers: () => true,
+    onToggle: vi.fn(),
+    onOpen: vi.fn(),
+    detailsHref: () => "#",
+    closed,
+    onFold,
+  });
+  it("starts groups in `closed` collapsed and reports folding", () => {
+    const onFold = vi.fn();
+    const el = renderReviewList(groups, opts(new Set(["4"]), onFold));
+    const [five, four] = el.querySelectorAll("details.review-group-box");
+    expect(five.open).toBe(true);
+    expect(four.open).toBe(false);
+    five.open = false;
+    five.dispatchEvent(new Event("toggle"));
+    expect(onFold).toHaveBeenCalledWith("5", false);
+  });
+});

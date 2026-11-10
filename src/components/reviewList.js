@@ -10,7 +10,18 @@ import { followToggles } from "./followToggles.js";
  */
 export function renderReviewList(
   groups,
-  { tz, tzLabel, authorHref, detailsHref, onOpen, inMyPapers, onToggle },
+  {
+    tz,
+    tzLabel,
+    authorHref,
+    detailsHref,
+    onOpen,
+    inMyPapers,
+    onToggle,
+    // Groups you collapsed (by key) stay collapsed when the list redraws; onFold(key, open)
+    closed = new Set(),
+    onFold,
+  },
 ) {
   const toggles = followToggles({ inMyPapers, onToggle });
   const row = (p) => {
@@ -42,16 +53,18 @@ export function renderReviewList(
   const grouped = groups.length !== 1 || groups[0].label;
   const el = grouped
     ? html`<div class="review-groups">
-        ${groups.map(
-          (g) =>
-            html`<details class="review-group-box" open>
-              <summary>
-                <span class="review-group-label">${g.label}</span>
-                <span class="muted">(${g.rows.length})</span>
-              </summary>
-              ${list(g.rows)}
-            </details>`,
-        )}
+        ${groups.map((g) => {
+          const box = html`<details class="review-group-box">
+            <summary>
+              <span class="review-group-label">${g.label}</span>
+              <span class="muted">(${g.rows.length})</span>
+            </summary>
+            ${list(g.rows)}
+          </details>`;
+          box.open = !closed.has(g.key);
+          box.addEventListener("toggle", () => onFold?.(g.key, box.open));
+          return box;
+        })}
       </div>`
     : html`<div class="review-groups">${list(groups[0]?.rows ?? [])}</div>`;
   el.update = toggles.update;

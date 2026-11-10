@@ -44,9 +44,12 @@ export function renderRatedPapers(
     .filter((p) => dislikedIds.includes(p.id) && !ratings[p.id])
     .sort((a, b) => (when(a) < when(b) ? -1 : 1));
   if (!rated.length && !disliked.length)
-    return html`<section class="rated-papers">
-      <p class="muted">Rate papers in a session and they show up here.</p>
-    </section>`;
+    return Object.assign(
+      html`<section class="rated-papers">
+        <p class="muted">Rate papers in a session and they show up here.</p>
+      </section>`,
+      { update() {} },
+    );
   const shown = rated.filter(
     (p) => ratings[p.id] >= minRating && (!day || p.day === day),
   );
@@ -91,7 +94,7 @@ export function renderRatedPapers(
       ${post.slot}
     </li>`;
   });
-  return html`<section class="rated-papers">
+  const el = html`<section class="rated-papers">
     <p>
       <a class="review-all" href="my-papers.html#review=rating"
         >Review all in My Papers →</a
@@ -127,6 +130,9 @@ export function renderRatedPapers(
         : ""
     }
   </section>`;
+  // My Papers changed: refresh the toggles in place, so focus stays (minor 3)
+  el.update = () => toggles?.update();
+  return el;
 }
 
 /**

@@ -62,12 +62,15 @@ export function renderAttendedPapers(
     .filter((p) => isOn(attended[p.id]))
     .sort((a, b) => (when(a) < when(b) ? -1 : 1));
   if (!list.length)
-    return html`<section class="attended-papers">
-      <p class="muted">
-        Papers you attend show up here: check in with Going here, or tap I was
-        there.
-      </p>
-    </section>`;
+    return Object.assign(
+      html`<section class="attended-papers">
+        <p class="muted">
+          Papers you attend show up here: check in with Going here, or tap I was
+          there.
+        </p>
+      </section>`,
+      { update() {} },
+    );
   const days = [...new Set(list.map((p) => p.day ?? ""))];
   const verdictOf = (p) => {
     if (ratings[p.id])
@@ -89,7 +92,7 @@ export function renderAttendedPapers(
     };
     return rate;
   };
-  return html`<section class="attended-papers">
+  const el = html`<section class="attended-papers">
     <p>
       <a class="review-all" href="my-papers.html#review=attended"
         >Review all in My Papers →</a
@@ -119,4 +122,7 @@ export function renderAttendedPapers(
         </section>`,
     )}
   </section>`;
+  // My Papers changed: refresh the toggles in place, so focus stays (minor 3)
+  el.update = () => toggles?.update();
+  return el;
 }

@@ -43,7 +43,7 @@ import { facetFilter, facetStrip } from "./widgets/facetStrip.js";
 import { renderReviewList } from "./components/reviewList.js";
 import { REVIEW_DEFAULT, groupRows, listFromStorage, reviewFacets, reviewRows } from "./lib/review.js";
 import { dataNote, storageBanner } from "./components/dataSafety.js";
-import { backupNudge, isIosSafariTab, requestPersistence } from "./lib/storageHealth.js";
+import { backupDue, dataTotal, dismissBackup, isIosSafariTab, requestPersistence } from "./lib/storageHealth.js";
 ```
 
 ```js
@@ -80,13 +80,8 @@ const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
 const attendedState = Generators.input(attendedStore);
 const dislikedState = Generators.input(dislikedStore);
-// Stage E: how many things you'd lose without a backup (your list, ratings, notes, 👎, attended)
-const dataTotal = () =>
-  followedStore.value.length +
-  Object.keys(ratingsStore.value).length +
-  Object.keys(notesStore.value).length +
-  Object.keys(dislikedStore.value).length +
-  Object.values(attendedStore.value).filter((e) => !e.off).length;
+// Stage E: how many things you'd lose without a backup (storageHealth.js)
+const dataCount = () => dataTotal({ followed: followedStore, ratings: ratingsStore, notes: notesStore, disliked: dislikedStore, attended: attendedStore });
 // The review count line (filled by the list cell)
 const reviewCountLine = html`<span></span>`;
 // The embeddings, loaded once on first need (a failed load, e.g. offline, is retried)
@@ -262,7 +257,7 @@ const exportNow = () => {
   URL.revokeObjectURL(a.href);
   // The backup nudge counts from here (Stage E)
   try {
-    localStorage.setItem(`papersNavigator:${conference.id}:lastExport`, JSON.stringify({ at: new Date().toISOString(), count: dataTotal() }));
+    localStorage.setItem(`papersNavigator:${conference.id}:lastExport`, JSON.stringify({ at: new Date().toISOString(), count: dataCount() }));
   } catch {
     // the nudge just shows again
   }
@@ -402,7 +397,8 @@ const savedList = (() => {
     return null;
   }
 })();
-const reviewState = { value: { list: reviewLink ? ["mine", "rated", "disliked"] : listFromStorage(savedList) } };
+// `closed`: groups you collapsed, per Group by, so redraws (e.g. after rating) keep them closed
+const reviewState = { value: { list: reviewLink ? ["mine", "rated", "disliked"] : listFromStorage(savedList) }, closed: new Map() };
 const groupInput = Inputs.select(
   new Map([["None", "none"], ["Day", "day"], ["Reason", "reason"], ["Topic", "topic"], ["Rating", "rating"], ["Attended", "attended"], ["Type", "type"], ["Session", "session"], ["Award", "award"]]),
   { label: "Group by", value: reviewLink ?? "none" },
@@ -447,6 +443,13 @@ const outside = sorted.filter((p) => p.notInMine).length;
 reviewCountLine.textContent = `${sorted.length - outside} in My Papers${outside ? ` · +${outside} not in My Papers` : ""}`;
 display(
   renderReviewList(groupRows(sorted, groupBy, ctx), {
+    closed: reviewState.closed.get(groupBy) ?? new Set(),
+    onFold: (key, open) => {
+      const closed = reviewState.closed.get(groupBy) ?? new Set();
+      if (open) closed.delete(key);
+      else closed.add(key);
+      reviewState.closed.set(groupBy, closed);
+    },
     tz,
     tzLabel,
     authorHref: authorUrl,
@@ -735,35 +738,15 @@ if (recommendState.focus != null) {
 const dataSafetyBox = html`<div class="data-safety"></div>`;
 const storageAlert = storageBanner({ onExport: () => exportNow() });
 invalidation.then(() => storageAlert.dispose());
-const readJson = (key) => {
-  try {
-    return JSON.parse(localStorage.getItem(key) ?? "null");
-  } catch {
-    return null;
-  }
-};
 dataSafetyBox.refresh = () => {
-  const nudge = backupNudge({
-    total: dataTotal(),
-    lastExport: readJson(`papersNavigator:${conference.id}:lastExport`),
-    dismissedAt: readJson(`papersNavigator:${conference.id}:backupDismissed`),
-    now: new Date(),
-    lastDay: conference.days?.at(-1),
-    tz,
-  });
+  const nudge = backupDue({ conferenceId: conference.id, total: dataCount(), lastDay: conference.days?.at(-1), tz });
   dataSafetyBox.replaceChildren(
     storageAlert,
     dataNote({
       onExport: () => exportNow(),
       nudge,
       ios: isIosSafariTab(),
-      onDismiss: () => {
-        try {
-          localStorage.setItem(`papersNavigator:${conference.id}:backupDismissed`, JSON.stringify(new Date().toISOString()));
-        } catch {
-          // shows again next time
-        }
-      },
+      onDismiss: () => dismissBackup(conference.id),
     }),
   );
 };
@@ -775,7 +758,7 @@ ratingsState, notesState, attendedState, dislikedState;
 dataSafetyBox.refresh();
 addEventListener("papersnavigator:exported", dataSafetyBox.refresh);
 invalidation.then(() => removeEventListener("papersnavigator:exported", dataSafetyBox.refresh));
-if (dataTotal() || items.length) requestPersistence();
+if (dataCount() || items.length) requestPersistence();
 ```
 
 ```js
