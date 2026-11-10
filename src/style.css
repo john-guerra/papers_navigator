@@ -3911,3 +3911,7 @@ body #vg-tooltip-element table tr td.value {
   min-height: 44px;
   justify-self: start;
 }
+/* Live: the My Papers toggle on each paper of a session card (John) */
+.live-paper-actions {
+  margin-top: var(--spacing-xs);
+}

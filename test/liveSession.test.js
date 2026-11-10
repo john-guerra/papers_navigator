@@ -110,25 +110,6 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
-  it("offers Add to My Papers only for papers not in it", () => {
-    const { el, onAdd } = setup();
-    const rows = el.querySelectorAll(".live-talk");
-    expect(rows[0].querySelector(".live-add")).toBeNull();
-    rows[1].querySelector(".live-add").click();
-    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ id: "b2" }));
-    el.remove();
-  });
-
-  it("Add to My Papers updates its own row (no rebuild): the button goes away", () => {
-    const { el, onAdd } = setup();
-    const row = el.querySelectorAll(".live-talk")[1];
-    row.querySelector(".live-add").click();
-    expect(onAdd).toHaveBeenCalledTimes(1);
-    expect(row.querySelector(".live-add")).toBeNull();
-    expect(row.isConnected).toBe(true);
-    el.remove();
-  });
-
   it("setNow moves the highlight without rebuilding the rows (keeps typing)", () => {
     const { el } = setup();
     const rows = [...el.querySelectorAll(".live-talk")];
@@ -217,15 +198,6 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
-  it("setMine hides Add to My Papers for papers now in My Papers (#208 review)", () => {
-    const { el } = setup();
-    const row = el.querySelectorAll(".live-talk")[1];
-    expect(row.querySelector(".live-add")).toBeTruthy();
-    el.setMine(new Map([["b2", { id: "b2", manual: true, reasons: [] }]]));
-    expect(row.querySelector(".live-add")).toBeNull();
-    el.remove();
-  });
-
   it("setNow updates Soon in place", () => {
     const { el } = setup();
     el.setNow(new Date(et("11:05")));
@@ -249,6 +221,30 @@ describe("renderSessionView (#203)", () => {
     ).toBe("true");
     rows[1].querySelector(".attended-toggle").click();
     expect(store.set).toHaveBeenCalledWith("b2", false);
+    el.remove();
+  });
+
+  it("every talk has the My Papers toggle: Add to My Papers / In My Papers (John)", () => {
+    const onToggle = vi.fn();
+    let mine = new Set(["b1"]);
+    const { el } = setup({ inMyPapers: (id) => mine.has(id), onToggle });
+    const rows = el.querySelectorAll(".live-talk");
+    const t = (i) => rows[i].querySelector(".follow-toggle");
+    expect(t(0).textContent).toContain("In My Papers");
+    expect(t(1).textContent).toContain("Add to My Papers");
+    expect(el.querySelector(".live-add")).toBeNull();
+    t(1).click();
+    expect(onToggle).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "b2" }),
+    );
+    mine = new Set(["b1", "b2"]);
+    el.setMine(
+      new Map([
+        ["b1", {}],
+        ["b2", {}],
+      ]),
+    );
+    expect(t(1).textContent).toContain("In My Papers");
     el.remove();
   });
 

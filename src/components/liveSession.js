@@ -3,6 +3,7 @@ import { formatTime } from "../lib/time.js";
 import { talkAt } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { verdict } from "./verdict.js";
+import { followToggles } from "./followToggles.js";
 import { attendedToggle } from "./attendedPapers.js";
 import { quickNote } from "./quickNote.js";
 import { soonWidget } from "./soonWidget.js";
@@ -33,6 +34,9 @@ export function renderSessionView(
     onSwitch,
     onLeave,
     onAdd,
+    // My Papers toggle (John): whether a paper is in My Papers now, and add/remove it
+    inMyPapers,
+    onToggle,
     onOpen,
     detailsHref,
     // (paper) => the Bluesky post panel (#203 Stage C), or null for no "Post"
@@ -60,6 +64,10 @@ export function renderSessionView(
     detailsHref,
   });
   const disposers = [];
+  const toggles = followToggles({
+    inMyPapers: inMyPapers ?? ((id) => mineIds.has(id)),
+    onToggle: onToggle ?? onAdd,
+  });
   const rows = session.items.map((p) => {
     // Stars or 👎 Not for me (#208); stars add the paper to My Papers (onRated)
     const stars = verdict(p, { ratings, disliked, onRated });
@@ -71,16 +79,8 @@ export function renderSessionView(
     const details = inPlaceDetails(p, { authorHref: authorUrl, onOpen });
     const post = postToggle(p, postPanel, { onClose: onClosePost });
     disposers.push(() => note.dispose());
-    let add = "";
-    if (!mineIds.has(p.id)) {
-      add = html`<button type="button" class="btn-text live-add">
-        Add to My Papers
-      </button>`;
-      add.onclick = () => {
-        onAdd(p);
-        add.remove();
-      };
-    }
+    // "Add to My Papers" / "In My Papers" (John): the same toggle as everywhere, in place
+    const add = toggles.toggle(p);
     return html`<li
       class=${`live-talk${p === now ? " is-now" : ""}`}
       data-paper-id=${p.id}
@@ -135,10 +135,8 @@ export function renderSessionView(
   /** My Papers changed (#208): Soon's reasons follow, without rebuilding the view. */
   el.setMine = (next) => {
     soon.update(undefined, next);
-    // A paper that joined My Papers (e.g. by rating it) loses its Add button (#208 review)
-    for (const row of el.querySelectorAll(".live-talk"))
-      if (next.has(row.dataset.paperId))
-        row.querySelector(".live-add")?.remove();
+    // The My Papers toggles follow (John)
+    toggles.update();
   };
   el.dispose = () => disposers.forEach((d) => d());
   /** "💬 Discussion" links (#203 Stage C), once the official account's posts are known. */
