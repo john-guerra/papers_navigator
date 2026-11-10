@@ -65,7 +65,8 @@ export function interactiveLegends(vgSpec) {
       legend.encode ??= {};
       for (const part of ["symbols", "labels"]) {
         const prev = legend.encode[part] ?? {};
-        // The picked category (#203 Stage B) stays as it was; the other entries fade
+        // The picked category (#203 Stage B) stays as it was; the other entries fade (their labels
+        // less, to stay readable)
         const base = prev.update?.opacity?.value ?? 1;
         legend.encode[part] = {
           ...prev,
@@ -73,7 +74,7 @@ export function interactiveLegends(vgSpec) {
           update: {
             ...prev.update,
             opacity: {
-              signal: `legendPick == null || datum.value === legendPick ? ${base} : ${+(base * 0.35).toFixed(3)}`,
+              signal: `legendPick == null || datum.value === legendPick ? ${base} : ${+(base * (part === "labels" ? 0.6 : 0.35)).toFixed(3)}`,
             },
           },
         };

@@ -992,8 +992,9 @@ describe("legend pick: shown in the legend, labels, Esc (#203 Stage B)", () => {
     expect(symbols.update.opacity.signal).toBe(
       "legendPick == null || datum.value === legendPick ? 0.7 : 0.245",
     );
+    // labels fade less, so the other categories stay readable (#203 Stage B review)
     expect(labels.update.opacity.signal).toBe(
-      "legendPick == null || datum.value === legendPick ? 1 : 0.35",
+      "legendPick == null || datum.value === legendPick ? 1 : 0.6",
     );
   });
 

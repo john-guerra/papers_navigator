@@ -71,6 +71,9 @@ export function createRatingsStore(
   store.get = (id) => value[id] ?? 0;
   store.set = (id, n) => {
     if (n !== 0 && !isRating(n)) return;
+    // Re-read first: a tab restored from the back/forward cache may have missed other tabs'
+    // ratings, and writing its old copy would drop them (#203 Stage B review)
+    value = load();
     if ((value[id] ?? 0) === n) return;
     const next = { ...value };
     if (n) next[id] = n;
@@ -79,6 +82,7 @@ export function createRatingsStore(
   };
   // Imported ratings (Export / Import JSON); undo removes the ones it added, unless changed since
   store.merge = (incoming) => {
+    value = load();
     const { ratings, added } = mergeRatings(value, incoming);
     const addedIds = Object.keys(ratings).filter((id) => !(id in value));
     if (added) write(ratings);

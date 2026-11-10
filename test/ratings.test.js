@@ -122,3 +122,23 @@ describe("merging imported ratings (#203 Stage B)", () => {
     expect(importedRatingsText(3)).toBe(" · 3 ratings added");
   });
 });
+
+describe("a stale tab doesn't drop newer ratings (#203 Stage B review)", () => {
+  it("re-reads storage before writing", () => {
+    const storage = memoryStorage();
+    // two pages on the same storage; the stale one never hears storage events
+    const fresh = createRatingsStore("ieeevis2026", storage, fakeEvents());
+    const stale = createRatingsStore("ieeevis2026", storage, fakeEvents());
+    fresh.set("p1", 4);
+    stale.set("p2", 2);
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({ p1: 4, p2: 2 });
+    stale.merge({ p3: 5 });
+    fresh.set("p4", 1);
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({
+      p1: 4,
+      p2: 2,
+      p3: 5,
+      p4: 1,
+    });
+  });
+});
