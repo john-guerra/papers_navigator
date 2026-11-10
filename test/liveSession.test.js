@@ -225,6 +225,24 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("each talk has ✓ Attended (#208)", () => {
+    const store = new EventTarget();
+    let v = { b2: { at: "x", how: "auto" } };
+    store.isAttended = (id) => Boolean(v[id] && !v[id].off);
+    store.set = vi.fn((id, on) => {
+      v = { ...v, [id]: on ? { at: "x", how: "manual" } : { off: true } };
+      store.dispatchEvent(new Event("input"));
+    });
+    const { el } = setup({ attended: store });
+    const rows = el.querySelectorAll(".live-talk");
+    expect(
+      rows[1].querySelector(".attended-toggle").getAttribute("aria-pressed"),
+    ).toBe("true");
+    rows[1].querySelector(".attended-toggle").click();
+    expect(store.set).toHaveBeenCalledWith("b2", false);
+    el.remove();
+  });
+
   it("Leave session goes back to the break view", () => {
     const { el, onLeave } = setup();
     el.querySelector(".live-leave").click();

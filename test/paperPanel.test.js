@@ -221,3 +221,22 @@ describe("paperPanel ratings (#203 Stage B)", () => {
     el.remove();
   });
 });
+
+describe("paperPanel I was there (#208)", () => {
+  it("toggles attended for any paper", () => {
+    const store = new EventTarget();
+    let v = {};
+    store.isAttended = (id) => Boolean(v[id] && !v[id].off);
+    store.set = vi.fn((id, on) => {
+      v = { ...v, [id]: on ? { at: "x", how: "manual" } : { off: true } };
+      store.dispatchEvent(new Event("input"));
+    });
+    const { el } = setup("a", { attended: store });
+    const b = el.querySelector(".attended-toggle");
+    expect(b.textContent).toContain("I was there");
+    b.click();
+    expect(store.set).toHaveBeenCalledWith("id-a", true);
+    el.dispose();
+    el.remove();
+  });
+});

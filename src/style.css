@@ -3874,3 +3874,37 @@ body #vg-tooltip-element table tr td.value {
   font: var(--typography-label-caps, var(--typography-meta));
   color: var(--color-on-surface-muted);
 }
+/* #208 Attended: the toggles and "Papers I attended" */
+.attended-toggle {
+  min-height: 44px;
+}
+.attended-toggle[aria-pressed="true"] {
+  color: var(--color-on-surface);
+  font-weight: 600;
+}
+.attended-papers h3 {
+  margin: var(--spacing-md) 0 var(--spacing-xs);
+  font: var(--typography-label-caps, var(--typography-meta));
+  color: var(--color-on-surface-muted);
+}
+.attended-list {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.attended-paper {
+  display: grid;
+  gap: 2px;
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-outline);
+}
+.attended-verdict {
+  font-weight: 600;
+}
+.attended-rate {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  justify-self: start;
+}

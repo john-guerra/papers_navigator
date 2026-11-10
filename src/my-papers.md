@@ -550,6 +550,7 @@ const paperDetail = paperPanel(paperParam, {
   ratings: ratingsStore,
   disliked: dislikedStore,
   onRated: addOnRate({ store, addWithUndo, toast: showToast }),
+  attended: attendedStore,
 });
 invalidation.then(paperDetail.dispose);
 ```

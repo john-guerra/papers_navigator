@@ -142,6 +142,7 @@ const paperDetail = paperPanel(paperParam, {
   ratings: ratingsStore,
   disliked: dislikedStore,
   onRated: rateAdds,
+  attended: attendedStore,
 });
 invalidation.then(paperDetail.dispose);
 ```

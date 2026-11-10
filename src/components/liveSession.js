@@ -3,6 +3,7 @@ import { formatTime } from "../lib/time.js";
 import { talkAt } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { verdict } from "./verdict.js";
+import { attendedToggle } from "./attendedPapers.js";
 import { quickNote } from "./quickNote.js";
 import { soonWidget } from "./soonWidget.js";
 import { titleLink } from "./liveBreak.js";
@@ -42,6 +43,8 @@ export function renderSessionView(
     // 👎 Not for me (#208) and what a star rating does (adds to My Papers)
     disliked = null,
     onRated,
+    // Attended papers (#208): "✓ Attended" on each talk
+    attended = null,
   },
 ) {
   const now = talkAt(session, at);
@@ -61,6 +64,8 @@ export function renderSessionView(
     // Stars or 👎 Not for me (#208); stars add the paper to My Papers (onRated)
     const stars = verdict(p, { ratings, disliked, onRated });
     disposers.push(() => stars.dispose());
+    const was = attended ? attendedToggle(p, attended) : "";
+    if (was) disposers.push(() => was.dispose());
     const note = quickNote(p, { notes });
     // Details in place, collapsed (abstract, affiliations, links) and a jump to the full panel
     const details = inPlaceDetails(p, { authorHref: authorUrl, onOpen });
@@ -91,7 +96,7 @@ export function renderSessionView(
         ${(p.authors ?? []).map((a) => a.name).join(", ")}
       </div>
       <div class="live-talk-actions">
-        ${stars}${add}${details.toggle}${post.button}
+        ${stars}${was}${add}${details.toggle}${post.button}
         <span class="live-discussion-slot"></span>
       </div>
       ${post.slot} ${note} ${details.panel}

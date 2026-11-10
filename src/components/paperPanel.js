@@ -6,6 +6,7 @@ import { addWithUndo as addWithUndoDefault } from "../lib/selection.js";
 import { createAnimationSettings } from "../lib/animationSettings.js";
 import { createMiniMap } from "../widgets/miniMap.js";
 import { verdict } from "./verdict.js";
+import { attendedToggle } from "./attendedPapers.js";
 
 // Per route: the id of the paper whose panel is showing, to tell a redraw from an open (#152)
 const shown = new WeakMap();
@@ -51,6 +52,8 @@ export function paperPanel(
     // 👎 Not for me (#208), and what a star rating does (addOnRate: adds to My Papers)
     disliked = null,
     onRated,
+    // Attended papers (#208): "I was there" for any paper
+    attended = null,
   },
 ) {
   const paper = key
@@ -94,9 +97,10 @@ export function paperPanel(
     detailsHref: route.href && ((p) => route.href(p.shortId ?? p.id)),
     onClose: () => route.close(),
     note: notes ? renderPaperNote(paper, { notes, toast }) : null,
-    rating: ratings
-      ? ratingControl(paper, { ratings, disliked, onRated })
-      : null,
+    rating:
+      ratings || attended
+        ? ratingControl(paper, { ratings, disliked, onRated, attended })
+        : null,
     miniMap: miniMap
       ? (relatedPapers) =>
           createMiniMap({
@@ -149,16 +153,15 @@ export function paperPanel(
 }
 
 /** "Your rating": stars or 👎 Not for me (#208), following the stores; `dispose()` stops that. */
-function ratingControl(paper, { ratings, disliked, onRated }) {
-  const control = verdict(paper, {
-    ratings,
-    disliked,
-    onRated,
-    label: "Your rating",
-  });
+function ratingControl(paper, { ratings, disliked, onRated, attended }) {
+  const was = attended ? attendedToggle(paper, attended, "I was there") : "";
+  const control = ratings
+    ? verdict(paper, { ratings, disliked, onRated, label: "Your rating" })
+    : null;
   const box = html`<div class="paper-detail-rating">
-    <span class="paper-detail-rating-label">Your rating</span>${control}
+    ${control ? html`<span class="paper-detail-rating-label">Your rating</span>${control}` : ""}
+    ${was}
   </div>`;
-  box.dispose = control.dispose;
+  box.dispose = () => (control?.dispose(), was?.dispose?.());
   return box;
 }
