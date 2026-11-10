@@ -287,9 +287,10 @@ const drawRated = () => {
   );
 };
 drawRated();
-// The toggles follow My Papers (redrawn; open Post panels come back)
-store.addEventListener("input", drawRated);
-invalidation.then(() => store.removeEventListener("input", drawRated));
+// The toggles follow My Papers in place, so a pressed button keeps focus
+const updateRated = () => ratedBox.firstElementChild?.update?.();
+store.addEventListener("input", updateRated);
+invalidation.then(() => store.removeEventListener("input", updateRated));
 display(ratedBox);
 ```
 
@@ -313,8 +314,10 @@ const drawAttended = () =>
     }),
   );
 drawAttended();
-store.addEventListener("input", drawAttended);
-invalidation.then(() => store.removeEventListener("input", drawAttended));
+// The toggles follow My Papers in place, so a pressed button keeps focus
+const updateAttended = () => attendedBox.firstElementChild?.update?.();
+store.addEventListener("input", updateAttended);
+invalidation.then(() => store.removeEventListener("input", updateAttended));
 display(attendedBox);
 ```
 
