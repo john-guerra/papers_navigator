@@ -67,9 +67,11 @@ describe("scatterSpec", () => {
       "drag",
       "click",
       "levelCut",
+      // categorical color: the legend's pick (#200)
+      "legendPick",
     ]);
     expect(spec.encoding.x.axis).toBeNull();
-    // categorical color goes through the 3 + Other mapping (DESIGN.md)
+    // categorical color goes through the categories + Other mapping (DESIGN.md)
     expect(spec.encoding.color.condition.field).toBe("__color");
     expect(spec.encoding.size.field).toBe("score");
   });
@@ -434,6 +436,7 @@ describe("scatterSpec #10: My Papers rings, brush dimming, 3 + Other categories"
     expect(spec.params).toEqual([
       { name: "mine", value: ["b"] },
       { name: "levelCut", value: null },
+      { name: "legendPick", value: null },
     ]);
     expect(spec.layer).toHaveLength(2);
     const [points, rings] = spec.layer;
@@ -786,5 +789,90 @@ describe("tapered legend in the map's background (#168)", () => {
     } finally {
       widget.remove();
     }
+  });
+});
+
+describe("Color by: 10 categories + legend highlight (#200)", () => {
+  const rows = Array.from({ length: 12 }, (_, i) => ({
+    id: `p${i}`,
+    x: i,
+    y: i,
+    // c0 most common … c11 least
+    type: `c${i}`,
+  })).flatMap((d, i) =>
+    Array.from({ length: 12 - i }, (_, k) => ({ ...d, id: `${d.id}-${k}` })),
+  );
+
+  it("colors the 10 largest categories and groups the rest as Other", () => {
+    const spec = scatterSpec(rows, { color: "type" });
+    const { domain, range } = spec.encoding.color.condition.scale;
+    expect(domain.slice(0, -1)).toEqual(
+      Array.from({ length: 10 }, (_, i) => `c${i}`),
+    );
+    expect(range).toHaveLength(11);
+    // the first three hues are unchanged; the 10 are distinct; Other is last
+    expect(range.slice(0, 3)).toEqual(["#2a78d6", "#eb6834", "#1baf7a"]);
+    expect(new Set(range).size).toBe(11);
+    expect(range.at(-1)).toBe("#c9c3bb");
+  });
+
+  it("defaults topCategories to 10", async () => {
+    const { topCategories, MAX_CATEGORIES } =
+      await import("../src/widgets/brushableScatterPlot.js");
+    expect(MAX_CATEGORIES).toBe(10);
+    expect(topCategories(rows, "type")).toHaveLength(10);
+  });
+
+  it("has a legendPick signal that dims every other category", () => {
+    const spec = scatterSpec(rows, { color: "type" });
+    expect(paramNames(spec)).toContain("legendPick");
+    expect(JSON.stringify(spec.encoding.color.condition.test)).toContain(
+      "legendPick",
+    );
+    // no categories, no pick
+    expect(
+      paramNames(
+        scatterSpec(data, { color: "score", colorType: "quantitative" }),
+      ),
+    ).not.toContain("legendPick");
+  });
+
+  it("highlightCategory sets the pick without redrawing", async () => {
+    const widget = await BrushableScatterPlot(rows, { color: "type" });
+    const view = widget.view;
+    await widget.highlightCategory("c2");
+    expect(widget.view).toBe(view);
+    expect(view.signal("legendPick")).toBe("c2");
+    await widget.highlightCategory(null);
+    expect(view.signal("legendPick")).toBeNull();
+  });
+});
+
+describe("interactiveLegends (#200)", () => {
+  it("makes every legend's symbols and labels interactive, keeping their encode", async () => {
+    const { interactiveLegends } =
+      await import("../src/widgets/brushableScatterPlot.js");
+    const spec = interactiveLegends({
+      legends: [{ encode: { symbols: { update: { opacity: { value: 1 } } } } }],
+      marks: [{ legends: [{}] }],
+    });
+    expect(spec.legends[0].encode.symbols).toEqual({
+      update: { opacity: { value: 1 } },
+      interactive: true,
+    });
+    expect(spec.legends[0].encode.labels.interactive).toBe(true);
+    expect(spec.marks[0].legends[0].encode.symbols.interactive).toBe(true);
+  });
+});
+
+describe("category legend on narrow maps (#200)", () => {
+  it("shortens labels under 500px, not on wider maps", () => {
+    const rows = [{ type: "a" }, { type: "b" }];
+    const legend = (width) =>
+      scatterSpec(rows, { color: "type", width }).encoding.color.condition
+        .legend;
+    expect(legend(358).labelLimit).toBe(90);
+    expect(legend(800).labelLimit).toBeUndefined();
+    expect(legend("container").labelLimit).toBeUndefined();
   });
 });

@@ -46,8 +46,34 @@ export function reliabilityRange() {
   ];
 }
 
+/**
+ * Categories Color by gives a hue before "Other" (#200: John's call, 10; DESIGN.md → Data
+ * Visualization). Past 3 they can't all stay apart on a scatterplot, so the legend highlights.
+ */
+export const MAX_CATEGORIES = 10;
+
+/**
+ * vega-embed `patch` (#200): Vega-Lite makes legends non-interactive (pointer-events none, and
+ * Vega's event picking skips them) unless a selection is bound to the legend, which would also
+ * bind the points. Marks every legend's symbols and labels interactive in the compiled Vega spec,
+ * so the widget's own listeners see them. Returns the patched spec.
+ */
+export function interactiveLegends(vgSpec) {
+  const visit = (node) => {
+    if (!node || typeof node !== "object") return;
+    for (const legend of node.legends ?? []) {
+      legend.encode ??= {};
+      for (const part of ["symbols", "labels"])
+        legend.encode[part] = { ...legend.encode[part], interactive: true };
+    }
+    for (const mark of node.marks ?? []) visit(mark);
+  };
+  visit(vgSpec);
+  return vgSpec;
+}
+
 /** The `n` most common values of `field` (ties alphabetical) — the categories that get a hue. */
-export function topCategories(data, field, n = 3) {
+export function topCategories(data, field, n = MAX_CATEGORIES) {
   const counts = new Map();
   for (const d of data)
     if (d[field] != null) counts.set(d[field], (counts.get(d[field]) ?? 0) + 1);
@@ -180,16 +206,31 @@ function fixedDomains(data, x, y) {
 const tooltipField = (entry) =>
   typeof entry === "string" ? { field: entry } : { ...entry };
 
+// Maps narrower than this (phones) get shorter category legend labels (#200)
+const NARROW_MAP = 500;
 // Internal value for the "everything else" bucket; a real category may be called "Other"
 const OTHER = "\u0000other";
 // Distortion overlay (#84): opacity of its least reliable cells
 const OVERLAY_OPACITY = 0.35;
 
+// viz-cat-1..10 (light fallbacks), in fixed order; validated on adjacent pairs (the legend)
+const CATEGORY_FALLBACKS = [
+  "#2a78d6",
+  "#eb6834",
+  "#1baf7a",
+  "#eda100",
+  "#e87ba4",
+  "#008300",
+  "#6250d6",
+  "#e34948",
+  "#00a3b5",
+  "#8a5a00",
+];
+
+/** The MAX_CATEGORIES hues, then Other's. */
 function categoryRange() {
   return [
-    token("color-viz-cat-1", "#2a78d6"),
-    token("color-viz-cat-2", "#eb6834"),
-    token("color-viz-cat-3", "#1baf7a"),
+    ...CATEGORY_FALLBACKS.map((hex, i) => token(`color-viz-cat-${i + 1}`, hex)),
     token("color-viz-cat-other", "#c9c3bb"),
   ];
 }
@@ -199,8 +240,9 @@ function categoryRange() {
  * - quantitative color (similarity) uses the sequential ramp;
  * - the legend sits in the top-right corner on `surface` (DESIGN.md → Legend); a ramp is labelled
  *   with `legendLabels` spread evenly over it (e.g. ["0%", "30% (Good)", "60%+"], #184);
- * - categorical color highlights at most 3 `categories` (pass them from the whole program so
- *   filtering never repaints survivors; default: top 3 of `data`), everything else is Other;
+ * - categorical color highlights at most MAX_CATEGORIES (10) `categories` (pass them from the
+ *   whole program so filtering never repaints survivors; default: the top 10 of `data`),
+ *   everything else is Other; the `legendPick` param (a category, or null) dims every other one;
  * - points outside the brush are dimmed; with `matches`, so are those not in the `matchIds`
  *   param (keyword matches, #125; null = none dimmed), set with `highlightMatches(ids)`;
  * - with `ringIds`, those papers get a ring (In My Papers) on a layer of their own, so it shows
@@ -249,7 +291,7 @@ export function scatterSpec(
   const categorical = color && colorType !== "quantitative";
   const highlighted =
     categorical && !colorScheme
-      ? (categories ?? topCategories(data, color)).slice(0, 3)
+      ? (categories ?? topCategories(data, color)).slice(0, MAX_CATEGORIES)
       : null;
   // Size echoing the color field gets its own copy: Vega-Lite merges two legends on one field
   // into a symbol legend, and the color ramp's legend must stay a gradient (DESIGN.md → Legend)
@@ -274,7 +316,7 @@ export function scatterSpec(
     : highlighted
       ? {
           domain: [...highlighted, OTHER],
-          range: [...palette.slice(0, highlighted.length), palette[3]],
+          range: [...palette.slice(0, highlighted.length), palette.at(-1)],
         }
       : {
           // #166: a Vega scheme chosen in Options, else the oxblood ramp (or the caller's range)
@@ -296,6 +338,10 @@ export function scatterSpec(
             `length(nnIds) == 0 || indexof(nnIds, datum[${JSON.stringify(id)}]) >= 0`,
           ]
         : []),
+      // A category picked in the legend (#200): only it keeps its color; null = none
+      ...(highlighted
+        ? ["legendPick == null || datum.__color == legendPick"]
+        : []),
       // Keyword matches (#125): only they keep their color; null = no keyword search
       ...(matches
         ? [
@@ -308,6 +354,8 @@ export function scatterSpec(
   const levelCut = { name: "levelCut", value: null };
   // The keyword matches' ids (#125), updated with highlightMatches (no redraw)
   const matchParams = matches ? [{ name: "matchIds", value: null }] : [];
+  // The category the legend points at (#200), set by the widget with highlightCategory
+  const pickParams = highlighted ? [{ name: "legendPick", value: null }] : [];
   // nice: false + padding in pixels, so cullLabels can mirror the scales exactly
   const scale = { zero: false, nice: false, padding: 10 };
   // Explicit domains (#112): the points' extent, or the tween's eased one. Every layer shares
@@ -363,6 +411,7 @@ export function scatterSpec(
                     scoreDomain,
                     legendLabels,
                     highlighted,
+                    width,
                   }),
             }
           : { test: visible, value: token("color-viz-neutral", "#605954") },
@@ -556,6 +605,7 @@ export function scatterSpec(
             ...(q ? [{ name: "queryHover", value: -1 }] : []),
             levelCut,
             ...matchParams,
+            ...pickParams,
             ...(tween?.params ?? []),
           ],
           layer: layers,
@@ -566,6 +616,7 @@ export function scatterSpec(
             ...points.params,
             levelCut,
             ...matchParams,
+            ...pickParams,
             ...(tween?.params ?? []),
           ],
         }),
@@ -1061,7 +1112,7 @@ function attachTaperedLegend(
 
 /**
  * The color legend: a ramp labelled with `legendLabels` spread evenly over it (fixed ticks,
- * #184; the tooltip has the exact score), or the 3 + Other categories.
+ * #184; the tooltip has the exact score), or the categories + Other.
  */
 function legendFor({
   data,
@@ -1070,6 +1121,7 @@ function legendFor({
   scoreDomain,
   legendLabels,
   highlighted,
+  width,
 }) {
   if (quantitative) {
     const ends =
@@ -1093,6 +1145,9 @@ function legendFor({
   return highlighted
     ? {
         labelExpr: `datum.value === ${JSON.stringify(OTHER)} ? "Other" : datum.label`,
+        // Up to 11 entries (#200): on a narrow map, shorter labels keep the legend off most dots
+        ...(typeof width === "number" &&
+          width < NARROW_MAP && { labelLimit: 90 }),
       }
     : {};
 }
@@ -1250,7 +1305,14 @@ export async function BrushableScatterPlot(data, options = {}) {
   const chart = await vegaSelected(
     scatterSpec(data, { ...options, transition, tooltip: null }),
     {
-      vegaConfig: { renderer, actions: false },
+      vegaConfig: {
+        renderer,
+        actions: false,
+        // Color by a category: the legend highlights (#200)
+        ...(options.color &&
+          options.colorType !== "quantitative" &&
+          !options.colorScheme && { patch: interactiveLegends }),
+      },
     },
   );
   const target = document.createElement("div");
@@ -1825,6 +1887,42 @@ export async function BrushableScatterPlot(data, options = {}) {
    * Keyword matches (#125, needs `matches`): only papers with these ids keep their color, the
    * rest are viz-dim; null shows every paper. A signal, so the map isn't redrawn.
    */
+  /**
+   * Color by a category (#200): only `value`'s papers keep their color, the rest are viz-dim;
+   * null shows them all. Pointing at a legend entry previews it; a click pins it (again: unpins).
+   */
+  const picking = chart.view.getState().signals?.legendPick !== undefined;
+  target.highlightCategory = (value = null) =>
+    picking
+      ? chart.view.signal("legendPick", value).runAsync()
+      : Promise.resolve();
+  if (picking) {
+    let pinned = null;
+    // The legend entry's category: its symbol, label or entry group carries the scale value
+    const legendValue = (item) => {
+      for (let it = item; it; it = it.mark?.group)
+        if (
+          /^legend-/.test(it.mark?.role ?? "") &&
+          it.datum?.value !== undefined
+        )
+          return it.datum.value;
+      return undefined;
+    };
+    chart.view.addEventListener("mouseover", (_, item) => {
+      const v = legendValue(item);
+      if (v !== undefined) target.highlightCategory(v);
+    });
+    chart.view.addEventListener("mouseout", (_, item) => {
+      if (legendValue(item) !== undefined) target.highlightCategory(pinned);
+    });
+    chart.view.addEventListener("click", (_, item) => {
+      const v = legendValue(item);
+      if (v === undefined) return;
+      pinned = pinned === v ? null : v;
+      target.highlightCategory(pinned);
+    });
+  }
+
   target.highlightMatches = (ids = null) => {
     if (!options.matches) return Promise.resolve();
     return chart.view
