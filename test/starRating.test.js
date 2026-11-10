@@ -144,3 +144,25 @@ describe("quickNote fits an existing note (#203 Stage B)", () => {
     el.remove();
   });
 });
+
+describe("quickNote says Saved (Stage E)", () => {
+  it("shows Saved after a save, then clears it", () => {
+    vi.useFakeTimers();
+    const notes = new EventTarget();
+    notes.get = () => "";
+    notes.set = vi.fn(() => true);
+    const el = quickNote({ id: "p1" }, { notes, delay: 100 });
+    document.body.append(el);
+    const input = el.querySelector("textarea");
+    input.value = "hello";
+    input.dispatchEvent(new Event("input"));
+    vi.advanceTimersByTime(100);
+    const status = el.querySelector(".quick-note-status");
+    expect(status.textContent).toBe("Saved");
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    vi.advanceTimersByTime(2100);
+    expect(status.textContent).toBe("");
+    el.remove();
+    vi.useRealTimers();
+  });
+});

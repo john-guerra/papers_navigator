@@ -4,6 +4,7 @@ toc: false
 ---
 
 ```js
+import { storageBanner } from "./components/dataSafety.js";
 import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore, matches, normalizeRule } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
@@ -116,6 +117,14 @@ const researchPaused = pauseResearchForLink(researchStore, { explicitQuery });
 ```
 
 <h1 class="sr-only">${conference.name} Papers</h1>
+
+```js
+// If this browser stops saving your list, notes or ratings, say so (Stage E)
+const storageAlert = storageBanner();
+invalidation.then(() => storageAlert.dispose());
+display(storageAlert);
+```
+
 
 <details class="lede" open><summary>Explore ${filtered.length}/${papers.length} papers, workshops, posters and talks by meaning</summary><p>Search for a topic (e.g. ${exampleChips}), drag on the map to filter, and add the ones you want to attend to <a href="./my-papers">My Papers</a> (${followed.length}).</p></details>
 

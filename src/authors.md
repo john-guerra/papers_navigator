@@ -6,6 +6,7 @@ toc: false
 <link rel="stylesheet" href="./authors.css">
 
 ```js
+import { storageBanner } from "./components/dataSafety.js";
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { buildAuthorIndex, findAuthor } from "./lib/authors.js";
@@ -121,6 +122,14 @@ document.title = `${author ? author.name : authorParam ?? "Researchers"} | ${con
 ```
 
 <div class="author-page">${authorView}</div>
+
+```js
+// If this browser stops saving your list, notes or ratings, say so (Stage E)
+const storageAlert = storageBanner();
+invalidation.then(() => storageAlert.dispose());
+display(storageAlert);
+```
+
 
 ${paperDetail}
 

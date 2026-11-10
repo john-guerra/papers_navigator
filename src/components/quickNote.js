@@ -23,11 +23,23 @@ export function quickNote(paper, { notes, delay = 500 } = {}) {
   // Fit an existing (multi-line) note once the field is in the page
   (globalThis.requestAnimationFrame ?? ((f) => setTimeout(f)))(grow);
   let timer = null;
+  let statusTimer = null;
+  const status = html`<span
+    class="quick-note-status muted"
+    aria-live="polite"
+  ></span>`;
   const save = () => {
     clearTimeout(timer);
     timer = null;
-    if (input.value.trim() !== notes.get(paper.id))
-      notes.set(paper.id, input.value);
+    if (input.value.trim() !== notes.get(paper.id)) {
+      const saved = notes.set(paper.id, input.value);
+      // A quiet "Saved" (Stage E); failures go to the page's storage banner
+      if (saved !== false) {
+        status.textContent = "Saved";
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => (status.textContent = ""), 2000);
+      }
+    }
   };
   input.addEventListener("input", () => {
     grow();
@@ -41,7 +53,7 @@ export function quickNote(paper, { notes, delay = 500 } = {}) {
     grow();
   };
   notes.addEventListener("input", follow);
-  const el = html`<div class="quick-note-field">${input}</div>`;
+  const el = html`<div class="quick-note-field">${input}${status}</div>`;
   el.flush = () => timer && save();
   el.dispose = () => {
     el.flush();

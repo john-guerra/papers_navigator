@@ -4,6 +4,8 @@ toc: false
 ---
 
 ```js
+import { dataNote, storageBanner } from "./components/dataSafety.js";
+import { requestPersistence } from "./lib/storageHealth.js";
 import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { createNotesStore } from "./lib/notes.js";
@@ -169,6 +171,13 @@ invalidation.then(paperDetail.dispose);
 <h1>Live</h1>
 
 ```js
+// Your notes and ratings stay in this browser (Stage E): the banner if saving fails, and the note
+const storageAlert = storageBanner();
+invalidation.then(() => storageAlert.dispose());
+display(storageAlert);
+```
+
+```js
 display(liveClockControl(clock, { tz }));
 ```
 
@@ -271,27 +280,48 @@ const drawRated = () => {
       discussion,
       openPosts: ratedPosts.cache,
       onClosePost: ratedPosts.close,
+      // Stage E: Add / In My Papers on each row
+      inMyPapers,
+      onToggle: toggleMyPapers,
     }),
   );
 };
 drawRated();
+// The toggles follow My Papers (redrawn; open Post panels come back)
+store.addEventListener("input", drawRated);
+invalidation.then(() => store.removeEventListener("input", drawRated));
 display(ratedBox);
 ```
 
 <h2 class="live-rated-title">Papers I attended</h2>
 
 ```js
-display(
-  renderAttendedPapers(papers, {
-    attended: attendedState,
-    ratings: ratingsState,
-    disliked: dislikedState,
-    notes: notesState,
-    tz,
-    onOpen: openPaper,
-    detailsHref,
-  }),
-);
+const attendedBox = html`<div></div>`;
+const drawAttended = () =>
+  attendedBox.replaceChildren(
+    renderAttendedPapers(papers, {
+      attended: attendedState,
+      ratings: ratingsState,
+      disliked: dislikedState,
+      notes: notesState,
+      tz,
+      onOpen: openPaper,
+      detailsHref,
+      // Stage E: Add / In My Papers on each row, following My Papers
+      inMyPapers,
+      onToggle: toggleMyPapers,
+    }),
+  );
+drawAttended();
+store.addEventListener("input", drawAttended);
+invalidation.then(() => store.removeEventListener("input", drawAttended));
+display(attendedBox);
+```
+
+```js
+display(dataNote({ exportHref: "my-papers.html#export" }));
+// Ask the browser to keep this site's data once you have notes or ratings
+if (Object.keys(ratingsState).length || Object.keys(notesState).length) requestPersistence();
 ```
 
 ${paperDetail}
