@@ -345,12 +345,122 @@ Papers". Papers already added as "★ Rated" stay. The original decision, for th
   - Clearing the stars doesn't remove the paper from My Papers.
 - **These don't add:** **👎 Not for me** and **attended** papers are never added automatically.
 
-## Stage E (next, own plan): My Papers as the place to review
+## Stage E: My Papers as the place to review, and keeping your data safe
 
-- **Rated and attended papers.** My Papers shows the papers you rated (stars or 👎) or attended,
-  next to your list.
-- **Rating filter.** Any combination of 1★…5★, 👎 and "Not rated".
-- **"Group by"** for the list: day, reason (★ hand-added / 👥 / 🏫 / 🔍 / ★ Rated), topic (inferred),
-  rating, attended, type, session (or room), award.
-- **The Live page** keeps "Papers I rated" and "Papers I attended" for the moment, and links to My
-  Papers for reviewing.
+### Why
+
+After a session, at the end of a day, and after the conference, John wants one place to see
+which papers he liked, didn't like and attended: grouped by day, reason, topic and so on, and
+filtered by any number of stars. My Papers is that place. A UX review (2026-11-10) confirmed
+that My Papers must stay "your list" by default, because the badge, "My Papers (n)", Share,
+Now/Next, the schedule, "n of yours" and Recommended all count that set. Your notes, ratings and
+attendance live only in the browser, so the page must also make that clear and help you keep a
+copy.
+
+### Include papers outside your list (decided: option B)
+
+- **The "Include" control.** In "All my papers", next to Search, Sort by and Group by: **"Include"**
+  with two checkboxes, **both off by default**:
+  - **"👎 Not for me (n)"**
+  - **"Attended, not in My Papers (n)"**
+
+  Hidden when both counts are 0. Picking 👎 in the rating filter turns the first box on, so that
+  filter never shows an empty list. The choices are remembered per device.
+- **Those rows** show a muted **"Not in My Papers"** label where the reason goes, and the
+  **"Add to My Papers"** follow toggle (empty ring). They have no reason chip.
+- **The header stays honest:** "All my papers 3 · +2 not in My Papers".
+- **Everything else** (badge, "My Papers (n)", Share, Now/Next, the schedule, Recommended,
+  Export's followed list) stays strictly your list.
+
+### Rating filter and Group by
+
+- **Rating filter.** Chips for any combination of **5★ 4★ 3★ 2★ 1★ 👎 Not rated**. None selected
+  means all. 👎 implies "Include 👎".
+- **Group by** (a select, default "None"):
+  - **Day** (conference timezone)
+  - **Reason:** ★ Added by hand, ★ Rated, ★ Added on Live, 👥 person, 🏫 institution, 🔍
+    topic, Not in My Papers. A paper can be in several reason groups, the same as the Show
+    filter.
+  - **Topic** (inferred cluster)
+  - **Rating:** 5★…1★, 👎, Not rated
+  - **Attended:** Attended / Not attended
+  - **Type**, **Session**, **Award:** 🏆 / 🏅 / 🎖️ / none
+- **Groups.** Each group has a header with its name and count, and folds (`<details>`, open by
+  default). Groups follow the sort order inside, and are themselves ordered naturally (days in
+  order, ratings high to low, others by count).
+- **"Show" (reason filter, top of page).** It splits "★ Rated" and "★ Added on Live" out of "★
+  Added by hand", so it agrees with Group by reason (UX review).
+
+### Compact rows for reviewing (UX review)
+
+- **What a row shows in "All my papers":**
+  - type pill, award, title (opening the details)
+  - the reason chip(s) or "Not in My Papers"
+  - **"★4" / "👎" and "✓ Attended"** in words (not a bare ✓)
+  - the note, if any
+  - "Details ▾" (the same in-place panel as Live and Recommended: authors with affiliations,
+    abstract, links), plus the follow toggle
+- **The long form** (full authors, meta line, abstract preview) moves behind Details.
+- **Itinerary rows** keep their current form.
+
+### Toolbar on phones (UX review)
+
+- On phones, Search stays visible. "Filter & group (n active)" is a disclosure holding Include,
+  the rating filter, Group by and Sort by.
+- On desktop, all of them are in one row that wraps.
+
+### Live page lists
+
+- "Papers I rated" and "Papers I attended" on Live become a **short summary for today**: today's
+  rated and attended papers. Under each, **"Review all in My Papers →"** opens My Papers with
+  Include on and the matching group (rating, or attended).
+- Rows for papers not in My Papers, on Live's lists, get the "Add to My Papers" toggle (UX
+  review).
+
+### Your data stays in this browser: say so, catch failures, help keep a copy
+
+- **A standing note.** On My Papers (under the list tools) and on Live (at the bottom), a muted
+  line:
+
+  > **Saved only in this browser.** Your list, notes, ratings and attended papers aren't sent
+  > anywhere. Export JSON to keep a copy or move them to another device.
+
+  "Export JSON" is a link that runs the export (the same file as the button).
+- **Loud failures.** Every store's write already catches errors. Each now also reports them to a
+  shared `storageHealth` (an EventTarget). On the first failure in a page view, show a banner (not
+  a toast, until dismissed): **"This browser isn't saving your changes (storage full or blocked,
+  e.g. private browsing). Export JSON now to keep them."** It has an Export button and a ✕.
+- **Quiet success on Live's quick note.** "Saved" appears for about 2 s after each save, as in
+  paper details' "My note".
+- **Keep the data.** On the first rating, note or attended mark, call
+  `navigator.storage.persist?.()` once, silently. It helps on Chromium/Android. Safari may ignore
+  it.
+- **Backup nudge.** A dismissible line above the note:
+
+  > Back up your notes and ratings: Export JSON
+
+  It shows when:
+  - you have at least 10 ratings, notes or attended papers changed since the last export (or
+    ever, if you never exported), or
+  - it's the conference's last day or later
+
+  It doesn't come back for 24 h after you dismiss it or export. Export records `lastExportAt`
+  (localStorage `papersNavigator:<id>:lastExport`, added to the About storage list).
+- **iPhone hint.** On iOS Safari, when not running from the Home Screen, the backup line adds:
+  "On iPhone, Safari may delete this site's data after 7 days without a visit: add it to your Home
+  Screen or export." Worded as "may": WebKit announced the 7-day rule in 2020, and it hasn't been
+  re-verified (Claude's call).
+
+### Non-goals (Stage E)
+
+- Accounts, sync, or any server storage.
+- Changing what Share links carry.
+- Changing the itinerary's layout.
+
+### Calls made by Claude (open to change)
+
+- **Include:** both boxes off by default and remembered per device; 👎 in the rating filter
+  turns its box on.
+- **Groups:** open by default; a paper can be in several reason groups.
+- **The backup nudge:** at least 10 changes, or the last day; quiet for 24 h; "Saved" for 2 s.
+- **Layout:** the "Filter & group" disclosure on phones only.
