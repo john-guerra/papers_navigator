@@ -1,3 +1,4 @@
+import { reportStorageFailure } from "./storageHealth.js";
 /**
  * Watch rules: standing rules (a person, an institution, a topic) whose papers are always
  * in My Papers (DESIGN.md "Vocabulary"). Pure matching + a persisted store + a combined
@@ -262,6 +263,7 @@ export function createRulesStore(
       storage?.setItem(key, JSON.stringify(value));
     } catch (error) {
       console.warn("Could not save watch rules", error);
+      reportStorageFailure();
     }
     store.dispatchEvent(new Event("input"));
   };

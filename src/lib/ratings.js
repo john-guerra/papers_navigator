@@ -1,3 +1,4 @@
+import { reportStorageFailure } from "./storageHealth.js";
 /**
  * Paper ratings (#203, the Live page): 1–5 stars on any paper, to remember which ones you liked.
  *
@@ -65,6 +66,7 @@ export function createRatingsStore(
       storage?.setItem(key, JSON.stringify(next));
     } catch (error) {
       console.warn("Could not save ratings on this device", error);
+      reportStorageFailure();
     }
     store.dispatchEvent(new Event("input"));
   };
