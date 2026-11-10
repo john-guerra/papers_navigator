@@ -103,6 +103,17 @@ const newPostPanel = (p) =>
     linkSetting: postLinkSetting,
     discussionUrl: discussionHolder.map?.get(p.id) ?? null,
   });
+// "Add to My Papers" / "In My Papers" on the Live page (John): the same toggle as everywhere
+const inMyPapers = (id) => store.value.some((d) => d.id === id);
+const toggleMyPapers = (p) => {
+  if (inMyPapers(p.id)) {
+    const undo = store.remove([p.id]);
+    showToast("Removed from My Papers", { actionLabel: "Undo", onAction: undo });
+  } else {
+    const undo = addWithUndo(store, [p], "★ Added on Live");
+    showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
+  }
+};
 // Filled once the official account's posts are read (below; a cell can't reassign another's variable)
 const discussionHolder = { map: null };
 const viewState = { scrolledFor: null };
@@ -181,7 +192,7 @@ const session = activeSession(checkInState, days, at, tz);
 const slots = slotsAt(days, at, tz);
 const key = session
   ? `in:${session.sessionId}`
-  : `break:${slots.now?.start}:${slots.next?.start}:${slots.nextDay?.slot.start}:${[...mineIds].join()}`;
+  : `break:${slots.now?.start}:${slots.next?.start}:${slots.nextDay?.slot.start}`;
 // A check-in made while the time is set by hand is flagged: it never marks attendance (#208 review)
 const commit = (s) => checkIn.commit(s.sessionId, clock.value.at, { override: clock.value.override });
 liveView.show(
@@ -201,10 +212,8 @@ liveView.show(
           notes: notesStore,
           onSwitch: commit,
           onLeave: () => checkIn.leave(),
-          onAdd: (p) => {
-            const undo = addWithUndo(store, [p], "★ Added on Live");
-            showToast("Added to My Papers", { actionLabel: "Undo", onAction: undo });
-          },
+          inMyPapers,
+          onToggle: toggleMyPapers,
           onOpen: openPaper,
           detailsHref,
           postPanel: sessionPosts.open,
@@ -217,6 +226,8 @@ liveView.show(
           onPickSlot: (slot) => clock.setTo(new Date(slot.start)),
           onOpen: openPaper,
           detailsHref,
+          inMyPapers,
+          onToggle: toggleMyPapers,
         }),
   at,
 );
@@ -226,7 +237,7 @@ liveView.show(
 const attendedIn = checkedInSession(checkInState, days);
 if (attendedIn && !clockState.override)
   attendedStore.markAuto(autoAttended(attendedIn, checkInState, at), at);
-// My Papers changed: Soon's reasons follow (#208)
+// My Papers changed: Soon's reasons, the toggles and the counts follow in place (#208, John)
 liveView.current?.setMine?.(mine);
 // Discussion links, once known (a rebuilt view gets them again here)
 if (discussion) liveView.current?.setDiscussion?.(discussion);

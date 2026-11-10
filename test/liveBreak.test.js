@@ -185,3 +185,28 @@ describe("renderBreakView in the day's last slot (#203 Stage B)", () => {
     el.remove();
   });
 });
+
+describe("break view: My Papers toggle on each paper (John)", () => {
+  it("each paper row has Add to My Papers / In My Papers; setMine updates rows and counts in place", () => {
+    const onToggle = vi.fn();
+    let mineSet = new Set(["b0", "b1"]);
+    const { el } = setup(et("09:00"), {
+      inMyPapers: (id) => mineSet.has(id),
+      onToggle,
+    });
+    const card = el.querySelector('[data-session-id="A"]');
+    card.querySelector("details").open = true;
+    const toggle = card.querySelector(".live-paper .follow-toggle");
+    expect(toggle.textContent).toContain("Add to My Papers");
+    toggle.click();
+    expect(onToggle).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "a1" }),
+    );
+    mineSet = new Set(["b0", "b1", "a1"]);
+    el.setMine(mineSet);
+    expect(toggle.textContent).toContain("In My Papers");
+    expect(card.querySelector("details").open).toBe(true);
+    expect(card.querySelector(".live-mine strong").textContent).toBe("1");
+    el.remove();
+  });
+});

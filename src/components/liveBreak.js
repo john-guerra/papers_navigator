@@ -2,6 +2,7 @@ import { html } from "htl";
 import { formatDay, formatTime } from "../lib/time.js";
 import { rankSessions, sessionSummary } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
+import { followToggles } from "./followToggles.js";
 
 /** Papers an expanded session shows before "Show all n" (#203). */
 export const SESSION_ROWS = 10;
@@ -20,8 +21,8 @@ export function titleLink(p, { detailsHref, onOpen }) {
   return a;
 }
 
-/** One compact paper row: pill, award, title, authors · topic; yours marked. */
-export function livePaperRow(p, { mineIds, detailsHref, onOpen }) {
+/** One compact paper row: pill, award, title, authors · topic, and the My Papers toggle. */
+export function livePaperRow(p, { mineIds, detailsHref, onOpen, toggles }) {
   const mine = mineIds.has(p.id);
   const authors = (p.authors ?? []).map((a) => a.name).join(", ");
   return html`<li
@@ -32,18 +33,22 @@ export function livePaperRow(p, { mineIds, detailsHref, onOpen }) {
       ${typePill(p)}${awardMark(p)}${titleLink(p, { detailsHref, onOpen })}
     </div>
     <div class="live-paper-meta">
-      ${[authors, p.clusterLabel].filter(Boolean).join(" · ")}${mine ? html` · <span class="live-in-mine">In My Papers</span>` : ""}
+      ${[authors, p.clusterLabel].filter(Boolean).join(" · ")}${!toggles && mine ? html` · <span class="live-in-mine">In My Papers</span>` : ""}
     </div>
+    ${toggles ? html`<div class="live-paper-actions">${toggles.toggle(p)}</div>` : ""}
   </li>`;
 }
 
-function sessionCard(session, { tz, mineIds, onGoing, detailsHref, onOpen }) {
+function sessionCard(
+  session,
+  { tz, mineIds, onGoing, detailsHref, onOpen, toggles },
+) {
   const list = html`<ol class="live-papers"></ol>`;
   const show = (n) => {
     list.replaceChildren(
       ...session.items
         .slice(0, n)
-        .map((p) => livePaperRow(p, { mineIds, detailsHref, onOpen })),
+        .map((p) => livePaperRow(p, { mineIds, detailsHref, onOpen, toggles })),
     );
     if (session.items.length > n) {
       const all = html`<li>
@@ -109,9 +114,25 @@ function slotSection(slot, label, options) {
  */
 export function renderBreakView(
   { now, next, later, nextDay },
-  { tz, mineIds, onGoing, onPickSlot, onOpen, detailsHref },
+  {
+    tz,
+    mineIds,
+    onGoing,
+    onPickSlot,
+    onOpen,
+    detailsHref,
+    inMyPapers,
+    onToggle,
+  },
 ) {
-  const options = { tz, mineIds, onGoing, onOpen, detailsHref };
+  // "Add to My Papers" / "In My Papers" on each paper (John), refreshed in place by setMine
+  const toggles = onToggle
+    ? followToggles({
+        inMyPapers: inMyPapers ?? ((id) => mineIds.has(id)),
+        onToggle,
+      })
+    : null;
+  const options = { tz, mineIds, onGoing, onOpen, detailsHref, toggles };
   const mineIn = (slot) =>
     slot.sessions.reduce(
       (n, s) => n + s.items.filter((p) => mineIds.has(p.id)).length,
@@ -138,7 +159,7 @@ export function renderBreakView(
       ${now ? "Nothing after this today." : "No more sessions today."} ${button}
     </p>`;
   }
-  return html`<div class="live-break">
+  const el = html`<div class="live-break">
     ${now ? slotSection(now, "Now", options) : ""}
     ${next ? slotSection(next, "Next", options) : ""} ${tail}
     ${
@@ -152,4 +173,25 @@ export function renderBreakView(
         : ""
     }
   </div>`;
+  /**
+   * My Papers changed (John): the toggles, "n of yours" and the marks follow in place, so an
+   * expanded session stays open.
+   */
+  el.setMine = (ids) => {
+    toggles?.update();
+    for (const card of el.querySelectorAll(".live-session")) {
+      const session = [now, next]
+        .filter(Boolean)
+        .flatMap((slot) => slot.sessions)
+        .find((x) => x.sessionId === card.dataset.sessionId);
+      if (!session) continue;
+      const n = session.items.filter((p) => ids.has(p.id)).length;
+      const box = card.querySelector(".live-mine");
+      box.querySelector("strong").textContent = String(n);
+      box.classList.toggle("is-zero", !n);
+    }
+    for (const row of el.querySelectorAll(".live-paper"))
+      row.classList.toggle("is-mine", ids.has(row.dataset.paperId));
+  };
+  return el;
 }
