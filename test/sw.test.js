@@ -125,6 +125,7 @@ describe("precached pages", () => {
     expect(JSON.parse(list.replace(/,\s*\]$/, "]"))).toEqual([
       "./",
       "./my-papers.html",
+      "./live.html",
       "./authors.html",
       "./about.html",
     ]);
@@ -214,10 +215,10 @@ describe("freshRequest", () => {
 describe("build id (scripts/buildSw.js)", () => {
   it("stamps the build id into VERSION, so each deploy gets a new cache", () => {
     const stamped = stampVersion(source, "abc123");
-    expect(stamped).toContain('const VERSION = "v4-abc123";');
+    expect(stamped).toContain('const VERSION = "v5-abc123";');
     const built = { URL, Request };
     vm.runInNewContext(stamped, built);
-    expect(built.cacheName(scope)).toBe(`papersNavigator-v4-abc123:${scope}`);
+    expect(built.cacheName(scope)).toBe(`papersNavigator-v5-abc123:${scope}`);
     expect(built.isStaleCache(cacheName(scope), scope)).toBe(true);
   });
 

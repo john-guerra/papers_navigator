@@ -12,6 +12,7 @@ export default {
   pages: [
     { name: "Explore", path: "/" },
     { name: "My Papers", path: "/my-papers" },
+    { name: "Live", path: "/live" },
     { name: "Researchers", path: "/authors" },
     { name: "About", path: "/about" },
   ],
@@ -88,6 +89,7 @@ export default {
   <div class="navbar-links">
     <a href="./">Explore</a>
     <a href="./my-papers">My Papers <span class="badge-my-papers" hidden></span></a>
+    <a href="./live">Live</a>
     <a href="./authors">Researchers</a>
     <a href="./about">About</a>
   </div>
@@ -96,6 +98,7 @@ export default {
 <nav class="tabbar" aria-label="Pages">
   <a href="./">Explore</a>
   <a href="./my-papers">My Papers <span class="badge-my-papers" hidden></span></a>
+    <a href="./live">Live</a>
   <a href="./authors">Researchers</a>
   <a href="./about">About</a>
 </nav>`,

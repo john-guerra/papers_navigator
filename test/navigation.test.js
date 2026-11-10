@@ -42,6 +42,7 @@ describe("navigation (DESIGN.md → Nav bar, #110)", () => {
     expect(hrefs(".tabbar a")).toEqual([
       "./",
       "./my-papers",
+      "./live",
       "./authors",
       "./about",
     ]);
