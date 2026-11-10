@@ -171,3 +171,53 @@ describe("paperPanel focus (#152 review)", () => {
     reopened.dispose();
   });
 });
+
+describe("paperPanel ratings (#203 Stage B)", () => {
+  const fakeRatings = (initial = {}) => {
+    const store = new EventTarget();
+    let value = { ...initial };
+    store.get = (id) => value[id] ?? 0;
+    store.set = vi.fn((id, n) => {
+      value = { ...value, [id]: n };
+      store.dispatchEvent(new Event("input"));
+    });
+    store.replace = (next) => {
+      value = next;
+      store.dispatchEvent(new Event("input"));
+    };
+    return store;
+  };
+  const pressed = (el) =>
+    [...el.querySelectorAll(".paper-detail-rating .star")].filter(
+      (b) => b.getAttribute("aria-pressed") === "true",
+    ).length;
+
+  it("shows the paper's stars, labelled Your rating, and saves a tap", () => {
+    const ratings = fakeRatings({ "id-a": 3 });
+    const { el } = setup("a", { ratings });
+    const box = el.querySelector(".paper-detail-rating");
+    expect(box.textContent).toContain("Your rating");
+    expect(pressed(el)).toBe(3);
+    box.querySelectorAll(".star")[4].click();
+    expect(ratings.set).toHaveBeenCalledWith("id-a", 5);
+    el.dispose();
+    el.remove();
+  });
+
+  it("follows the store (another tab, the Live page)", () => {
+    const ratings = fakeRatings({ "id-a": 3 });
+    const { el } = setup("a", { ratings });
+    ratings.replace({ "id-a": 1 });
+    expect(pressed(el)).toBe(1);
+    el.dispose();
+    ratings.replace({ "id-a": 4 });
+    expect(pressed(el)).toBe(1);
+    el.remove();
+  });
+
+  it("has no stars without a ratings store", () => {
+    const { el } = setup("a");
+    expect(el.querySelector(".paper-detail-rating")).toBeNull();
+    el.remove();
+  });
+});

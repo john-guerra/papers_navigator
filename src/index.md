@@ -1184,6 +1184,7 @@ const paperDetail = paperPanel(paperParam, {
   mapRows: () => mapState.everyPaper ?? papers,
   animation: animationStore,
   notes: notesStore,
+  ratings: ratingsStore,
 });
 invalidation.then(paperDetail.dispose);
 ```

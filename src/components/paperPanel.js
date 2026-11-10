@@ -5,6 +5,7 @@ import { showToast } from "./toast.js";
 import { addWithUndo as addWithUndoDefault } from "../lib/selection.js";
 import { createAnimationSettings } from "../lib/animationSettings.js";
 import { createMiniMap } from "../widgets/miniMap.js";
+import { starRating } from "../widgets/starRating.js";
 
 // Per route: the id of the paper whose panel is showing, to tell a redraw from an open (#152)
 const shown = new WeakMap();
@@ -45,6 +46,8 @@ export function paperPanel(
     animation = null,
     miniMap = true,
     notes = null,
+    // Ratings store (#203 Stage B): "Your rating" stars before the note
+    ratings = null,
   },
 ) {
   const paper = key
@@ -88,6 +91,7 @@ export function paperPanel(
     detailsHref: route.href && ((p) => route.href(p.shortId ?? p.id)),
     onClose: () => route.close(),
     note: notes ? renderPaperNote(paper, { notes, toast }) : null,
+    rating: ratings ? ratingControl(paper, ratings) : null,
     miniMap: miniMap
       ? (relatedPapers) =>
           createMiniMap({
@@ -137,4 +141,17 @@ export function paperPanel(
       el.querySelector(".paper-detail-close")?.focus();
   });
   return el;
+}
+
+/** "Your rating": 1–5 stars bound to the ratings store, following it; `dispose()` stops that. */
+function ratingControl(paper, ratings) {
+  const stars = starRating(ratings.get(paper.id), { label: "Your rating" });
+  stars.addEventListener("input", () => ratings.set(paper.id, stars.value));
+  const follow = () => (stars.value = ratings.get(paper.id));
+  ratings.addEventListener("input", follow);
+  const box = html`<div class="paper-detail-rating">
+    <span class="paper-detail-rating-label">Your rating</span>${stars}
+  </div>`;
+  box.dispose = () => ratings.removeEventListener("input", follow);
+  return box;
 }

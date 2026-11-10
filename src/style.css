@@ -3533,3 +3533,17 @@ body #vg-tooltip-element table tr td.value {
   font-weight: 600;
   white-space: nowrap;
 }
+/* #203 Stage B: "Your rating" in paper details, before My note */
+.paper-detail-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+}
+.paper-detail-rating-label {
+  font: var(--typography-label-caps, var(--typography-meta));
+  color: var(--color-on-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

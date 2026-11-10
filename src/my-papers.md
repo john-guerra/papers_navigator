@@ -536,6 +536,7 @@ const paperDetail = paperPanel(paperParam, {
   route: paperRoute,
   related: (paper) => loadMatrix().then((matrix) => relatedPapers(paper.id, matrix, papers)),
   notes: notesStore,
+  ratings: ratingsStore,
 });
 invalidation.then(paperDetail.dispose);
 ```
