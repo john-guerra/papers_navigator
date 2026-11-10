@@ -92,3 +92,31 @@ describe("renderRatedPapers (#203)", () => {
     );
   });
 });
+
+describe("Papers I rated: Post and Discussion (#203 Stage C)", () => {
+  it("each row can open a Bluesky post panel and links its discussion", () => {
+    const postPanel = vi.fn(() => {
+      const el = document.createElement("section");
+      el.className = "post-panel";
+      return el;
+    });
+    const el = render({
+      postPanel,
+      discussion: new Map([["c", "https://bsky.app/profile/x/post/2"]]),
+    });
+    const row = el.querySelector('[data-paper-id="b"]');
+    row.querySelector(".live-post").click();
+    expect(row.querySelector(".post-panel")).toBeTruthy();
+    expect(postPanel).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "b" }),
+    );
+    expect(
+      el
+        .querySelector('[data-paper-id="c"] a.live-discussion')
+        .getAttribute("href"),
+    ).toBe("https://bsky.app/profile/x/post/2");
+    expect(
+      el.querySelector('[data-paper-id="b"] a.live-discussion'),
+    ).toBeNull();
+  });
+});

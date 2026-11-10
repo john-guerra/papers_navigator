@@ -5,6 +5,7 @@ import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { starRating } from "../widgets/starRating.js";
 import { quickNote } from "./quickNote.js";
 import { titleLink } from "./liveBreak.js";
+import { discussionLink, postToggle } from "./livePost.js";
 import { inPlaceDetails } from "../widgets/compactPaperRow.js";
 import { authorUrl } from "../lib/authors.js";
 
@@ -69,6 +70,8 @@ export function renderSessionView(
     onAdd,
     onOpen,
     detailsHref,
+    // (paper) => the Bluesky post panel (#203 Stage C), or null for no "Post"
+    postPanel = null,
   },
 ) {
   const now = talkAt(session, at);
@@ -84,6 +87,7 @@ export function renderSessionView(
     const note = quickNote(p, { notes });
     // Details in place, collapsed (abstract, affiliations, links) and a jump to the full panel
     const details = inPlaceDetails(p, { authorHref: authorUrl, onOpen });
+    const post = postToggle(p, postPanel);
     disposers.push(() => note.dispose());
     let add = "";
     if (!mineIds.has(p.id)) {
@@ -109,8 +113,11 @@ export function renderSessionView(
       <div class="live-paper-meta">
         ${(p.authors ?? []).map((a) => a.name).join(", ")}
       </div>
-      <div class="live-talk-actions">${stars}${add}${details.toggle}</div>
-      ${note} ${details.panel}
+      <div class="live-talk-actions">
+        ${stars}${add}${details.toggle}${post.button}
+        <span class="live-discussion-slot"></span>
+      </div>
+      ${post.slot} ${note} ${details.panel}
     </li>`;
   });
   const leave = html`<button type="button" class="btn-text live-leave">
@@ -142,5 +149,13 @@ export function renderSessionView(
   el.scrollToNow = () =>
     el.querySelector(".is-now")?.scrollIntoView?.({ block: "center" });
   el.dispose = () => disposers.forEach((d) => d());
+  /** "💬 Discussion" links (#203 Stage C), once the official account's posts are known. */
+  el.setDiscussion = (map) => {
+    for (const row of el.querySelectorAll(".live-talk")) {
+      const url = map?.get(row.dataset.paperId);
+      const slot = row.querySelector(".live-discussion-slot");
+      if (url && !slot.firstChild) slot.append(discussionLink(url));
+    }
+  };
   return el;
 }

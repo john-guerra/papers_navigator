@@ -2,6 +2,7 @@ import { html } from "htl";
 import { formatDay } from "../lib/time.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { titleLink } from "./liveBreak.js";
+import { discussionLink, postToggle } from "./livePost.js";
 
 const when = (p) => p.start ?? p.sessionStart ?? "~";
 
@@ -12,7 +13,18 @@ const when = (p) => p.start ?? p.sessionStart ?? "~";
  */
 export function renderRatedPapers(
   papers,
-  { ratings, notes, minRating = 0, day = null, onFilter, onOpen, detailsHref },
+  {
+    ratings,
+    notes,
+    minRating = 0,
+    day = null,
+    onFilter,
+    onOpen,
+    detailsHref,
+    // Bluesky (#203 Stage C): (paper) => post panel, and paper id → discussion post URL
+    postPanel = null,
+    discussion = null,
+  },
 ) {
   const rated = papers
     .filter((p) => ratings[p.id])
@@ -40,6 +52,7 @@ export function renderRatedPapers(
   box.onchange = report;
   const rows = shown.map((p) => {
     const n = ratings[p.id];
+    const post = postToggle(p, postPanel);
     return html`<li class="rated-paper" data-paper-id=${p.id}>
       <div class="rated-stars" aria-hidden="true">
         ${"★".repeat(n)}${"☆".repeat(5 - n)}
@@ -49,6 +62,11 @@ export function renderRatedPapers(
         ${typePill(p)}${awardMark(p)}${titleLink(p, { detailsHref, onOpen })}
       </div>
       ${notes[p.id] ? html`<p class="rated-note">📝 ${notes[p.id]}</p>` : ""}
+      <div class="rated-actions">
+        ${post.button}
+        ${discussion?.get(p.id) ? discussionLink(discussion.get(p.id)) : ""}
+      </div>
+      ${post.slot}
     </li>`;
   });
   return html`<section class="rated-papers">
