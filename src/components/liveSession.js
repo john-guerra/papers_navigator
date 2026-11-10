@@ -118,6 +118,14 @@ export function renderSessionView(
       ${leave}
     </header>
     ${soon}
+    ${
+      session.event
+        ? html`<p class="live-event-note muted">
+            ${session.event.typeLabel ?? "Session"} · no papers to rate here.
+            ${session.event.url ? html`<a class="live-event-link" href=${session.event.url} target="_blank" rel="noopener">Details on ieeevis.org ↗</a>` : ""}
+          </p>`
+        : ""
+    }
     <ol class="live-talks">
       ${rows}
     </ol>

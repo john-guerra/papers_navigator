@@ -6,6 +6,7 @@ import {
   programDays,
   rankSessions,
   sessionSummary,
+  slotOf,
   slotsAt,
   talkAt,
 } from "../src/lib/live.js";
@@ -319,5 +320,134 @@ describe("worthMoving sort: My Papers, then award, then time (#208 review)", () 
     const { rows } = worthMoving(s, Z, new Date(et("10:40")), mine);
     // y2 starts later (10:44) than x2 (10:42) but is awarded: first
     expect(rows.map((r) => r.paper.id)).toEqual(["y2", "x2"]);
+  });
+});
+
+describe("programDays with sessions without papers (plenaries, panels)", () => {
+  const event = (sessionId, title, from, to, extra = {}) => ({
+    sessionId,
+    type: "plenary",
+    typeLabel: "Plenary",
+    title,
+    room: "Hall America",
+    start: et(from),
+    end: et(to),
+    url: `https://ieeevis.org/s/${sessionId}`,
+    paperIds: [],
+    ...extra,
+  });
+  const sessions = [
+    // All day, over the paper slot: joins it, without stretching it
+    event("visap", "VISAP Exhibition", "09:00", "18:00", { type: "visap" }),
+    // Nothing else on: their own slot, merged as they overlap
+    event("awards", "Awards", "12:15", "13:00"),
+    event("meetup", "Vega meetup", "12:30", "13:30", { type: "meetup" }),
+    // Already in the papers (by id, or listing one of their papers): skipped
+    event("A", "Session A", "10:30", "12:00"),
+    event("beliv-2", "BELIV part 2", "16:00", "17:00", { paperIds: ["c1"] }),
+  ];
+  const withEvents = programDays(papers, TZ, sessions);
+  const wed = withEvents.find((d) => d.date === "2026-11-11");
+
+  it("adds an event to the paper slot it overlaps, keeping the slot's times", () => {
+    const slot = wed.slots[0];
+    expect([slot.start, slot.end]).toEqual([
+      Date.parse(et("10:30")),
+      Date.parse(et("12:00")),
+    ]);
+    const visap = slot.sessions.find((s) => s.sessionId === "visap");
+    expect(visap).toMatchObject({
+      sessionName: "VISAP Exhibition",
+      room: "Hall America",
+      items: [],
+      start: Date.parse(et("09:00")),
+      end: Date.parse(et("18:00")),
+      event: {
+        type: "visap",
+        typeLabel: "Plenary",
+        url: "https://ieeevis.org/s/visap",
+      },
+    });
+  });
+
+  it("gives events with nothing else on their own slot, in time order", () => {
+    expect(wed.slots.map((s) => s.sessions.map((x) => x.sessionId))).toEqual([
+      ["A", "B", "C", "visap"],
+      ["awards", "meetup"],
+      ["D", "visap"],
+    ]);
+    expect(wed.slots[1].end).toBe(Date.parse(et("13:30")));
+    expect(slotsAt(withEvents, new Date(et("12:45")), TZ).now).toBe(
+      wed.slots[1],
+    );
+  });
+
+  it("skips sessions that are already paper sessions", () => {
+    const ids = withEvents.flatMap((d) =>
+      d.slots.flatMap((s) => s.sessions.map((x) => x.sessionId)),
+    );
+    expect(ids.filter((id) => id === "A")).toHaveLength(1);
+    expect(ids).not.toContain("beliv-2");
+  });
+
+  it("without sessions, is the papers' program", () => {
+    expect(programDays(papers, TZ, [])).toEqual(programDays(papers, TZ));
+  });
+});
+
+describe("sessions without papers on Live", () => {
+  const visap = {
+    sessionId: "visap",
+    type: "visap",
+    typeLabel: "Arts Program",
+    title: "VISAP Exhibition",
+    room: "Hall E",
+    start: et("09:00"),
+    end: et("18:00"),
+    url: "https://ieeevis.org/s/visap",
+    paperIds: [],
+  };
+  const all = programDays(papers, TZ, [visap]);
+  const event = all[0].slots[0].sessions.find((s) => s.sessionId === "visap");
+
+  it("summarises an event by its type", () => {
+    expect(sessionSummary(event)).toBe("Arts Program");
+  });
+
+  it("slotOf finds the slot an event is in at `at` (one event, several slots)", () => {
+    expect(slotOf(event, all, new Date(et("14:30"))).start).toBe(
+      Date.parse(et("14:00")),
+    );
+    expect(slotOf(event, all).start).toBe(Date.parse(et("10:30")));
+  });
+});
+
+describe("rankSessions with events", () => {
+  const ev = (sessionId, type, from, room) => ({
+    sessionId,
+    type,
+    typeLabel: type,
+    title: sessionId,
+    room,
+    start: et(from),
+    end: et("15:30"),
+    url: null,
+    paperIds: [],
+  });
+  it("puts a plenary first, then paper sessions, then other events by start, then room", () => {
+    const all = programDays(papers, TZ, [
+      ev("late-meetup", "meetup", "14:30", "Hall A"),
+      ev("panel", "panel", "14:00", "Hall Z"),
+      ev("lunch", "plenary", "14:00", "Hall Y"),
+    ]);
+    const slot = all[0].slots.find((s) =>
+      s.sessions.some((x) => x.sessionId === "D"),
+    );
+    expect(rankSessions(slot, new Set()).map((s) => s.sessionId)).toEqual([
+      "lunch",
+      "D",
+      "panel",
+      "late-meetup",
+    ]);
   });
 });

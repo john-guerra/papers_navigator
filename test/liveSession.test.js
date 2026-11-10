@@ -261,3 +261,41 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 });
+
+describe("session view: a session without papers (plenary, panel)", () => {
+  it("says there are no papers to rate and links to the VIS page", () => {
+    const [own] = programDays(papers, TZ, [
+      {
+        sessionId: "awards",
+        type: "plenary",
+        typeLabel: "Plenary",
+        title: "Awards",
+        room: "Hall America",
+        start: et("17:00"),
+        end: et("18:30"),
+        url: "https://ieeevis.org/s/awards",
+        paperIds: [],
+      },
+    ])[0].slots.filter((s) => s.sessions[0].sessionId === "awards");
+    const awards = own.sessions[0];
+    const el = renderSessionView(awards, {
+      slot: own,
+      at: new Date(et("17:10")),
+      tz: TZ,
+      mineIds: new Set(),
+      ratings: fakeRatings(),
+      notes: fakeNotes(),
+      onSwitch: vi.fn(),
+      onLeave: vi.fn(),
+      onOpen: vi.fn(),
+      detailsHref: () => "#",
+    });
+    document.body.append(el);
+    expect(el.querySelector(".live-session-name").textContent).toBe("Awards");
+    expect(el.querySelectorAll(".live-talk")).toHaveLength(0);
+    const note = el.querySelector(".live-event-note");
+    expect(note.textContent).toContain("Plenary");
+    expect(note.querySelector("a").href).toBe("https://ieeevis.org/s/awards");
+    el.dispose();
+  });
+});

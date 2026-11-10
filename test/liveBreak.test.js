@@ -210,3 +210,53 @@ describe("break view: My Papers toggle on each paper (John)", () => {
     el.remove();
   });
 });
+
+describe("break view: sessions without papers (plenaries, panels)", () => {
+  const awards = {
+    sessionId: "awards",
+    type: "plenary",
+    typeLabel: "Plenary",
+    title: "Awards",
+    room: "Hall America",
+    start: et("17:00"),
+    end: et("18:30"),
+    url: "https://ieeevis.org/year/2026/program/session/awards",
+    paperIds: [],
+  };
+  const withAwards = programDays(papers, TZ, [awards]);
+
+  it("shows the event with its type, room and VIS link, and Going here", () => {
+    const onGoing = vi.fn();
+    const el = renderBreakView(slotsAt(withAwards, new Date(et("16:00")), TZ), {
+      tz: TZ,
+      mineIds: new Set(),
+      detailsHref: () => "#",
+      onGoing,
+      onPickSlot: vi.fn(),
+      onOpen: vi.fn(),
+    });
+    const card = el.querySelector('.live-session[data-session-id="awards"]');
+    expect(card.textContent).toContain("Awards");
+    expect(card.textContent).toContain("📍 Hall America");
+    expect(card.querySelector(".live-summary").textContent).toBe("Plenary");
+    expect(card.querySelector(".live-mine")).toBeNull();
+    expect(card.querySelector(".live-expand")).toBeNull();
+    expect(card.querySelector("a.live-event-link").href).toBe(awards.url);
+    card.querySelector(".live-going").click();
+    expect(onGoing).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: "awards" }),
+    );
+  });
+
+  it('follows My Papers changes without an "of yours" box on the event', () => {
+    const el = renderBreakView(slotsAt(withAwards, new Date(et("16:00")), TZ), {
+      tz: TZ,
+      mineIds: new Set(),
+      detailsHref: () => "#",
+      onGoing: vi.fn(),
+      onPickSlot: vi.fn(),
+      onOpen: vi.fn(),
+    });
+    expect(() => el.setMine(new Set(["d1"]))).not.toThrow();
+  });
+});
