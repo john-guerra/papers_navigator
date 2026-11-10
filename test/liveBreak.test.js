@@ -1,0 +1,177 @@
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from "vitest";
+import { renderBreakView } from "../src/components/liveBreak.js";
+import { liveClockControl } from "../src/components/liveClockControl.js";
+import { fromZonedInput, zonedInput } from "../src/lib/time.js";
+import { programDays, slotsAt } from "../src/lib/live.js";
+
+const TZ = "US/Eastern";
+const et = (hhmm, day = 11) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return new Date(Date.UTC(2026, 10, day, h + 5, m)).toISOString();
+};
+const paper = (id, sessionId, room, start, extra = {}) => ({
+  id,
+  shortId: `s-${id}`,
+  title: `Paper ${id}`,
+  authors: [{ name: `Author ${id}` }],
+  sessionId,
+  sessionName: `Session ${sessionId}`,
+  room,
+  sessionStart: start,
+  sessionEnd: new Date(new Date(start).getTime() + 90 * 60_000).toISOString(),
+  start,
+  end: new Date(new Date(start).getTime() + 15 * 60_000).toISOString(),
+  typeShort: "Full",
+  typeColor: "full",
+  clusterLabel: "Perception",
+  ...extra,
+});
+const papers = [
+  paper("a1", "A", "Room 2", et("10:30")),
+  ...Array.from({ length: 12 }, (_, i) =>
+    paper(`b${i}`, "B", "Room 3", et("10:30")),
+  ),
+  paper("c1", "C", "Room 1", et("10:30")),
+  paper("d1", "D", "Room 1", et("14:00")),
+  paper("e1", "E", "Room 1", et("09:00", 12)),
+];
+const days = programDays(papers, TZ);
+
+const setup = (at, options = {}) => {
+  const handlers = {
+    onGoing: vi.fn(),
+    onPickSlot: vi.fn(),
+    onOpen: vi.fn(),
+  };
+  const el = renderBreakView(slotsAt(days, new Date(at), TZ), {
+    tz: TZ,
+    mineIds: new Set(["b0", "b1"]),
+    detailsHref: (p) => `?paper=${p.shortId}`,
+    ...handlers,
+    ...options,
+  });
+  document.body.append(el);
+  return { el, ...handlers };
+};
+
+describe("renderBreakView (#203)", () => {
+  it("lists the next slot's sessions, most of yours first, the first recommended", () => {
+    const { el } = setup(et("09:00"));
+    const cards = [...el.querySelectorAll(".live-session")];
+    expect(cards.map((c) => c.dataset.sessionId)).toEqual(["B", "C", "A"]);
+    expect(cards[0].querySelector(".live-recommended")).toBeTruthy();
+    expect(cards[1].querySelector(".live-recommended")).toBeNull();
+    expect(cards[0].querySelector(".live-mine").textContent).toContain(
+      "2 of yours",
+    );
+    expect(cards[0].textContent).toContain("Session B");
+    expect(cards[0].textContent).toContain("📍 Room 3");
+    expect(cards[0].querySelector(".live-summary").textContent).toContain(
+      "12 papers",
+    );
+    el.remove();
+  });
+
+  it("expands a session into 10 rows, then Show all", () => {
+    const { el } = setup(et("09:00"));
+    const card = el.querySelector('[data-session-id="B"]');
+    expect(card.querySelectorAll(".live-paper")).toHaveLength(10);
+    const all = card.querySelector(".live-show-all");
+    expect(all.textContent).toContain("Show all 12");
+    all.click();
+    expect(card.querySelectorAll(".live-paper")).toHaveLength(12);
+    // your papers are marked
+    expect(card.querySelectorAll(".live-paper.is-mine").length).toBe(2);
+    el.remove();
+  });
+
+  it("rows have the type pill, title link and authors; a title opens the details", () => {
+    const { el, onOpen } = setup(et("09:00"));
+    const row = el.querySelector('[data-session-id="A"] .live-paper');
+    expect(row.querySelector(".type-pill")).toBeTruthy();
+    expect(row.textContent).toContain("Author a1");
+    expect(row.textContent).toContain("Perception");
+    const link = row.querySelector("a.live-title");
+    expect(link.getAttribute("href")).toBe("?paper=s-a1");
+    link.click();
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "a1" }));
+    el.remove();
+  });
+
+  it("Going here commits to that session", () => {
+    const { el, onGoing } = setup(et("09:00"));
+    el.querySelector('[data-session-id="C"] .live-going').click();
+    expect(onGoing).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: "C" }),
+    );
+    el.remove();
+  });
+
+  it("Later today moves the time to another slot", () => {
+    const { el, onPickSlot } = setup(et("09:00"));
+    const later = el.querySelectorAll(".live-later button");
+    expect(later).toHaveLength(1);
+    expect(later[0].textContent).toContain("14:00");
+    expect(later[0].textContent).toContain("1 session");
+    later[0].click();
+    expect(onPickSlot).toHaveBeenCalledWith(
+      expect.objectContaining({ start: new Date(et("14:00")).getTime() }),
+    );
+    el.remove();
+  });
+
+  it("with nothing left today, says so and offers tomorrow's first slot", () => {
+    const { el, onPickSlot } = setup(et("18:00"));
+    expect(el.textContent).toContain("No more sessions today");
+    const next = el.querySelector(".live-next-day");
+    expect(next.textContent).toContain("Thu Nov 12");
+    next.click();
+    expect(onPickSlot).toHaveBeenCalled();
+    el.remove();
+  });
+
+  it("shows a Now section while a slot runs", () => {
+    const { el } = setup(et("10:40"));
+    expect(el.querySelector(".live-now")).toBeTruthy();
+    expect(el.querySelector(".live-now").textContent).toContain("Session B");
+    el.remove();
+  });
+});
+
+describe("zonedInput / fromZonedInput", () => {
+  it("round-trips a time in the conference timezone", () => {
+    const at = fromZonedInput("2026-11-11T14:05", TZ);
+    expect(at.toISOString()).toBe("2026-11-11T19:05:00.000Z");
+    expect(zonedInput(at, TZ)).toBe("2026-11-11T14:05");
+  });
+});
+
+describe("liveClockControl (#203)", () => {
+  const fakeClock = (override) => {
+    const clock = new EventTarget();
+    clock.value = { at: new Date(et("10:40")), override };
+    clock.setTo = vi.fn();
+    clock.reset = vi.fn();
+    return clock;
+  };
+
+  it("sets the time from the input, in the conference timezone", () => {
+    const clock = fakeClock(false);
+    const el = liveClockControl(clock, { tz: TZ });
+    const input = el.querySelector("input");
+    expect(input.value).toBe("2026-11-11T10:40");
+    input.value = "2026-11-11T14:00";
+    input.dispatchEvent(new Event("change"));
+    expect(clock.setTo).toHaveBeenCalledWith(new Date(et("14:00")));
+    expect(el.querySelector(".live-back-to-now")).toBeNull();
+  });
+
+  it("shows the set time and Back to now while overridden", () => {
+    const clock = fakeClock(true);
+    const el = liveClockControl(clock, { tz: TZ });
+    expect(el.textContent).toContain("Set time: Wed Nov 11 10:40");
+    el.querySelector(".live-back-to-now").click();
+    expect(clock.reset).toHaveBeenCalled();
+  });
+});
