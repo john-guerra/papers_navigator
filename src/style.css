@@ -3525,3 +3525,11 @@ body #vg-tooltip-element table tr td.value {
 .brushable-scatterplot .role-legend-label {
   cursor: pointer;
 }
+/* #203 Stage B: "★4" after a rated paper's title (paper rows, itinerary) */
+.rating-marker {
+  margin-left: var(--spacing-xs);
+  color: var(--color-on-surface);
+  font: var(--typography-meta);
+  font-weight: 600;
+  white-space: nowrap;
+}

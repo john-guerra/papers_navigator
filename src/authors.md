@@ -152,7 +152,13 @@ paperDetail.update?.();
 // Paper notes (#152): on this device only; "📝 Note" marks profile rows, the details edit them
 import { createNotesStore } from "./lib/notes.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
+import { bindRatingMarkers } from "./components/ratingMarkers.js";
+import { createRatingsStore } from "./lib/ratings.js";
 const notesStore = createNotesStore(conference.id);
 invalidation.then(() => notesStore.dispose());
 invalidation.then(bindNoteMarkers(document.querySelector(".author-page"), notesStore));
+// Ratings (#203): "★4" on rated rows; also the stars in paper details
+const ratingsStore = createRatingsStore(conference.id);
+invalidation.then(() => ratingsStore.dispose());
+invalidation.then(bindRatingMarkers(document.querySelector(".author-page"), ratingsStore));
 ```

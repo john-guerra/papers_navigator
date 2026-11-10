@@ -28,6 +28,7 @@ import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFil
 import { createNotesStore, importedNotesText, notesCount } from "./lib/notes.js";
 import { createRatingsStore, importedRatingsText } from "./lib/ratings.js";
 import { bindNoteMarkers } from "./components/noteMarkers.js";
+import { bindRatingMarkers } from "./components/ratingMarkers.js";
 import { renderShareBanner, renderShareButton, renderShareDialog } from "./components/shareDialog.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { arrangeMyPapers } from "./components/myPapersLayout.js";
@@ -398,6 +399,9 @@ invalidation.then(
 // Notes (#152): the list shows each note; the itinerary marks papers with one ("📝 Note")
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-list"), notesStore, { text: true }));
 invalidation.then(bindNoteMarkers(document.querySelector(".mp-schedule"), notesStore));
+// Ratings (#203): "★4" on rated rows
+invalidation.then(bindRatingMarkers(document.querySelector(".mp-list"), ratingsStore));
+invalidation.then(bindRatingMarkers(document.querySelector(".mp-schedule"), ratingsStore));
 ```
 
 ```js
