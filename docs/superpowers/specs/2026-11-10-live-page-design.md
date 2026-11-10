@@ -331,3 +331,22 @@ attended**.
 - **"Rate it?"** for attended papers you haven't rated.
 - **Sort:** My Papers first, then award, then time.
 - The sheet height (60%) and the desktop popover width (320px).
+
+### Rated papers join My Papers (John, Stage D)
+
+- **Stars add the paper to My Papers.** Rating a paper with **stars** (1–5), from the Live page or
+  from paper details on any page, adds it to My Papers if it isn't there yet. The reason is **"★
+  Rated"**, and an Undo toast says "Added to My Papers".
+  - "Remove" takes the paper out of My Papers but keeps its rating.
+  - Clearing the stars doesn't remove the paper from My Papers.
+- **These don't add:** **👎 Not for me** and **attended** papers are never added automatically.
+
+## Stage E (next, own plan): My Papers as the place to review
+
+- **Rated and attended papers.** My Papers shows the papers you rated (stars or 👎) or attended,
+  next to your list.
+- **Rating filter.** Any combination of 1★…5★, 👎 and "Not rated".
+- **"Group by"** for the list: day, reason (★ hand-added / 👥 / 🏫 / 🔍 / ★ Rated), topic (inferred),
+  rating, attended, type, session (or room), award.
+- **The Live page** keeps "Papers I rated" and "Papers I attended" for the moment, and links to My
+  Papers for reviewing.
