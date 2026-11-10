@@ -697,7 +697,7 @@ const mapInput = await BrushableScatterPlot(positioned, {
   size: hasQuery ? "score" : null,
   // John: three times the default upper bound (80 → 240) so similarity reads at a glance
   sizeRange: [12, 240],
-  // Hues for the 3 largest categories of the whole program, so filtering never repaints them
+  // Hues for the 10 largest categories of the whole program, so filtering never repaints them
   categories: colorField && colorField !== "score" ? topCategories(withLiveClusters(papers), colorField) : undefined,
   // Read once (not reactive); later changes go through the "mine" signal below
   ringIds: store.value.map((d) => d.id),
@@ -1059,6 +1059,12 @@ if (splitRoom != null) {
     if (!phone.matches || layout.classList.contains("select-mode")) return;
     // Taps on controls in the map area (Color by, labels) aren't point taps
     if (event.target.closest("button, select, input, label, a")) return;
+    // A tap on the category legend (#202 review) toggles that category, never a paper under it
+    const legendValue = mapInput.legendValueAt?.(event.clientX, event.clientY);
+    if (legendValue !== undefined) {
+      if (legendValue !== null) mapInput.toggleCategory(legendValue);
+      return;
+    }
     const paper = mapInput.pointAt(event.clientX, event.clientY);
     if (paper) mapInput.pinNeighbours(paper.id);
     else {

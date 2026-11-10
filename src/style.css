@@ -60,6 +60,13 @@
   --color-viz-cat-1: #2a78d6;
   --color-viz-cat-2: #eb6834;
   --color-viz-cat-3: #1baf7a;
+  --color-viz-cat-4: #eda100;
+  --color-viz-cat-5: #e87ba4;
+  --color-viz-cat-6: #008300;
+  --color-viz-cat-7: #6250d6;
+  --color-viz-cat-8: #e34948;
+  --color-viz-cat-9: #00a3b5;
+  --color-viz-cat-10: #8a5a00;
   --color-viz-cat-other: #c9c3bb;
   /* Type pill caps (#199): the official program's hues, muted; decorative (the label is ink) */
   --color-type-full: #5b7fae;
@@ -158,6 +165,13 @@
   --color-viz-cat-1: #3987e5;
   --color-viz-cat-2: #d95926;
   --color-viz-cat-3: #199e70;
+  --color-viz-cat-4: #c98500;
+  --color-viz-cat-5: #d55181;
+  --color-viz-cat-6: #008300;
+  --color-viz-cat-7: #9085e9;
+  --color-viz-cat-8: #e66767;
+  --color-viz-cat-9: #00a3b5;
+  --color-viz-cat-10: #a8762a;
   --color-viz-cat-other: #5a554f;
   --color-type-full: #7f9fcc;
   --color-type-short: #7fbcb1;
@@ -196,6 +210,13 @@
     --color-viz-cat-1: #3987e5;
     --color-viz-cat-2: #d95926;
     --color-viz-cat-3: #199e70;
+    --color-viz-cat-4: #c98500;
+    --color-viz-cat-5: #d55181;
+    --color-viz-cat-6: #008300;
+    --color-viz-cat-7: #9085e9;
+    --color-viz-cat-8: #e66767;
+    --color-viz-cat-9: #00a3b5;
+    --color-viz-cat-10: #a8762a;
     --color-viz-cat-other: #5a554f;
     --color-type-full: #7f9fcc;
     --color-type-short: #7fbcb1;
@@ -3497,4 +3518,10 @@ body #vg-tooltip-element table tr td.value {
 .rated-note {
   margin: var(--spacing-xs) 0 0;
   font: var(--typography-body-sm);
+}
+
+/* Color by a category (#200): pointing at a legend entry highlights its papers; a click pins it */
+.brushable-scatterplot .role-legend-symbol,
+.brushable-scatterplot .role-legend-label {
+  cursor: pointer;
 }
