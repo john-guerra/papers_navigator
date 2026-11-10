@@ -3305,8 +3305,6 @@ body #vg-tooltip-element table tr td.value {
 .live-going,
 .live-later button,
 .live-next-day,
-.live-switch-option,
-.live-switch summary,
 .live-leave,
 .live-add {
   min-height: 44px;
@@ -3348,8 +3346,7 @@ body #vg-tooltip-element table tr td.value {
 }
 .live-where,
 .live-summary,
-.live-paper-meta,
-.live-switch-option span {
+.live-paper-meta {
   color: var(--color-on-surface-muted);
   font: var(--typography-body-sm);
 }
@@ -3419,43 +3416,6 @@ body #vg-tooltip-element table tr td.value {
   text-align: left;
 }
 /* Session view */
-.live-switch {
-  position: sticky;
-  top: var(--observablehq-header-height, 0);
-  z-index: 2;
-  margin: var(--spacing-sm) 0;
-  border: 1px solid var(--color-outline);
-  border-radius: var(--rounded-md);
-  background: var(--color-surface);
-}
-.live-switch summary {
-  display: flex;
-  align-items: center;
-  padding: 0 var(--spacing-md);
-  cursor: pointer;
-  font: var(--typography-body-sm);
-  font-weight: 600;
-}
-/* Open, the list isn't sticky: on a short phone it would cover the talks */
-.live-switch[open] {
-  position: static;
-}
-.live-switch-options {
-  display: grid;
-  gap: var(--spacing-xs);
-  padding: 0 var(--spacing-sm) var(--spacing-sm);
-}
-.live-switch-option {
-  display: grid;
-  justify-items: start;
-  gap: 2px;
-  width: 100%;
-  padding: var(--spacing-sm);
-  text-align: left;
-}
-.live-switch-option .live-switch-name {
-  color: var(--color-on-surface);
-}
 .live-talk.is-now {
   margin-left: calc(-1 * var(--spacing-sm));
   padding-left: calc(var(--spacing-sm) - 3px);
@@ -3721,4 +3681,162 @@ body #vg-tooltip-element table tr td.value {
   align-items: center;
   min-height: 44px;
   justify-self: start;
+}
+
+/* #208 Soon: worth moving for, over the session view (a sheet on phones, a popover on desktop) */
+.soon-widget {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+.soon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-height: 44px;
+  padding: 0 var(--spacing-md);
+  border: 0;
+  border-radius: var(--rounded-full, 999px);
+  background: var(--color-on-surface);
+  color: var(--color-surface);
+  font: var(--typography-label-md);
+  font-weight: 600;
+  box-shadow: var(--elevation-1, 0 2px 8px rgba(0, 0, 0, 0.2));
+}
+.soon-badge {
+  min-width: 1.4em;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  text-align: center;
+}
+.soon-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(36 30 26 / 25%);
+}
+.soon-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 21;
+  width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-md);
+  background: var(--color-surface);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+  font: var(--typography-body-sm);
+}
+.soon-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-outline);
+  background: var(--color-surface);
+}
+.soon-title {
+  margin: 0;
+  font: var(--typography-headline);
+  font-size: 1.05rem;
+  font-style: italic;
+}
+.soon-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+.soon-body {
+  padding: 0 var(--spacing-md) var(--spacing-md);
+}
+.soon-rows,
+.soon-talks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.soon-row {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-outline);
+  text-align: left;
+}
+.soon-row:first-child {
+  border-top: 0;
+}
+.soon-when {
+  font-weight: 600;
+}
+.soon-row .paper-head {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.soon-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.soon-chip {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-surface-sunken);
+  font: var(--typography-meta);
+}
+.soon-go {
+  min-height: 44px;
+  margin-top: 2px;
+}
+.soon-subtitle {
+  margin: var(--spacing-md) 0 var(--spacing-xs);
+  font: var(--typography-label-caps, var(--typography-meta));
+  color: var(--color-on-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.soon-now {
+  border-top: 1px solid var(--color-outline);
+}
+.soon-now summary {
+  display: block;
+  min-height: 44px;
+  padding: var(--spacing-xs) 0;
+  cursor: pointer;
+  text-align: left;
+}
+.soon-now-body {
+  display: grid;
+  gap: var(--spacing-xs);
+  justify-items: start;
+  padding-bottom: var(--spacing-sm);
+}
+@media (max-width: 639.98px) {
+  /* Phones: the button floats above the tab bar; the panel is a bottom sheet over the view */
+  .soon-widget {
+    position: fixed;
+    right: var(--spacing-md);
+    bottom: calc(
+      var(--tabbar-height, 56px) + env(safe-area-inset-bottom) +
+        var(--spacing-md)
+    );
+    z-index: 19;
+  }
+  .soon-panel {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: calc(var(--tabbar-height, 56px) + env(safe-area-inset-bottom));
+    left: 0;
+    width: auto;
+    max-height: 60vh;
+    border-radius: 14px 14px 0 0;
+  }
 }

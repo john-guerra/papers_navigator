@@ -161,6 +161,8 @@ display(liveView);
 // keeps its focus. In a session, "Add to My Papers" updates its own row (no rebuild).
 const at = clockState.at;
 const mineIds = new Set(followed.map((d) => d.id));
+// Why each paper is in My Papers (hand-added, watch rules), for Soon's reason chips (#208)
+const mine = new Map(followed.map((d) => [d.id, d]));
 const session = activeSession(checkInState, days, at, tz);
 const slots = slotsAt(days, at, tz);
 const key = session
@@ -176,6 +178,7 @@ liveView.show(
           at,
           tz,
           mineIds,
+          mine,
           ratings: ratingsStore,
           notes: notesStore,
           onSwitch: commit,
@@ -199,6 +202,8 @@ liveView.show(
         }),
   at,
 );
+// My Papers changed: Soon's reasons follow (#208)
+liveView.current?.setMine?.(mine);
 // Discussion links, once known (a rebuilt view gets them again here)
 if (discussion) liveView.current?.setDiscussion?.(discussion);
 // Scroll to the talk on now once per check-in

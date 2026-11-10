@@ -68,6 +68,10 @@ const setup = (options = {}) => {
     at: new Date(et("10:50")),
     tz: TZ,
     mineIds: new Set(["b1", "a3"]),
+    mine: new Map([
+      ["b1", { id: "b1", manual: true, reasons: ["★ Added by hand"] }],
+      ["a3", { id: "a3", manual: true, reasons: ["★ Added by hand"] }],
+    ]),
     ratings,
     notes: fakeNotes(),
     detailsHref: (p) => `?paper=${p.shortId}`,
@@ -125,24 +129,6 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
-  it("Switch room lists the other rooms with their talk now and your next paper there", () => {
-    const { el, onSwitch } = setup();
-    const bar = el.querySelector(".live-switch");
-    expect(bar.querySelector("summary").textContent).toContain(
-      "Switch room · 2 others",
-    );
-    const options = [...bar.querySelectorAll(".live-switch-option")];
-    expect(options.map((o) => o.dataset.sessionId)).toEqual(["A", "C"]);
-    expect(options[0].textContent).toContain("Now: Paper a2");
-    expect(options[0].textContent).toContain("1 of yours");
-    expect(options[0].textContent).toContain("Yours next: Paper a3 · 11:00");
-    options[0].click();
-    expect(onSwitch).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId: "A" }),
-    );
-    el.remove();
-  });
-
   it("setNow moves the highlight without rebuilding the rows (keeps typing)", () => {
     const { el } = setup();
     const rows = [...el.querySelectorAll(".live-talk")];
@@ -150,18 +136,6 @@ describe("renderSessionView (#203)", () => {
     expect(rows[2].classList).toContain("is-now");
     expect(rows[1].classList).not.toContain("is-now");
     expect([...el.querySelectorAll(".live-talk")]).toEqual(rows);
-    el.remove();
-  });
-
-  it("picking a room closes the Switch room list first (#203 Stage B)", () => {
-    const seen = [];
-    const { el } = setup({
-      onSwitch: () => seen.push(el.querySelector(".live-switch").open),
-    });
-    const bar = el.querySelector(".live-switch");
-    bar.open = true;
-    bar.querySelector(".live-switch-option").click();
-    expect(seen).toEqual([false]);
     el.remove();
   });
 
@@ -219,6 +193,35 @@ describe("renderSessionView (#203)", () => {
     // idempotent
     el.setDiscussion(new Map([["b3", "https://bsky.app/profile/x/post/1"]]));
     expect(el.querySelectorAll("a.live-discussion")).toHaveLength(1);
+    el.remove();
+  });
+
+  it("Soon replaces Switch room: worth moving for, and Go there switches (#208)", () => {
+    const { el, onSwitch } = setup();
+    expect(el.querySelector(".live-switch")).toBeNull();
+    const soon = el.querySelector(".soon-widget");
+    // a3 (yours) starts at 11:00 in Room 2, within the next two talks
+    expect(soon.querySelector(".soon-badge").textContent).toBe("1");
+    soon.querySelector(".soon-button").click();
+    soon.querySelector('.soon-row[data-paper-id="a3"] .soon-go').click();
+    expect(onSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: "A" }),
+    );
+    el.remove();
+  });
+
+  it("setMine updates Soon's reasons in place (My Papers changed)", () => {
+    const { el } = setup();
+    el.setMine(new Map());
+    expect(el.querySelector(".soon-badge")).toBeNull();
+    el.remove();
+  });
+
+  it("setNow updates Soon in place", () => {
+    const { el } = setup();
+    el.setNow(new Date(et("11:05")));
+    // a3 is now 5 min in: no longer upcoming
+    expect(el.querySelector(".soon-badge")).toBeNull();
     el.remove();
   });
 

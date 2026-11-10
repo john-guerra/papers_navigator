@@ -1,9 +1,10 @@
 import { html } from "htl";
 import { formatTime } from "../lib/time.js";
-import { rankSessions, talkAt } from "../lib/live.js";
+import { talkAt } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { starRating } from "../widgets/starRating.js";
 import { quickNote } from "./quickNote.js";
+import { soonWidget } from "./soonWidget.js";
 import { titleLink } from "./liveBreak.js";
 import { discussionLink, postToggle } from "./livePost.js";
 import { inPlaceDetails } from "../widgets/compactPaperRow.js";
@@ -11,49 +12,12 @@ import { authorUrl } from "../lib/authors.js";
 
 const ms = (iso) => (iso ? new Date(iso).getTime() : NaN);
 
-/** "Switch room · n others": the slot's other sessions, their talk now and your next paper. */
-function switchBar(session, { slot, at, tz, mineIds, onSwitch }) {
-  const others = rankSessions(slot, mineIds).filter(
-    (s) => s.sessionId !== session.sessionId,
-  );
-  if (!others.length) return "";
-  const t = at.getTime();
-  const options = others.map((s) => {
-    const now = talkAt(s, at);
-    const yours = s.items.find((p) => mineIds.has(p.id) && ms(p.start) > t);
-    const b = html`<button
-      type="button"
-      class="live-switch-option"
-      data-session-id=${s.sessionId}
-    >
-      <span class="live-switch-room"
-        >📍 ${s.room ?? "Room TBA"} · <strong>${s.mine}</strong> of yours</span
-      >
-      <span class="live-switch-name">${s.sessionName}</span>
-      ${now ? html`<span class="live-switch-now">Now: ${now.title}</span>` : ""}
-      ${yours ? html`<span class="live-switch-yours">Yours next: ${yours.title} · ${formatTime(yours.start, tz)}</span>` : ""}
-    </button>`;
-    b.onclick = () => {
-      // Close the list first: open, it can cover the talks on a short phone
-      b.closest("details").open = false;
-      onSwitch(s);
-    };
-    return b;
-  });
-  return html`<details class="live-switch">
-    <summary>
-      Switch room · ${others.length} ${others.length === 1 ? "other" : "others"}
-    </summary>
-    <div class="live-switch-options">${options}</div>
-  </details>`;
-}
-
 /**
  * The Live page's session view (#203), once you're "Going here": the session's papers in talk
  * order, the talk at `at` highlighted (`is-now`; `el.setNow(at)` moves it in place,
  * `el.scrollToNow()`), each with 1–5 stars
  * (`ratings`), a quick note (`notes`) and "Add to My Papers" when it isn't there (`onAdd`);
- * "Switch room" (`onSwitch(session)`) and "Leave session" (`onLeave`). `el.dispose()` saves
+ * "Soon" (worth moving for; `onSwitch(session)`) and "Leave session" (`onLeave`). `el.dispose()` saves
  * pending notes and stops following the stores.
  */
 export function renderSessionView(
@@ -73,9 +37,22 @@ export function renderSessionView(
     // (paper) => the Bluesky post panel (#203 Stage C), or null for no "Post"
     postPanel = null,
     onClosePost,
+    // My Papers entries by id (why each is there), for Soon (#208)
+    mine = new Map(),
   },
 ) {
   const now = talkAt(session, at);
+  // "Soon" (#208): worth moving for, over the view; replaces the Switch room list
+  const soon = soonWidget({
+    slot,
+    session,
+    at,
+    mine,
+    tz,
+    onSwitch,
+    onOpen,
+    detailsHref,
+  });
   const disposers = [];
   const rows = session.items.map((p) => {
     const stars = starRating(ratings.get(p.id), {
@@ -136,19 +113,23 @@ export function renderSessionView(
       </div>
       ${leave}
     </header>
-    ${switchBar(session, { slot, at, tz, mineIds, onSwitch })}
+    ${soon}
     <ol class="live-talks">
       ${rows}
     </ol>
   </section>`;
   // The clock ticks: move the highlight in place, so a note being typed keeps its focus
   el.setNow = (time) => {
+    soon.update(time);
     const current = talkAt(session, time);
     for (const row of el.querySelectorAll(".live-talk"))
       row.classList.toggle("is-now", row.dataset.paperId === current?.id);
   };
   el.scrollToNow = () =>
     el.querySelector(".is-now")?.scrollIntoView?.({ block: "center" });
+  disposers.push(() => soon.dispose());
+  /** My Papers changed (#208): Soon's reasons follow, without rebuilding the view. */
+  el.setMine = (next) => soon.update(undefined, next);
   el.dispose = () => disposers.forEach((d) => d());
   /** "💬 Discussion" links (#203 Stage C), once the official account's posts are known. */
   el.setDiscussion = (map) => {
