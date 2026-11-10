@@ -9,7 +9,7 @@ export const SESSION_ROWS = 10;
 const plural = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 /** A real link to the paper's details; a plain click opens them in place. */
-function titleLink(p, { detailsHref, onOpen }) {
+export function titleLink(p, { detailsHref, onOpen }) {
   const a = html`<a class="live-title" href=${detailsHref(p)}>${p.title}</a>`;
   a.onclick = (event) => {
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey)
