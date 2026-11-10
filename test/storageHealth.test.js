@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  backupDue,
   backupNudge,
+  dataTotal,
+  dismissBackup,
   isIosSafariTab,
   requestPersistence,
   resetStorageHealth,
@@ -129,6 +132,64 @@ describe("backupNudge counts your list too (review fix)", () => {
         now: new Date("2026-11-13T15:00:00Z"),
         lastDay: "2026-11-13",
         tz: "US/Eastern",
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("shared backup reminder for My Papers and Live (minor 1)", () => {
+  const memory = () => {
+    const m = new Map();
+    return {
+      getItem: (k) => m.get(k) ?? null,
+      setItem: (k, v) => m.set(k, String(v)),
+      removeItem: (k) => m.delete(k),
+    };
+  };
+  const stores = (n) => ({
+    followed: { value: [] },
+    ratings: {
+      value: Object.fromEntries(
+        Array.from({ length: n }, (_, i) => [`p${i}`, 4]),
+      ),
+    },
+    notes: { value: {} },
+    disliked: { value: {} },
+    attended: { value: { x: { off: true } } },
+  });
+  const base = {
+    conferenceId: "c",
+    now: new Date("2026-11-11T15:00:00Z"),
+    lastDay: "2026-11-13",
+    tz: "US/Eastern",
+  };
+  it("dataTotal counts your list, ratings, notes, 👎 and attended (not unticked ones)", () => {
+    const s = stores(3);
+    s.followed.value = [{ id: "a" }];
+    s.attended.value.y = { at: "x", how: "auto" };
+    expect(dataTotal(s)).toBe(5);
+  });
+  it("backupDue reads the last export and dismissal; dismissBackup quiets it", () => {
+    const storage = memory();
+    expect(backupDue({ ...base, total: 12, storage })).toBe(true);
+    storage.setItem(
+      "papersNavigator:c:lastExport",
+      JSON.stringify({ at: "2026-11-10T10:00:00Z", count: 5 }),
+    );
+    expect(backupDue({ ...base, total: 12, storage })).toBe(false);
+    expect(backupDue({ ...base, total: 15, storage })).toBe(true);
+    dismissBackup("c", base.now, storage);
+    expect(backupDue({ ...base, total: 15, storage })).toBe(false);
+    // unreadable storage: still decides, quietly
+    expect(
+      backupDue({
+        ...base,
+        total: 15,
+        storage: {
+          getItem: () => {
+            throw new Error("blocked");
+          },
+        },
       }),
     ).toBe(true);
   });

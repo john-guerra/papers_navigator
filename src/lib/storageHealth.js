@@ -67,3 +67,64 @@ export function backupNudge({
 export function isIosSafariTab(nav = globalThis.navigator) {
   return /iPhone|iPad|iPod/.test(nav?.userAgent ?? "") && !nav?.standalone;
 }
+
+/**
+ * How many things you'd lose without a backup: your list, ratings, notes, 👎 and attended papers
+ * (not unticked ones). Takes the stores (`.value`), as My Papers and Live have them.
+ */
+export function dataTotal({ followed, ratings, notes, disliked, attended }) {
+  const size = (store) => Object.keys(store?.value ?? {}).length;
+  return (
+    (followed?.value?.length ?? 0) +
+    size(ratings) +
+    size(notes) +
+    size(disliked) +
+    Object.values(attended?.value ?? {}).filter((e) => !e?.off).length
+  );
+}
+
+const readJson = (storage, key) => {
+  try {
+    return JSON.parse(storage?.getItem(key) ?? "null");
+  } catch {
+    return null;
+  }
+};
+
+/** backupNudge with the last export and dismissal read from this browser (both pages). */
+export function backupDue({
+  conferenceId,
+  total,
+  now = new Date(),
+  lastDay,
+  tz,
+  storage = globalThis.localStorage,
+}) {
+  return backupNudge({
+    total,
+    lastExport: readJson(storage, `papersNavigator:${conferenceId}:lastExport`),
+    dismissedAt: readJson(
+      storage,
+      `papersNavigator:${conferenceId}:backupDismissed`,
+    ),
+    now,
+    lastDay,
+    tz,
+  });
+}
+
+/** "Not now" on the reminder: quiet for 24 h on every page. */
+export function dismissBackup(
+  conferenceId,
+  now = new Date(),
+  storage = globalThis.localStorage,
+) {
+  try {
+    storage.setItem(
+      `papersNavigator:${conferenceId}:backupDismissed`,
+      JSON.stringify(now.toISOString()),
+    );
+  } catch {
+    // shows again next time
+  }
+}

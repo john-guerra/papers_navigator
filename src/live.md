@@ -5,7 +5,7 @@ toc: false
 
 ```js
 import { dataNote, storageBanner } from "./components/dataSafety.js";
-import { requestPersistence } from "./lib/storageHealth.js";
+import { backupDue, dataTotal, dismissBackup, isIosSafariTab, requestPersistence } from "./lib/storageHealth.js";
 import { createFollowedStore } from "./lib/followed.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { createNotesStore } from "./lib/notes.js";
@@ -322,7 +322,18 @@ display(attendedBox);
 ```
 
 ```js
-display(dataNote({ exportHref: "my-papers.html#export" }));
+// The note, and the backup reminder when it's due (Live is where notes and ratings pile up);
+// Export lives on My Papers (#export highlights it). Redrawn as your data changes.
+ratingsState, notesState, attendedState, dislikedState;
+const liveDataTotal = dataTotal({ followed: followedStore, ratings: ratingsStore, notes: notesStore, disliked: dislikedStore, attended: attendedStore });
+display(
+  dataNote({
+    exportHref: "my-papers.html#export",
+    nudge: backupDue({ conferenceId: conference.id, total: liveDataTotal, lastDay: conference.days?.at(-1), tz }),
+    ios: isIosSafariTab(),
+    onDismiss: () => dismissBackup(conference.id),
+  }),
+);
 // Ask the browser to keep this site's data once you have notes or ratings
 if (Object.keys(ratingsState).length || Object.keys(notesState).length) requestPersistence();
 ```
