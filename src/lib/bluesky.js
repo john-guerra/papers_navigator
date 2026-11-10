@@ -51,27 +51,34 @@ export function composePost({
   link = "",
 }) {
   const shown = (name) => (handles[name] ? `@${handles[name]}` : name);
-  const parts = { title, rating, note: note.trim(), link };
-  let text = build({ ...parts, authors: authors.map(shown).join(", ") });
+  const parts = {
+    title,
+    rating,
+    note: note.trim(),
+    link,
+    authors: authors.map(shown).join(", "),
+  };
+  let text = build(parts);
+  // 1. The authors: your picked handles, then the first other author, then "et al."
   if (graphemes(text) > POST_LIMIT && authors.length > 1) {
     const firstOther = authors.find((a) => !handles[a]);
     const kept = [
-      ...(firstOther ? [firstOther] : []),
       ...authors.filter((a) => handles[a]),
+      ...(firstOther ? [firstOther] : []),
     ];
-    const short =
+    parts.authors =
       kept.map(shown).join(", ") +
       (kept.length < authors.length ? " et al." : "");
-    parts.authors = short;
     text = build(parts);
-    const extra = graphemes(text) - POST_LIMIT;
-    if (extra > 0) {
-      const chars = split(title);
-      const keep = Math.max(10, chars.length - extra - 1);
-      if (keep < chars.length) {
-        parts.title = chars.slice(0, keep).join("").trimEnd() + "…";
-        text = build(parts);
-      }
+  }
+  // 2. The title ("…"); never the note or the link
+  const extra = graphemes(text) - POST_LIMIT;
+  if (extra > 0) {
+    const chars = split(title);
+    const keep = Math.max(10, chars.length - extra - 1);
+    if (keep < chars.length) {
+      parts.title = chars.slice(0, keep).join("").trimEnd() + "…";
+      text = build(parts);
     }
   }
   const length = graphemes(text);

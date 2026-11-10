@@ -43,7 +43,7 @@ describe("composePost (#203 Stage C)", () => {
       note: "n".repeat(60),
       link: "https://ieeevis.org/year/2026/program/content/3121c4fc-2fc3-4c4c-a716-fc64018061ec",
     });
-    expect(text).toContain("by Author Number 0, @five.bsky.social et al.");
+    expect(text).toContain("by @five.bsky.social, Author Number 0 et al.");
     expect(text).toContain("n".repeat(60));
     expect(length).toBeLessThanOrEqual(300);
     expect(over).toBe(false);
@@ -267,5 +267,19 @@ describe("createHandlesStore (#203 Stage C)", () => {
     });
     storage.setItem("papersNavigator:ieeevis2026:bskyHandles", "{nope");
     expect(createHandlesStore("ieeevis2026", storage).value).toEqual({});
+  });
+});
+
+describe("composePost review fixes (#203 Stage C)", () => {
+  it("shortens the title of a single-author paper too", () => {
+    const r = composePost({
+      title: "W".repeat(150),
+      authors: ["Ann"],
+      note: "n".repeat(150),
+      link: "https://x.org/" + "l".repeat(40),
+    });
+    expect(r.text).toMatch(/"W+…" by Ann/);
+    expect(r.length).toBeLessThanOrEqual(300);
+    expect(r.over).toBe(false);
   });
 });

@@ -120,3 +120,13 @@ describe("Papers I rated: Post and Discussion (#203 Stage C)", () => {
     ).toBeNull();
   });
 });
+
+describe("Papers I rated keeps open Post panels across redraws (#203 Stage C review)", () => {
+  it("re-opens the panels listed in openPosts", () => {
+    const kept = document.createElement("section");
+    kept.className = "post-panel";
+    const el = render({ postPanel: () => kept, openPosts: new Set(["c"]) });
+    expect(el.querySelector('[data-paper-id="c"] .post-panel')).toBe(kept);
+    expect(el.querySelector('[data-paper-id="b"] .post-panel')).toBeNull();
+  });
+});

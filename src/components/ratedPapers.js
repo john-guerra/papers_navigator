@@ -24,6 +24,9 @@ export function renderRatedPapers(
     // Bluesky (#203 Stage C): (paper) => post panel, and paper id → discussion post URL
     postPanel = null,
     discussion = null,
+    // Ids whose Post panel was open (kept across redraws), and its close callback
+    openPosts = null,
+    onClosePost,
   },
 ) {
   const rated = papers
@@ -52,7 +55,10 @@ export function renderRatedPapers(
   box.onchange = report;
   const rows = shown.map((p) => {
     const n = ratings[p.id];
-    const post = postToggle(p, postPanel);
+    const post = postToggle(p, postPanel, {
+      open: Boolean(openPosts?.has(p.id)),
+      onClose: onClosePost,
+    });
     return html`<li class="rated-paper" data-paper-id=${p.id}>
       <div class="rated-stars" aria-hidden="true">
         ${"★".repeat(n)}${"☆".repeat(5 - n)}

@@ -72,6 +72,7 @@ export function renderSessionView(
     detailsHref,
     // (paper) => the Bluesky post panel (#203 Stage C), or null for no "Post"
     postPanel = null,
+    onClosePost,
   },
 ) {
   const now = talkAt(session, at);
@@ -87,7 +88,7 @@ export function renderSessionView(
     const note = quickNote(p, { notes });
     // Details in place, collapsed (abstract, affiliations, links) and a jump to the full panel
     const details = inPlaceDetails(p, { authorHref: authorUrl, onOpen });
-    const post = postToggle(p, postPanel);
+    const post = postToggle(p, postPanel, { onClose: onClosePost });
     disposers.push(() => note.dispose());
     let add = "";
     if (!mineIds.has(p.id)) {

@@ -2,9 +2,10 @@ import { html } from "htl";
 
 /**
  * "Post" (#203 Stage C) for a Live row: a toggle and the slot it fills with `postPanel(paper)`
- * (built on first open, removed on close). `{button, slot}`; without `postPanel`, empty.
+ * on open (`open`: start open) and empties on close (`onClose(paper)`). `{button, slot}`;
+ * without `postPanel`, empty.
  */
-export function postToggle(paper, postPanel) {
+export function postToggle(paper, postPanel, { open = false, onClose } = {}) {
   if (!postPanel) return { button: "", slot: "" };
   const slot = html`<div class="live-post-slot"></div>`;
   const button = html`<button
@@ -14,11 +15,17 @@ export function postToggle(paper, postPanel) {
   >
     Post
   </button>`;
-  button.onclick = () => {
-    const open = !slot.firstChild;
-    slot.replaceChildren(...(open ? [postPanel(paper)] : []));
-    button.setAttribute("aria-expanded", String(open));
+  const show = (on) => {
+    slot.replaceChildren(...(on ? [postPanel(paper)] : []));
+    button.setAttribute("aria-expanded", String(on));
   };
+  button.onclick = () => {
+    const on = !slot.firstChild;
+    show(on);
+    if (!on) onClose?.(paper);
+  };
+  // A panel kept across a list redraw (the page caches it) starts open
+  if (open) show(true);
   return { button, slot };
 }
 

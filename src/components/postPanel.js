@@ -31,6 +31,8 @@ export function renderPostPanel(
     share = globalThis.navigator ?? {},
     open = (...args) => globalThis.open?.(...args),
     clipboard = globalThis.navigator?.clipboard,
+    // Stores to follow (ratings, notes): the draft updates while you haven't edited it
+    watch = [],
   } = {},
 ) {
   const id = ++uid;
@@ -43,13 +45,30 @@ export function renderPostPanel(
   const count = html`<span class="post-count" aria-live="polite"></span>`;
   const status = html`<p class="post-status muted" aria-live="polite"></p>`;
   let edited = false;
+  // `rating` and `note` may be getters, read each time the draft is rebuilt
+  const now = (v) => (typeof v === "function" ? v() : v);
+  // Once you edit the draft it's yours: say so when a change can't reach it (review #4)
+  const editedNote = html`<p class="post-edited muted" aria-live="polite"></p>`;
+  const reset = html`<button type="button" class="btn-text post-reset" hidden>
+    Reset draft
+  </button>`;
+  reset.onclick = () => {
+    edited = false;
+    reset.hidden = true;
+    editedNote.textContent = "";
+    refresh();
+  };
+  const grow = () => {
+    area.style.height = "auto";
+    if (area.scrollHeight) area.style.height = `${area.scrollHeight}px`;
+  };
   const draft = () =>
     composePost({
       title: paper.title,
       authors: names,
       handles: Object.fromEntries(names.map((n) => [n, handles.get(n)])),
-      rating,
-      note,
+      rating: now(rating),
+      note: now(note),
       link: linkSetting.value && toolLink ? toolLink : (paper.url ?? ""),
     }).text;
   const recount = () => {
@@ -59,12 +78,19 @@ export function renderPostPanel(
   };
   const refresh = () => {
     if (!edited) area.value = draft();
+    else if (area.value !== draft())
+      editedNote.textContent =
+        "You edited the draft: tags, rating, note and link changes aren't applied to it.";
     recount();
+    grow();
   };
   area.addEventListener("input", () => {
     edited = true;
+    reset.hidden = false;
     recount();
+    grow();
   });
+  for (const store of watch) store.addEventListener("input", refresh);
 
   // Link: the conference page or this tool
   const radio = (value, label) => {
@@ -188,16 +214,34 @@ export function renderPostPanel(
 
   // Sending
   const canShare = typeof share?.share === "function";
+  // Photos only where the device can share them (review #5)
+  const canSharePhotos = (() => {
+    try {
+      return (
+        canShare &&
+        Boolean(
+          share.canShare?.({
+            files: [new File([""], "photo.jpg", { type: "image/jpeg" })],
+          }),
+        )
+      );
+    } catch {
+      return false;
+    }
+  })();
   const shareButton = canShare
     ? html`<button type="button" class="post-share">Share…</button>`
     : "";
   if (shareButton)
     shareButton.onclick = async () => {
       status.textContent = "";
-      const data =
-        photos.length && share.canShare?.({ files: photos })
-          ? { text: area.value, files: photos }
-          : { text: area.value };
+      const withPhotos = photos.length && share.canShare?.({ files: photos });
+      const data = withPhotos
+        ? { text: area.value, files: photos }
+        : { text: area.value };
+      if (photos.length && !withPhotos)
+        status.textContent =
+          "These photos can't be shared from here: the text goes alone, add them in Bluesky.";
       try {
         await share.share(data);
       } catch (error) {
@@ -209,13 +253,15 @@ export function renderPostPanel(
   const copyOpen = html`<button type="button" class="post-copy-open">
     Copy text & open Bluesky
   </button>`;
-  copyOpen.onclick = async () => {
-    try {
-      await clipboard?.writeText(area.value);
-    } catch {
-      // The compose page gets the text anyway
-    }
+  // Open first, in the tap itself (an await before it can get a popup blocked on iOS), then copy
+  copyOpen.onclick = () => {
     open(composeUrl(area.value), "_blank", "noopener");
+    // Still in the tap (the clipboard needs it too); the compose page has the text anyway
+    try {
+      clipboard?.writeText(area.value)?.catch?.(() => {});
+    } catch {
+      // no clipboard here
+    }
   };
 
   const el = html`<section
@@ -223,19 +269,27 @@ export function renderPostPanel(
     aria-label=${`Post about ${paper.title} on Bluesky`}
   >
     ${area}
-    <div class="post-meta">${count}</div>
+    <div class="post-meta">${editedNote} ${reset} ${count}</div>
     ${linkChoice}
     <ul class="post-authors">
       ${names.map(authorRow)}
     </ul>
-    <div class="post-photo-buttons">
-      ${pick(take, "Take photo")} ${pick(choose, "Choose photos")} ${photoCount}
-      ${take}${choose}
-    </div>
+    ${
+      canSharePhotos
+        ? html`<div class="post-photo-buttons">
+            ${pick(take, "Take photo")} ${pick(choose, "Choose photos")}
+            ${photoCount} ${take}${choose}
+          </div>`
+        : ""
+    }
     <div class="post-send">${shareButton} ${copyOpen}</div>
     ${status}
     ${discussionUrl ? html`<p><a class="post-discussion" href=${discussionUrl} target="_blank" rel="noopener">💬 Discussion on Bluesky</a></p>` : ""}
   </section>`;
   refresh();
+  /** Stops following the watched stores (the page calls it when the panel closes). */
+  el.dispose = () => {
+    for (const store of watch) store.removeEventListener("input", refresh);
+  };
   return el;
 }

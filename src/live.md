@@ -63,11 +63,30 @@ const ratedState = { minRating: 0, day: null };
 const handlesStore = createHandlesStore(conference.id);
 const postLinkSetting = createBooleanSetting(`papersNavigator:${conference.id}:postToolLink`, false);
 const toolLink = (p) => new URL(`./?paper=${encodeURIComponent(p.shortId ?? p.id)}`, conference.siteUrl).href;
-// Opened from a talk or a rated paper: your rating and note as they are now
-const postPanel = (p) =>
+// Opened from a talk or a rated paper. The draft follows your rating and note until you edit it;
+// open panels are kept here, so a redrawn list puts the same panel (draft, photos) back
+// (one cache per list, so a panel never moves from a talk to the rated list)
+const postPanels = () => {
+  const cache = new Map();
+  return {
+    cache,
+    open: (p) => {
+      if (!cache.has(p.id)) cache.set(p.id, newPostPanel(p));
+      return cache.get(p.id);
+    },
+    close: (p) => {
+      cache.get(p.id)?.dispose?.();
+      cache.delete(p.id);
+    },
+  };
+};
+const sessionPosts = postPanels();
+const ratedPosts = postPanels();
+const newPostPanel = (p) =>
   renderPostPanel(p, {
-    rating: ratingsStore.get(p.id),
-    note: notesStore.get(p.id),
+    rating: () => ratingsStore.get(p.id),
+    note: () => notesStore.get(p.id),
+    watch: [ratingsStore, notesStore],
     toolLink: conference.siteUrl ? toolLink(p) : "",
     handles: handlesStore,
     linkSetting: postLinkSetting,
@@ -167,7 +186,8 @@ liveView.show(
           },
           onOpen: openPaper,
           detailsHref,
-          postPanel,
+          postPanel: sessionPosts.open,
+          onClosePost: sessionPosts.close,
         })
       : renderBreakView(slots, {
           tz,
@@ -192,9 +212,14 @@ if (!session) viewState.scrolledFor = null;
 <h2 class="live-rated-title">Papers I rated</h2>
 
 ```js
-// Redrawn when ratings or notes change, and in place when a filter changes
+// Redrawn when ratings, notes or the discussion links change, and in place when a filter
+// changes; open Post panels come back (ratedPosts). Not while you type in it: after you leave.
 const ratedBox = html`<div></div>`;
-const drawRated = () =>
+const drawRated = () => {
+  if (ratedBox.contains(document.activeElement)) {
+    ratedBox.addEventListener("focusout", () => setTimeout(drawRated), { once: true });
+    return;
+  }
   ratedBox.replaceChildren(
     renderRatedPapers(papers, {
       ratings: ratingsState,
@@ -204,10 +229,13 @@ const drawRated = () =>
       onFilter: (next) => (Object.assign(ratedState, next), drawRated()),
       onOpen: openPaper,
       detailsHref,
-      postPanel,
+      postPanel: ratedPosts.open,
       discussion,
+      openPosts: ratedPosts.cache,
+      onClosePost: ratedPosts.close,
     }),
   );
+};
 drawRated();
 display(ratedBox);
 ```

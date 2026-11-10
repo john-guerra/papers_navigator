@@ -3643,3 +3643,41 @@ body #vg-tooltip-element table tr td.value {
 .live-discussion {
   font: var(--typography-body-sm);
 }
+/* Tap targets at least 44px on phones (#203 Stage C review) */
+.live-post,
+.post-find,
+.post-none,
+.post-forget,
+.post-reset,
+.live-talk .compact-details-toggle,
+.live-discussion {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.post-forget {
+  min-width: 44px;
+  justify-content: center;
+}
+.post-link label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-height: 44px;
+}
+.post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-xs) var(--spacing-sm);
+}
+.post-edited {
+  flex: 1 1 100%;
+  margin: 0;
+  text-align: left;
+}
+.post-text {
+  resize: vertical;
+  overflow: hidden;
+}

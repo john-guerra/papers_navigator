@@ -193,3 +193,83 @@ describe("renderPostPanel (#203 Stage C)", () => {
     el.remove();
   });
 });
+
+describe("renderPostPanel review fixes (#203 Stage C)", () => {
+  const store = (initial) => {
+    const s = new EventTarget();
+    let v = initial;
+    s.get = () => v;
+    s.put = (x) => {
+      v = x;
+      s.dispatchEvent(new Event("input"));
+    };
+    return s;
+  };
+
+  it("follows the rating and note while you haven't edited the draft", () => {
+    const ratings = store(0);
+    const notes = store("");
+    const { el } = setup({
+      rating: () => ratings.get(),
+      note: () => notes.get(),
+      watch: [ratings, notes],
+    });
+    expect(text(el)).not.toContain("★");
+    ratings.put(4);
+    notes.put("loved it");
+    expect(text(el)).toContain("★★★★ loved it");
+    el.dispose();
+    ratings.put(1);
+    expect(text(el)).toContain("★★★★ loved it");
+    el.remove();
+  });
+
+  it("says when your own edits keep a change out, and Reset draft brings it back", async () => {
+    const { el } = setup();
+    const area = el.querySelector(".post-text");
+    area.value = "mine";
+    area.dispatchEvent(new Event("input"));
+    expect(el.querySelector(".post-reset")).toBeTruthy();
+    const row = el.querySelectorAll(".post-author")[1];
+    row.querySelector(".post-find").click();
+    await tick();
+    row.querySelector(".post-account").click();
+    expect(area.value).toBe("mine");
+    expect(el.querySelector(".post-edited").textContent).toContain(
+      "You edited the draft",
+    );
+    el.querySelector(".post-reset").click();
+    expect(area.value).toContain("@dimara.bsky.social");
+    expect(el.querySelector(".post-edited").textContent).toBe("");
+    el.remove();
+  });
+
+  it("offers photos only where the device can share them", () => {
+    expect(setup().el.querySelector(".post-photo-buttons")).toBeNull();
+    const share = { share: vi.fn(), canShare: () => true };
+    expect(
+      setup({ share }).el.querySelector(".post-photo-buttons"),
+    ).toBeTruthy();
+  });
+
+  it("opens Bluesky right away on the tap, even before the copy finishes (iOS popups)", () => {
+    const clipboard = { writeText: vi.fn(() => new Promise(() => {})) };
+    const { el, open } = setup({ clipboard });
+    el.querySelector(".post-copy-open").click();
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(clipboard.writeText).toHaveBeenCalled();
+    el.remove();
+  });
+
+  it("the draft box grows to show the whole draft", () => {
+    const { el } = setup();
+    const area = el.querySelector(".post-text");
+    Object.defineProperty(area, "scrollHeight", {
+      value: 180,
+      configurable: true,
+    });
+    area.dispatchEvent(new Event("input"));
+    expect(area.style.height).toBe("180px");
+    el.remove();
+  });
+});
