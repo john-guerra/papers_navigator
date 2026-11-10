@@ -89,3 +89,17 @@ export function renderRatedPapers(
     }
   </section>`;
 }
+
+/**
+ * Typing in a text field inside `box` (a Post draft): the page waits to redraw "Papers I rated"
+ * until you leave it. A filter control having focus doesn't count (#206 quick review: the
+ * filters must apply at once).
+ */
+export function typingIn(box) {
+  const active = globalThis.document?.activeElement;
+  return Boolean(
+    active &&
+    box.contains(active) &&
+    active.matches?.("textarea, input:not([type]), input[type=text]"),
+  );
+}
