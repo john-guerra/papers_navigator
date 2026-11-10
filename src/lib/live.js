@@ -220,7 +220,7 @@ export function worthMoving(slot, session, at, mine) {
       String(a.session.room ?? "").localeCompare(b.session.room ?? ""),
   );
   return {
-    rows: rows.map(({ mine: _mine, ...row }) => row),
+    rows,
     onNow,
     badge: rows.filter((r) => !r.here).length,
   };
