@@ -154,3 +154,74 @@ export function slotOf(session, days) {
         return slot;
   return null;
 }
+
+/** Chips for the award groups (#208), like the row's award mark. */
+const AWARD_CHIPS = {
+  best: "🏆 Best",
+  honorable: "🏅 Honorable mention",
+  other: "🎖️ Award",
+};
+/** A talk that started less than this ago still counts as "just started" (#208). */
+const JUST_STARTED_MS = 2 * 60_000;
+const RULE_REASON = /^(👥|🏫|🔍)/u;
+
+/**
+ * Why a paper matters to you (#208): "★ My Papers" (added by hand), the watch rules that keep it
+ * ("👥 Ann", "🏫 MIT", "🔍 topic"), and its award ("🏆 Best"). [] when none.
+ */
+export function reasonChips(paper, entry) {
+  return [
+    ...(entry?.manual ? ["★ My Papers"] : []),
+    ...(entry?.reasons ?? []).filter((r) => RULE_REASON.test(r)),
+    ...(AWARD_CHIPS[paper.awardTier] ? [AWARD_CHIPS[paper.awardTier]] : []),
+  ];
+}
+
+/**
+ * "Worth moving for" (#208): in each session of `slot`, the next two talks after the one on now
+ * (plus one that started under 2 minutes ago), kept when they have reason chips (in My Papers,
+ * `mine`: id → entry, or awarded). Rows sorted: My Papers first, then award, then time (then
+ * room); `here` marks the checked-in `session`, which the badge doesn't count. `onNow`: the other
+ * sessions' talk on now (null for untimed sessions) with its chips.
+ */
+export function worthMoving(slot, session, at, mine) {
+  const t = at.getTime();
+  const rows = [];
+  const onNow = [];
+  for (const s of slot.sessions) {
+    const timed = s.items.filter((p) => Number.isFinite(ms(p.start)));
+    const now = timed.find((p) => ms(p.start) <= t && t < ms(p.end)) ?? null;
+    const upcoming = timed.filter((p) => ms(p.start) > t).slice(0, 2);
+    const justStarted = now && t - ms(now.start) < JUST_STARTED_MS ? [now] : [];
+    for (const paper of [...justStarted, ...upcoming]) {
+      const chips = reasonChips(paper, mine.get(paper.id));
+      if (!chips.length) continue;
+      rows.push({
+        paper,
+        session: s,
+        minutes: Math.round((ms(paper.start) - t) / 60_000),
+        state: paper === now ? "just started" : "soon",
+        here: s.sessionId === session.sessionId,
+        chips,
+        mine: mine.has(paper.id),
+      });
+    }
+    if (s.sessionId !== session.sessionId)
+      onNow.push({
+        session: s,
+        talk: now,
+        chips: now ? reasonChips(now, mine.get(now.id)) : [],
+      });
+  }
+  rows.sort(
+    (a, b) =>
+      Number(b.mine) - Number(a.mine) ||
+      ms(a.paper.start) - ms(b.paper.start) ||
+      String(a.session.room ?? "").localeCompare(b.session.room ?? ""),
+  );
+  return {
+    rows: rows.map(({ mine: _mine, ...row }) => row),
+    onNow,
+    badge: rows.filter((r) => !r.here).length,
+  };
+}

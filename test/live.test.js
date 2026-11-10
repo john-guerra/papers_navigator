@@ -208,3 +208,79 @@ describe("programDays on the real program", () => {
     ).toEqual(sessions);
   });
 });
+
+describe("worthMoving (#208)", () => {
+  // 3 rooms of back-to-back 12-minute talks from 10:30; X is untimed (posters)
+  const t = (id, s, room, from, extra = {}) => ({
+    id,
+    title: `T ${id}`,
+    sessionId: s,
+    sessionName: `S ${s}`,
+    room,
+    sessionStart: et("10:30"),
+    sessionEnd: et("12:00"),
+    start: et(from),
+    end: new Date(new Date(et(from)).getTime() + 12 * 60_000).toISOString(),
+    awardTier: null,
+    ...extra,
+  });
+  const ps = [
+    t("a1", "A", "R1", "10:30"),
+    t("a2", "A", "R1", "10:42"),
+    t("a3", "A", "R1", "10:54", { awardTier: "best", award: "best paper" }),
+    t("a4", "A", "R1", "11:06"),
+    t("b1", "B", "R2", "10:27"),
+    t("b2", "B", "R2", "10:39", {
+      awardTier: "honorable",
+      award: "honorable mention",
+    }),
+    t("b3", "B", "R2", "10:51"),
+    t("c1", "C", "R3", "10:30"),
+    t("c2", "C", "R3", "10:42"),
+    { ...t("x1", "X", "Hall", "10:30"), start: null, end: null },
+  ];
+  const [slot] = programDays(ps, TZ)[0].slots;
+  const C = slot.sessions.find((s) => s.sessionId === "C");
+  const mine = new Map([
+    ["a2", { id: "a2", manual: true, reasons: ["★ Added by hand"] }],
+    ["b3", { id: "b3", manual: false, reasons: ["👥 Ann Lee"] }],
+    ["c2", { id: "c2", manual: true, reasons: ["★ Added by hand", "🏫 MIT"] }],
+    ["a4", { id: "a4", manual: true, reasons: ["★ Added by hand"] }],
+  ]);
+
+  it("lists the next two talks per room that are yours or awarded, yours first; the badge counts other rooms", async () => {
+    const { worthMoving } = await import("../src/lib/live.js");
+    const { rows, badge } = worthMoving(slot, C, new Date(et("10:40")), mine);
+    expect(rows.map((r) => [r.paper.id, r.state, r.here, r.chips])).toEqual([
+      ["a2", "soon", false, ["★ My Papers"]],
+      ["c2", "soon", true, ["★ My Papers", "🏫 MIT"]],
+      ["b3", "soon", false, ["👥 Ann Lee"]],
+      ["b2", "just started", false, ["🏅 Honorable mention"]],
+      ["a3", "soon", false, ["🏆 Best"]],
+    ]);
+    // a4 is the third talk after now in R1: outside the window
+    expect(badge).toBe(4);
+    expect(rows[0].minutes).toBe(2);
+  });
+
+  it("On now: one line per other room, with its talk and chips; untimed rooms have none", async () => {
+    const { worthMoving } = await import("../src/lib/live.js");
+    const { onNow } = worthMoving(slot, C, new Date(et("10:40")), mine);
+    expect(onNow.map((d) => [d.session.sessionId, d.talk?.id ?? null])).toEqual(
+      [
+        ["A", "a1"],
+        ["B", "b2"],
+        ["X", null],
+      ],
+    );
+  });
+
+  it("nothing qualifies: no rows, badge 0", async () => {
+    const { worthMoving } = await import("../src/lib/live.js");
+    const r = worthMoving(slot, C, new Date(et("10:40")), new Map());
+    expect(r.rows.map((d) => d.paper.id)).toEqual(["b2", "a3"]);
+    const none = worthMoving(slot, C, new Date(et("11:50")), new Map());
+    expect(none.rows).toEqual([]);
+    expect(none.badge).toBe(0);
+  });
+});
