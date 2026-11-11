@@ -67,7 +67,7 @@ describe("dataNote (Stage E)", () => {
     );
     // the Home Screen app keeps its own data: adding it alone opens an empty list
     expect(nudge.textContent).toContain(
-      "Add it to your Home Screen, then Export here and Import the file there",
+      "Add it to your Home Screen, then use Send to my other device here and use Import JSON there",
     );
     nudge.querySelector(".backup-dismiss").click();
     expect(onDismiss).toHaveBeenCalled();

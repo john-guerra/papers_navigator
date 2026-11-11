@@ -142,3 +142,20 @@ describe("a stale tab doesn't drop newer ratings (#203 Stage B review)", () => {
     });
   });
 });
+
+describe("ratings applyEntries (two-way transfer)", () => {
+  it("sets and clears several ratings in one write", () => {
+    const storage = memoryStorage();
+    const ratings = createRatingsStore("conf", storage, null);
+    ratings.set("a", 2);
+    ratings.set("b", 3);
+    let inputs = 0;
+    ratings.addEventListener("input", () => inputs++);
+    ratings.applyEntries({ put: { a: 5, c: 1, bad: 9 }, remove: ["b"] });
+    expect(inputs).toBe(1);
+    expect(createRatingsStore("conf", storage, null).value).toEqual({
+      a: 5,
+      c: 1,
+    });
+  });
+});

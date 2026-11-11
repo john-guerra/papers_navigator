@@ -7,6 +7,7 @@ toc: false
 import { dataNote, storageBanner } from "./components/dataSafety.js";
 import { backupDue, dataTotal, dismissBackup, isIosSafariTab, requestPersistence } from "./lib/storageHealth.js";
 import { createFollowedStore } from "./lib/followed.js";
+import { startSyncTracking } from "./lib/sync/track.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { createNotesStore } from "./lib/notes.js";
 import { createRatingsStore } from "./lib/ratings.js";
@@ -59,6 +60,7 @@ const ratingsStore = createRatingsStore(conference.id);
 const dislikedStore = createDislikedStore(conference.id);
 const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
+invalidation.then(startSyncTracking(conference.id, { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }));
 const dislikedState = Generators.input(dislikedStore);
 const attendedState = Generators.input(attendedStore);
 const clock = createLiveClock(conference.id, { tz });

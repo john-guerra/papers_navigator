@@ -114,7 +114,8 @@ export function createNotesStore(
   };
   events?.addEventListener?.("storage", onStorage);
   store.dispose = () => events?.removeEventListener?.("storage", onStorage);
-  // One note set as is ("" deletes it)
+  // One note set as is ("" deletes it). Starts from the notes in memory: one you typed that
+  // couldn't be saved is kept for this visit and saved by the next write that succeeds.
   const write = (id, note) => {
     if ((value[id] ?? "") === note) return true;
     const next = { ...value };
@@ -132,10 +133,18 @@ export function createNotesStore(
     if (previous) write(id, "");
     return () => previous && !value[id] && write(id, previous);
   };
+  // Imported notes that couldn't be saved don't stay in memory, where the next write would save
+  // them in place of yours: memory goes back to what it was (your unsaved typing included)
+  const saveImported = (next, previous) => {
+    if (save(next)) return true;
+    value = previous;
+    store.dispatchEvent(new Event("input"));
+    return false;
+  };
   store.merge = (incoming) => {
     const before = value;
     const { notes, added, combined } = mergeNotes(value, incoming);
-    if (added || combined) save(notes);
+    if (added || combined) saveImported(notes, before);
     // Undo puts back each note the import changed, unless you edited it since
     const undo = () => {
       const next = { ...value };
@@ -149,6 +158,17 @@ export function createNotesStore(
       if (changed) save(next);
     };
     return { added, combined, undo };
+  };
+  /**
+   * Two-way transfer: sets `put` (`{id: text}`, kept whole: only typing is capped) and drops
+   * `remove`, in one write.
+   */
+  store.applyEntries = ({ put = {}, remove = [] } = {}) => {
+    const previous = value;
+    const next = { ...value };
+    for (const id of remove) delete next[id];
+    Object.assign(next, cleanNotes(put));
+    return saveImported(next, previous);
   };
   Object.defineProperty(store, "value", { get: () => value });
   return store;

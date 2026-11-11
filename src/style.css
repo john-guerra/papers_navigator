@@ -4138,3 +4138,112 @@ body #vg-tooltip-element table tr td.value {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+/* Import from another device: summary, clashes, Undo (two-way transfer) */
+.import-status .transfer-import {
+  color: var(--color-on-surface);
+}
+.transfer-import {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--rounded-md);
+  background: var(--color-surface);
+  font: var(--typography-body-sm);
+}
+.transfer-import h3 {
+  margin: 0 0 var(--spacing-xs);
+  font: var(--typography-label-md);
+}
+.transfer-import h4 {
+  margin: 0;
+  font: var(--typography-title-paper);
+}
+.transfer-import p {
+  margin: var(--spacing-xs) 0;
+}
+.transfer-clashes,
+.import-history-copies ul {
+  margin: var(--spacing-sm) 0;
+  padding: 0;
+  list-style: none;
+}
+.transfer-clash {
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-outline);
+}
+.clash-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* One line per device: "iPhone: …" / "Mac: …" */
+.transfer-import .clash-side {
+  margin: var(--spacing-xs) 0 0;
+  overflow-wrap: anywhere;
+}
+.clash-device {
+  font-weight: 600;
+}
+.clash-choices,
+.transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+:where(#observablehq-main) .transfer-clash button[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+.transfer-clash button[aria-pressed="true"]::before {
+  content: "✓ ";
+}
+.transfer-status:empty,
+.import-history-status:empty {
+  display: none;
+}
+.import-history {
+  margin-top: var(--spacing-sm);
+  font: var(--typography-body-sm);
+}
+.import-history p {
+  margin: var(--spacing-xs) 0;
+}
+.import-history-copies li {
+  padding: var(--spacing-xs) 0;
+}
+@media (max-width: 639.98px), (pointer: coarse) {
+  .transfer-import button,
+  .import-history button {
+    min-height: var(--spacing-touch);
+  }
+}
+
+/* Two-way transfer: send, copy or paste everything to the other device */
+.send-to-device {
+  margin-top: var(--spacing-sm);
+}
+
+.send-hint,
+.send-status {
+  margin: var(--spacing-xs) 0 0;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.send-status:empty {
+  display: none;
+}
+
+.mp-tools.drop-target {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 4px;
+}
+
+@media (max-width: 639.98px) {
+  .send-to-device button {
+    min-height: var(--spacing-touch);
+  }
+}

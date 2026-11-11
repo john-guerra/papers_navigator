@@ -88,7 +88,7 @@ export function dataNote({
     </button>`;
     const line = html`<p class="backup-nudge">
       Back up your notes and ratings: ${exportLink("backup-export")}
-      ${ios ? html`<span class="backup-ios">On iPhone, Safari may delete this site's data after 7 days without a visit. Add it to your Home Screen, then Export here and Import the file there: the Home Screen app keeps its own copy.</span>` : ""}
+      ${ios ? html`<span class="backup-ios">On iPhone, Safari may delete this site's data after 7 days without a visit. Add it to your Home Screen, then use Send to my other device here and use Import JSON there: the Home Screen app keeps its own copy.</span>` : ""}
       ${dismiss}
     </p>`;
     dismiss.onclick = () => {

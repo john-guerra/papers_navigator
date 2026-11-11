@@ -8,6 +8,7 @@ toc: false
 ```js
 import { storageBanner } from "./components/dataSafety.js";
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
+import { startSyncTracking } from "./lib/sync/track.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 import { buildAuthorIndex, findAuthor } from "./lib/authors.js";
 import { addWithUndo, selectionReason } from "./lib/selection.js";
@@ -178,5 +179,6 @@ const dislikedStore = createDislikedStore(conference.id);
 const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
 invalidation.then(() => ratingsStore.dispose());
+invalidation.then(startSyncTracking(conference.id, { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }));
 invalidation.then(bindRatingMarkers(document.querySelector(".author-page"), ratingsStore, { disliked: dislikedStore, attended: attendedStore }));
 ```

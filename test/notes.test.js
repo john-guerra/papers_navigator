@@ -224,3 +224,74 @@ describe("notes stay out of links and requests", () => {
       );
   });
 });
+
+describe("notes applyEntries (two-way transfer)", () => {
+  it("writes whole notes (no typing cap) and removes, in one write", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    notes.set("a", "old");
+    notes.set("b", "gone");
+    let inputs = 0;
+    notes.addEventListener("input", () => inputs++);
+    const long = "x".repeat(MAX_NOTE_LENGTH + 5);
+    notes.applyEntries({ put: { a: long, c: "  new  " }, remove: ["b"] });
+    expect(inputs).toBe(1);
+    expect(createNotesStore("conf", storage, null).value).toEqual({
+      a: long,
+      c: "new",
+    });
+  });
+});
+
+describe("a failed save never leaves memory ahead of storage", () => {
+  it("applyEntries that can't save keeps the saved notes, and later writes start from storage", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    notes.set("n1", "mine");
+    const setItem = storage.setItem;
+    storage.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    expect(notes.applyEntries({ put: { n1: "theirs" } })).toBe(false);
+    expect(notes.value).toEqual({ n1: "mine" });
+    storage.setItem = setItem;
+    notes.set("n2", "other");
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({
+      n1: "mine",
+      n2: "other",
+    });
+  });
+});
+
+describe("unsaved typing survives until a write succeeds (#transfer fix round 2)", () => {
+  const failing = (storage) => {
+    const setItem = storage.setItem;
+    storage.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    return () => (storage.setItem = setItem);
+  };
+
+  it("a note that couldn't be saved is saved by the next successful write", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    const restore = failing(storage);
+    expect(notes.set("n1", "typed while full")).toBe(false);
+    expect(notes.get("n1")).toBe("typed while full");
+    restore();
+    expect(notes.set("n2", "later")).toBe(true);
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({
+      n1: "typed while full",
+      n2: "later",
+    });
+  });
+
+  it("a merge that can't be saved leaves notes as storage has them", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    notes.set("n1", "mine");
+    failing(storage);
+    notes.merge({ n2: "imported" });
+    expect(notes.value).toEqual({ n1: "mine" });
+  });
+});

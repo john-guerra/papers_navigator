@@ -22,7 +22,7 @@ All outputs live in `conferences/<id>/data/` and are committed, except `papers.r
 
 - Embeddings: `all-MiniLM-L6-v2` on `title + "\n" + abstract`. The browser embeds the query with the same model (Transformers.js), loaded after the page shows.
 - Projections are precomputed per method (UMAP, t-SNE, PCA) and listed in the conference config, so new DR methods only need a function in `pipeline/embed.py` plus a config entry.
-- Followed papers, notes, ratings and the rest are stored in the browser (localStorage). "Send to my phone" makes a link/QR with short paper ids; JSON export/import carries everything.
+- Followed papers, notes, ratings and the rest are stored in the browser (localStorage). "Send to my phone" makes a link/QR with short paper ids; JSON export/import carries everything (v3 files also carry what changed, so "Send to my other device" merges both ways).
 
 ## Setup
 

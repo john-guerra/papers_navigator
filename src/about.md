@@ -7,6 +7,7 @@ toc: false
 import { STORAGE_ITEMS, conferenceDateRange, hostName } from "./lib/about.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { createFollowedStore } from "./lib/followed.js";
+import { startSyncTracking } from "./lib/sync/track.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 ```
 
@@ -18,7 +19,10 @@ const papers = FileAttachment("data/papers.json").json();
 
 ```js
 // The navbar's My Papers count, like every other page
-const store = createMyPapers({ followed: createFollowedStore(conference.id), rules: createRulesStore(conference.id), papers });
+const followedStore = createFollowedStore(conference.id);
+const rulesStore = createRulesStore(conference.id);
+const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
+invalidation.then(startSyncTracking(conference.id, { followed: followedStore, rules: rulesStore }));
 invalidation.then(bindMyPapersBadge(store));
 const sourceHost = hostName(conference.listingUrl ?? conference.baseUrl);
 const dates = conferenceDateRange(conference.days);
@@ -101,7 +105,7 @@ Previous versions: the <a href="https://johnguerra.co/viz/chi2026Papers/" target
 
 ### What stays in this browser
 
-Everything you do is saved in this browser's local storage, separately for each conference, and only on this device (another browser or phone has its own list until you share or export it):
+Everything you do is saved in this browser's local storage, separately for each conference, and only on this device (another browser or phone has its own list until you share or move it):
 
 ${storageTable}
 
@@ -119,10 +123,12 @@ The fonts (Newsreader and Source Sans 3) are served by this site itself.
 
 - **Share list** and **Send to my phone** build a link that carries your list inside the link itself, after the <code>#</code> (for example <code>…/my-papers.html#follow=…</code>). Browsers never send that part to the server; whoever you give the link to sees the list. The QR code is drawn in your browser. Your notes and My research abstracts are never put in a link.
 - **Export JSON** saves a file on your device (it includes your notes, your ratings and the abstracts of research topics you watch). **Import JSON** reads a file you pick; nothing is uploaded.
+- **Send to my other device**, **Copy for my other device** and **Paste from my other device** (My Papers) move everything between, say, a laptop and a phone: the file goes where you send it (the share sheet, a download), the text goes to your clipboard, and on a laptop you can drop a file on My Papers. The app never uploads it or puts it in a link; where the file goes (AirDrop, Messages, email…) is up to you, and it holds your notes and research abstracts. The file also carries a device name (like “iPhone” or “Mac”) and a short random device id, so a transfer can tell your devices apart.
 
 ### Delete your data
 
 - One thing at a time: **Remove** a paper, **Delete note** in a paper's details, **Stop watching** a rule in My Papers → Watching, or **Delete from this device** in My research.
+- Copies kept by a transfer: after an import from your other device, what it replaced is kept for 7 days so you can undo it, and a copy of all your data from before each of your last 3 imports for 14 days. Until then they can hold a note or abstract you have deleted since; **Delete saved copies** (My Papers → Saved copies of your data) removes them all.
 - Everything at once: clear this site's data in your browser's settings (site settings for johnguerra.co: "Delete data" or "Clear site data"). That removes your lists, watches, notes, ratings, abstracts, settings and cached files. Export JSON first if you want to keep your list.
 
 ## Explore
@@ -239,6 +245,8 @@ On a laptop the itinerary and **All my papers** take the main column; sharing an
 - **Share list** (phones) opens your phone's share sheet. On a laptop, **Send to my phone** shows a QR code and **Copy link**. The link carries the papers you added and your watches (researchers, institutions, research topics), but not your My research abstracts.
 - Opening a shared link offers **Merge into my list**, **Replace my list** (asks first, and can be undone) or **Ignore**.
 - **Export JSON** saves your list, reasons, watches and notes to a file; **Import JSON** brings it back, on this or another device (merge or replace). Imported notes are always added to yours: when a paper has a different note in each, both texts are kept.
+- **Moving everything between devices:** use **Send to my other device** (or **Copy for my other device**) on one, then **Import JSON** (or **Paste from my other device**, or drop the file on a laptop) on the other. It carries your list, watches (including My research abstracts), notes (including session notes), ratings, 👎 and attended papers. Removals and edits travel too. Before anything changes you see a summary; when both devices changed the same item you choose which to keep (or **Use the newest for all**). **Undo this import** works for 7 days; importing the same file again applies its changes again. **Restore data from before…** brings back a copy saved before one of your last 3 imports (each kept 14 days). The app never uploads this data; it only goes into the file, share sheet or clipboard you choose, and where it goes from there is up to you.
+- On iPhone, a Home Screen app keeps its own data, separate from Safari: move your list into it with **Send to my other device** and **Import JSON**.
 - After a replace, **Restore previous list** brings back the list you had.
 
 ### At the venue and offline

@@ -97,6 +97,14 @@ export function createRatingsStore(
     };
     return { added, undo };
   };
+  /** Two-way transfer: sets `put` (`{id: 1..5}`) and drops `remove`, in one write. */
+  store.applyEntries = ({ put = {}, remove = [] } = {}) => {
+    value = load();
+    const next = { ...value };
+    for (const id of remove) delete next[id];
+    Object.assign(next, cleanRatings(put));
+    write(next);
+  };
   store.dispose = () => events?.removeEventListener?.("storage", onStorage);
   return store;
 }
