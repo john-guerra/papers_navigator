@@ -11,6 +11,18 @@ export const ICON_FILES = [
   "icon-512.png",
 ];
 
+/**
+ * The head's links to the manifest and icons, by absolute URL (like the social card) so Framework
+ * leaves their names unhashed; "" without a `siteUrl`. They point at the deployed site, so
+ * `npm run dev` shows the published manifest and icons, not local edits.
+ */
+export function appHeadLinks({ siteUrl } = {}) {
+  if (!siteUrl) return "";
+  return `<link rel="manifest" href="${siteUrl}manifest.webmanifest">
+<link rel="apple-touch-icon" href="${siteUrl}icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="${siteUrl}icon-32.png">`;
+}
+
 export function webManifest(conference) {
   return {
     name: `${conference.name} Papers Navigator`,

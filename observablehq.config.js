@@ -1,5 +1,6 @@
 import { loadConferenceConfig } from "./src/lib/conference.js";
 import { footerHtml } from "./src/lib/footer.js";
+import { appHeadLinks } from "./src/lib/webManifest.js";
 
 const conference = await loadConferenceConfig();
 
@@ -23,9 +24,7 @@ export default {
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="${conference.name} Papers Navigator: a search highlighted on the map of all papers, with the similarity legend">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="manifest" href="${conference.siteUrl}manifest.webmanifest">
-<link rel="apple-touch-icon" href="${conference.siteUrl}icon-180.png">
-<link rel="icon" type="image/png" sizes="32x32" href="${conference.siteUrl}icon-32.png">
+${appHeadLinks(conference)}
 <script>
   // Phone bottom tab bar (#110): let env(safe-area-inset-*) report the home indicator and notch
   // (Framework writes the viewport meta; this runs right after it, before the page draws)

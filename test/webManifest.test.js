@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import config from "../observablehq.config.js";
-import { ICON_FILES, webManifest } from "../src/lib/webManifest.js";
+import { readFileSync } from "node:fs";
+import {
+  ICON_FILES,
+  appHeadLinks,
+  webManifest,
+} from "../src/lib/webManifest.js";
 import { writeManifest } from "../scripts/copyStatic.js";
 import { loadConferenceConfig } from "../src/lib/conference.js";
 
@@ -66,5 +71,31 @@ describe("the head links the manifest and the icons", () => {
     expect(config.head).toContain(
       `<link rel="icon" type="image/png" sizes="32x32" href="${siteUrl}icon-32.png">`,
     );
+  });
+
+  it("none without a siteUrl (no 'undefinedmanifest.webmanifest')", () => {
+    expect(appHeadLinks({ name: "X" })).toBe("");
+    expect(appHeadLinks({ name: "X", siteUrl: "" })).toBe("");
+  });
+});
+
+describe("the icon files", () => {
+  /** Width and height from a PNG's IHDR chunk. */
+  const pngSize = (name) => {
+    const bytes = readFileSync(new URL(`../src/${name}`, import.meta.url));
+    expect(bytes.subarray(1, 4).toString("latin1")).toBe("PNG");
+    return [bytes.readUInt32BE(16), bytes.readUInt32BE(20)];
+  };
+
+  it("each exists in src/ as a square PNG of the size its name says", () => {
+    for (const name of ICON_FILES) {
+      const size = Number(name.match(/^icon-(\d+)\.png$/)[1]);
+      expect(pngSize(name), name).toEqual([size, size]);
+    }
+  });
+
+  it("the manifest's icons match their declared sizes", () => {
+    for (const icon of webManifest(conference).icons)
+      expect(pngSize(icon.src).join("x"), icon.src).toBe(icon.sizes);
   });
 });
