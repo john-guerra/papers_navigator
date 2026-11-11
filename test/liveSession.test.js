@@ -20,6 +20,7 @@ const talk = (id, sessionId, room, from, to) => ({
   sessionEnd: et("12:00"),
   start: et(from),
   end: et(to),
+  type: "full",
   typeShort: "Full",
   typeColor: "full",
   typeLabel: "Full VIS Paper",
@@ -302,7 +303,7 @@ describe("session view: a session without papers (plenary, panel)", () => {
 
 describe("the session view wears the program's type color", () => {
   it("on its header", () => {
-    const { el } = setup();
+    const { el } = setup({ sessionColors: { full: "full" } });
     expect(el.querySelector("[data-type-color]").dataset.typeColor).toBe(
       "full",
     );

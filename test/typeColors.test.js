@@ -1,5 +1,5 @@
-// The program's type colors (#199, extended): every color the config names has light and dark
-// tokens and a rule that applies it, so a new type can't silently fall back to grey
+// The program's colors on Live's sessions (type pills keep #199's): every color the config names
+// has light and dark tokens and a rule that applies it, so a new type can't silently fall back to grey
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -15,10 +15,22 @@ const colors = [
     ...Object.values(config.typeStyles).map((s) => s.color),
     ...Object.values(config.sessionTypeColors ?? {}),
   ]),
-];
+].filter(Boolean);
 
 describe("type colors", () => {
-  it("every paper type in the program has its own color", () => {
+  it("pills keep their colors: only Full, Short and Arts are colored", () => {
+    const colored = Object.entries(config.typeStyles).filter(
+      ([, s]) => s.color,
+    );
+    expect(Object.fromEntries(colored.map(([t, s]) => [t, s.color]))).toEqual({
+      full: "full",
+      tvcg: "full",
+      "cg&a": "full",
+      short: "short",
+      visap: "arts",
+    });
+  });
+  it("every session has a color: paper sessions by paper type, events by session type", () => {
     for (const type of [
       "full",
       "tvcg",
@@ -30,9 +42,7 @@ describe("type colors", () => {
       "poster",
       "invited-talk",
     ])
-      expect(config.typeStyles[type]?.color, type).toMatch(/^[a-z][a-z0-9-]*$/);
-  });
-  it("sessions without papers (plenaries, tutorials, panels, meetups) have one too", () => {
+      expect(config.sessionTypeColors?.[type], type).toBeTruthy();
     for (const type of ["plenary", "tutorial", "panel", "meetup", "cluster"])
       expect(config.sessionTypeColors?.[type], type).toBeTruthy();
   });

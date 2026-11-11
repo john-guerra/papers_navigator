@@ -103,8 +103,8 @@ Builds with `CONFERENCE=ieeevis2026`, rsyncs `dist/` to `<DEPLOY_ROOT>/<deployDi
 | `shortLabels` | Map labels: `enabled`, LM Studio `model` and `baseUrl`, `weakLabels`, `labelOverrides` | **Empty `weakLabels` and `labelOverrides`**: they name this year's labels and paper ids |
 | `excludeTypeLabels` | Paper types left out of the map and list (keynotes, plenaries) | Check against the new program's type labels |
 | `defaultTypes` | Type ids Explore's Type filter starts with | Check the type ids still exist |
-| `typeStyles` | The type pill: `{type: {label, color}}`; `color` names a `--color-type-<color>` token in `src/style.css` (`full`, `tvcg`, `cga`, `short`, `arts`, `workshop`, `challenge`, `poster`, `talk`), or is left out (neutral) | Check the type ids |
-| `sessionTypeColors` | Live's session stripe for sessions without papers: `{sessionType: color}` (same color names, plus `plenary`, `meetup`); paper sessions use their papers' type | Check the session types in `sessions.json` |
+| `typeStyles` | The type pill: `{type: {label, color}}`; `color` is `full`, `short`, `arts`, or left out (neutral) | Check the type ids |
+| `sessionTypeColors` | Live's session stripe: `{type: color}` for paper types (a paper session takes its papers' most common type) and session types from `sessions.json` (plenary, tutorial, panel, meetup…); `color` names a `--color-type-<color>` token in `src/style.css` | Check the type ids |
 | `typeNames` | Filter name for a type whose papers carry different type labels (`{type: name}`) | Check |
 | `defaultQuery`, `exampleQueries` | Explore's first search and the suggestion chips | Update to the year's topics |
 | `siteUrl` | Absolute URL of the deployed site (Live's "This tool" link in Bluesky drafts, the social card's `og:image`) | Change |

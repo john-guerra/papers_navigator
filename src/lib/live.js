@@ -159,15 +159,17 @@ function mostCommonInOrder(values) {
 }
 
 /**
- * A session's color, as the official program colors its cards: an event (plenary, tutorial,
- * panel…) by its session type through the config's `sessionTypeColors`; a paper session by its
- * most common paper `typeColor` (ties: the first talk's); else "other". A token name for
- * `data-type-color` (style.css maps it to `--color-type-<name>`).
+ * A session's color, as the official program colors its cards, through the config's
+ * `sessionTypeColors`: an event (plenary, tutorial, panel…) by its session type, a paper session
+ * by its papers' most common program type (ties: the first talk's); else "other". A token name
+ * for `data-type-color` (style.css maps it to `--color-type-<name>`). Type pills keep their own
+ * colors (`typeStyles`).
  */
 export function sessionTypeColor(session, sessionColors = {}) {
-  const color = session.event
-    ? sessionColors[session.event.type]
-    : mostCommonInOrder((session.items ?? []).map((p) => p.typeColor));
+  const type = session.event
+    ? session.event.type
+    : mostCommonInOrder((session.items ?? []).map((p) => p.type));
+  const color = type ? sessionColors[type] : null;
   return SAFE_COLOR.test(color ?? "") ? color : "other";
 }
 

@@ -45,26 +45,30 @@
   "defaultTypes": ["full", "short", "tvcg", "cg&a"],
   "typeStyles": {
     "full": { "label": "Full", "color": "full" },
-    "tvcg": { "label": "TVCG", "color": "tvcg" },
-    "cg&a": { "label": "CG&A", "color": "cga" },
+    "tvcg": { "label": "Full", "color": "full" },
+    "cg&a": { "label": "Full", "color": "full" },
     "short": { "label": "Short", "color": "short" },
     "visap": { "label": "Arts", "color": "arts" },
-    "workshop": { "label": "Workshop", "color": "workshop" },
-    "challenge": { "label": "Challenge", "color": "challenge" },
-    "poster": { "label": "Poster", "color": "poster" },
-    "invited-talk": { "label": "Talk", "color": "talk" }
+    "workshop": { "label": "Workshop" },
+    "challenge": { "label": "Challenge" },
+    "poster": { "label": "Poster" },
+    "invited-talk": { "label": "Talk" }
   },
   "sessionTypeColors": {
+    "full": "full",
+    "tvcg": "tvcg",
+    "cg&a": "cga",
+    "short": "short",
+    "visap": "arts",
+    "workshop": "workshop",
+    "challenge": "challenge",
+    "poster": "poster",
+    "invited-talk": "talk",
     "plenary": "plenary",
     "tutorial": "cga",
     "panel": "poster",
     "meetup": "meetup",
-    "cluster": "talk",
-    "full": "full",
-    "short": "short",
-    "workshop": "workshop",
-    "visap": "arts",
-    "challenge": "challenge"
+    "cluster": "talk"
   },
   "typeNames": {
     "workshop": "Workshop Paper"

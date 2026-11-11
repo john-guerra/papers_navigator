@@ -499,19 +499,26 @@ describe("checked in to an event in several slots (review)", () => {
 describe("sessionTypeColor: the program's colors, on Live's session cards", () => {
   const colors = { plenary: "plenary", tutorial: "cga", panel: "poster" };
   const event = (type) => ({ items: [], event: { type } });
-  const items = (...c) => ({ items: c.map((typeColor) => ({ typeColor })) });
+  const items = (...t) => ({ items: t.map((type) => ({ type })) });
   it("an event by its session type, through the config's map", () => {
     expect(sessionTypeColor(event("plenary"), colors)).toBe("plenary");
     expect(sessionTypeColor(event("panel"), colors)).toBe("poster");
     expect(sessionTypeColor(event("governance"), colors)).toBe("other");
     expect(sessionTypeColor(event("plenary"))).toBe("other");
   });
-  it("a paper session by its most common paper type (ties: the first talk's)", () => {
-    expect(sessionTypeColor(items("short", "full", "short"))).toBe("short");
-    expect(sessionTypeColor(items("tvcg", "full"))).toBe("tvcg");
-    expect(sessionTypeColor(items())).toBe("other");
+  it("a paper session by its papers' most common program type, through the same map (ties: the first talk's)", () => {
+    const map = { short: "short", full: "full", tvcg: "tvcg", "cg&a": "cga" };
+    expect(sessionTypeColor(items("short", "full", "short"), map)).toBe(
+      "short",
+    );
+    expect(sessionTypeColor(items("tvcg", "full"), map)).toBe("tvcg");
+    expect(sessionTypeColor(items("cg&a"), map)).toBe("cga");
+    expect(sessionTypeColor(items("poster"), map)).toBe("other");
+    expect(sessionTypeColor(items(), map)).toBe("other");
   });
   it("only a safe class-like name reaches the page", () => {
-    expect(sessionTypeColor(items('x" onclick="'))).toBe("other");
+    expect(sessionTypeColor(items("full"), { full: 'x" onclick="' })).toBe(
+      "other",
+    );
   });
 });

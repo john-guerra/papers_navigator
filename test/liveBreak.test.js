@@ -22,6 +22,7 @@ const paper = (id, sessionId, room, start, extra = {}) => ({
   sessionEnd: new Date(new Date(start).getTime() + 90 * 60_000).toISOString(),
   start,
   end: new Date(new Date(start).getTime() + 15 * 60_000).toISOString(),
+  type: "full",
   typeShort: "Full",
   typeColor: "full",
   clusterLabel: "Perception",
@@ -276,7 +277,7 @@ describe("event links (security review)", () => {
 describe("session cards wear the program's type color (a subtle stripe)", () => {
   it("a paper session by its papers' type", () => {
     const { el } = setup(et("10:00"), {
-      sessionColors: { plenary: "plenary" },
+      sessionColors: { full: "full", plenary: "plenary" },
     });
     const card = el.querySelector(".live-session");
     expect(card.dataset.typeColor).toBe("full");
