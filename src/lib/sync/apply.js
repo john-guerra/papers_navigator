@@ -8,7 +8,7 @@ import { createRulesStore, normalizeRule } from "../rules.js";
 import { reportStorageFailure } from "../storageHealth.js";
 import { busy } from "./busy.js";
 import { stableHash } from "./clock.js";
-import { fromEntries, splitKey, toEntries } from "./entries.js";
+import { fromEntries, identity, splitKey, toEntries } from "./entries.js";
 import { readState } from "./state.js";
 import { isPlainObject, isSyncKey } from "./validate.js";
 
@@ -38,9 +38,9 @@ const undoKey = (id) => `papersNavigator:${id}:syncUndo`;
 const storageOf = (ctx) => ctx.storage ?? globalThis.localStorage;
 const nowOf = (ctx) => ctx.now ?? new Date();
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-/** Hash of an entry as `toEntries` gives it; "" when absent (as a tombstone's `h`). */
+/** `identity` of an entry as `toEntries` gives it; "" when absent (as a tombstone's `h`). */
 const hashIn = (entries, key) =>
-  own(entries, key) ? stableHash(entries[key]) : "";
+  own(entries, key) ? identity(key, entries[key]) : "";
 const sameRecord = (a, b) => stableHash(a ?? null) === stableHash(b ?? null);
 
 function storageError(message) {
@@ -52,7 +52,7 @@ const currentEntries = (ctx) =>
   toEntries(readState(ctx.conferenceId, storageOf(ctx)));
 
 /**
- * `value` as its store will hold it and `toEntries` read it back (so its hash is the one a
+ * `value` as its store will hold it and `toEntries` read it back (so its identity is the one a
  * reconcile computes), or undefined when the store can't hold it.
  */
 function canonical(key, value, now) {
@@ -224,7 +224,7 @@ function commit(ctx, changes, { label, from, continueImport }) {
       ...(store === "rule" &&
         rawRules.has(id) && { beforeRaw: rawRules.get(id) }),
       beforeMeta: metaEntries[c.key] ?? null,
-      afterHash: c.deleted ? "" : stableHash(c.value),
+      afterHash: c.deleted ? "" : identity(c.key, c.value),
       afterMeta: c.meta,
     };
   });
@@ -352,7 +352,7 @@ function applyTransferNow(
     byKey.set(r.key, {
       key: r.key,
       value,
-      meta: { v, t, h: stableHash(value) },
+      meta: { v, t, h: identity(r.key, value) },
     });
   }
   if (!byKey.size)
@@ -490,7 +490,7 @@ function restoreParsed(ctx, parsed, { label, from }) {
       continue;
     }
     const value = canonical(key, target[key], now);
-    if (value === undefined || hashIn(before, key) === stableHash(value))
+    if (value === undefined || hashIn(before, key) === identity(key, value))
       continue;
     changes.push({
       key,
@@ -506,7 +506,8 @@ function restoreParsed(ctx, parsed, { label, from }) {
   const written = currentEntries(ctx);
   const failed = changes
     .filter(
-      (c) => hashIn(written, c.key) !== (c.deleted ? "" : stableHash(c.value)),
+      (c) =>
+        hashIn(written, c.key) !== (c.deleted ? "" : identity(c.key, c.value)),
     )
     .map((c) => c.key);
   const changed = ctx.meta.reconcile(currentEntries(ctx), now);

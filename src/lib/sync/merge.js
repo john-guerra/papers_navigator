@@ -1,11 +1,13 @@
-import { bump, compare, join, stableHash } from "./clock.js";
-import { splitKey } from "./entries.js";
+import { bump, compare, join } from "./clock.js";
+import { identity, splitKey } from "./entries.js";
 import { UNRECORDED, isPlainObject, isSyncKey, isVector } from "./validate.js";
 
 /**
  * Merge of an imported transfer file into this device's data. Pure: decides, per entry key,
  * what the file changes (`apply`) and what the person has to choose (`clashes`). No note text
- * is ever dropped without that choice.
+ * is ever dropped without that choice. What changes is an entry's `identity`: when both sides
+ * have the same one (a paper both follow, a talk both marked attended), this device keeps its
+ * own metadata (reason, date, time) and only takes the version.
  */
 
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -21,7 +23,7 @@ function side(value, deleted, v, t) {
 
 /**
  * This device's record of `key` (null when it has never had it), plus `unrecorded`: a live value
- * the meta doesn't describe (no record, a tombstone, or a different hash).
+ * the meta doesn't describe (no record, a tombstone, or a different identity).
  */
 function localSide(local, key) {
   const meta =
@@ -33,7 +35,7 @@ function localSide(local, key) {
   if (own(local.entries, key) && local.entries[key] !== undefined) {
     const value = local.entries[key];
     const unrecorded =
-      !meta || meta.deleted === true || meta.h !== stableHash(value);
+      !meta || meta.deleted === true || meta.h !== identity(key, value);
     return { side: { value, v, t }, unrecorded };
   }
   if (meta?.deleted === true)
@@ -52,10 +54,10 @@ function incomingSide(incoming, key) {
   return { value: incoming.entries[key], v: r.v, t: r.t };
 }
 
-const sameValue = (a, b) =>
+const sameValue = (key, a, b) =>
   a.deleted || b.deleted
     ? !!a.deleted && !!b.deleted
-    : stableHash(a.value) === stableHash(b.value);
+    : identity(key, a.value) === identity(key, b.value);
 
 const isNoteText = (key, s) =>
   isNoteKey(key) && !s.deleted && typeof s.value === "string";
@@ -71,11 +73,11 @@ function prefixWinner(key, a, b) {
 }
 
 /** What applying `next` over `prev` (null = absent) means to the person. */
-function kind(prev, next) {
+function kind(key, prev, next) {
   const had = prev && !prev.deleted;
   if (next.deleted) return had ? "removed" : null;
   if (!had) return "added";
-  return stableHash(prev.value) === stableHash(next.value) ? "same" : "changed";
+  return sameValue(key, prev, next) ? "same" : "changed";
 }
 
 /**
@@ -104,7 +106,7 @@ export function mergeTransfer(local, incoming) {
 
     if (!found) {
       apply[key] = side(theirs.value, theirs.deleted, theirs.v, theirs.t);
-      const k = kind(null, theirs);
+      const k = kind(key, null, theirs);
       if (k) counts[k]++;
       continue;
     }
@@ -120,8 +122,12 @@ export function mergeTransfer(local, incoming) {
       continue;
     }
     if (order === "b") {
-      apply[key] = side(theirs.value, theirs.deleted, theirs.v, theirs.t);
-      const k = kind(mine, theirs);
+      // Same identity: only the version moves on (this device's metadata stays)
+      const keep = !mine.deleted && sameValue(key, mine, theirs);
+      apply[key] = keep
+        ? { value: mine.value, v: theirs.v, t: theirs.t }
+        : side(theirs.value, theirs.deleted, theirs.v, theirs.t);
+      const k = kind(key, mine, theirs);
       if (k) counts[k]++;
       else counts.same++;
       continue;
@@ -130,7 +136,7 @@ export function mergeTransfer(local, incoming) {
     // Concurrent.
     const v = join(mine.v, theirs.v);
     const t = later(mine.t, theirs.t);
-    if (sameValue(mine, theirs)) {
+    if (sameValue(key, mine, theirs)) {
       apply[key] = side(mine.value, mine.deleted, v, t);
       counts.same++;
       continue;

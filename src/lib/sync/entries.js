@@ -3,6 +3,7 @@ import { cleanDisliked } from "../disliked.js";
 import { cleanNotes } from "../notes.js";
 import { cleanRatings } from "../ratings.js";
 import { normalizeRule } from "../rules.js";
+import { stableHash } from "./clock.js";
 
 /** The stores a transfer syncs; an entry key is `<store>/<id>` (the id may contain ":" or "/"). */
 export const STORES = [
@@ -93,4 +94,18 @@ export function fromEntries(entries = {}) {
     else if (store === "attended") out.attended[id] = value;
   }
   return out;
+}
+
+/**
+ * Hash of what makes `value` a change to `key`: its identity, not its metadata. A followed
+ * paper's identity is its presence (reason/addedOn travel but never make a change or a clash);
+ * an attended mark's is on/off (`at`/`how` are metadata); any other entry's is its whole value.
+ * Absent is "" (as a tombstone's `h`), which no identity equals.
+ */
+export function identity(key, value) {
+  const store = splitKey(key)[0];
+  if (store === "followed") return stableHash({ followed: true });
+  if (store === "attended")
+    return stableHash({ attended: value?.off === true ? "off" : "on" });
+  return stableHash(value);
 }

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { stableHash } from "../src/lib/sync/clock.js";
+import { identity } from "../src/lib/sync/entries.js";
 import { createSyncMeta } from "../src/lib/sync/meta.js";
 
 function fakeStorage() {
@@ -75,5 +77,74 @@ describe("createSyncMeta", () => {
     const b = createSyncMeta("conf", s);
     expect(a.reconcile(E(), T).length).toBe(3);
     expect(b.reconcile(E(), T)).toEqual([]);
+  });
+
+  describe("records made before identity hashes (no hv: 2)", () => {
+    const F = { reason: "r", addedOn: "2026-10-01T00:00:00.000Z" };
+    const A = { at: "2026-10-01T10:00:00.000Z", how: "auto" };
+    const old = () => ({
+      device: "dev",
+      entries: {
+        "followed/a": { v: { dev: 1 }, t: "t0", h: stableHash(F) },
+        "attended/b": { v: { dev: 1 }, t: "t0", h: stableHash(A) },
+        "note/c": { v: { dev: 1 }, t: "t0", h: stableHash("x") },
+        "rating/d": { v: { dev: 2 }, t: "t0", h: "", deleted: true },
+      },
+    });
+    const now = () => ({ "followed/a": F, "attended/b": A, "note/c": "x" });
+
+    it("re-derives h from identity without bumping unchanged entries", () => {
+      const s = fakeStorage();
+      s.setItem(KEY, JSON.stringify(old()));
+      const meta = createSyncMeta("conf", s, () => "other");
+      expect(meta.reconcile(now(), T)).toEqual([]);
+      const doc = JSON.parse(s.getItem(KEY));
+      expect(doc.hv).toBe(2);
+      expect(doc.device).toBe("dev");
+      expect(doc.entries["followed/a"]).toEqual({
+        v: { dev: 1 },
+        t: "t0",
+        h: identity("followed/a", F),
+      });
+      expect(doc.entries["attended/b"].h).toBe(identity("attended/b", A));
+      expect(doc.entries["note/c"].h).toBe(stableHash("x"));
+      expect(doc.entries["rating/d"]).toEqual(old().entries["rating/d"]);
+      // a reason change afterwards is no change
+      expect(
+        meta.reconcile({ ...now(), "followed/a": { ...F, reason: "z" } }, T),
+      ).toEqual([]);
+    });
+
+    it("still bumps an entry changed while unrecorded", () => {
+      const s = fakeStorage();
+      s.setItem(KEY, JSON.stringify(old()));
+      const meta = createSyncMeta("conf", s, () => "dev");
+      const changed = {
+        ...now(),
+        "note/c": "edited",
+        "attended/b": { off: true },
+      };
+      expect(meta.reconcile(changed, T).sort()).toEqual([
+        "attended/b",
+        "note/c",
+      ]);
+      expect(meta.read()["note/c"].v).toEqual({ dev: 2 });
+      expect(JSON.parse(s.getItem(KEY)).hv).toBe(2);
+    });
+
+    it("write keeps the format marker", () => {
+      const s = fakeStorage();
+      const meta = createSyncMeta("conf", s, () => "dev");
+      meta.reconcile(now(), T);
+      meta.write(meta.read());
+      expect(JSON.parse(s.getItem(KEY)).hv).toBe(2);
+      expect(meta.reconcile(now(), T)).toEqual([]);
+    });
+
+    it("a new device starts with the marker", () => {
+      const s = fakeStorage();
+      createSyncMeta("conf", s, () => "dev");
+      expect(JSON.parse(s.getItem(KEY)).hv).toBe(2);
+    });
   });
 });

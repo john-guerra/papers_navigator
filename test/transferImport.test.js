@@ -405,8 +405,10 @@ describe("renderTransferImport", () => {
   it("shows the summary again instead of applying when the data here changed meanwhile", () => {
     const ctx = laptop();
     const el = render(phoneFile(), ctx);
-    // the phone removed b; meanwhile b's reason changes here, so it is now a clash too
+    // the phone removed b; meanwhile b is removed and added again here (a reason change alone
+    // is no change), so it is now a clash too
     ctx.stores.followed.remove(["b"]);
+    ctx.meta.reconcile(toEntries(state(ctx)), T1);
     ctx.stores.followed.add([{ id: "b" }], "again", T1);
     ctx.meta.reconcile(toEntries(state(ctx)), T1);
     buttonNamed(el, "Keep iPhone's").click();

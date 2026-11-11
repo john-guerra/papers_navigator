@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { compare, stableHash } from "../src/lib/sync/clock.js";
+import { compare } from "../src/lib/sync/clock.js";
+import { identity } from "../src/lib/sync/entries.js";
 import {
   mergeTransfer,
   newestForAll,
@@ -9,7 +10,7 @@ import {
 const T1 = "2026-11-10T10:00:00.000Z";
 const T2 = "2026-11-10T12:00:00.000Z";
 
-const rec = (value, v, t = T1) => ({ v, t, h: stableHash(value) });
+const rec = (key, value, v, t = T1) => ({ v, t, h: identity(key, value) });
 const tomb = (v, t = T1) => ({ v, t, h: "", deleted: true });
 
 /** Builds `local` from `{key: [value, v, t?]}` (value undefined = tombstone). */
@@ -20,7 +21,7 @@ function makeLocal(spec) {
     if (value === undefined) meta[k] = tomb(v, t);
     else {
       entries[k] = value;
-      meta[k] = rec(value, v, t);
+      meta[k] = rec(k, value, v, t);
     }
   }
   return { entries, meta };
@@ -126,15 +127,41 @@ describe("mergeTransfer", () => {
 
     it("joins equal objects regardless of key order (hashes both sides)", () => {
       const local = makeLocal({
-        "followed/p1": [{ reason: "x", addedOn: T1 }, { L: 1 }],
+        "rule/author:x": [{ type: "author", value: "X" }, { L: 1 }],
       });
-      local.meta["followed/p1"].h = "stale";
+      local.meta["rule/author:x"].h = "stale";
       const incoming = makeIncoming({
-        "followed/p1": [{ addedOn: T1, reason: "x" }, { P: 1 }],
+        "rule/author:x": [{ value: "X", type: "author" }, { P: 1 }],
       });
       const r = mergeTransfer(local, incoming);
       expect(r.clashes).toEqual([]);
-      expect(r.apply["followed/p1"].v).toEqual({ L: 1, P: 1 });
+      expect(r.apply["rule/author:x"].v).toEqual({ L: 1, P: 1 });
+    });
+
+    it("a paper both follow keeps this device's reason, also when the file's version is newer", () => {
+      const local = makeLocal({
+        "followed/p1": [{ reason: "mine", addedOn: T1 }, { L: 1 }],
+        "attended/p1": [{ at: T1, how: "manual" }, { L: 1 }],
+      });
+      const incoming = makeIncoming({
+        "followed/p1": [{ reason: "theirs", addedOn: T2 }, { L: 1, P: 1 }, T2],
+        "attended/p1": [{ at: T2, how: "auto" }, { L: 1, P: 1 }, T2],
+      });
+      const r = mergeTransfer(local, incoming);
+      expect(r.clashes).toEqual([]);
+      expect(r.apply).toEqual({
+        "followed/p1": {
+          value: { reason: "mine", addedOn: T1 },
+          v: { L: 1, P: 1 },
+          t: T2,
+        },
+        "attended/p1": {
+          value: { at: T1, how: "manual" },
+          v: { L: 1, P: 1 },
+          t: T2,
+        },
+      });
+      expect(r.counts).toEqual({ added: 0, changed: 0, removed: 0, same: 2 });
     });
 
     it("joins two tombstones silently", () => {

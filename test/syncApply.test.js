@@ -666,3 +666,41 @@ describe("lastImport", () => {
     expect(lastImport(ctx)).toBeNull();
   });
 });
+
+describe("identity, not metadata (first trip)", () => {
+  it("a paper both have keeps its local reason; applied keys reconcile to nothing", () => {
+    const ctx = device();
+    const local = {
+      entries: toEntries(readState("conf", ctx.storage)),
+      meta: ctx.meta.read(),
+    };
+    const phone = createSyncMeta("conf", fakeStorage(), () => "phone");
+    const phoneEntries = {
+      "followed/a": {
+        reason: "📱 shared",
+        addedOn: "2026-10-05T00:00:00.000Z",
+      },
+      "attended/at1": { at: "2026-10-05T10:00:00.000Z", how: "auto" },
+      "note/a": "from the phone",
+    };
+    phone.reconcile(phoneEntries, T1);
+    const r = mergeTransfer(local, {
+      entries: phoneEntries,
+      sync: phone.read(),
+      device: "phone",
+    });
+    expect(r.clashes).toEqual([]);
+    applyTransfer(
+      ctx,
+      Object.entries(r.apply).map(([key, a]) => ({ key, ...a })),
+      { from: "phone", label: "x" },
+    );
+    const after = readState("conf", ctx.storage);
+    expect(after.followed.find((f) => f.id === "a").reason).toBe("r");
+    expect(after.notes.a).toBe("from the phone");
+    expect(ctx.meta.reconcile(toEntries(after), T1)).toEqual([]);
+    // undo still finds the import's entries as it left them
+    expect(undoLastImport(ctx).skipped).toEqual([]);
+    expect(readState("conf", ctx.storage).notes.a).toBeUndefined();
+  });
+});
