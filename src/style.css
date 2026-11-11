@@ -3426,6 +3426,16 @@ body #vg-tooltip-element table tr td.value {
 .live-summary {
   margin: var(--spacing-xs) 0;
 }
+/* Your note on a session without papers (key session:<id>): the field when checked in, the
+   note itself on its card */
+.live-event-notes {
+  margin: var(--spacing-sm) 0;
+}
+.live-event-mynote {
+  margin: var(--spacing-xs) 0;
+  font: var(--typography-body-sm);
+  white-space: pre-line;
+}
 /* A plenary, panel or meetup (no papers): its link to the VIS program */
 .live-event-note {
   margin: var(--spacing-xs) 0;
@@ -3672,12 +3682,6 @@ body #vg-tooltip-element table tr td.value {
 .post-photo-buttons button,
 .post-send button {
   min-height: 44px;
-}
-.rated-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  align-items: center;
 }
 .live-discussion {
   font: var(--typography-body-sm);

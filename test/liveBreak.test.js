@@ -308,3 +308,38 @@ describe("session cards wear the program's type color (a subtle stripe)", () => 
     expect(card.dataset.typeColor).toBe("plenary");
   });
 });
+
+describe("an event card shows your note on it", () => {
+  it("📝 under the event, only when there is one", () => {
+    const plenary = {
+      sessionId: "awards",
+      type: "plenary",
+      typeLabel: "Plenary",
+      title: "Awards",
+      room: "Hall America",
+      start: et("17:00"),
+      end: et("18:30"),
+      paperIds: [],
+    };
+    const view = (note) =>
+      renderBreakView(
+        slotsAt(programDays(papers, TZ, [plenary]), new Date(et("16:50")), TZ),
+        {
+          tz: TZ,
+          mineIds: new Set(),
+          notes: { get: (id) => (id === "session:awards" ? note : "") },
+          onGoing: vi.fn(),
+          onPickSlot: vi.fn(),
+        },
+      );
+    const card = view("Ask about the jury").querySelector(
+      '[data-session-id="awards"]',
+    );
+    expect(card.querySelector(".live-event-mynote").textContent).toContain(
+      "📝 Ask about the jury",
+    );
+    expect(
+      view("").querySelector('[data-session-id="awards"] .live-event-mynote'),
+    ).toBeNull();
+  });
+});

@@ -146,6 +146,12 @@ export function sessionSummary(session) {
   return parts.join(" · ");
 }
 
+/**
+ * Where your note on a session without papers (plenary, panel, meetup…) is kept: the paper
+ * notes store, under `session:<sessionId>` (a prefix, so it can never meet a paper id).
+ */
+export const sessionNoteId = (session) => `session:${session.sessionId}`;
+
 const SAFE_COLOR = /^[a-z][a-z0-9-]*$/;
 
 /** The most common value; on a tie, the one seen first. */
