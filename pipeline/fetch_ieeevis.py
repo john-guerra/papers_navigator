@@ -80,11 +80,12 @@ def _parse_authors(soup) -> list[dict]:
     return authors
 
 
-_BLUESKY_PROFILE = re.compile(r"^https://bsky\.app/profile/([A-Za-z0-9.:-]+)/?$")
+# A handle you can @-mention (name.domain); not a did: or a bare "-" (the app's removal marker)
+_BLUESKY_PROFILE = re.compile(r"^https://bsky\.app/profile/([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)/?$")
 
 
 def _bluesky_handle(link) -> str | None:
-    """The handle (or did:) of a conference "on Bluesky" link next to an author's name, or None."""
+    """The handle of a conference "on Bluesky" link next to an author's name, or None."""
     match = _BLUESKY_PROFILE.match(link["href"].strip()) if link else None
     return match.group(1).lower() if match else None
 

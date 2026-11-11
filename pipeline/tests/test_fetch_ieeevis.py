@@ -142,3 +142,23 @@ def test_links_are_deduplicated(paper):
     urls = [link["url"] for link in paper["links"]]
     assert len(urls) == len(set(urls))
     assert all(link["label"] for link in paper["links"])
+
+
+@pytest.mark.parametrize(
+    "href, handle",
+    [
+        ("https://bsky.app/profile/Lace.bsky.social", "lace.bsky.social"),
+        ("https://bsky.app/profile/arvindsatya.com/", "arvindsatya.com"),
+        # not a handle you can @-mention: a DID, a bare marker, no dot
+        ("https://bsky.app/profile/did:plc:abc123", None),
+        ("https://bsky.app/profile/-", None),
+        ("https://bsky.app/profile/nodot", None),
+        ("https://evil.example/profile/x.bsky.social", None),
+    ],
+)
+def test_bluesky_handle_accepts_only_mentionable_handles(href, handle):
+    from bs4 import BeautifulSoup
+    from pipeline.fetch_ieeevis import _bluesky_handle
+
+    link = BeautifulSoup(f'<a class="bluesky-profile-link" href="{href}">x</a>', "html.parser").a
+    assert _bluesky_handle(link) == handle

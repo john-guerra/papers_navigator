@@ -260,13 +260,26 @@ export async function loadDiscussion(
   return matchDiscussion(feed, papers);
 }
 
-/** Stored for an author whose conference-listed handle you removed (✕): don't suggest it again. */
+/**
+ * A bare removal marker, as stored before #224's review fix: hides any listed handle for that
+ * name. New removals use `removedHandle(handle)`.
+ */
 export const NO_HANDLE = "-";
+
+/**
+ * Stored for an author whose conference-listed `handle` you removed (✕): that handle isn't
+ * suggested again, but a same-named author's different listed handle (another paper) still is.
+ */
+export const removedHandle = (handle) => `${NO_HANDLE}:${handle}`;
+
+/** Whether a stored value is a removal marker (bare or for one handle), not a picked handle. */
+export const isRemoval = (stored) =>
+  stored === NO_HANDLE || String(stored).startsWith(`${NO_HANDLE}:`);
 
 /**
  * Bluesky handles you picked, by author name, on this device only
  * (`papersNavigator:<id>:bskyHandles`). `.get(name)`, `.set(name, handle)` ("" forgets;
- * `NO_HANDLE` remembers that you removed the conference's).
+ * `removedHandle(h)` remembers that you removed the conference's `h`).
  */
 export function createHandlesStore(
   conferenceId,

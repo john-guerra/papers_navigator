@@ -173,6 +173,7 @@ def previous_layout(papers: list[dict], matrix: np.ndarray, data_dir: Path, meth
         print("layout: new projections (the set of papers changed)")
         return None
     if any(set(projections[m]) != old_set for m in methods):
+        print("layout: new projections (a projection file lists other papers than papers.json)")
         return None
     row = {i: k for k, i in enumerate(old_ids)}
     kept_rows = [k for k, i in enumerate(ids) if i in old_set]
@@ -251,7 +252,10 @@ def run(
     if info is None:
         info = add_clusters(papers, default, config.get("clusters"))
     else:
-        print("clusters: kept the last run's topics (layout kept)")
+        print(
+            "clusters: kept the last run's topics (layout kept); after editing config clusters "
+            "(stopWords, sizes) or titles, run `python -m pipeline.clusters` to recompute them"
+        )
     # Short labels (pipeline/short_labels.py): committed LLM labels (shortLabels.json), the cache,
     # keyphrases; no LLM calls (papers it doesn't know are reported)
     short_meta = None

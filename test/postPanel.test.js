@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { renderPostPanel } from "../src/components/postPanel.js";
-import { NO_HANDLE } from "../src/lib/bluesky.js";
+import { NO_HANDLE, removedHandle } from "../src/lib/bluesky.js";
 
 const paper = {
   id: "p1",
@@ -407,7 +407,10 @@ describe("the handle the conference lists", () => {
     const { el, handles } = setup({ paper: listed });
     const row = el.querySelectorAll(".post-author")[0];
     row.querySelector(".post-forget").click();
-    expect(handles.set).toHaveBeenCalledWith("Başak Oral", NO_HANDLE);
+    expect(handles.set).toHaveBeenCalledWith(
+      "Başak Oral",
+      removedHandle("oral.bsky.social"),
+    );
     expect(text(el)).not.toContain("@oral");
     expect(row.querySelector(".post-find")).not.toBeNull();
     el.remove();
@@ -415,6 +418,24 @@ describe("the handle the conference lists", () => {
     const again = setup({ paper: listed, handles });
     expect(text(again.el)).not.toContain("@oral");
     again.el.remove();
+  });
+
+  it("✕ removes that handle only: a same-named author's listed handle on another paper still shows (review #220)", () => {
+    const handles = fakeHandles({
+      "Başak Oral": removedHandle("someone-else.bsky.social"),
+    });
+    const { el } = setup({ paper: listed, handles });
+    expect(text(el)).toContain("@oral.bsky.social");
+    el.remove();
+  });
+
+  it("a removal stored before this change (a bare marker) still hides the listed handle", () => {
+    const { el } = setup({
+      paper: listed,
+      handles: fakeHandles({ "Başak Oral": NO_HANDLE }),
+    });
+    expect(text(el)).not.toContain("@oral");
+    el.remove();
   });
 
   it("an account you picked wins over the listed one", () => {
