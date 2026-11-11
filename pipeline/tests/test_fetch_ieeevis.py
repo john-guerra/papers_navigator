@@ -108,6 +108,22 @@ def test_parse_session():
     }
 
 
+def test_parse_session_ignores_the_bookmark_button_in_the_title():
+    from pipeline.fetch_ieeevis import parse_session
+
+    html = (
+        '<h1 class="session-title">Welcome Reception + Posters<button id="sessionBookmarkBtn" '
+        'type="button" aria-label="Add bookmark"><i class="material-icons">bookmark_border</i>'
+        "</button></h1>"
+    )
+    assert parse_session(html)["sessionName"] == "Welcome Reception + Posters"
+
+
+def test_parse_paper_title_ignores_a_bookmark_button():
+    html = '<h1>Awards<button aria-label="Add bookmark"><i class="material-icons">bookmark_border</i></button></h1>'
+    assert parse_paper(html)["title"] == "Awards"
+
+
 def test_decode_body_ignores_wrong_charset_guess():
     from pipeline.fetch_ieeevis import decode_body
 
