@@ -17,16 +17,24 @@ export function renderSessionNotes(sessions, { notes, tz }) {
   const ids = Object.keys(notes.value ?? {})
     .filter((key) => key.startsWith(PREFIX) && notes.get(key))
     .map((key) => key.slice(PREFIX.length));
-  const start = (id) => byId.get(id)?.start ?? "~";
-  ids.sort((a, b) => (start(a) < start(b) ? -1 : start(a) > start(b) ? 1 : 0));
+  // By instant (the program mixes "Z" and "+00:00"); a missing or bad time goes last
+  const instant = (id) => {
+    const t = Date.parse(byId.get(id)?.start ?? "");
+    return Number.isFinite(t) ? t : Infinity;
+  };
+  ids.sort((a, b) => {
+    const [x, y] = [instant(a), instant(b)];
+    return x === y ? 0 : x < y ? -1 : 1;
+  });
   const fields = [];
   const rows = ids.map((id) => {
     const s = byId.get(id);
     const name = s?.title ?? id;
     const field = quickNote({ id: PREFIX + id, title: name }, { notes });
     fields.push(field);
-    const when = s?.start
-      ? `${formatDay(dayKey(new Date(s.start), tz))} ${formatTime(new Date(s.start), tz)}`
+    const t = instant(id);
+    const when = Number.isFinite(t)
+      ? `${formatDay(dayKey(new Date(t), tz))} ${formatTime(new Date(t), tz)}`
       : "";
     return html`<li class="session-note" data-session-id=${id}>
       <div class="session-note-name">${name}</div>

@@ -315,19 +315,26 @@ display(attendedBox);
 // review). Redrawn only when the set of noted sessions changes, never while you type in it.
 const sessionNotesBox = html`<div></div>`;
 let sessionNoteKeys = null;
-const drawSessionNotes = () => {
-  const keys = Object.keys(notesStore.value)
+let drawingSessionNotes = false;
+const sessionNoteKeysNow = () =>
+  Object.keys(notesStore.value)
     .filter((k) => k.startsWith("session:") && notesStore.get(k))
     .sort()
     .join("\n");
-  if (keys === sessionNoteKeys) return;
+const drawSessionNotes = () => {
+  if (sessionNoteKeysNow() === sessionNoteKeys) return;
   if (sessionNotesBox.contains(document.activeElement)) {
     sessionNotesBox.addEventListener("focusout", () => setTimeout(drawSessionNotes), { once: true });
     return;
   }
-  sessionNoteKeys = keys;
+  // Disposing saves pending typing, which can fire this again: ignore that nested call, then
+  // read the keys after it so the list matches the store
+  if (drawingSessionNotes) return;
+  drawingSessionNotes = true;
   sessionNotesBox.firstElementChild?.dispose?.();
+  sessionNoteKeys = sessionNoteKeysNow();
   sessionNotesBox.replaceChildren(renderSessionNotes(programSessions, { notes: notesStore, tz }));
+  drawingSessionNotes = false;
 };
 drawSessionNotes();
 notesStore.addEventListener("input", drawSessionNotes);

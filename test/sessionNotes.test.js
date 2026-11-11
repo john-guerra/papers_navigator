@@ -79,3 +79,34 @@ describe("renderSessionNotes", () => {
     expect(el.textContent).toContain("plenaries, panels and meetups");
   });
 });
+
+describe("renderSessionNotes with odd times (#223 re-review)", () => {
+  it("sorts by instant across offset formats, and a bad time doesn't break the list", () => {
+    const odd = [
+      {
+        sessionId: "z",
+        title: "Later, written with Z",
+        start: "2026-11-11T18:00:00.000Z",
+      },
+      {
+        sessionId: "o",
+        title: "Earlier, written with +00:00",
+        start: "2026-11-11T17:30:00+00:00",
+      },
+      { sessionId: "bad", title: "Bad time", start: "not a date" },
+    ];
+    const notes = fakeNotes({
+      "session:z": "z",
+      "session:o": "o",
+      "session:bad": "b",
+    });
+    const el = renderSessionNotes(odd, { notes, tz: TZ });
+    expect(
+      [...el.querySelectorAll(".session-note-name")].map((n) => n.textContent),
+    ).toEqual([
+      "Earlier, written with +00:00",
+      "Later, written with Z",
+      "Bad time",
+    ]);
+  });
+});
