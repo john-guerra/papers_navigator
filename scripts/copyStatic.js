@@ -1,10 +1,10 @@
 // Copies static files that pages don't reference (so `observable build` skips them) from src/
-// to dist/ — today the social preview image named by the conference's `ogImage` (#18), which the
-// head references by absolute URL — and the self-hosted fonts (#91): Framework copies
+// to dist/: the social preview image named by the conference's `ogImage` (#18) and the Home
+// Screen app's icons (`ICON_FILES`), which the head references by absolute URL; writes the
+// conference's manifest.webmanifest; and copies the self-hosted fonts (#91): Framework copies
 // src/fonts/fonts.css (linked from the head) to _file/fonts/fonts.<hash>.css but not the .woff2
 // its url()s name, so they go next to it, in dist/_file/fonts/.
 // CLI (run by `npm run build`): node scripts/copyStatic.js [srcDir] [distDir]
-// Also the Home Screen app's icons and its manifest, written per conference.
 import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,7 +54,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const files = [...staticFiles(conference), ...ICON_FILES];
   await copyStatic(files, srcDir, distDir);
   await writeManifest(conference, distDir);
-  console.log(`static → ${distDir}: ${files.join(", ") || "(none)"}`);
+  console.log(
+    `static → ${distDir}: ${files.join(", ") || "(none)"}, manifest.webmanifest`,
+  );
   const fonts = await copyFonts(srcDir, distDir);
   console.log(`fonts → ${distDir}/_file/fonts: ${fonts.length} files`);
 }
