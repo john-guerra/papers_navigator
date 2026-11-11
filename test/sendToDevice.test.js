@@ -115,7 +115,7 @@ describe("send to my other device", () => {
   });
 
   it("shows the Home Screen hint only in an iOS Safari tab", () => {
-    const hint = "Using the Home Screen app? Import the file there.";
+    const hint = "Using the Home Screen app? Use Import JSON there.";
     expect(
       setup({ nav: { userAgent: "iPhone", standalone: false } }).el.textContent,
     ).toContain(hint);

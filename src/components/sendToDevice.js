@@ -68,7 +68,7 @@ export function renderSendToDevice({
 
   return html`<div class="send-to-device">
     <div class="my-papers-tools">${send} ${copy} ${paste}</div>
-    ${isIosSafariTab(nav) ? html`<p class="send-hint">Using the Home Screen app? Import the file there.</p>` : ""}
+    ${isIosSafariTab(nav) ? html`<p class="send-hint">Using the Home Screen app? Use Import JSON there.</p>` : ""}
     ${status}
   </div>`;
 }

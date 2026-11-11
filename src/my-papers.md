@@ -206,7 +206,7 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
     ),
   );
   // A link always opens in a Safari tab on iOS; the Home Screen app has its own storage
-  if (isIosSafariTab()) banner.append(html`<p class="send-hint">Using the Home Screen app? Import the file there.</p>`);
+  if (isIosSafariTab()) banner.append(html`<p class="send-hint">Using the Home Screen app? Use Import JSON there.</p>`);
 }
 display(banner);
 ```
