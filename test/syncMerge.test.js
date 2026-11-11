@@ -208,11 +208,100 @@ describe("mergeTransfer", () => {
     ]);
   });
 
-  it("treats a local key with no meta record as vector {}", () => {
-    const local = { entries: { "rating/p1": 3 }, meta: {} };
-    const incoming = makeIncoming({ "rating/p1": [5, { P: 1 }] });
-    const r = mergeTransfer(local, incoming);
-    expect(r.apply["rating/p1"]).toEqual({ value: 5, v: { P: 1 }, t: T1 });
+  describe("a local change the meta hasn't recorded is never silently dominated", () => {
+    const noPseudo = (r) => {
+      for (const x of [
+        ...Object.values(r.apply),
+        ...r.clashes.flatMap((c) => [c.local, c.incoming]),
+      ])
+        expect(Object.keys(x.v).some((d) => d.startsWith("~"))).toBe(false);
+    };
+
+    it("no meta record: different values clash, equal values join silently", () => {
+      const local = { entries: { "rating/p1": 3, "rating/p2": 4 }, meta: {} };
+      const incoming = makeIncoming({
+        "rating/p1": [5, { P: 1 }],
+        "rating/p2": [4, { P: 1 }],
+      });
+      const r = mergeTransfer(local, incoming);
+      expect(r.clashes).toEqual([
+        {
+          key: "rating/p1",
+          local: { value: 3, v: {}, t: "" },
+          incoming: { value: 5, v: { P: 1 }, t: T1 },
+        },
+      ]);
+      expect(r.apply).toEqual({
+        "rating/p2": { value: 4, v: { P: 1 }, t: T1 },
+      });
+      noPseudo(r);
+    });
+
+    it("a note with no meta vs a dominating incoming note clashes (no text lost)", () => {
+      const local = { entries: { "note/p1": "my unsaved thought" }, meta: {} };
+      const incoming = makeIncoming({ "note/p1": ["theirs", { P: 3 }] });
+      const r = mergeTransfer(local, incoming);
+      expect(r.apply).toEqual({});
+      expect(r.clashes.map((c) => c.key)).toEqual(["note/p1"]);
+      const [res] = newestForAll(r.clashes, "L");
+      expect(res.value).toBe("my unsaved thought\n\ntheirs");
+      expect(res.v).toEqual({ P: 3, L: 1 });
+      noPseudo(r);
+    });
+
+    it("stale meta (hash mismatch) vs a dominating incoming value clashes", () => {
+      const local = makeLocal({ "rating/p1": [3, { L: 1 }] });
+      local.entries["rating/p1"] = 2; // edited after the meta was written
+      const incoming = makeIncoming({ "rating/p1": [5, { L: 1, P: 1 }] });
+      const r = mergeTransfer(local, incoming);
+      expect(r.apply).toEqual({});
+      expect(r.clashes).toEqual([
+        {
+          key: "rating/p1",
+          local: { value: 2, v: { L: 1 }, t: T1 },
+          incoming: { value: 5, v: { L: 1, P: 1 }, t: T1 },
+        },
+      ]);
+      const res = resolveClash(r.clashes[0], "local", "L");
+      expect(res.v).toEqual({ L: 2, P: 1 });
+      expect(compare(res.v, r.clashes[0].local.v)).toBe("a");
+      expect(compare(res.v, r.clashes[0].incoming.v)).toBe("a");
+    });
+
+    it("meta.deleted with a live local value vs an incoming edit clashes", () => {
+      const local = makeLocal({ "note/p1": [undefined, { L: 2 }] });
+      local.entries["note/p1"] = "re-added";
+      const incoming = makeIncoming({ "note/p1": ["edited", { L: 2, P: 1 }] });
+      const r = mergeTransfer(local, incoming);
+      expect(r.apply).toEqual({});
+      expect(r.clashes[0].local).toEqual({
+        value: "re-added",
+        v: { L: 2 },
+        t: T1,
+      });
+      noPseudo(r);
+    });
+
+    it("an unrecorded longer local note is a clash, not a silent keep", () => {
+      const local = { entries: { "note/p1": "Good. Ask about X" }, meta: {} };
+      const incoming = makeIncoming({ "note/p1": ["Good", { P: 1 }] });
+      const r = mergeTransfer(local, incoming);
+      expect(r.clashes.map((c) => c.key)).toEqual(["note/p1"]);
+    });
+
+    it("an unrecorded shorter local note silently takes the longer incoming one", () => {
+      const local = { entries: { "note/p1": "Good" }, meta: {} };
+      const incoming = makeIncoming({
+        "note/p1": ["Good. Ask about X", { P: 1 }],
+      });
+      const r = mergeTransfer(local, incoming);
+      expect(r.clashes).toEqual([]);
+      expect(r.apply["note/p1"]).toEqual({
+        value: "Good. Ask about X",
+        v: { P: 1 },
+        t: T1,
+      });
+    });
   });
 
   describe("odd input", () => {
@@ -251,6 +340,27 @@ describe("mergeTransfer", () => {
         clashes: [],
         counts: { added: 0, changed: 0, removed: 0, same: 0 },
       });
+    });
+
+    it("skips incoming vectors naming __proto__, constructor, prototype or the pseudo device", () => {
+      const sync = JSON.parse(
+        '{"rating/a": {"v": {"__proto__": 1}, "t": "x"},' +
+          ' "rating/b": {"v": {"constructor": 1}, "t": "x"},' +
+          ' "rating/c": {"v": {"prototype": 1}, "t": "x"},' +
+          ' "rating/d": {"v": {"~unrecorded": 1}, "t": "x"}}',
+      );
+      const entries = {
+        "rating/a": 1,
+        "rating/b": 1,
+        "rating/c": 1,
+        "rating/d": 1,
+      };
+      const r = mergeTransfer(
+        { entries: {}, meta: {} },
+        { device: "P", entries, sync },
+      );
+      expect(r.apply).toEqual({});
+      expect(r.counts.added).toBe(0);
     });
 
     it("skips keys that aren't <store>/<id> of a known store", () => {

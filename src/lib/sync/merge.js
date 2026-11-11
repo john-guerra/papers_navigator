@@ -11,9 +11,24 @@ const isPlainObject = (x) =>
   x !== null && typeof x === "object" && !Array.isArray(x);
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
+/**
+ * Pseudo device standing for a local change the meta hasn't recorded. It only takes part in
+ * `compare` (so such a change is never silently dominated) and is never stored or returned.
+ * The leading "~" can't occur in a device id, and incoming vectors carrying it are rejected.
+ */
+const UNRECORDED = "~unrecorded";
+const BAD_DEVICES = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+  UNRECORDED,
+]);
+
 const isVector = (v) =>
   isPlainObject(v) &&
-  Object.values(v).every((n) => Number.isInteger(n) && n > 0);
+  Object.entries(v).every(
+    ([d, n]) => !BAD_DEVICES.has(d) && Number.isInteger(n) && n > 0,
+  );
 
 const isSyncKey = (key) =>
   key.includes("/") && STORES.includes(splitKey(key)[0]);
@@ -27,7 +42,10 @@ function side(value, deleted, v, t) {
   return deleted ? { deleted: true, v, t } : { value, v, t };
 }
 
-/** This device's record of `key`, or null when it has never had it. */
+/**
+ * This device's record of `key` (null when it has never had it), plus `unrecorded`: a live value
+ * the meta doesn't describe (no record, a tombstone, or a different hash).
+ */
 function localSide(local, key) {
   const meta =
     own(local.meta, key) && isPlainObject(local.meta[key])
@@ -35,9 +53,14 @@ function localSide(local, key) {
       : null;
   const v = isVector(meta?.v) ? meta.v : {};
   const t = typeof meta?.t === "string" ? meta.t : "";
-  if (own(local.entries, key) && local.entries[key] !== undefined)
-    return { value: local.entries[key], v, t };
-  if (meta?.deleted === true) return { deleted: true, v, t };
+  if (own(local.entries, key) && local.entries[key] !== undefined) {
+    const value = local.entries[key];
+    const unrecorded =
+      !meta || meta.deleted === true || meta.h !== stableHash(value);
+    return { side: { value, v, t }, unrecorded };
+  }
+  if (meta?.deleted === true)
+    return { side: { deleted: true, v, t }, unrecorded: false };
   return null;
 }
 
@@ -100,16 +123,21 @@ export function mergeTransfer(local, incoming) {
     if (!isSyncKey(key)) continue;
     const theirs = incomingSide(inc, key);
     if (!theirs) continue;
-    const mine = localSide(loc, key);
+    const found = localSide(loc, key);
 
-    if (!mine) {
+    if (!found) {
       apply[key] = side(theirs.value, theirs.deleted, theirs.v, theirs.t);
       const k = kind(null, theirs);
       if (k) counts[k]++;
       continue;
     }
 
-    const order = compare(mine.v, theirs.v);
+    const mine = found.side;
+    // An unrecorded local change counts as one more event, so it can't be dominated.
+    const order = compare(
+      found.unrecorded ? bump(mine.v, UNRECORDED) : mine.v,
+      theirs.v,
+    );
     if (order === "a" || order === "equal") {
       counts.same++;
       continue;
@@ -131,7 +159,9 @@ export function mergeTransfer(local, incoming) {
       continue;
     }
     const winner = prefixWinner(key, mine, theirs);
-    if (winner) {
+    // An unrecorded local text kept under the joined vector might not dominate the file's, so
+    // the other device could keep its shorter text: let the person choose (resolveClash bumps).
+    if (winner && !(winner === mine && found.unrecorded)) {
       apply[key] = { value: winner.value, v, t };
       counts[winner === mine ? "same" : "changed"]++;
       continue;
