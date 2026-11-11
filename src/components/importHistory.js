@@ -23,13 +23,26 @@ function button(label, onclick, kind = "btn-text") {
   return b;
 }
 
+const isRestore = (from) => from === "backup" || from === "snapshot";
+/** "before the import from iPhone" from a snapshot's label "Before the import from iPhone" */
+const lowerFirst = (s) =>
+  s ? s[0].toLowerCase() + s.slice(1) : "before an import";
+
 function fromText(from) {
   if (from === "backup") return "Last restore of a backup";
   if (from === "snapshot") return "Last restore of saved data";
   return `Last import${from ? ` from ${from}` : ""}`;
 }
 
-export function renderImportHistory(ctx, { tz, onChange = () => {} } = {}) {
+export function renderImportHistory(
+  ctx,
+  { tz, papers = [], onChange = () => {} } = {},
+) {
+  const titles = new Map(papers.map((p) => [p.id, p.title]));
+  const nameOf = (key) => {
+    const id = key.slice(key.indexOf("/") + 1);
+    return titles.get(id) ?? id;
+  };
   const status = html`<p
     class="import-history-status"
     role="status"
@@ -50,6 +63,7 @@ export function renderImportHistory(ctx, { tz, onChange = () => {} } = {}) {
   };
 
   function undoImport() {
+    const what = isRestore(lastImport(ctx)?.from) ? "restore" : "import";
     let r;
     try {
       r = undoLastImport(ctx);
@@ -63,7 +77,7 @@ export function renderImportHistory(ctx, { tz, onChange = () => {} } = {}) {
     }
     const n = r.reverted.length;
     say(
-      `Undid the import: ${n} ${n === 1 ? "change" : "changes"} put back.` +
+      `Undid the ${what}: ${n} ${n === 1 ? "change" : "changes"} put back.` +
         (r.skipped.length
           ? ` ${r.skipped.length} edited since ${r.skipped.length === 1 ? "was" : "were"} left as ${r.skipped.length === 1 ? "it is" : "they are"}.`
           : ""),
@@ -72,10 +86,18 @@ export function renderImportHistory(ctx, { tz, onChange = () => {} } = {}) {
     refresh();
   }
 
-  function restore(i, at) {
+  // By its time, not its place: another tab may have saved a newer copy meanwhile
+  function restore(snap) {
+    const i = listSnapshots(ctx).findIndex((s) => s.at === snap.at);
+    if (i < 0) {
+      say("That copy of your data is no longer saved.");
+      refresh();
+      return;
+    }
     let undo;
+    let failed;
     try {
-      undo = restoreSnapshot(ctx, i);
+      ({ undo, failed } = restoreSnapshot(ctx, i));
     } catch (err) {
       say(
         err?.code === "storage"
@@ -104,14 +126,17 @@ export function renderImportHistory(ctx, { tz, onChange = () => {} } = {}) {
       onChange();
       refresh();
     });
+    const lost = failed.length
+      ? ` Some changes couldn't be saved because this browser's storage is full: ${failed.map(nameOf).join(", ")}. Those stay as they were here.`
+      : "";
     say(
-      `Restored your data from before the import of ${when(at)}.`,
+      `Restored your data from ${lowerFirst(snap.label)}, ${when(snap.at)}.${lost}`,
       undoButton,
     );
     undoButton.focus?.();
   }
 
-  function snapshotItem(snap, i) {
+  function snapshotItem(snap) {
     const li = html`<li></li>`;
     const ask = () => {
       const cancel = button("Cancel", () => (draw(), open.focus?.()));
@@ -121,14 +146,14 @@ export function renderImportHistory(ctx, { tz, onChange = () => {} } = {}) {
             >Replace your current data with this? It's saved first, so you can
             undo.</span
           >
-          ${button("Restore", () => restore(i, snap.at), "btn-primary")}
+          ${button("Restore", () => restore(snap), "btn-primary")}
           ${cancel}</span
         >`,
       );
       cancel.focus?.();
     };
     const open = button(
-      `Restore data from before the import of ${when(snap.at)}`,
+      `Restore data from ${lowerFirst(snap.label)}, ${when(snap.at)}`,
       ask,
     );
     const draw = () => li.replaceChildren(open);
@@ -143,7 +168,10 @@ export function renderImportHistory(ctx, { tz, onChange = () => {} } = {}) {
       ...(last
         ? [
             `${fromText(last.from)}, ${when(last.at)}. `,
-            button("Undo this import", undoImport),
+            button(
+              isRestore(last.from) ? "Undo this restore" : "Undo this import",
+              undoImport,
+            ),
           ]
         : []),
     );

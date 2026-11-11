@@ -166,6 +166,7 @@ describe("applyTransfer", () => {
       failed: [],
       skipped: [],
       rollbackFailed: false,
+      undoId: null,
     });
     expect(undo()).toEqual({ reverted: [], skipped: [] });
   });
@@ -297,7 +298,8 @@ describe("snapshots", () => {
       label: "Import from phone",
     });
     const metaBefore = ctx.meta.read();
-    const undo = restoreSnapshot(ctx, 0);
+    const { undo, failed } = restoreSnapshot(ctx, 0);
+    expect(failed).toEqual([]);
     let s = readState("conf", ctx.storage);
     expect(s.followed.map((d) => d.id)).toEqual(["b", "a"]);
     expect(s.notes).toEqual({ n1: "my own note" });
@@ -480,9 +482,10 @@ describe("restorePayload (a backup from this device)", () => {
     ctx.stores.ratings.set("r9", 4);
     ctx.meta.reconcile(toEntries(readState("conf", ctx.storage)), T0);
     const metaBefore = ctx.meta.read();
-    const undo = restorePayload(ctx, backup, {
+    const { undo, failed } = restorePayload(ctx, backup, {
       label: "Before restoring a backup",
     });
+    expect(failed).toEqual([]);
     let s = readState("conf", ctx.storage);
     expect(s.followed.map((d) => d.id).sort()).toEqual(["a", "b"]);
     expect(s.notes).toEqual({ n1: "my own note" });
@@ -512,7 +515,7 @@ describe("restorePayload (a backup from this device)", () => {
         sync: {},
       }),
     );
-    const undo = restorePayload(ctx, backup, { label: "x" });
+    const { undo } = restorePayload(ctx, backup, { label: "x" });
     expect(listSnapshots(ctx)).toEqual([]);
     expect(undo()).toEqual({ reverted: [], skipped: [] });
   });
@@ -528,6 +531,97 @@ describe("restorePayload (a backup from this device)", () => {
       expect.objectContaining({ code: "storage" }),
     );
     expect(readState("conf", ctx.storage)).toEqual(before);
+  });
+});
+
+describe("restoring when a store can't save", () => {
+  it("says which keys didn't save and leaves them (and their versions) as they were", () => {
+    const ctx = device();
+    const backup = parseMyPapersFile(
+      exportMyPapers(readState("conf", ctx.storage), {
+        device: "me",
+        sync: {},
+      }),
+    );
+    ctx.stores.notes.set("n1", "edited");
+    ctx.stores.ratings.set("r1", 5);
+    ctx.meta.reconcile(toEntries(readState("conf", ctx.storage)), T0);
+    const metaNote = ctx.meta.read()["note/n1"];
+    ctx.storage.fail = (k) => k === "papersNavigator:conf:notes";
+    const { failed } = restorePayload(ctx, backup, { label: "x" });
+    expect(failed).toEqual(["note/n1"]);
+    ctx.storage.fail = () => false;
+    const s = readState("conf", ctx.storage);
+    expect(s.notes).toEqual({ n1: "edited" });
+    expect(s.ratings.r1).toBe(2);
+    expect(ctx.meta.read()["note/n1"]).toEqual(metaNote);
+  });
+});
+
+describe("continuing an import (answers given later)", () => {
+  it("adds to the same undo record and saves no new snapshot", () => {
+    const ctx = device();
+    const first = applyTransfer(
+      ctx,
+      [
+        { key: "rating/x1", value: 1, v: V, t },
+        { key: "followed/a", deleted: true, v: V, t },
+      ],
+      { from: "iPhone", label: "Before the import from iPhone" },
+    );
+    expect(typeof first.undoId).toBe("string");
+    const later = applyTransfer(
+      ctx,
+      [
+        { key: "rating/r1", value: 4, v: { me: 2, other: 1 }, t },
+        // a key the first part changed: undo still goes back to before the import
+        { key: "rating/x1", value: 3, v: { other: 2 }, t },
+      ],
+      { from: "iPhone", label: "y", continueImport: first.undoId },
+    );
+    expect(later.undoId).toBe(first.undoId);
+    const more = applyTransfer(
+      ctx,
+      [{ key: "note/n1", value: "both", v: { me: 2, other: 1 }, t }],
+      { from: "iPhone", label: "z", continueImport: first.undoId },
+    );
+    expect(more.undoId).toBe(first.undoId);
+    expect(listSnapshots(ctx).map((x) => x.label)).toEqual([
+      "Before the import from iPhone",
+    ]);
+    expect(lastImport(ctx).count).toBe(4);
+    // after a reload: one undo takes back the whole import
+    const { reverted } = undoLastImport({
+      ...ctx,
+      meta: createSyncMeta("conf", ctx.storage),
+    });
+    expect(reverted.sort()).toEqual(
+      ["followed/a", "note/n1", "rating/r1", "rating/x1"].sort(),
+    );
+    const s = readState("conf", ctx.storage);
+    expect(s.ratings).toEqual({ r1: 2 });
+    expect(s.notes).toEqual({ n1: "my own note" });
+    expect(s.followed.map((d) => d.id).sort()).toEqual(["a", "b"]);
+  });
+
+  it("starts a new record when that import's record is gone", () => {
+    const ctx = device();
+    const first = applyTransfer(
+      ctx,
+      [{ key: "rating/x1", value: 1, v: V, t }],
+      {
+        from: "iPhone",
+        label: "a",
+      },
+    );
+    undoLastImport(ctx);
+    const later = applyTransfer(
+      ctx,
+      [{ key: "rating/x2", value: 2, v: V, t }],
+      { from: "iPhone", label: "b", continueImport: first.undoId },
+    );
+    expect(later.undoId).not.toBe(first.undoId);
+    expect(listSnapshots(ctx)[0].label).toBe("b");
   });
 });
 

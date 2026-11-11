@@ -203,12 +203,17 @@ export function renderTransferImport(
   const choices = new Map(); // key → "local" | "incoming" | "both"
   let open = []; // clashes left for later ("Skip these for now")
   const undos = []; // this import's writes, in order
+  let importId = null; // its undo record: answers given later join it
 
   /** applyTransfer, saying what went wrong; null when nothing was changed. */
   function write(resolutions) {
     let result;
     try {
-      result = applyTransfer(ctx, resolutions, { from: theirs, label });
+      result = applyTransfer(ctx, resolutions, {
+        from: theirs,
+        label,
+        continueImport: importId,
+      });
     } catch (err) {
       say(
         err?.code === "storage"
@@ -217,7 +222,11 @@ export function renderTransferImport(
       );
       return null;
     }
-    undos.push(result.undo);
+    // A later answer that joined the import's record: its undo now covers the whole import
+    if (importId && result.undoId === importId)
+      undos[undos.length - 1] = result.undo;
+    else undos.push(result.undo);
+    importId = result.undoId ?? importId;
     onChange();
     return result;
   }
@@ -429,8 +438,8 @@ export function renderTransferImport(
     show(
       html`<h3 class="transfer-clash-heading">${needChoice(open)}</h3>`,
       html`<p class="muted">
-        They stay here until you leave this page. Until you choose, this device
-        keeps its own.
+        They stay here until you press Done or leave this page. Until you
+        choose, this device keeps its own.
       </p>`,
       clashList(open, (clash, choice) => answer([clash], choice)),
       html`<div class="transfer-actions">
@@ -551,9 +560,9 @@ export function renderTransferImport(
   }
 
   function restore() {
-    let undo;
+    let restored;
     try {
-      undo = restorePayload(ctx, parsed, {
+      restored = restorePayload(ctx, parsed, {
         label: "Before restoring a backup",
       });
     } catch (err) {
@@ -564,9 +573,9 @@ export function renderTransferImport(
       );
       return;
     }
-    undos.push(undo);
+    undos.push(restored.undo);
     onChange();
-    after("Restored the backup.");
+    after(`Restored the backup.${problems({ failed: restored.failed })}`);
   }
 
   if (parsed.device && parsed.device === ctx.meta.device) backupChoice();

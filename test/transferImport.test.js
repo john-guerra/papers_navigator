@@ -208,7 +208,7 @@ describe("renderTransferImport", () => {
     expect(ids(ctx)).toEqual(["a", "c"]);
     expect(state(ctx).ratings.r1).toBe(5);
     expect(text(el)).toContain("1 paper needs a choice");
-    expect(text(el)).toMatch(/until you leave this page/);
+    expect(text(el)).toMatch(/until you press Done or leave this page/);
     // answering later applies just that choice
     buttonNamed(el, "Keep iPhone's").click();
     expect(state(ctx).ratings.r1).toBe(3);
@@ -217,6 +217,53 @@ describe("renderTransferImport", () => {
     buttonNamed(el, "Undo this import").click();
     expect(ids(ctx)).toEqual(["a", "b"]);
     expect(state(ctx).ratings.r1).toBe(5);
+  });
+
+  it("answers given later join the import: one undo after a reload, one snapshot", () => {
+    const ctx = laptop();
+    ctx.stores.notes.set("n1", "laptop note, edited");
+    ctx.meta.reconcile(toEntries(state(ctx)), T0);
+    const el = render(
+      phoneFile({
+        notes: { n1: "phone note" },
+        sync: { "note/n1": { v: { me: 1, ph: 1 }, t } },
+      }),
+      ctx,
+    );
+    buttonNamed(el, "Skip these for now").click();
+    buttonNamed(el, "Keep iPhone's").click();
+    buttonNamed(el, "Keep iPhone's").click();
+    expect(el.querySelectorAll(".transfer-clashes > li")).toHaveLength(0);
+    expect(state(ctx).ratings.r1).toBe(3);
+    expect(state(ctx).notes.n1).toBe("phone note");
+    buttonNamed(el, "Done").click();
+    expect(listSnapshots(ctx)).toHaveLength(1);
+    expect(listSnapshots(ctx)[0].label).toBe("Before the import from iPhone");
+    // a new page
+    const history = mount(
+      renderImportHistory({ ...ctx, stores: undefined }, { tz: TZ }),
+    );
+    buttonNamed(history, "Undo this import").click();
+    expect(ids(ctx)).toEqual(["a", "b"]);
+    expect(state(ctx).ratings.r1).toBe(5);
+    expect(state(ctx).notes.n1).toBe("laptop note, edited");
+  });
+
+  it("names what a restored backup couldn't save", () => {
+    const ctx = laptop();
+    const backup = parseMyPapersFile(
+      exportMyPapers(state(ctx), { device: "me", sync: ctx.meta.read() }),
+    );
+    ctx.stores.notes.set("n1", "edited");
+    ctx.stores.followed.remove(["a"]);
+    const el = render(backup, ctx);
+    buttonNamed(el, "Restore this backup").click();
+    ctx.storage.fail = (k) => k === "papersNavigator:conf:notes";
+    buttonNamed(el, "Restore").click();
+    const status = text(el.querySelector("[aria-live]"));
+    expect(status).toContain("couldn't be saved");
+    expect(status).toContain("The noted paper");
+    expect(ids(ctx)).toEqual(["a", "b"]);
   });
 
   it("Undo this import clears the open clash list", () => {
@@ -459,31 +506,86 @@ describe("renderImportHistory", () => {
       [{ key: "followed/b", deleted: true, v: { ph: 9 }, t }],
       {
         from: "iPhone",
-        label: "x",
+        label: "Before the import from iPhone",
       },
     );
     expect(ids(ctx)).toEqual(["a"]);
     const el = mount(renderImportHistory(ctx, { tz: TZ }));
     const details = el.querySelector("details");
     expect(details.open).toBe(false);
-    const restore = buttonNamed(
-      el,
-      "Restore data from before the import of Thu Oct 1 20:00 ET",
-    );
-    restore.click();
+    const name =
+      "Restore data from before the import from iPhone, Thu Oct 1 20:00 ET";
+    buttonNamed(el, name).click();
     expect(text(el)).toContain(
       "Replace your current data with this? It's saved first, so you can undo.",
     );
     expect(ids(ctx)).toEqual(["a"]);
     buttonNamed(el, "Cancel").click();
     expect(ids(ctx)).toEqual(["a"]);
-    buttonNamed(
-      el,
-      "Restore data from before the import of Thu Oct 1 20:00 ET",
-    ).click();
+    buttonNamed(el, name).click();
     buttonNamed(el, "Restore").click();
     expect(ids(ctx)).toEqual(["a", "b"]);
+    // the restore is what Undo now takes back
+    expect(buttonNamed(el, "Undo this restore")).toBeTruthy();
+    expect(
+      buttonNamed(
+        el,
+        "Restore data from before restoring a saved copy, Thu Oct 1 20:00 ET",
+      ),
+    ).toBeTruthy();
     buttonNamed(el, "Undo").click();
     expect(ids(ctx)).toEqual(["a"]);
+  });
+
+  it("restores the copy that was chosen even if another one was saved meanwhile", () => {
+    const ctx = laptop();
+    applyTransfer(
+      ctx,
+      [{ key: "followed/b", deleted: true, v: { ph: 9 }, t }],
+      {
+        from: "iPhone",
+        label: "Before the import from iPhone",
+      },
+    );
+    const el = mount(renderImportHistory(ctx, { tz: TZ }));
+    buttonNamed(
+      el,
+      "Restore data from before the import from iPhone, Thu Oct 1 20:00 ET",
+    ).click();
+    // another tab imports meanwhile: a new snapshot comes first
+    applyTransfer(
+      { ...ctx, now: new Date(T1.getTime() + 3600_000) },
+      [
+        {
+          key: "followed/c",
+          value: { reason: "x", addedOn: t },
+          v: { pd: 1 },
+          t,
+        },
+      ],
+      { from: "iPad", label: "Before the import from iPad" },
+    );
+    buttonNamed(el, "Restore").click();
+    expect(ids(ctx)).toEqual(["a", "b"]);
+  });
+
+  it("says when a restore couldn't save part of the data", () => {
+    const ctx = laptop();
+    applyTransfer(
+      ctx,
+      [{ key: "note/n1", value: "from the phone", v: { me: 1, ph: 1 }, t }],
+      { from: "iPhone", label: "Before the import from iPhone" },
+    );
+    const el = mount(renderImportHistory(ctx, { tz: TZ, papers }));
+    buttonNamed(
+      el,
+      "Restore data from before the import from iPhone, Thu Oct 1 20:00 ET",
+    ).click();
+    ctx.storage.fail = (k) => k === "papersNavigator:conf:notes";
+    buttonNamed(el, "Restore").click();
+    expect(text(el.querySelector("[aria-live]"))).toContain(
+      "couldn't be saved",
+    );
+    expect(text(el.querySelector("[aria-live]"))).toContain("The noted paper");
   });
 });

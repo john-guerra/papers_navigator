@@ -202,13 +202,16 @@ function removeUndo(ctx, rec) {
  * the safe order. Returns `{applied, failed, undo}`; throws, having changed nothing, when the
  * snapshot or the meta can't be saved.
  */
-function commit(ctx, changes, { label, from }) {
+function commit(ctx, changes, { label, from, continueImport }) {
   const state = readState(ctx.conferenceId, storageOf(ctx));
   const before = toEntries(state);
   const rawRules = new Map(state.rules.map((r) => [r.id, r]));
+  // Answers given later to an import's clashes join that import: its snapshot already holds
+  // the data from before it, and its undo record grows (see saveUndo)
+  const base = continueImport ? openRecord(ctx, continueImport) : null;
 
   // 1. Snapshot
-  const takeBackSnapshot = saveSnapshot(ctx, state, label);
+  const takeBackSnapshot = base ? () => {} : saveSnapshot(ctx, state, label);
 
   // 2. Meta, for every key, before any store changes
   const metaEntries = ctx.meta.read();
@@ -256,40 +259,75 @@ function commit(ctx, changes, { label, from }) {
   const done = record.filter((r) => !failed.includes(r));
 
   // 4. Undo record
+  const { undo, undoId } = saveUndo(ctx, done, { label, from, base });
   return {
     applied: done.map((r) => r.key),
     failed: failed.map((r) => r.key),
     rollbackFailed,
-    undo: saveUndo(ctx, done, { label, from }),
+    undo,
+    undoId,
   };
 }
 
-/** Saves the undo record of `changes` (it stays usable on this page if it can't be saved). */
-function saveUndo(ctx, changes, { label, from }) {
+/** The stored undo record `id` while it can still be undone, else null. */
+function openRecord(ctx, id) {
+  const rec = loadUndo(ctx);
+  if (rec?.id !== id) return null;
+  const at = Date.parse(rec.at);
+  return Number.isFinite(at) && nowOf(ctx).getTime() - at <= UNDO_DAYS * DAY
+    ? rec
+    : null;
+}
+
+/**
+ * Saves the undo record of `changes` (it stays usable on this page if it can't be saved);
+ * returns `{undo, undoId}`. With `base` (an import's record) the changes join it: a key it
+ * already has keeps its value from before the import, with the new value as the one to undo.
+ */
+function saveUndo(ctx, changes, { label, from, base }) {
   const at = nowOf(ctx).toISOString();
-  const undo = {
-    id: `${at}~${Math.random().toString(36).slice(2, 10)}`,
-    at,
-    label,
-    from,
-    changes,
-  };
+  let undo;
+  if (base) {
+    const merged = new Map(base.changes.map((c) => [c.key, c]));
+    for (const c of changes) {
+      const old = merged.get(c.key);
+      merged.set(
+        c.key,
+        old ? { ...old, afterHash: c.afterHash, afterMeta: c.afterMeta } : c,
+      );
+    }
+    undo = { ...base, changes: [...merged.values()] };
+  } else
+    undo = {
+      id: `${at}~${Math.random().toString(36).slice(2, 10)}`,
+      at,
+      label,
+      from,
+      changes,
+    };
   try {
     storageOf(ctx).setItem(undoKey(ctx.conferenceId), JSON.stringify(undo));
   } catch {
     reportStorageFailure();
   }
-  return () => undoRecord(ctx, undo);
+  return { undo: () => undoRecord(ctx, undo), undoId: undo.id };
 }
 
 /**
  * Applies a transfer: `resolutions` is `[{key, value?, deleted?, v, t}]` (the merge's `apply`
- * plus the clash resolutions). Returns `{applied, failed, skipped, undo}`: `skipped` are values
+ * plus the clash resolutions). `continueImport` (an earlier result's `undoId`) adds answers
+ * given later to that import: no new snapshot, and one undo takes back the whole import (when
+ * its record is gone, this is a new import). Returns `{applied, failed, skipped, undo, undoId}`:
+ * `skipped` are values
  * no store can hold (left alone), `failed` keys a store couldn't save (left as they were). Throws
  * with `code: "storage"`, having changed nothing, when the snapshot or the meta can't be saved.
  */
 export const applyTransfer = busy(applyTransferNow);
-function applyTransferNow(ctx, resolutions, { from, label } = {}) {
+function applyTransferNow(
+  ctx,
+  resolutions,
+  { from, label, continueImport } = {},
+) {
   const now = nowOf(ctx);
   const byKey = new Map();
   const skipped = [];
@@ -324,8 +362,12 @@ function applyTransferNow(ctx, resolutions, { from, label } = {}) {
       skipped,
       rollbackFailed: false,
       undo: () => NONE,
+      undoId: (continueImport && openRecord(ctx, continueImport)?.id) || null,
     };
-  return { ...commit(ctx, [...byKey.values()], { label, from }), skipped };
+  return {
+    ...commit(ctx, [...byKey.values()], { label, from, continueImport }),
+    skipped,
+  };
 }
 
 function undoRecord(ctx, rec) {
@@ -399,14 +441,15 @@ export function lastImport(ctx) {
  * Replaces all the data with snapshot `i` (`listSnapshots` order), after snapshotting the
  * current data. The restored data is a new change on this device: every difference gets a
  * version bumped here (an entry the snapshot lacks gets a tombstone), so another device's older
- * or concurrent value never silently overrides it. Returns an undo (`() => {reverted,
- * skipped}`). Throws, having changed nothing, when the snapshot is damaged or storage is full.
+ * or concurrent value never silently overrides it. Returns `{undo, failed}`: `undo()` gives
+ * `{reverted, skipped}`, `failed` are keys a store couldn't save (left as they were, with their
+ * versions). Throws, having changed nothing, when the snapshot is damaged or storage is full.
  */
 export const restoreSnapshot = busy((ctx, i) => {
   const snap = listSnapshots(ctx)[i];
   if (!snap) throw new Error("This copy of your data is no longer saved.");
   return restoreParsed(ctx, parseMyPapersFile(snap.payload), {
-    label: `Before restoring the copy from ${snap.at}`,
+    label: "Before restoring a saved copy",
     from: "snapshot",
   });
 });
@@ -414,7 +457,7 @@ export const restoreSnapshot = busy((ctx, i) => {
 /**
  * Replaces all the data with a parsed My Papers file (a backup made on this device), with the
  * same safety as `restoreSnapshot`: the current data is snapshotted first (`label`), the restore
- * is a new change on this device, and the returned undo puts back what it replaced.
+ * is a new change on this device; returns `{undo, failed}` as `restoreSnapshot` does.
  */
 export const restorePayload = busy((ctx, parsed, { label } = {}) =>
   restoreParsed(ctx, parsed, {
@@ -454,10 +497,17 @@ function restoreParsed(ctx, parsed, { label, from }) {
       ...(store === "rule" && rawTarget.has(id) && { raw: rawTarget.get(id) }),
     });
   }
-  if (!changes.length) return () => NONE;
+  if (!changes.length) return { undo: () => NONE, failed: [] };
 
   saveSnapshot(ctx, state, label);
   writeStores(ctx, changes);
+  // A store that couldn't save (it reported it) keeps its value, and so its version
+  const written = currentEntries(ctx);
+  const failed = changes
+    .filter(
+      (c) => hashIn(written, c.key) !== (c.deleted ? "" : stableHash(c.value)),
+    )
+    .map((c) => c.key);
   const changed = ctx.meta.reconcile(currentEntries(ctx), now);
   const after = currentEntries(ctx);
   const metaAfter = ctx.meta.read();
@@ -474,5 +524,5 @@ function restoreParsed(ctx, parsed, { label, from }) {
       afterMeta: metaAfter[key] ?? null,
     };
   });
-  return saveUndo(ctx, record, { label, from });
+  return { undo: saveUndo(ctx, record, { label, from }).undo, failed };
 }

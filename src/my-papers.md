@@ -277,7 +277,7 @@ const importStatus = html`<div class="import-status"></div>`;
 // Two-way transfer: the page's stores, so an import updates them (src/lib/sync/apply.js)
 const syncCtx = { stores: { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }, meta: createSyncMeta(conference.id), conferenceId: conference.id };
 // "Undo this import" (7 days, also after a reload) and the copies saved before each import
-const importHistory = renderImportHistory(syncCtx, { tz });
+const importHistory = renderImportHistory(syncCtx, { tz, papers });
 importInput.querySelector("input").onchange = async (event) => {
   const file = event.target.files[0];
   event.target.value = "";
