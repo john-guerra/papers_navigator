@@ -89,11 +89,34 @@ describe("pageMeta", () => {
 
   it("escapes what it writes into attributes and the JSON-LD", () => {
     const html = pageMeta(
-      { ...conference, name: `A "B" <C> & D` },
+      { ...conference, name: `A "B" x</script><script>alert(1)` },
       { title: "X", path: "/index" },
     );
-    expect(html).not.toContain(`"B"`.replace(/"/g, '"') + " <C>");
-    expect(html).not.toMatch(/<C>/);
+    expect(html).toContain("A &quot;B&quot; x&lt;/script&gt;");
+    // one closing tag only: the JSON-LD's own
+    expect(html.match(/<\/script/g)).toHaveLength(1);
+    expect(html).not.toContain("<script>alert");
+  });
+
+  it("describes each card for people who can't see it", () => {
+    for (const path of PAGE_PATHS) {
+      const html = meta(path, "X");
+      const alt = attr(html, "property=og:image:alt");
+      expect(alt, path).toMatch(/IEEE VIS 2026 Papers Navigator/);
+      expect(attr(html, "name=twitter:image:alt"), path).toBe(alt);
+    }
+    expect(attr(meta("/index", "Explore"), "property=og:image:alt")).toContain(
+      "a search highlighted on the map of all papers",
+    );
+  });
+
+  it("links the author's other profiles", () => {
+    const ld = JSON.parse(
+      meta("/about", "About").match(
+        /<script type="application\/ld\+json">([^<]*)<\/script>/,
+      )[1],
+    );
+    expect(ld.author.sameAs).toContain("https://github.com/john-guerra");
   });
 
   it("is nothing for a page it doesn't know, or without a siteUrl", () => {
@@ -105,6 +128,23 @@ describe("pageMeta", () => {
 });
 
 describe("the built pages get it", () => {
+  it("every page in the nav has its tags, once, and keeps the rest of the head", () => {
+    expect(
+      config.pages.map((p) => (p.path === "/" ? "/index" : p.path)).sort(),
+    ).toEqual([...PAGE_PATHS].sort());
+    for (const path of PAGE_PATHS) {
+      const head = config.head({ title: "X", path });
+      for (const tag of [
+        '<meta name="description"',
+        '<link rel="canonical"',
+        '<meta property="og:title"',
+      ])
+        expect(head.split(tag).length - 1, `${path} ${tag}`).toBe(1);
+      expect(head).toContain('rel="manifest"');
+      expect(head).toContain("serviceWorker");
+    }
+  });
+
   it("the config's head writes each page's tags", async () => {
     const conf = await loadConferenceConfig();
     const head = config.head({ title: "Live", data: {}, path: "/live" });
@@ -137,6 +177,8 @@ describe("writeSitemap", () => {
     const { writeSitemap } = await import("../scripts/copyStatic.js");
     const dist = await mkdtemp(join(tmpdir(), "sitemap-"));
     await writeSitemap(conference, dist);
-    expect(await readFile(join(dist, "sitemap.xml"), "utf8")).toBe(sitemapXml(conference));
+    expect(await readFile(join(dist, "sitemap.xml"), "utf8")).toBe(
+      sitemapXml(conference),
+    );
   });
 });

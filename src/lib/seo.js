@@ -8,6 +8,7 @@
 export const AUTHOR = {
   name: "John Alexis Guerra Gómez",
   url: "https://johnguerra.co",
+  sameAs: ["https://johnguerra.co", "https://github.com/john-guerra"],
 };
 
 /** The site's pages, as Framework names their paths. */
@@ -33,6 +34,18 @@ const DESCRIPTIONS = {
     `About the ${name} Papers Navigator, an open-source tool by ${AUTHOR.name}: how it works, where the data comes from, what stays on your device.`,
 };
 
+/** What each page's social card shows, for people who can't see it. */
+const IMAGE_ALTS = {
+  "/index": (site) =>
+    `${site}: a search highlighted on the map of all papers, with the similarity legend`,
+  "/my-papers": (site) =>
+    `${site}: My Papers on a phone, a schedule by day and room`,
+  "/live": (site) =>
+    `${site}: the Live page on a phone, the sessions on now in each room`,
+  "/authors": (site) => `${site}: the list of researchers in the program`,
+  "/about": (site) => `${site}: the About page and its contents`,
+};
+
 const escape = (s) =>
   String(s).replace(
     /[&<>"']/g,
@@ -56,6 +69,7 @@ export function pageMeta(conference, { title, path }) {
   const description = describe(conference);
   const url = pageUrl(conference, path);
   const image = `${conference.siteUrl}${conference.pageImages?.[path] ?? conference.ogImage}`;
+  const alt = IMAGE_ALTS[path](siteName(conference));
   const fullTitle = title
     ? `${title} · ${siteName(conference)}`
     : siteName(conference);
@@ -73,10 +87,12 @@ export function pageMeta(conference, { title, path }) {
     meta("property", "og:image", image),
     meta("property", "og:image:width", "1200"),
     meta("property", "og:image:height", "630"),
+    meta("property", "og:image:alt", alt),
     meta("name", "twitter:card", "summary_large_image"),
     meta("name", "twitter:title", fullTitle),
     meta("name", "twitter:description", description),
     meta("name", "twitter:image", image),
+    meta("name", "twitter:image:alt", alt),
   ];
   if (path === "/index" || path === "/about") {
     const data = {

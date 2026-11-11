@@ -14,6 +14,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { conferenceDir, loadConferenceConfig } from "../src/lib/conference.js";
 import { dayKey } from "../src/lib/time.js";
 import { escape } from "./og.js";
+import { AUTHOR } from "../src/lib/seo.js";
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1280, height: 900 };
@@ -47,8 +48,7 @@ export const PAGES = {
   "/about": {
     file: "about.html",
     heading: "About",
-    pitch:
-      "An open-source tool by John Alexis Guerra Gómez. What you save stays on your device.",
+    pitch: `An open-source tool by ${AUTHOR.name}. What you save stays on your device.`,
     viewport: DESKTOP,
   },
 };
