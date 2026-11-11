@@ -6,6 +6,7 @@ import {
   programDays,
   rankSessions,
   sessionSummary,
+  sessionTypeColor,
   slotOf,
   slotsAt,
   talkAt,
@@ -492,5 +493,25 @@ describe("checked in to an event in several slots (review)", () => {
     expect(slotOf(event, all, new Date(et("13:50"))).start).toBe(
       Date.parse(et("14:00")),
     );
+  });
+});
+
+describe("sessionTypeColor: the program's colors, on Live's session cards", () => {
+  const colors = { plenary: "plenary", tutorial: "cga", panel: "poster" };
+  const event = (type) => ({ items: [], event: { type } });
+  const items = (...c) => ({ items: c.map((typeColor) => ({ typeColor })) });
+  it("an event by its session type, through the config's map", () => {
+    expect(sessionTypeColor(event("plenary"), colors)).toBe("plenary");
+    expect(sessionTypeColor(event("panel"), colors)).toBe("poster");
+    expect(sessionTypeColor(event("governance"), colors)).toBe("other");
+    expect(sessionTypeColor(event("plenary"))).toBe("other");
+  });
+  it("a paper session by its most common paper type (ties: the first talk's)", () => {
+    expect(sessionTypeColor(items("short", "full", "short"))).toBe("short");
+    expect(sessionTypeColor(items("tvcg", "full"))).toBe("tvcg");
+    expect(sessionTypeColor(items())).toBe("other");
+  });
+  it("only a safe class-like name reaches the page", () => {
+    expect(sessionTypeColor(items('x" onclick="'))).toBe("other");
   });
 });

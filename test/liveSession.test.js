@@ -299,3 +299,13 @@ describe("session view: a session without papers (plenary, panel)", () => {
     el.dispose();
   });
 });
+
+describe("the session view wears the program's type color", () => {
+  it("on its header", () => {
+    const { el } = setup();
+    expect(el.querySelector("[data-type-color]").dataset.typeColor).toBe(
+      "full",
+    );
+    el.remove();
+  });
+});

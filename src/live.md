@@ -211,6 +211,7 @@ liveView.show(
           slot: slotOf(session, days, at),
           at,
           tz,
+          sessionColors: conference.sessionTypeColors,
           mineIds,
           mine,
           ratings: ratingsStore,
@@ -228,6 +229,7 @@ liveView.show(
         })
       : renderBreakView(slots, {
           tz,
+          sessionColors: conference.sessionTypeColors,
           mineIds,
           onGoing: commit,
           onPickSlot: (slot) => clock.setTo(new Date(slot.start)),

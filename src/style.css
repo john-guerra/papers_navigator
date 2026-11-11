@@ -73,6 +73,14 @@
   --color-type-short: #5e9e93;
   --color-type-arts: #c4655a;
   --color-type-other: #a9a39b;
+  --color-type-tvcg: #689c62;
+  --color-type-cga: #a89139;
+  --color-type-workshop: #9d755d;
+  --color-type-poster: #b279a2;
+  --color-type-challenge: #6e7583;
+  --color-type-talk: #c08251;
+  --color-type-plenary: #7b4a2a;
+  --color-type-meetup: #c37b81;
 
   /* Typography */
   --font-serif: "Newsreader", Georgia, serif;
@@ -177,6 +185,14 @@
   --color-type-short: #7fbcb1;
   --color-type-arts: #e0857a;
   --color-type-other: #6f6a64;
+  --color-type-tvcg: #89bb83;
+  --color-type-cga: #c6b062;
+  --color-type-workshop: #bb947d;
+  --color-type-poster: #d099c0;
+  --color-type-challenge: #8c92a0;
+  --color-type-talk: #dea275;
+  --color-type-plenary: #a47455;
+  --color-type-meetup: #e19ba1;
   --elevation-1:
     0 12px 32px -12px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
   color-scheme: dark;
@@ -222,6 +238,14 @@
     --color-type-short: #7fbcb1;
     --color-type-arts: #e0857a;
     --color-type-other: #6f6a64;
+    --color-type-tvcg: #89bb83;
+    --color-type-cga: #c6b062;
+    --color-type-workshop: #bb947d;
+    --color-type-poster: #d099c0;
+    --color-type-challenge: #8c92a0;
+    --color-type-talk: #dea275;
+    --color-type-plenary: #a47455;
+    --color-type-meetup: #e19ba1;
     --elevation-1:
       0 12px 32px -12px rgb(0 0 0 / 0.6), 0 2px 6px -2px rgb(0 0 0 / 0.4);
     color-scheme: dark;
@@ -3181,8 +3205,58 @@ body #vg-tooltip-element table tr td.value {
 /* #199 — type pill and award mark, before the title of every paper row. The pill is a short label
    with its type color as a cap on the left (like the official program's), sitting on the title's
    first line: inline-flex aligned on the baseline, so it stays on line one when the title wraps */
+/* The program's type colors (#199): `data-color` on a type pill, `data-type-color` on a Live
+   session card or view; each sets --type-color for whoever draws with it */
+.type-pill[data-color],
+[data-type-color] {
+  --type-color: var(--color-type-other);
+}
+.type-pill[data-color="full"],
+[data-type-color="full"] {
+  --type-color: var(--color-type-full);
+}
+.type-pill[data-color="tvcg"],
+[data-type-color="tvcg"] {
+  --type-color: var(--color-type-tvcg);
+}
+.type-pill[data-color="cga"],
+[data-type-color="cga"] {
+  --type-color: var(--color-type-cga);
+}
+.type-pill[data-color="short"],
+[data-type-color="short"] {
+  --type-color: var(--color-type-short);
+}
+.type-pill[data-color="arts"],
+[data-type-color="arts"] {
+  --type-color: var(--color-type-arts);
+}
+.type-pill[data-color="workshop"],
+[data-type-color="workshop"] {
+  --type-color: var(--color-type-workshop);
+}
+.type-pill[data-color="challenge"],
+[data-type-color="challenge"] {
+  --type-color: var(--color-type-challenge);
+}
+.type-pill[data-color="poster"],
+[data-type-color="poster"] {
+  --type-color: var(--color-type-poster);
+}
+.type-pill[data-color="talk"],
+[data-type-color="talk"] {
+  --type-color: var(--color-type-talk);
+}
+.type-pill[data-color="plenary"],
+[data-type-color="plenary"] {
+  --type-color: var(--color-type-plenary);
+}
+.type-pill[data-color="meetup"],
+[data-type-color="meetup"] {
+  --type-color: var(--color-type-meetup);
+}
 .type-pill {
-  --pill-color: var(--color-type-other);
+  --pill-color: var(--type-color, var(--color-type-other));
   display: inline-flex;
   align-items: baseline;
   margin-right: var(--spacing-xs, 4px);
@@ -3203,15 +3277,6 @@ body #vg-tooltip-element table tr td.value {
   width: 5px;
   margin-right: 4px;
   background: var(--pill-color);
-}
-.type-pill[data-color="full"] {
-  --pill-color: var(--color-type-full);
-}
-.type-pill[data-color="short"] {
-  --pill-color: var(--color-type-short);
-}
-.type-pill[data-color="arts"] {
-  --pill-color: var(--color-type-arts);
 }
 
 .award-mark {
@@ -3323,6 +3388,14 @@ body #vg-tooltip-element table tr td.value {
   border: 1px solid var(--color-outline);
   border-radius: var(--rounded-md);
   background: var(--color-surface);
+}
+/* The program's session color as a subtle left stripe (its cards' accent, muted) */
+.live-session[data-type-color],
+.live-checked-head[data-type-color] {
+  border-left: 4px solid var(--type-color);
+}
+.live-checked-head[data-type-color] {
+  padding-left: var(--spacing-sm);
 }
 .live-session.is-recommended {
   border-color: var(--color-on-surface-muted);

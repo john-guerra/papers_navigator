@@ -1,6 +1,6 @@
 import { html } from "htl";
 import { formatDay, formatTime } from "../lib/time.js";
-import { rankSessions, sessionSummary } from "../lib/live.js";
+import { rankSessions, sessionSummary, sessionTypeColor } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { followToggles } from "./followToggles.js";
 
@@ -56,7 +56,7 @@ export function eventLink(session) {
 
 function sessionCard(
   session,
-  { tz, mineIds, onGoing, detailsHref, onOpen, toggles },
+  { tz, mineIds, onGoing, detailsHref, onOpen, toggles, sessionColors },
 ) {
   const list = html`<ol class="live-papers"></ol>`;
   const show = (n) => {
@@ -83,6 +83,7 @@ function sessionCard(
   return html`<article
     class=${`live-session${session.recommended ? " is-recommended" : ""}`}
     data-session-id=${session.sessionId}
+    data-type-color=${sessionTypeColor(session, sessionColors)}
   >
     <header class="live-session-head">
       <div>
@@ -146,6 +147,8 @@ export function renderBreakView(
     detailsHref,
     inMyPapers,
     onToggle,
+    // The conference's session type → color (config sessionTypeColors), for each card's stripe
+    sessionColors,
   },
 ) {
   // "Add to My Papers" / "In My Papers" on each paper (John), refreshed in place by setMine
@@ -155,7 +158,15 @@ export function renderBreakView(
         onToggle,
       })
     : null;
-  const options = { tz, mineIds, onGoing, onOpen, detailsHref, toggles };
+  const options = {
+    tz,
+    mineIds,
+    onGoing,
+    onOpen,
+    detailsHref,
+    toggles,
+    sessionColors,
+  };
   const mineIn = (slot) =>
     slot.sessions.reduce(
       (n, s) => n + s.items.filter((p) => mineIds.has(p.id)).length,

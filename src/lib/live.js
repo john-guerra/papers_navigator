@@ -146,6 +146,31 @@ export function sessionSummary(session) {
   return parts.join(" · ");
 }
 
+const SAFE_COLOR = /^[a-z][a-z0-9-]*$/;
+
+/** The most common value; on a tie, the one seen first. */
+function mostCommonInOrder(values) {
+  const tally = new Map();
+  for (const v of values) if (v) tally.set(v, (tally.get(v) ?? 0) + 1);
+  let best = null;
+  for (const [v, n] of tally)
+    if (best === null || n > tally.get(best)) best = v;
+  return best;
+}
+
+/**
+ * A session's color, as the official program colors its cards: an event (plenary, tutorial,
+ * panel…) by its session type through the config's `sessionTypeColors`; a paper session by its
+ * most common paper `typeColor` (ties: the first talk's); else "other". A token name for
+ * `data-type-color` (style.css maps it to `--color-type-<name>`).
+ */
+export function sessionTypeColor(session, sessionColors = {}) {
+  const color = session.event
+    ? sessionColors[session.event.type]
+    : mostCommonInOrder((session.items ?? []).map((p) => p.typeColor));
+  return SAFE_COLOR.test(color ?? "") ? color : "other";
+}
+
 /** The talk running at `at` in `session` (by its own start/end), or null. */
 export function talkAt(session, at) {
   const t = at.getTime();
