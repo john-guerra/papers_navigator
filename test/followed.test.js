@@ -240,3 +240,33 @@ describe("restore → undo keeps both lists (#65 review)", () => {
     expect(store.backup().map((d) => d.id)).toEqual(["b"]);
   });
 });
+
+describe("applyEntries (two-way transfer)", () => {
+  it("updates in place, appends new entries last, removes, in one write", () => {
+    const storage = memoryStorage();
+    const store = createFollowedStore("conf", storage, null);
+    store.add([{ id: "a" }, { id: "b" }, { id: "c" }], "r", T1);
+    let writes = 0;
+    const setItem = storage.setItem;
+    storage.setItem = (k, v) => (writes++, setItem(k, v));
+    let inputs = 0;
+    store.addEventListener("input", () => inputs++);
+    store.applyEntries({
+      put: [
+        { id: "d", reason: "new", addedOn: T2.toISOString() },
+        { id: "b", reason: "changed", addedOn: T1.toISOString() },
+      ],
+      remove: ["a"],
+    });
+    expect(store.value).toEqual([
+      { id: "b", reason: "changed", addedOn: T1.toISOString() },
+      { id: "c", reason: "r", addedOn: T1.toISOString() },
+      { id: "d", reason: "new", addedOn: T2.toISOString() },
+    ]);
+    expect(writes).toBe(1);
+    expect(inputs).toBe(1);
+    expect(createFollowedStore("conf", storage, null).value).toEqual(
+      store.value,
+    );
+  });
+});

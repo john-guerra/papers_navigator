@@ -48,13 +48,17 @@ export function createKeyedStore(
     else next[id] = entry;
     write(next);
   };
-  /** Several entries at once (one write); entries for ids `skip(id, current)` are left alone. */
+  /** Several entries at once (one write; `undefined` removes one); ids `skip(id, current)` stay. */
   store.putMany = (entries, skip = () => false) => {
     value = load();
     const next = { ...value };
     let changed = false;
     for (const [id, entry] of entries)
-      if (!skip(id, next[id])) ((next[id] = entry), (changed = true));
+      if (!skip(id, next[id])) {
+        if (entry === undefined) delete next[id];
+        else next[id] = entry;
+        changed = true;
+      }
     if (changed) write(next);
   };
   store.merge = (incoming) => {

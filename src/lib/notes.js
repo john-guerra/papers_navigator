@@ -150,6 +150,16 @@ export function createNotesStore(
     };
     return { added, combined, undo };
   };
+  /**
+   * Two-way transfer: sets `put` (`{id: text}`, kept whole: only typing is capped) and drops
+   * `remove`, in one write.
+   */
+  store.applyEntries = ({ put = {}, remove = [] } = {}) => {
+    const next = { ...load() };
+    for (const id of remove) delete next[id];
+    Object.assign(next, cleanNotes(put));
+    return save(next);
+  };
   Object.defineProperty(store, "value", { get: () => value });
   return store;
 }

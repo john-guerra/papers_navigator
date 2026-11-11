@@ -48,3 +48,14 @@ describe("disliked store (#208)", () => {
     expect(s.value).toEqual({ a: true });
   });
 });
+
+describe("putMany with undefined removes the entry (two-way transfer)", () => {
+  it("drops the key from .value, not just from storage", () => {
+    const store = createDislikedStore("conf", memoryStorage(), null);
+    store.set("a", true);
+    store.set("b", true);
+    store.putMany([["a", undefined]]);
+    expect(store.value).toEqual({ b: true });
+    expect("a" in store.value).toBe(false);
+  });
+});

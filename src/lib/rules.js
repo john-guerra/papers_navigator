@@ -352,6 +352,55 @@ export function createRulesStore(
     markSeen(ids) {
       update((s) => ({ ...s, seen: idList([...s.seen, ...ids]) }));
     },
+    /**
+     * Two-way transfer, in one write: `put` rules replace (or join, last) the rule with their
+     * id, keeping its `addedOn`, and its cached matches while the threshold and abstracts are
+     * the same (else the put rule's own validated matches, if any); `remove` drops rules by
+     * id; `except` / `unexcept` add and drop exceptions.
+     */
+    applyEntries(
+      { put = [], remove = [], except = [], unexcept = [] } = {},
+      now = new Date(),
+    ) {
+      const drop = new Set(remove);
+      const unex = new Set(unexcept);
+      update((s) => {
+        const rules = s.rules.filter((r) => !drop.has(r.id));
+        for (const rule of put) {
+          const next = normalizeRule(rule, now);
+          if (!next) continue;
+          const i = rules.findIndex((r) => r.id === next.id);
+          const existing = rules[i];
+          if (existing) {
+            next.addedOn = existing.addedOn;
+            const same =
+              existing.threshold === next.threshold &&
+              JSON.stringify(existing.research ?? []) ===
+                JSON.stringify(next.research ?? []);
+            if (same && existing.matches) {
+              const { matches, evaluatedOn, program } = existing;
+              delete next.evaluatedOn;
+              delete next.program;
+              Object.assign(
+                next,
+                { matches },
+                evaluatedOn && { evaluatedOn },
+                program && { program },
+              );
+            }
+            rules[i] = next;
+          } else rules.push(next);
+        }
+        return {
+          ...s,
+          rules,
+          exceptions: idList([
+            ...s.exceptions.filter((id) => !unex.has(id)),
+            ...except,
+          ]),
+        };
+      });
+    },
   });
   return store;
 }

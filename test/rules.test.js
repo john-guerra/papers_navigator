@@ -238,6 +238,74 @@ describe("createRulesStore", () => {
   });
 });
 
+describe("rules applyEntries (two-way transfer)", () => {
+  const topic = {
+    type: "topic",
+    value: "graphs",
+    threshold: 0.5,
+    level: "good",
+    matches: { p1: 0.6 },
+    evaluatedOn: T1.toISOString(),
+  };
+  it("puts, removes, excepts and unexcepts in one write", () => {
+    const storage = memoryStorage();
+    const store = createRulesStore("conf", storage, null);
+    store.add(topic, T1);
+    store.add({ type: "author", value: "Ann" }, T1);
+    store.except(["x"]);
+    let writes = 0;
+    const setItem = storage.setItem;
+    storage.setItem = (k, v) => (writes++, setItem(k, v));
+    store.applyEntries(
+      {
+        put: [
+          {
+            id: "topic:graphs",
+            type: "topic",
+            value: "graphs",
+            threshold: 0.5,
+            level: "strong",
+          },
+          { id: "affiliation:mit", type: "affiliation", value: "MIT" },
+        ],
+        remove: ["author:ann"],
+        except: ["y"],
+        unexcept: ["x"],
+      },
+      T2,
+    );
+    expect(writes).toBe(1);
+    const { rules, exceptions } = store.value;
+    expect(rules.map((r) => r.id)).toEqual(["topic:graphs", "affiliation:mit"]);
+    // same threshold: the cached matches and the first addedOn stay
+    expect(rules[0]).toMatchObject({
+      level: "strong",
+      matches: { p1: 0.6 },
+      addedOn: T1.toISOString(),
+    });
+    expect(rules[1].addedOn).toBe(T2.toISOString());
+    expect(exceptions).toEqual(["y"]);
+  });
+
+  it("drops cached matches when the threshold changes", () => {
+    const store = createRulesStore("conf", memoryStorage(), null);
+    store.add(topic, T1);
+    store.applyEntries({
+      put: [
+        {
+          id: "topic:graphs",
+          type: "topic",
+          value: "graphs",
+          threshold: 0.7,
+          level: "strong",
+        },
+      ],
+    });
+    expect(store.value.rules[0].threshold).toBe(0.7);
+    expect(store.value.rules[0].matches).toBeUndefined();
+  });
+});
+
 describe("createMyPapers", () => {
   function setup(options = {}) {
     const storage = memoryStorage();

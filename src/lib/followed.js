@@ -171,6 +171,27 @@ export function createFollowedStore(
     merge(list) {
       update((current) => mergeLists(current, list.filter(isEntry)));
     },
+    /**
+     * Two-way transfer: sets these entries as given (`put`, `{id, reason, addedOn}`) and drops
+     * `remove`, in one write. Updated entries keep their place in the list; new ones go last.
+     */
+    applyEntries({ put = [], remove = [] } = {}) {
+      const drop = new Set(remove);
+      const incoming = new Map(
+        cleanList(put.filter(isEntry)).map((d) => [d.id, d]),
+      );
+      update((current) => {
+        const list = current
+          .filter((d) => !drop.has(d.id))
+          .map((d) => {
+            const next = incoming.get(d.id);
+            if (!next) return d;
+            incoming.delete(d.id);
+            return next;
+          });
+        return [...list, ...incoming.values()];
+      });
+    },
     has(id) {
       return value.some((d) => d.id === id);
     },

@@ -224,3 +224,21 @@ describe("notes stay out of links and requests", () => {
       );
   });
 });
+
+describe("notes applyEntries (two-way transfer)", () => {
+  it("writes whole notes (no typing cap) and removes, in one write", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    notes.set("a", "old");
+    notes.set("b", "gone");
+    let inputs = 0;
+    notes.addEventListener("input", () => inputs++);
+    const long = "x".repeat(MAX_NOTE_LENGTH + 5);
+    notes.applyEntries({ put: { a: long, c: "  new  " }, remove: ["b"] });
+    expect(inputs).toBe(1);
+    expect(createNotesStore("conf", storage, null).value).toEqual({
+      a: long,
+      c: "new",
+    });
+  });
+});

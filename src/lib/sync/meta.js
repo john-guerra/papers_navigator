@@ -36,11 +36,14 @@ export function createSyncMeta(
     return { device: "", entries: {} };
   }
 
+  /** False when the browser couldn't save it (reported). */
   function save(doc) {
     try {
       storage.setItem(key, JSON.stringify(doc));
+      return true;
     } catch {
       reportStorageFailure(key);
+      return false;
     }
   }
 
@@ -53,8 +56,9 @@ export function createSyncMeta(
   return {
     device,
     read: () => load().entries,
+    /** Replaces every record; false when it couldn't be saved. */
     write(entries) {
-      save({ device, entries });
+      return save({ device, entries });
     },
     reconcile(currentEntries, now = new Date()) {
       const doc = load();
