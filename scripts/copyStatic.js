@@ -4,10 +4,20 @@
 // src/fonts/fonts.css (linked from the head) to _file/fonts/fonts.<hash>.css but not the .woff2
 // its url()s name, so they go next to it, in dist/_file/fonts/.
 // CLI (run by `npm run build`): node scripts/copyStatic.js [srcDir] [distDir]
-import { copyFile, mkdir, readdir } from "node:fs/promises";
+// Also the Home Screen app's icons and its manifest, written per conference.
+import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConferenceConfig } from "../src/lib/conference.js";
+import { ICON_FILES, webManifest } from "../src/lib/webManifest.js";
+
+/** Writes the conference's manifest.webmanifest at the root of distDir. */
+export async function writeManifest(conference, distDir) {
+  await writeFile(
+    join(distDir, "manifest.webmanifest"),
+    JSON.stringify(webManifest(conference), null, 2),
+  );
+}
 
 /** Files to copy for a conference config; only plain names inside src/. */
 export function staticFiles(conference) {
@@ -41,8 +51,9 @@ export async function copyFonts(srcDir, distDir) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [srcDir = "src", distDir = "dist"] = process.argv.slice(2);
   const conference = await loadConferenceConfig();
-  const files = staticFiles(conference);
+  const files = [...staticFiles(conference), ...ICON_FILES];
   await copyStatic(files, srcDir, distDir);
+  await writeManifest(conference, distDir);
   console.log(`static → ${distDir}: ${files.join(", ") || "(none)"}`);
   const fonts = await copyFonts(srcDir, distDir);
   console.log(`fonts → ${distDir}/_file/fonts: ${fonts.length} files`);

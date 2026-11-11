@@ -65,6 +65,10 @@ describe("dataNote (Stage E)", () => {
     expect(nudge.textContent).toContain(
       "Safari may delete this site's data after 7 days",
     );
+    // the Home Screen app keeps its own data: adding it alone opens an empty list
+    expect(nudge.textContent).toContain(
+      "Add it to your Home Screen, then Export here and Import the file there",
+    );
     nudge.querySelector(".backup-dismiss").click();
     expect(onDismiss).toHaveBeenCalled();
     expect(el.querySelector(".backup-nudge")).toBeNull();
