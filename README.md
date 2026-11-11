@@ -86,7 +86,7 @@ Builds with `CONFERENCE=ieeevis2026`, rsyncs `dist/` to `<DEPLOY_ROOT>/<deployDi
 2. **Fetcher.** For IEEE VIS, the existing `fetch_ieeevis` and `fetch_sessions` read the program site. First check they still parse it: save a current listing, paper and sessions page over the fixtures in `pipeline/tests/fixtures/` and run `.venv/bin/pytest pipeline` (the expected counts in the tests will change; the field checks shouldn't). For another conference, write a fetcher that outputs `conferences/<id>/data/papers.raw.json` in the normalized format (`pipeline/normalize.py`, spec §5.2), and optionally a `sessions.json` for Live.
 3. **Pipeline.** Run the data pipeline above with `--conference <id>`. For a new year there are no committed LLM labels yet, so step 4 (LM Studio) is the one that gives good map labels.
 4. **Build and check.** `CONFERENCE=<id> npm run build` (or `CONFERENCE=<id> npm run dev`) and look at Explore, My Papers and Live (set Live's time to a conference day).
-5. **Social card.** After the first deploy, `npm i --no-save playwright && node scripts/og.js` screenshots the live site into `src/<ogImage>`; commit it and deploy again.
+5. **Social cards.** After the first deploy, `npm i --no-save playwright && node scripts/og.js` screenshots the live Explore page into `src/<ogImage>`, and `node scripts/ogPages.js` makes one card per other page into `src/<pageImages[path]>` (sample data, no one's own); commit them and deploy again.
 6. **Deploy.** `scripts/deploy.sh <id>`. The default id in `scripts/deploy.sh` and `src/lib/conference.js` (`DEFAULT_CONFERENCE`) is `ieeevis2026`; change it when the new conference becomes the main one.
 
 ### Config keys
@@ -111,5 +111,6 @@ Builds with `CONFERENCE=ieeevis2026`, rsyncs `dist/` to `<DEPLOY_ROOT>/<deployDi
 | `deployDir` | Folder under `DEPLOY_ROOT` (e.g. `papersNavigator/<id>`) | Change |
 | `legacyDirs` | Old folders that redirect here | **Empty it** for a new conference |
 | `ogImage` | Social card file in `src/` | New name per conference (platforms cache cards by URL) |
+| `pageImages` | One social card per page (`{"/my-papers": "og-my-papers.png", …}`, files in `src/`, made by `scripts/ogPages.js`); pages without one use `ogImage`. Each page's description, canonical URL and JSON-LD come from `src/lib/seo.js` | New names per conference |
 
 Not in config yet, and specific to IEEE VIS: the Bluesky account read for "💬 Discussion" (`papers.ieeevis.org`) and the `#ieeevis` hashtag in post drafts (`src/lib/bluesky.js`), and the "Details on ieeevis.org" link label on Live.

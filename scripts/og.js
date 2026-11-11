@@ -42,7 +42,7 @@ export function ogCrops({ search, map, legend }) {
   };
 }
 
-const escape = (s) =>
+export const escape = (s) =>
   String(s).replace(
     /[&<>"]/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],

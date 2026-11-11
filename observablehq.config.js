@@ -1,11 +1,14 @@
 import { loadConferenceConfig } from "./src/lib/conference.js";
 import { footerHtml } from "./src/lib/footer.js";
 import { appHeadLinks } from "./src/lib/webManifest.js";
+import { pageMeta } from "./src/lib/seo.js";
 
 const conference = await loadConferenceConfig();
 
 export default {
-  title: `${conference.name} Papers`,
+  // Search results and tabs read "Explore | IEEE VIS 2026 Papers Navigator" (the navbar keeps
+  // the short name)
+  title: `${conference.name} Papers Navigator`,
   root: "src",
   // No "Previous page / Next page" cards: the nav already links every page
   pager: false,
@@ -17,13 +20,10 @@ export default {
     { name: "Researchers", path: "/authors" },
     { name: "About", path: "/about" },
   ],
-  head: `<link rel="stylesheet" href="./fonts/fonts.css">
-<meta property="og:title" content="${conference.name} Papers Navigator">
-<meta property="og:image" content="${conference.siteUrl}${conference.ogImage}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="${conference.name} Papers Navigator: a search highlighted on the map of all papers, with the similarity legend">
-<meta name="twitter:card" content="summary_large_image">
+  // A function of the page (Framework passes {title, data, path}): each page gets its own
+  // description, canonical URL and social card (src/lib/seo.js)
+  head: ({ title, path }) => `<link rel="stylesheet" href="./fonts/fonts.css">
+${pageMeta(conference, { title, path })}
 ${appHeadLinks(conference)}
 <script>
   // Phone bottom tab bar (#110): let env(safe-area-inset-*) report the home indicator and notch

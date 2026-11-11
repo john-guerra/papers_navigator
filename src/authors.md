@@ -118,7 +118,7 @@ const authorView = !authorParam
         }),
       });
 // the browser tab says whose profile it is
-document.title = `${author ? author.name : authorParam ?? "Researchers"} | ${conference.name} Papers`;
+document.title = `${author ? author.name : authorParam ?? "Researchers"} | ${conference.name} Papers Navigator`;
 ```
 
 <div class="author-page">${authorView}</div>

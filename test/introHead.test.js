@@ -7,7 +7,9 @@ import { INTRO_KEY } from "../src/components/intro.js";
 // #174: the intro opens on a first visit; once closed it stays closed, from the first paint
 describe("the head script puts the intro's state on <html>", () => {
   const classicScript = [
-    ...config.head.matchAll(/<script>([^]*?)<\/script>/g),
+    ...config
+      .head({ title: "Live", path: "/live" })
+      .matchAll(/<script>([^]*?)<\/script>/g),
   ].map((m) => m[1])[0];
   const run = (stored, { throws = false } = {}) => {
     const { window } = new JSDOM(

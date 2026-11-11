@@ -1,5 +1,6 @@
 // Copies static files that pages don't reference (so `observable build` skips them) from src/
-// to dist/: the social preview image named by the conference's `ogImage` (#18) and the Home
+// to dist/: the social preview images named by the conference's `ogImage` (#18) and
+// `pageImages` (one card per page), and the Home
 // Screen app's icons (`ICON_FILES`), which the head references by absolute URL; writes the
 // conference's manifest.webmanifest; and copies the self-hosted fonts (#91): Framework copies
 // src/fonts/fonts.css (linked from the head) to _file/fonts/fonts.<hash>.css but not the .woff2
@@ -10,6 +11,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConferenceConfig } from "../src/lib/conference.js";
 import { ICON_FILES, webManifest } from "../src/lib/webManifest.js";
+import { sitemapXml } from "../src/lib/seo.js";
 
 /** Writes the conference's manifest.webmanifest at the root of distDir. */
 export async function writeManifest(conference, distDir) {
@@ -19,14 +21,23 @@ export async function writeManifest(conference, distDir) {
   );
 }
 
+/** Writes the conference's sitemap.xml (its pages) at the root of distDir. */
+export async function writeSitemap(conference, distDir) {
+  await writeFile(join(distDir, "sitemap.xml"), sitemapXml(conference));
+}
+
 /** Files to copy for a conference config; only plain names inside src/. */
 export function staticFiles(conference) {
-  return [conference.ogImage].filter(
+  const names = [
+    conference.ogImage,
+    ...Object.values(conference.pageImages ?? {}),
+  ].filter(
     (name) =>
       typeof name === "string" &&
       /^[\w.-]+$/.test(name) &&
       !name.startsWith("."),
   );
+  return [...new Set(names)];
 }
 
 export async function copyStatic(files, srcDir, distDir) {
@@ -54,8 +65,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const files = [...staticFiles(conference), ...ICON_FILES];
   await copyStatic(files, srcDir, distDir);
   await writeManifest(conference, distDir);
+  if (conference.siteUrl) await writeSitemap(conference, distDir);
   console.log(
-    `static → ${distDir}: ${files.join(", ") || "(none)"}, manifest.webmanifest`,
+    `static → ${distDir}: ${files.join(", ") || "(none)"}, manifest.webmanifest, sitemap.xml`,
   );
   const fonts = await copyFonts(srcDir, distDir);
   console.log(`fonts → ${distDir}/_file/fonts: ${fonts.length} files`);
