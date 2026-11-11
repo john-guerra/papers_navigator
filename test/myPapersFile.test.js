@@ -3,6 +3,7 @@ import {
   exportMyPapers,
   exportNote,
   parseMyPapersFile,
+  deviceLabel,
 } from "../src/lib/myPapersFile.js";
 
 const followed = [
@@ -190,5 +191,143 @@ describe("disliked and attended in the My Papers file (#208)", () => {
       parseMyPapersFile(JSON.stringify({ followed: [], disliked: { x: 2 } }))
         .disliked,
     ).toEqual({});
+  });
+});
+
+describe("My Papers file v3", () => {
+  const sync = {
+    "followed/a": { v: { d1: 2 }, t: "2026-11-01T00:00:00.000Z", h: "x" },
+    "note/a": {
+      v: { d1: 1, d2: 3 },
+      t: "2026-11-02T00:00:00.000Z",
+      deleted: true,
+    },
+  };
+  const state = { followed, notes: { a: "hi" } };
+  const exp = (over) =>
+    JSON.stringify({ version: 3, followed, device: "d1", sync: {}, ...over });
+
+  it("round-trips versions without h", () => {
+    const text = exportMyPapers(state, {
+      device: "d1",
+      deviceName: "Mac",
+      sync,
+    });
+    const raw = JSON.parse(text);
+    expect(raw.version).toBe(3);
+    expect(raw.sync["followed/a"]).toEqual({
+      v: { d1: 2 },
+      t: sync["followed/a"].t,
+    });
+    const back = parseMyPapersFile(text);
+    expect(back).toMatchObject({
+      version: 3,
+      device: "d1",
+      deviceName: "Mac",
+      notes: { a: "hi" },
+    });
+    expect(back.sync["note/a"]).toEqual(sync["note/a"]);
+  });
+
+  it("still writes v2 without sync", () => {
+    expect(JSON.parse(exportMyPapers(state)).version).toBe(2);
+    expect(parseMyPapersFile(exportMyPapers(state)).sync).toBeUndefined();
+  });
+
+  it("rejects a newer version with the exact message", () => {
+    expect(() => parseMyPapersFile('{"version":4,"followed":[]}')).toThrow(
+      "This file was made by a newer version of Papers Navigator. Reload the page and try again.",
+    );
+  });
+
+  it("throws on truncated JSON", () => {
+    expect(() => parseMyPapersFile('{"version":3,"foll')).toThrow();
+  });
+
+  it("parses v2 and plain lists as before", () => {
+    expect(parseMyPapersFile(JSON.stringify(followed)).followed).toEqual(
+      followed,
+    );
+    expect(
+      parseMyPapersFile(JSON.stringify({ version: 2, followed })).sync,
+    ).toBeUndefined();
+  });
+
+  const damaged = "This file's change history is damaged.";
+  const t = "2026-11-01T00:00:00.000Z";
+  it.each([
+    ["array sync", []],
+    ["string sync", "x"],
+    ["record not object", { "followed/a": 1 }],
+    ["missing v", { "followed/a": { t } }],
+    ["missing t", { "followed/a": { v: { d: 1 } } }],
+    ["zero counter", { "followed/a": { v: { d: 0 }, t } }],
+    ["fraction counter", { "followed/a": { v: { d: 1.5 }, t } }],
+    ["string counter", { "followed/a": { v: { d: "1" }, t } }],
+    ["array v", { "followed/a": { v: [1], t } }],
+    ["deleted not true", { "followed/a": { v: { d: 1 }, t, deleted: "yes" } }],
+    [
+      "one bad among good",
+      { "note/a": { v: { d: 1 }, t }, "followed/a": { t } },
+    ],
+  ])("rejects %s", (_n, s) => {
+    expect(() => parseMyPapersFile(exp({ sync: s }))).toThrow(damaged);
+  });
+
+  it.each(["__proto__", "constructor", "prototype"])(
+    "rejects device key %s",
+    (k) => {
+      const s = JSON.parse(`{"followed/a":{"v":{"${k}":1},"t":"${t}"}}`);
+      expect(() => parseMyPapersFile(exp({ sync: s }))).toThrow(damaged);
+    },
+  );
+
+  it("rejects a long or non-string device", () => {
+    expect(() => parseMyPapersFile(exp({ device: "x".repeat(41) }))).toThrow(
+      damaged,
+    );
+    expect(() => parseMyPapersFile(exp({ device: 5 }))).toThrow(damaged);
+  });
+
+  it("drops unknown stores silently and keeps the rest", () => {
+    const r = parseMyPapersFile(
+      exp({
+        sync: {
+          "future/a": { v: { d: 1 }, t },
+          "followed/a": { v: { d: 1 }, t },
+        },
+      }),
+    );
+    expect(Object.keys(r.sync)).toEqual(["followed/a"]);
+  });
+
+  it("drops keys without a store separator", () => {
+    expect(
+      parseMyPapersFile(exp({ sync: { followed: { v: { d: 1 }, t } } })).sync,
+    ).toEqual({});
+  });
+});
+
+describe("deviceLabel", () => {
+  const nav = (userAgent, platform = "", maxTouchPoints = 0) => ({
+    userAgent,
+    platform,
+    maxTouchPoints,
+  });
+  it("names devices", () => {
+    expect(deviceLabel(nav("Mozilla (iPhone; CPU iPhone OS)"))).toBe("iPhone");
+    expect(deviceLabel(nav("Mozilla (iPad; CPU OS)"))).toBe("iPad");
+    expect(deviceLabel(nav("Mozilla (Macintosh)", "MacIntel", 5))).toBe("iPad");
+    expect(deviceLabel(nav("Mozilla (Macintosh)", "MacIntel", 0))).toBe("Mac");
+    expect(
+      deviceLabel(nav("Mozilla (Linux; Android 14)", "Linux armv8l", 5)),
+    ).toBe("Android");
+    expect(deviceLabel(nav("Mozilla (Windows NT 10.0)", "Win32"))).toBe(
+      "Windows",
+    );
+    expect(deviceLabel(nav("Mozilla (X11; Linux)", "Linux x86_64"))).toBe(
+      "other device",
+    );
+    expect(deviceLabel({})).toBe("other device");
   });
 });
