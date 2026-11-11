@@ -20,7 +20,7 @@ npm run build                       # CONFERENCE=<id> selects the conference (de
 .venv/bin/python -m pipeline.fetch_ieeevis --conference ieeevis2026
 .venv/bin/python -m pipeline.fetch_ieeevis --conference ieeevis2026 --refresh   # re-download paper/session pages (~8 min); prints change report
 .venv/bin/python -m pipeline.fetch_sessions --conference ieeevis2026   # every program session (also plenaries, panels, meetups) → sessions.json, for Live (one request)
-.venv/bin/python -m pipeline.embed --conference ieeevis2026   # keeps the last map layout when the papers barely changed; --relayout forces new projections
+.venv/bin/python -m pipeline.embed --conference ieeevis2026   # keeps the last map layout and topics when the papers barely changed or a few (≤5%) were added (placed among their 5 most similar); --relayout forces new projections
 .venv/bin/python -m pipeline.short_labels --conference ieeevis2026 --llm lmstudio   # 1–2 word labels via local LM Studio (~50 min uncached); without --llm: cache + keyphrases
 .venv/bin/python -m pipeline.clusters --conference ieeevis2026   # recompute topic clusters only (embed runs it too)
 scripts/deploy.sh ieeevis2026       # publishes to johnguerra.co — ask John first

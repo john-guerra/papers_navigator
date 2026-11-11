@@ -5,12 +5,12 @@
   "v3": "c4288368760e"
  },
  "refined": {
-  "v2": 310,
+  "v2": 311,
   "v3": 19
  },
  "counts": {
-  "title": 154,
-  "llm": 326,
+  "title": 156,
+  "llm": 327,
   "keyphrase": 1,
   "manual": 7
  },
@@ -3999,6 +3999,24 @@
    "promptVersion": null,
    "model": "google/gemma-4-e4b",
    "inputHash": "7e3b396e9d5346ce"
+  },
+  "2d01f42e-5ba2-452a-afad-d850ddcfcdc1": {
+   "label": "PreVue.space",
+   "source": "title"
+  },
+  "d41ec895-e55b-4add-a544-6b0c22ee7d7a": {
+   "label": "Spatial uncertainty",
+   "source": "llm",
+   "llm": {
+    "v2": "Spatial Uncertainty"
+   },
+   "promptVersion": "v2",
+   "model": "google/gemma-4-e4b",
+   "inputHash": "b47b1e7bf847a38f"
+  },
+  "slot_1794154247330": {
+   "label": "VISions",
+   "source": "title"
   }
  }
 }
