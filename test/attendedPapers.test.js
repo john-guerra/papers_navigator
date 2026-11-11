@@ -112,9 +112,8 @@ describe("renderAttendedPapers (#208)", () => {
   });
 });
 
-describe("Papers I attended → My Papers (Stage E)", () => {
-  it("links to review attended papers in My Papers, with the My Papers toggle on rows", () => {
-    const onToggle = vi.fn();
+describe("Papers I attended: short rows (John: as Papers I rated)", () => {
+  it("links to review attended papers in My Papers; rows have no My Papers toggle", () => {
     const el = renderAttendedPapers(
       [
         {
@@ -128,48 +127,20 @@ describe("Papers I attended → My Papers (Stage E)", () => {
       ],
       {
         attended: { a: { at: "x", how: "auto" } },
+        notes: { a: "Good talk" },
         tz: "US/Eastern",
         onOpen: vi.fn(),
         detailsHref: () => "#",
         inMyPapers: () => false,
-        onToggle,
+        onToggle: vi.fn(),
       },
     );
     expect(el.querySelector("a.review-all").getAttribute("href")).toBe(
       "my-papers.html#review=attended",
     );
-    el.querySelector(".follow-toggle").click();
-    expect(onToggle).toHaveBeenCalled();
-  });
-});
-
-describe("Papers I attended toggles update in place (minor 3)", () => {
-  it("update() refreshes the same button", () => {
-    let mine = false;
-    const el = renderAttendedPapers(
-      [
-        {
-          id: "a",
-          shortId: "s-a",
-          title: "A",
-          day: "2026-11-11",
-          start: "2026-11-11T15:00:00Z",
-          typeShort: "Full",
-        },
-      ],
-      {
-        attended: { a: { at: "x", how: "auto" } },
-        tz: "US/Eastern",
-        onOpen: vi.fn(),
-        detailsHref: () => "#",
-        inMyPapers: () => mine,
-        onToggle: vi.fn(),
-      },
-    );
-    const button = el.querySelector(".follow-toggle");
-    mine = true;
-    el.update();
-    expect(el.querySelector(".follow-toggle")).toBe(button);
-    expect(button.textContent).toContain("In My Papers");
+    expect(el.querySelector(".follow-toggle")).toBeNull();
+    // the note and the rating prompt stay
+    expect(el.querySelector(".rated-note").textContent).toContain("Good talk");
+    expect(el.querySelector(".attended-rate")).not.toBeNull();
   });
 });
