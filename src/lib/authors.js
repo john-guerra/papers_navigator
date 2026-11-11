@@ -31,7 +31,8 @@ const mostCommon = (spellings) =>
   )[0];
 
 /**
- * `[{key, name, affiliations: [{value, count}], papers}]`, one per normalized name, sorted by
+ * `[{key, name, affiliations: [{value, count}], bluesky: [{value, count}], papers}]`, one per
+ * normalized name (`bluesky`: the handles the conference lists next to their name), sorted by
  * paper count (most first) then name. `name` is the most common spelling; papers keep program
  * order and are counted once per researcher.
  */
@@ -47,6 +48,7 @@ export function buildAuthorIndex(papers) {
           key,
           spellings: new Map(),
           affiliations: new Map(),
+          bluesky: new Map(),
           papers: [],
         };
         authors.set(key, entry);
@@ -61,13 +63,19 @@ export function buildAuthorIndex(papers) {
           affiliation,
           (entry.affiliations.get(affiliation) ?? 0) + 1,
         );
+      if (author.bluesky)
+        entry.bluesky.set(
+          author.bluesky,
+          (entry.bluesky.get(author.bluesky) ?? 0) + 1,
+        );
     }
   }
   return [...authors.values()]
-    .map(({ key, spellings, affiliations, papers }) => ({
+    .map(({ key, spellings, affiliations, bluesky, papers }) => ({
       key,
       name: mostCommon(spellings),
       affiliations: counted(affiliations),
+      bluesky: counted(bluesky),
       papers,
     }))
     .sort(

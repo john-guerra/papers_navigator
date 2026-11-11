@@ -260,9 +260,13 @@ export async function loadDiscussion(
   return matchDiscussion(feed, papers);
 }
 
+/** Stored for an author whose conference-listed handle you removed (✕): don't suggest it again. */
+export const NO_HANDLE = "-";
+
 /**
  * Bluesky handles you picked, by author name, on this device only
- * (`papersNavigator:<id>:bskyHandles`). `.get(name)`, `.set(name, handle)` ("" forgets).
+ * (`papersNavigator:<id>:bskyHandles`). `.get(name)`, `.set(name, handle)` ("" forgets;
+ * `NO_HANDLE` remembers that you removed the conference's).
  */
 export function createHandlesStore(
   conferenceId,

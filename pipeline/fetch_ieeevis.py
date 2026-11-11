@@ -72,8 +72,30 @@ def _parse_authors(soup) -> list[dict]:
             if match:
                 affiliation = match.group(1).strip()
                 break
-        authors.append({"name": name.get_text(strip=True), "affiliation": affiliation})
+        author = {"name": name.get_text(strip=True), "affiliation": affiliation}
+        handle = _bluesky_handle(span.select_one("a.bluesky-profile-link[href]"))
+        if handle:
+            author["bluesky"] = handle
+        authors.append(author)
     return authors
+
+
+_BLUESKY_PROFILE = re.compile(r"^https://bsky\.app/profile/([A-Za-z0-9.:-]+)/?$")
+
+
+def _bluesky_handle(link) -> str | None:
+    """The handle (or did:) of a conference "on Bluesky" link next to an author's name, or None."""
+    match = _BLUESKY_PROFILE.match(link["href"].strip()) if link else None
+    return match.group(1).lower() if match else None
+
+
+def _heading(soup):
+    """The page's <h1> text, without its buttons: since Nov 2026 it holds a bookmark button whose
+    icon is the text "bookmark_border"."""
+    h1 = soup.find("h1")
+    for button in h1.find_all("button") if h1 else []:
+        button.decompose()
+    return _text(h1)
 
 
 def _presentation_value(soup, label):
@@ -101,7 +123,7 @@ def parse_paper(html: str) -> dict:
         links.setdefault(href, {"label": label, "url": href})
 
     return {
-        "title": _text(soup.find("h1")),
+        "title": _heading(soup),
         "authors": _parse_authors(soup),
         "keywords": [
             s.get_text(strip=True).rstrip(",").strip()
@@ -130,7 +152,7 @@ def parse_session(html: str) -> dict:
             room = meta.get_text(" ", strip=True).split(":", 1)[1].strip() or None
     when = soup.select_one(".program-event-meta [data-tz-start]")
     return {
-        "sessionName": _text(soup.find("h1")),
+        "sessionName": _heading(soup),
         "room": room,
         "sessionStart": when.get("data-tz-start") if when else None,
         "sessionEnd": when.get("data-tz-end") if when else None,

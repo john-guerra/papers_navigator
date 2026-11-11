@@ -67,6 +67,15 @@ def test_parse_paper(paper):
     assert paper["abstract"].startswith("This paper examines how large language model")
 
 
+def test_parse_paper_keeps_the_conference_bluesky_handle(paper):
+    # The conference page links some authors' Bluesky profiles next to their name
+    by_name = {a["name"]: a for a in paper["authors"]}
+    assert by_name["Kuangshi Ai"]["bluesky"] == "kuangshiai.bsky.social"
+    assert by_name["Kuangshi Ai"]["affiliation"] == "University of Notre Dame"
+    # Authors without one get no key (papers.json stays small)
+    assert "bluesky" not in paper["authors"][0]
+
+
 def test_parse_paper_missing_fields_are_none():
     paper = parse_paper("<html><body><h1>Only a title</h1></body></html>")
     assert paper["title"] == "Only a title"
@@ -97,6 +106,22 @@ def test_parse_session():
         "sessionStart": "2026-11-09T13:00:00+00:00",
         "sessionEnd": "2026-11-09T16:30:00+00:00",
     }
+
+
+def test_parse_session_ignores_the_bookmark_button_in_the_title():
+    from pipeline.fetch_ieeevis import parse_session
+
+    html = (
+        '<h1 class="session-title">Welcome Reception + Posters<button id="sessionBookmarkBtn" '
+        'type="button" aria-label="Add bookmark"><i class="material-icons">bookmark_border</i>'
+        "</button></h1>"
+    )
+    assert parse_session(html)["sessionName"] == "Welcome Reception + Posters"
+
+
+def test_parse_paper_title_ignores_a_bookmark_button():
+    html = '<h1>Awards<button aria-label="Add bookmark"><i class="material-icons">bookmark_border</i></button></h1>'
+    assert parse_paper(html)["title"] == "Awards"
 
 
 def test_decode_body_ignores_wrong_charset_guess():

@@ -73,6 +73,11 @@
   font: var(--typography-body-md);
 }
 
+.author-bluesky {
+  margin: var(--spacing-xs, 4px) 0 0;
+  font: var(--typography-body-sm);
+}
+
 .author-homonym {
   margin: var(--spacing-xs, 4px) 0 0;
   font: var(--typography-body-sm);

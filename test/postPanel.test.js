@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { renderPostPanel } from "../src/components/postPanel.js";
+import { NO_HANDLE } from "../src/lib/bluesky.js";
 
 const paper = {
   id: "p1",
@@ -33,7 +34,7 @@ const fakeSetting = (value = false) => {
   return s;
 };
 const tick = () => new Promise((r) => setTimeout(r));
-const setup = (options = {}) => {
+const setup = ({ paper: shown = paper, ...options } = {}) => {
   const deps = {
     handles: fakeHandles(),
     linkSetting: fakeSetting(),
@@ -71,7 +72,7 @@ const setup = (options = {}) => {
     clipboard: { writeText: vi.fn(async () => {}) },
     open: vi.fn(),
   };
-  const el = renderPostPanel(paper, {
+  const el = renderPostPanel(shown, {
     rating: 4,
     note: "great",
     toolLink: "https://johnguerra.co/x/?paper=s1",
@@ -325,6 +326,105 @@ describe("account details in search results (#203 Stage C)", () => {
     expect(second.querySelector(".post-stats")).toBeNull();
     // the hint never picks: nothing is set until a tap
     expect(el.querySelector(".post-text").value).not.toContain("@dimara");
+    el.remove();
+  });
+});
+
+describe("compact search results, details on ⓘ (hover on a laptop)", () => {
+  it("each result is one line: name, @handle and a ✓ when the bio matches the paper", async () => {
+    const { el } = setup();
+    const row = el.querySelectorAll(".post-author")[1];
+    row.querySelector(".post-find").click();
+    await tick();
+    await tick();
+    const [first, second] = row.querySelectorAll(".post-result");
+    const pick = first.querySelector(".post-account");
+    expect(pick.textContent).toContain("Evanthia Dimara");
+    expect(pick.textContent).toContain("@dimara.bsky.social");
+    // the long parts are not in the button you tap to pick
+    expect(pick.querySelector(".post-bio")).toBeNull();
+    expect(pick.querySelector(".post-stats")).toBeNull();
+    expect(
+      first.querySelector(".post-match").getAttribute("aria-label"),
+    ).toContain("Matches the paper: Utrecht University");
+    expect(second.querySelector(".post-match")).toBeNull();
+    el.remove();
+  });
+
+  it("ⓘ shows and hides the account's details", async () => {
+    const { el } = setup();
+    const row = el.querySelectorAll(".post-author")[1];
+    row.querySelector(".post-find").click();
+    await tick();
+    await tick();
+    const first = row.querySelector(".post-result");
+    const more = first.querySelector("button.post-more");
+    const details = first.querySelector(".post-details");
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    expect(details.classList.contains("is-open")).toBe(false);
+    expect(more.getAttribute("aria-controls")).toBe(details.id);
+    more.click();
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    expect(details.classList.contains("is-open")).toBe(true);
+    more.click();
+    expect(details.classList.contains("is-open")).toBe(false);
+    el.remove();
+  });
+});
+
+describe("the handle the conference lists", () => {
+  const listed = {
+    ...paper,
+    authors: [
+      {
+        name: "Başak Oral",
+        affiliation: "Utrecht University",
+        bluesky: "oral.bsky.social",
+      },
+      paper.authors[1],
+    ],
+  };
+
+  it("is preselected and says where it came from, without saving anything", () => {
+    const { el, handles } = setup({ paper: listed });
+    const row = el.querySelectorAll(".post-author")[0];
+    expect(row.querySelector(".post-handle").textContent).toContain(
+      "@oral.bsky.social",
+    );
+    expect(row.querySelector(".post-source").textContent).toContain(
+      "conference page",
+    );
+    expect(text(el)).toContain("@oral.bsky.social");
+    expect(handles.set).not.toHaveBeenCalled();
+    // the other author still has Find on Bluesky
+    expect(
+      el.querySelectorAll(".post-author")[1].querySelector(".post-find"),
+    ).not.toBeNull();
+    el.remove();
+  });
+
+  it("✕ removes it for good (remembered), and Find on Bluesky comes back", () => {
+    const { el, handles } = setup({ paper: listed });
+    const row = el.querySelectorAll(".post-author")[0];
+    row.querySelector(".post-forget").click();
+    expect(handles.set).toHaveBeenCalledWith("Başak Oral", NO_HANDLE);
+    expect(text(el)).not.toContain("@oral");
+    expect(row.querySelector(".post-find")).not.toBeNull();
+    el.remove();
+    // a new panel (another visit) keeps it removed
+    const again = setup({ paper: listed, handles });
+    expect(text(again.el)).not.toContain("@oral");
+    again.el.remove();
+  });
+
+  it("an account you picked wins over the listed one", () => {
+    const { el } = setup({
+      paper: listed,
+      handles: fakeHandles({ "Başak Oral": "basak.bsky.social" }),
+    });
+    expect(text(el)).toContain("@basak.bsky.social");
+    expect(text(el)).not.toContain("@oral");
+    expect(el.querySelector(".post-source")).toBeNull();
     el.remove();
   });
 });
