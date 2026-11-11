@@ -1,6 +1,6 @@
 import { html } from "htl";
 import { formatTime } from "../lib/time.js";
-import { talkAt } from "../lib/live.js";
+import { sessionTypeColor, talkAt } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { verdict } from "./verdict.js";
 import { followToggles } from "./followToggles.js";
@@ -28,6 +28,8 @@ export function renderSessionView(
     slot,
     at,
     tz,
+    // The conference's session type → color (config sessionTypeColors), for the header stripe
+    sessionColors,
     mineIds,
     ratings,
     notes,
@@ -107,7 +109,10 @@ export function renderSessionView(
   </button>`;
   leave.onclick = onLeave;
   const el = html`<section class="live-checked-in">
-    <header class="live-checked-head">
+    <header
+      class="live-checked-head"
+      data-type-color=${sessionTypeColor(session, sessionColors)}
+    >
       <div>
         <h2 class="live-session-name">${session.sessionName}</h2>
         <div class="live-where">

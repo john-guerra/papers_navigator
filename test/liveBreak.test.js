@@ -22,6 +22,7 @@ const paper = (id, sessionId, room, start, extra = {}) => ({
   sessionEnd: new Date(new Date(start).getTime() + 90 * 60_000).toISOString(),
   start,
   end: new Date(new Date(start).getTime() + 15 * 60_000).toISOString(),
+  type: "full",
   typeShort: "Full",
   typeColor: "full",
   clusterLabel: "Perception",
@@ -270,5 +271,40 @@ describe("event links (security review)", () => {
         "a",
       ).href,
     ).toBe("https://ieeevis.org/s/x");
+  });
+});
+
+describe("session cards wear the program's type color (a subtle stripe)", () => {
+  it("a paper session by its papers' type", () => {
+    const { el } = setup(et("10:00"), {
+      sessionColors: { full: "full", plenary: "plenary" },
+    });
+    const card = el.querySelector(".live-session");
+    expect(card.dataset.typeColor).toBe("full");
+    el.remove();
+  });
+  it("an event (plenary, meetup…) by its session type, through the config's map", () => {
+    const plenary = {
+      sessionId: "awards",
+      type: "plenary",
+      typeLabel: "Plenary",
+      title: "Awards",
+      room: "Hall America",
+      start: et("17:00"),
+      end: et("18:30"),
+      paperIds: [],
+    };
+    const el = renderBreakView(
+      slotsAt(programDays(papers, TZ, [plenary]), new Date(et("16:50")), TZ),
+      {
+        tz: TZ,
+        mineIds: new Set(),
+        sessionColors: { plenary: "plenary" },
+        onGoing: vi.fn(),
+        onPickSlot: vi.fn(),
+      },
+    );
+    const card = el.querySelector('[data-session-id="awards"]');
+    expect(card.dataset.typeColor).toBe("plenary");
   });
 });

@@ -54,6 +54,22 @@
     "poster": { "label": "Poster" },
     "invited-talk": { "label": "Talk" }
   },
+  "sessionTypeColors": {
+    "full": "full",
+    "tvcg": "tvcg",
+    "cg&a": "cga",
+    "short": "short",
+    "visap": "arts",
+    "workshop": "workshop",
+    "challenge": "challenge",
+    "poster": "poster",
+    "invited-talk": "talk",
+    "plenary": "plenary",
+    "tutorial": "cga",
+    "panel": "poster",
+    "meetup": "meetup",
+    "cluster": "talk"
+  },
   "typeNames": {
     "workshop": "Workshop Paper"
   },
