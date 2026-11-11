@@ -4212,3 +4212,30 @@ body #vg-tooltip-element table tr td.value {
     min-height: var(--spacing-touch);
   }
 }
+
+/* Two-way transfer: send, copy or paste everything to the other device */
+.send-to-device {
+  margin-top: var(--spacing-sm);
+}
+
+.send-hint,
+.send-status {
+  margin: var(--spacing-xs) 0 0;
+  color: var(--color-on-surface-muted);
+  font: var(--typography-body-sm);
+}
+
+.send-status:empty {
+  display: none;
+}
+
+.mp-tools.drop-target {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 4px;
+}
+
+@media (max-width: 639.98px) {
+  .send-to-device button {
+    min-height: var(--spacing-touch);
+  }
+}

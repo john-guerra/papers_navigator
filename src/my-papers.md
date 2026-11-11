@@ -9,6 +9,7 @@ import { startSyncTracking } from "./lib/sync/track.js";
 import { createSyncMeta } from "./lib/sync/meta.js";
 import { renderTransferImport } from "./components/transferImport.js";
 import { renderImportHistory } from "./components/importHistory.js";
+import { enableFileDrop, renderSendToDevice } from "./components/sendToDevice.js";
 import { applyRules, createMyPapers, createRulesStore, filterByReason, normalizeRule, pickReason, reasonOptions, ruleOnlyCount } from "./lib/rules.js";
 import { facetValues } from "./lib/filters.js";
 import { renderWatching } from "./components/watching.js";
@@ -28,7 +29,7 @@ import { PapersList, conferenceLink } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
 import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
 import { withParams } from "./lib/urlState.js";
-import { exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
+import { deviceLabel, exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { createNotesStore, importedNotesText, notesCount } from "./lib/notes.js";
 import { createRatingsStore, importedRatingsText } from "./lib/ratings.js";
 import { createDislikedStore, importedDislikedText } from "./lib/disliked.js";
@@ -204,6 +205,8 @@ if (shared.ids.length || shared.unknown.length || sharedWatches.length) {
       },
     ),
   );
+  // A link always opens in a Safari tab on iOS; the Home Screen app has its own storage
+  if (isIosSafariTab()) banner.append(html`<p class="send-hint">Using the Home Screen app? Import the file there.</p>`);
 }
 display(banner);
 ```
@@ -249,19 +252,16 @@ const shareButton = renderShareButton({
   title: conference.name,
   onFallback: toggleSharePanel,
 });
+// Two-way transfer: the page's stores, so an import updates them (src/lib/sync/apply.js)
+const syncCtx = { stores: { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }, meta: createSyncMeta(conference.id), conferenceId: conference.id };
 const exportButton = html`<button>Export JSON</button>`;
-// Also from the data note, the backup nudge and the storage banner (Stage E)
-const exportNow = () => {
-  const blob = new Blob(
-    [exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions, notes: notesStore.value, ratings: ratingsStore.value, disliked: dislikedStore.value, attended: attendedStore.value })],
-    { type: "application/json" },
-  );
-  const a = Object.assign(document.createElement("a"), {
-    href: URL.createObjectURL(blob),
-    download: `${conference.id}-my-papers.json`,
-  });
+const exportText = () => exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions, notes: notesStore.value, ratings: ratingsStore.value, disliked: dislikedStore.value, attended: attendedStore.value }, { device: syncCtx.meta.device, deviceName: deviceLabel(), sync: syncCtx.meta.read() });
+const downloadFile = (file) => {
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(file), download: file.name });
   a.click();
   URL.revokeObjectURL(a.href);
+};
+const recordExport = () => {
   // The backup nudge counts from here (Stage E)
   try {
     localStorage.setItem(`papersNavigator:${conference.id}:lastExport`, JSON.stringify({ at: new Date().toISOString(), count: dataCount() }));
@@ -271,18 +271,16 @@ const exportNow = () => {
   // the data note listens (no reference back: cells can't depend on each other both ways)
   dispatchEvent(new Event("papersnavigator:exported"));
 };
+// Also from the data note, the backup nudge and the storage banner (Stage E)
+const exportNow = () => (downloadFile(new File([exportText()], `${conference.id}-my-papers.json`, { type: "application/json" })), recordExport());
 exportButton.onclick = exportNow;
 const importInput = html`<label class="import">Import JSON <input type="file" accept="application/json,.json"></label>`;
 const importStatus = html`<div class="import-status"></div>`;
-// Two-way transfer: the page's stores, so an import updates them (src/lib/sync/apply.js)
-const syncCtx = { stores: { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }, meta: createSyncMeta(conference.id), conferenceId: conference.id };
 // "Undo this import" (7 days, also after a reload) and the copies saved before each import
 const importHistory = renderImportHistory(syncCtx, { tz, papers });
-importInput.querySelector("input").onchange = async (event) => {
-  const file = event.target.files[0];
-  event.target.value = "";
-  if (!file) return;
-  const text = await file.text();
+// One path for a picked file, a dropped file and pasted text
+const importText = async (text, name) => {
+  const file = { name };
   // Read the file first: a bad file shows its error before any choice, and the choices can
   // say what the file holds (#52)
   let parsed;
@@ -337,6 +335,14 @@ importInput.querySelector("input").onchange = async (event) => {
   };
   choices();
 };
+importInput.querySelector("input").onchange = async (event) => {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (file) importText(await file.text(), file.name);
+};
+const sendToDevice = renderSendToDevice({ payload: exportText, fileName: `${conference.id}-my-papers.json`, title: conference.name, download: downloadFile, onPaste: importText, onSent: recordExport });
+document.querySelector(".mp-tools")?.append(sendToDevice);
+enableFileDrop(document.querySelector(".mp-tools"), importText);
 ```
 
 
