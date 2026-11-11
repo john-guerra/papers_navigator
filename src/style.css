@@ -3389,13 +3389,10 @@ body #vg-tooltip-element table tr td.value {
   border-radius: var(--rounded-md);
   background: var(--color-surface);
 }
-/* The program's session color as a subtle left stripe (its cards' accent, muted) */
-.live-session[data-type-color],
-.live-checked-head[data-type-color] {
-  border-left: 4px solid var(--type-color);
-}
-.live-checked-head[data-type-color] {
-  padding-left: var(--spacing-sm);
+/* The program's session color (its cards' accent, muted) as a hard shadow at the card's lower
+   right corner (John), so the card keeps its hairline border */
+.live-session[data-type-color] {
+  box-shadow: 4px 4px 0 var(--type-color);
 }
 .live-session.is-recommended {
   border-color: var(--color-on-surface-muted);
