@@ -78,10 +78,10 @@ describe("qualityMetrics on IEEE VIS 2026", () => {
   );
   const highRanks = neighborRanks(embeddings, { dims: 384 });
   const reference = {
-    // Recomputed after the 2026-11-11 data refresh (one retitled paper, "Sycamore")
-    umap: { 5: [0.881604, 0.908573], 10: [0.863289, 0.882028] },
-    tsne: { 5: [0.929284, 0.890131], 10: [0.885614, 0.858535] },
-    pca: { 5: [0.718467, 0.837147], 10: [0.727611, 0.831798] },
+    // Recomputed after the 2026-11-11 update: 3 new papers placed among their neighbours
+    umap: { 5: [0.881121, 0.908597], 10: [0.86284, 0.882238] },
+    tsne: { 5: [0.928241, 0.889374], 10: [0.883844, 0.857862] },
+    pca: { 5: [0.718502, 0.836375], 10: [0.727216, 0.831135] },
   };
   for (const [method, byK] of Object.entries(reference)) {
     it(`matches sklearn for ${method}`, () => {

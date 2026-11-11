@@ -58,6 +58,76 @@ def write_embeddings(matrix: np.ndarray, path: Path) -> None:
 
 # Cosine to the last run's embedding above which a paper keeps its place (#178)
 LAYOUT_MIN_COSINE = 0.98
+# New papers a kept layout can take in (placed by their neighbours), as a share of the old ones
+LAYOUT_MAX_ADDED = 0.05
+# How many of the most similar papers place a new one
+PLACE_NEIGHBOURS = 5
+
+
+# Softmax temperature for those neighbours' weights: near-equal ones blend, weak ones (unrelated
+# papers still score ~0.1-0.2) barely count
+PLACE_TEMPERATURE = 0.05
+
+
+def neighbour_weights(old_vectors: np.ndarray, new_vectors: np.ndarray, k: int = PLACE_NEIGHBOURS):
+    """For each new paper, its k most similar old papers (cosine; the rows are unit vectors) and
+    their weights: a softmax of similarity (PLACE_TEMPERATURE), summing to 1."""
+    sims = np.asarray(new_vectors) @ np.asarray(old_vectors).T
+    out = []
+    for row in sims:
+        top = np.argsort(-row)[: min(k, len(row))]
+        w = np.exp((row[top] - row[top[0]]) / PLACE_TEMPERATURE)
+        out.append((top, w / w.sum()))
+    return out
+
+
+def place_new(old_xy: np.ndarray, old_vectors: np.ndarray, new_vectors: np.ndarray, k: int = PLACE_NEIGHBOURS):
+    """Positions for papers added to a kept layout: the weighted mean of their neighbours'
+    positions (neighbour_weights), so a new paper lands among the papers it's like without
+    moving anything."""
+    return np.asarray(
+        [(old_xy[top] * w[:, None]).sum(axis=0) for top, w in neighbour_weights(old_vectors, new_vectors, k)],
+        dtype=float,
+    ).reshape(-1, 2)
+
+
+def vote(labels: list, weights) -> object:
+    """The label (a topic id, or None for no topic) with the most neighbour weight."""
+    top, w = weights
+    totals: dict = {}
+    for i, wi in zip(top, w):
+        totals[labels[i]] = totals.get(labels[i], 0.0) + float(wi)
+    return max(totals.items(), key=lambda kv: kv[1])[0]
+
+
+def keep_clusters(papers: list[dict], matrix: np.ndarray, data_dir: Path):
+    """With the layout kept, the topics stay too: re-running HDBSCAN on the same positions
+    rewords labels and moves papers between topics. Old papers keep `cluster`/`clusterLabel`
+    from the last papers.json; a new one takes its neighbours' topic by weight (vote); sizes in
+    clusters.json are recounted, labels and terms kept. Returns the cluster list, or None when
+    the last run's topics can't be read (then the caller clusters afresh)."""
+    try:
+        previous = {p["id"]: p for p in json.loads((data_dir / "papers.json").read_text())}
+        info = json.loads((data_dir / "clusters.json").read_text())
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    if not info or not all("cluster" in p for p in previous.values()):
+        return None
+    labels = {c["id"]: c["label"] for c in info}
+    old_rows = [k for k, p in enumerate(papers) if p["id"] in previous]
+    new_rows = [k for k, p in enumerate(papers) if p["id"] not in previous]
+    for k in old_rows:
+        old = previous[papers[k]["id"]]
+        papers[k]["cluster"], papers[k]["clusterLabel"] = old["cluster"], old.get("clusterLabel")
+    old_topics = [papers[k]["cluster"] for k in old_rows]
+    for k, weights in zip(new_rows, neighbour_weights(matrix[old_rows], matrix[new_rows])):
+        topic = vote(old_topics, weights)
+        papers[k]["cluster"], papers[k]["clusterLabel"] = topic, labels.get(topic)
+    sizes = {}
+    for p in papers:
+        if p["cluster"] is not None:
+            sizes[p["cluster"]] = sizes.get(p["cluster"], 0) + 1
+    return [{**c, "size": sizes.get(c["id"], 0)} for c in info]
 
 
 def keep_previous_order(papers: list[dict], previous: Path) -> list[dict]:
@@ -93,21 +163,44 @@ def previous_layout(papers: list[dict], matrix: np.ndarray, data_dir: Path, meth
     except (OSError, ValueError, TypeError, KeyError):
         return None
     ids = [p["id"] for p in papers]
-    if sorted(ids) != sorted(old_ids) or old.shape[1] != matrix.shape[1]:
+    old_set = set(old_ids)
+    added = [i for i in ids if i not in old_set]
+    if (
+        not old_set <= set(ids)
+        or len(added) > LAYOUT_MAX_ADDED * len(old_ids)
+        or old.shape[1] != matrix.shape[1]
+    ):
         print("layout: new projections (the set of papers changed)")
         return None
-    if any(set(projections[m]) != set(ids) for m in methods):
+    if any(set(projections[m]) != old_set for m in methods):
         return None
     row = {i: k for k, i in enumerate(old_ids)}
-    basis = old[[row[i] for i in ids]]
-    norms = np.linalg.norm(basis, axis=1) * np.linalg.norm(matrix, axis=1)
-    cosine = np.sum(basis * matrix, axis=1) / np.where(norms == 0, 1, norms)
+    kept_rows = [k for k, i in enumerate(ids) if i in old_set]
+    kept_ids = [ids[k] for k in kept_rows]
+    basis_kept = old[[row[i] for i in kept_ids]]
+    current = matrix[kept_rows]
+    norms = np.linalg.norm(basis_kept, axis=1) * np.linalg.norm(current, axis=1)
+    cosine = np.sum(basis_kept * current, axis=1) / np.where(norms == 0, 1, norms)
     print(f"layout: lowest cosine to the layout's embeddings {cosine.min():.4f}")
     if cosine.min() < LAYOUT_MIN_COSINE:
-        moved = [f"{ids[k]} ({cosine[k]:.3f})" for k in np.flatnonzero(cosine < LAYOUT_MIN_COSINE)]
+        moved = [f"{kept_ids[k]} ({cosine[k]:.3f})" for k in np.flatnonzero(cosine < LAYOUT_MIN_COSINE)]
         print(f"layout: new projections, {len(moved)} papers changed: {', '.join(moved[:10])}")
         return None
-    return {m: np.asarray([projections[m][i] for i in ids], dtype=float) for m in methods}, basis
+    new_rows = [k for k, i in enumerate(ids) if i not in old_set]
+    layout = {}
+    for m in methods:
+        xy = np.zeros((len(ids), 2))
+        xy[kept_rows] = [projections[m][i] for i in kept_ids]
+        if new_rows:
+            xy[new_rows] = place_new(xy[kept_rows], current, matrix[new_rows])
+        layout[m] = xy
+    if added:
+        print(f"layout: kept, {len(added)} new papers placed by their {PLACE_NEIGHBOURS} most similar: {', '.join(added)}")
+    # The basis: what each position was computed from (a new paper: its own embedding)
+    basis = np.zeros_like(matrix)
+    basis[kept_rows] = basis_kept
+    basis[new_rows] = matrix[new_rows]
+    return layout, basis
 
 
 def run(
@@ -132,7 +225,7 @@ def run(
     previous = None if relayout else previous_layout(papers, matrix, data_dir, methods)
     kept, basis = previous if previous else (None, matrix)
     if kept:
-        print("layout: kept the last run's positions (same papers, embeddings barely moved)")
+        print("layout: kept the last run's positions (same papers or a few new ones, embeddings barely moved)")
     write_embeddings(matrix, data_dir / "embeddings.bin")
 
     (data_dir / "projections").mkdir(exist_ok=True)
@@ -154,7 +247,11 @@ def run(
             sorted({a["affiliation"] for a in p.get("authors") or [] if a.get("affiliation")})
         )
     # Topic clusters on the default projection (pipeline/clusters.py)
-    info = add_clusters(papers, default, config.get("clusters"))
+    info = keep_clusters(papers, matrix, data_dir) if kept else None
+    if info is None:
+        info = add_clusters(papers, default, config.get("clusters"))
+    else:
+        print("clusters: kept the last run's topics (layout kept)")
     # Short labels (pipeline/short_labels.py): committed LLM labels (shortLabels.json), the cache,
     # keyphrases; no LLM calls (papers it doesn't know are reported)
     short_meta = None

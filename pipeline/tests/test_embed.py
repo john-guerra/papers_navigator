@@ -322,3 +322,92 @@ def test_a_corrupt_previous_papers_json_keeps_the_scrape_order(tmp_path):
     embed.run("testconf", root=tmp_path, encoder=fake_encoder, reducers={"a": lambda m: np.zeros((len(m), 2))})
     ids = [p["id"] for p in json.loads((conf / "data" / "papers.json").read_text())]
     assert ids == ["p1", "p2", "p3"]
+
+
+def _program(n):
+    # n distinct papers: unit vectors in their own direction, laid out on a line
+    papers = [{"id": f"p{i}", "title": f"T{i}", "abstract": "A", "authors": []} for i in range(n)]
+    vectors = [_unit(np.eye(384)[i] + 0.01) for i in range(n)]
+    coords = [[float(i), float(-i)] for i in range(n)]
+    return papers, vectors, coords
+
+
+def test_a_few_new_papers_are_placed_by_their_neighbours_and_the_map_stays(tmp_path):
+    # A program update that adds a couple of papers mid-conference must not reshuffle the map:
+    # every paper keeps its place, a new one goes among its 5 most similar papers, weighted by a
+    # sharp softmax of similarity
+    papers, vectors, coords = _program(30)
+    new = {"id": "new", "title": "N", "abstract": "A", "authors": []}
+    conf = make_conference(tmp_path, [*papers, new], ["a"])
+    _previous_run(conf, [p["id"] for p in papers], vectors, coords)
+    # the new paper is mostly p3, a bit of p4
+    new_vector = _unit(np.eye(384)[3] * 0.75 + np.eye(384)[4] * 0.66 + 0.01)
+    fresh = lambda m: np.full((len(m), 2), 99.0)
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray([*vectors, new_vector]), reducers={"a": fresh})
+    out = json.loads((conf / "data" / "projections" / "a.json").read_text())
+    assert all(out[p["id"]] == c for p, c in zip(papers, coords))
+    # between p3 and p4, nearer p3; the 3 weak neighbours far down the line barely count
+    assert 3 < out["new"][0] < 3.5
+    assert out["new"][1] == pytest.approx(-out["new"][0])
+    # the next run compares the new paper with the embedding it was placed from
+    basis = np.fromfile(conf / "data" / "projections" / "basis.bin", dtype="<f4").reshape(31, 384)
+    assert basis[-1] == pytest.approx(new_vector, abs=1e-6)
+
+
+def test_many_new_papers_still_lay_the_map_out_again(tmp_path):
+    # More than 5% new papers: the old positions no longer describe the program
+    papers, vectors, coords = _program(20)
+    extra = [{"id": f"n{i}", "title": f"N{i}", "abstract": "A", "authors": []} for i in range(2)]
+    conf = make_conference(tmp_path, [*papers, *extra], ["a"])
+    _previous_run(conf, [p["id"] for p in papers], vectors, coords)
+    more = [_unit(np.eye(384)[100 + i] + 0.01) for i in range(2)]
+    fresh = lambda m: np.full((len(m), 2), 99.0)
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray([*vectors, *more]), reducers={"a": fresh})
+    out = json.loads((conf / "data" / "projections" / "a.json").read_text())
+    assert set(map(tuple, out.values())) == {(99.0, 99.0)}
+
+
+def test_place_new_blends_close_neighbours_and_ignores_weak_ones():
+    xy = np.asarray([[0.0, 0.0], [10.0, 0.0], [100.0, 100.0]])
+    old = np.eye(3)
+    # equally like 0 and 1, slightly like 2
+    placed = embed.place_new(xy, old, np.asarray([[0.6, 0.6, 0.1]]))
+    assert placed[0] == pytest.approx([5.0, 0.0], abs=0.01)
+
+
+def test_a_kept_layout_keeps_the_topics_and_new_papers_join_their_neighbours_topic(tmp_path):
+    # Re-clustering the same positions reworded topic labels and moved papers between topics
+    # mid-conference; with the layout kept, topics stay as they were
+    papers, vectors, coords = _program(30)
+    new = {"id": "new", "title": "N", "abstract": "A", "authors": []}
+    conf = make_conference(tmp_path, [*papers, new], ["a"])
+    _previous_run(conf, [p["id"] for p in papers], vectors, coords)
+    data = conf / "data"
+    previous = [
+        {"id": p["id"], "cluster": 0 if i < 15 else (1 if i < 28 else None),
+         "clusterLabel": "Alpha" if i < 15 else ("Beta" if i < 28 else None)}
+        for i, p in enumerate(papers)
+    ]
+    (data / "papers.json").write_text(json.dumps(previous))
+    (data / "clusters.json").write_text(json.dumps([
+        {"id": 0, "label": "Alpha", "size": 15, "terms": ["a"]},
+        {"id": 1, "label": "Beta", "size": 13, "terms": ["b"]},
+    ]))
+    new_vector = _unit(np.eye(384)[3] * 0.75 + np.eye(384)[4] * 0.66 + 0.01)
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray([*vectors, new_vector]),
+              reducers={"a": lambda m: np.full((len(m), 2), 99.0)})
+    out = {p["id"]: p for p in json.loads((data / "papers.json").read_text())}
+    assert [(out[p["id"]]["cluster"], out[p["id"]]["clusterLabel"]) for p in previous] == [
+        (p["cluster"], p["clusterLabel"]) for p in previous
+    ]
+    assert (out["new"]["cluster"], out["new"]["clusterLabel"]) == (0, "Alpha")
+    assert json.loads((data / "clusters.json").read_text()) == [
+        {"id": 0, "label": "Alpha", "size": 16, "terms": ["a"]},
+        {"id": 1, "label": "Beta", "size": 13, "terms": ["b"]},
+    ]
+
+
+def test_a_new_paper_among_unclustered_ones_stays_unclustered():
+    weights = embed.neighbour_weights(np.eye(3), np.asarray([[0.9, 0.1, 0.0]]))
+    assert embed.vote([None, 0, 0], weights[0]) is None
+    assert embed.vote([1, 0, 0], weights[0]) == 1
