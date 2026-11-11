@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createAttendedStore } from "../src/lib/attended.js";
 import { createDislikedStore } from "../src/lib/disliked.js";
 import { createFollowedStore } from "../src/lib/followed.js";
-import { parseMyPapersFile } from "../src/lib/myPapersFile.js";
+import { exportMyPapers, parseMyPapersFile } from "../src/lib/myPapersFile.js";
 import { createNotesStore } from "../src/lib/notes.js";
 import { createRatingsStore } from "../src/lib/ratings.js";
 import { createRulesStore } from "../src/lib/rules.js";
 import { resetStorageHealth, storageHealth } from "../src/lib/storageHealth.js";
 import {
   applyTransfer,
+  lastImport,
   listSnapshots,
+  restorePayload,
   restoreSnapshot,
   undoLastImport,
 } from "../src/lib/sync/apply.js";
@@ -460,5 +462,89 @@ describe("storage failures", () => {
       "import 2",
     ]);
     expect(readState("conf", ctx.storage).ratings.x3).toBe(3);
+  });
+});
+
+describe("restorePayload (a backup from this device)", () => {
+  it("replaces the data with the file's as a new local change, and can be undone", () => {
+    const ctx = device();
+    const backup = parseMyPapersFile(
+      exportMyPapers(readState("conf", ctx.storage), {
+        device: "me",
+        sync: ctx.meta.read(),
+      }),
+    );
+    // after the backup: a paper removed, a note edited, a rating added
+    ctx.stores.followed.remove(["a"]);
+    ctx.stores.notes.set("n1", "edited");
+    ctx.stores.ratings.set("r9", 4);
+    ctx.meta.reconcile(toEntries(readState("conf", ctx.storage)), T0);
+    const metaBefore = ctx.meta.read();
+    const undo = restorePayload(ctx, backup, {
+      label: "Before restoring a backup",
+    });
+    let s = readState("conf", ctx.storage);
+    expect(s.followed.map((d) => d.id).sort()).toEqual(["a", "b"]);
+    expect(s.notes).toEqual({ n1: "my own note" });
+    expect(s.ratings).toEqual({ r1: 2 });
+    // a new change here: bumped past what was recorded, consistent with the stores
+    expect(ctx.meta.read()["followed/a"].v.me).toBeGreaterThan(
+      metaBefore["followed/a"].v.me,
+    );
+    expect(ctx.meta.read()["rating/r9"].deleted).toBe(true);
+    expect(ctx.meta.reconcile(toEntries(s), T1)).toEqual([]);
+    // the data it replaced was saved first
+    expect(listSnapshots(ctx)[0].label).toBe("Before restoring a backup");
+    expect(lastImport(ctx)).toMatchObject({ from: "backup" });
+    undo();
+    s = readState("conf", ctx.storage);
+    expect(s.followed.map((d) => d.id)).toEqual(["b"]);
+    expect(s.notes).toEqual({ n1: "edited" });
+    expect(s.ratings).toEqual({ r1: 2, r9: 4 });
+    expect(ctx.meta.read()).toEqual(metaBefore);
+  });
+
+  it("changes nothing when the data already is the backup's", () => {
+    const ctx = device();
+    const backup = parseMyPapersFile(
+      exportMyPapers(readState("conf", ctx.storage), {
+        device: "me",
+        sync: {},
+      }),
+    );
+    const undo = restorePayload(ctx, backup, { label: "x" });
+    expect(listSnapshots(ctx)).toEqual([]);
+    expect(undo()).toEqual({ reverted: [], skipped: [] });
+  });
+
+  it("throws, having changed nothing, when the copy of the data can't be saved", () => {
+    const ctx = device();
+    const backup = parseMyPapersFile(
+      exportMyPapers({ followed: [] }, { device: "me", sync: {} }),
+    );
+    const before = readState("conf", ctx.storage);
+    ctx.storage.fail = (k) => k === SNAPSHOTS;
+    expect(() => restorePayload(ctx, backup, { label: "x" })).toThrow(
+      expect.objectContaining({ code: "storage" }),
+    );
+    expect(readState("conf", ctx.storage)).toEqual(before);
+  });
+});
+
+describe("lastImport", () => {
+  it("describes the undo record for 7 days, then nothing", () => {
+    const ctx = device();
+    expect(lastImport(ctx)).toBeNull();
+    applyTransfer(ctx, RESOLUTIONS(), { from: "iPhone", label: "x" });
+    expect(lastImport(ctx)).toEqual({
+      at: T1.toISOString(),
+      from: "iPhone",
+      count: RESOLUTIONS().length,
+    });
+    expect(
+      lastImport({ ...ctx, now: new Date(T1.getTime() + 8 * DAY) }),
+    ).toBeNull();
+    undoLastImport(ctx);
+    expect(lastImport(ctx)).toBeNull();
   });
 });

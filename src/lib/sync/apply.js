@@ -380,18 +380,51 @@ function undoRecord(ctx, rec) {
 export const undoLastImport = busy((ctx) => undoRecord(ctx, loadUndo(ctx)));
 
 /**
+ * The last import's undo record while it can still be undone (7 days): `{at, from, count}`
+ * (`from`: the device name the import came from, "snapshot" or "backup"), else null.
+ */
+export function lastImport(ctx) {
+  const rec = loadUndo(ctx);
+  const at = Date.parse(rec?.at);
+  if (!rec || !Number.isFinite(at)) return null;
+  if (nowOf(ctx).getTime() - at > UNDO_DAYS * DAY) return null;
+  return {
+    at: rec.at,
+    from: typeof rec.from === "string" ? rec.from : "",
+    count: rec.changes.length,
+  };
+}
+
+/**
  * Replaces all the data with snapshot `i` (`listSnapshots` order), after snapshotting the
  * current data. The restored data is a new change on this device: every difference gets a
  * version bumped here (an entry the snapshot lacks gets a tombstone), so another device's older
  * or concurrent value never silently overrides it. Returns an undo (`() => {reverted,
  * skipped}`). Throws, having changed nothing, when the snapshot is damaged or storage is full.
  */
-export const restoreSnapshot = busy(restoreSnapshotNow);
-function restoreSnapshotNow(ctx, i) {
+export const restoreSnapshot = busy((ctx, i) => {
   const snap = listSnapshots(ctx)[i];
   if (!snap) throw new Error("This copy of your data is no longer saved.");
+  return restoreParsed(ctx, parseMyPapersFile(snap.payload), {
+    label: `Before restoring the copy from ${snap.at}`,
+    from: "snapshot",
+  });
+});
+
+/**
+ * Replaces all the data with a parsed My Papers file (a backup made on this device), with the
+ * same safety as `restoreSnapshot`: the current data is snapshotted first (`label`), the restore
+ * is a new change on this device, and the returned undo puts back what it replaced.
+ */
+export const restorePayload = busy((ctx, parsed, { label } = {}) =>
+  restoreParsed(ctx, parsed, {
+    label: label ?? "Before restoring a backup",
+    from: "backup",
+  }),
+);
+
+function restoreParsed(ctx, parsed, { label, from }) {
   const now = nowOf(ctx);
-  const parsed = parseMyPapersFile(snap.payload);
   // Version any local edit not recorded yet, so the undo below covers only the restore's changes
   ctx.meta.reconcile(currentEntries(ctx), now);
   const state = readState(ctx.conferenceId, storageOf(ctx));
@@ -423,7 +456,6 @@ function restoreSnapshotNow(ctx, i) {
   }
   if (!changes.length) return () => NONE;
 
-  const label = `Before restoring the copy from ${snap.at}`;
   saveSnapshot(ctx, state, label);
   writeStores(ctx, changes);
   const changed = ctx.meta.reconcile(currentEntries(ctx), now);
@@ -442,5 +474,5 @@ function restoreSnapshotNow(ctx, i) {
       afterMeta: metaAfter[key] ?? null,
     };
   });
-  return saveUndo(ctx, record, { label, from: "snapshot" });
+  return saveUndo(ctx, record, { label, from });
 }

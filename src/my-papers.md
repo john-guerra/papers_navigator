@@ -6,6 +6,9 @@ toc: false
 ```js
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
 import { startSyncTracking } from "./lib/sync/track.js";
+import { createSyncMeta } from "./lib/sync/meta.js";
+import { renderTransferImport } from "./components/transferImport.js";
+import { renderImportHistory } from "./components/importHistory.js";
 import { applyRules, createMyPapers, createRulesStore, filterByReason, normalizeRule, pickReason, reasonOptions, ruleOnlyCount } from "./lib/rules.js";
 import { facetValues } from "./lib/filters.js";
 import { renderWatching } from "./components/watching.js";
@@ -54,6 +57,8 @@ const papers = FileAttachment("data/papers.json").json();
 // and when a paper's details need related papers (#70). The service worker precaches it with
 // the page, so after one visit it's there offline too.
 const embeddingsFile = FileAttachment("data/embeddings.bin");
+// Session names for a session note's clash on Import (two-way transfer); read only then
+const sessionsFile = FileAttachment("data/sessions.json");
 ```
 
 ```js
@@ -208,7 +213,7 @@ display(banner);
 <div class="my-papers-layout">
 <div class="mp-main">
 <div class="mp-view"><div class="my-papers-tools">${viewInput} ${reasonInput}</div>${newNotice}</div>
-<div class="mp-tools"><div class="my-papers-tools">${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton} ${clearControl}</div><div>${sharePanel}</div><div>${importStatus}</div>${dataSafetyBox}</div>
+<div class="mp-tools"><div class="my-papers-tools">${shareButton} ${exportButton}${exportNoteText} ${importInput} ${restoreButton} ${clearControl}</div><div>${sharePanel}</div><div>${importStatus}</div>${importHistory}${dataSafetyBox}</div>
 
 ```js
 // Created once (no dependency on the followed list) so following/unfollowing keeps the choice
@@ -268,7 +273,11 @@ const exportNow = () => {
 };
 exportButton.onclick = exportNow;
 const importInput = html`<label class="import">Import JSON <input type="file" accept="application/json,.json"></label>`;
-const importStatus = html`<span class="import-status"></span>`;
+const importStatus = html`<div class="import-status"></div>`;
+// Two-way transfer: the page's stores, so an import updates them (src/lib/sync/apply.js)
+const syncCtx = { stores: { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }, meta: createSyncMeta(conference.id), conferenceId: conference.id };
+// "Undo this import" (7 days, also after a reload) and the copies saved before each import
+const importHistory = renderImportHistory(syncCtx, { tz });
 importInput.querySelector("input").onchange = async (event) => {
   const file = event.target.files[0];
   event.target.value = "";
@@ -282,6 +291,12 @@ importInput.querySelector("input").onchange = async (event) => {
   } catch (error) {
     importStatus.textContent = `“${file.name}” can't be imported: ${error.message}`;
     return;
+  }
+  // v3 (another device's file or a backup): summary, clashes, Apply, Undo; v2 and older below
+  if (parsed.version === 3) {
+    const sessions = await sessionsFile.json().catch(() => []);
+    const transfer = renderTransferImport(parsed, { ctx: syncCtx, papers, sessions, fileName: file.name, tz, onChange: () => importHistory.refresh({ showUndo: false }), onDone: () => (importStatus.replaceChildren(), importHistory.refresh()) });
+    if (transfer) return importStatus.replaceChildren(transfer);
   }
   const watchesOf = (n) => (n ? ` and ${n} ${n === 1 ? "watch" : "watches"}` : "");
   const run = (replace) => {
