@@ -411,3 +411,15 @@ def test_a_new_paper_among_unclustered_ones_stays_unclustered():
     weights = embed.neighbour_weights(np.eye(3), np.asarray([[0.9, 0.1, 0.0]]))
     assert embed.vote([None, 0, 0], weights[0]) is None
     assert embed.vote([1, 0, 0], weights[0]) == 1
+
+
+def test_kept_topics_say_how_to_recompute_them(tmp_path, capsys):
+    # #222 review: editing config clusters then running embed silently kept the old topics
+    papers, vectors, coords = _program(30)
+    conf = make_conference(tmp_path, papers, ["a"])
+    _previous_run(conf, [p["id"] for p in papers], vectors, coords)
+    data = conf / "data"
+    (data / "papers.json").write_text(json.dumps([{"id": p["id"], "cluster": 0, "clusterLabel": "Alpha"} for p in papers]))
+    (data / "clusters.json").write_text(json.dumps([{"id": 0, "label": "Alpha", "size": 30, "terms": ["a"]}]))
+    embed.run("testconf", root=tmp_path, encoder=lambda t: np.asarray(vectors), reducers={"a": lambda m: np.zeros((len(m), 2))})
+    assert "python -m pipeline.clusters" in capsys.readouterr().out

@@ -6,6 +6,8 @@ import {
   graphemes,
   affiliationMatch,
   NO_HANDLE,
+  isRemoval,
+  removedHandle,
   profileUrl,
   searchAccounts,
 } from "../lib/bluesky.js";
@@ -51,8 +53,11 @@ export function renderPostPanel(
   // The handle in the draft: yours, else the conference's (unless you removed it)
   const handleOf = (name) => {
     const mine = handles.get(name);
-    if (mine === NO_HANDLE) return "";
-    return mine || listedOf.get(name) || "";
+    const listed = listedOf.get(name) || "";
+    if (!isRemoval(mine)) return mine || listed;
+    // Removed: hide the handle you removed (or any, for an old bare marker), not a
+    // same-named author's different listed handle on another paper
+    return mine === NO_HANDLE || mine === removedHandle(listed) ? "" : listed;
   };
   const area = html`<textarea
     class="post-text"
@@ -134,7 +139,10 @@ export function renderPostPanel(
     const row = html`<li class="post-author"></li>`;
     const draw = (results = null, message = "") => {
       const handle = handleOf(name);
-      const fromConference = handle && !handles.get(name);
+      const fromConference =
+        handle &&
+        handle === listedOf.get(name) &&
+        (!handles.get(name) || isRemoval(handles.get(name)));
       const find = html`<button type="button" class="btn-text post-find">
         Find on Bluesky
       </button>`;
@@ -156,7 +164,10 @@ export function renderPostPanel(
       </button>`;
       forget.onclick = () => {
         // A removed conference handle stays removed; yours is just forgotten
-        handles.set(name, listedOf.get(name) ? NO_HANDLE : "");
+        handles.set(
+          name,
+          listedOf.get(name) ? removedHandle(listedOf.get(name)) : "",
+        );
         draw();
         refresh();
       };
