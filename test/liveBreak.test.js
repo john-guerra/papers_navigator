@@ -274,7 +274,7 @@ describe("event links (security review)", () => {
   });
 });
 
-describe("session cards wear the program's type color (a subtle stripe)", () => {
+describe("session cards wear the program's type color (a corner shadow)", () => {
   it("a paper session by its papers' type", () => {
     const { el } = setup(et("10:00"), {
       sessionColors: { full: "full", plenary: "plenary" },

@@ -3425,6 +3425,18 @@ body #vg-tooltip-element table tr td.value {
 }
 /* Your note on a session without papers (key session:<id>): the field when checked in, the
    note itself on its card */
+.session-notes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.session-note {
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-outline);
+}
+.session-note-name {
+  font: var(--typography-title-paper);
+}
 .live-event-notes {
   margin: var(--spacing-sm) 0;
 }

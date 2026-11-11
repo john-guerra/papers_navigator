@@ -26,6 +26,7 @@ import { renderBreakView } from "./components/liveBreak.js";
 import { renderSessionView } from "./components/liveSession.js";
 import { renderRatedPapers } from "./components/ratedPapers.js";
 import { renderAttendedPapers } from "./components/attendedPapers.js";
+import { renderSessionNotes } from "./components/sessionNotes.js";
 import { createViewHost } from "./components/liveViewHost.js";
 import { renderPostPanel } from "./components/postPanel.js";
 import { createHandlesStore, loadDiscussion } from "./lib/bluesky.js";
@@ -209,7 +210,6 @@ liveView.show(
           slot: slotOf(session, days, at),
           at,
           tz,
-          sessionColors: conference.sessionTypeColors,
           mineIds,
           mine,
           ratings: ratingsStore,
@@ -306,6 +306,36 @@ const updateAttended = () => attendedBox.firstElementChild?.update?.();
 store.addEventListener("input", updateAttended);
 invalidation.then(() => store.removeEventListener("input", updateAttended));
 display(attendedBox);
+```
+
+<h2 class="live-rated-title">Session notes</h2>
+
+```js
+// Notes on plenaries, panels and meetups (session:<id>), reachable after their slot (#223
+// review). Redrawn only when the set of noted sessions changes, never while you type in it.
+const sessionNotesBox = html`<div></div>`;
+let sessionNoteKeys = null;
+const drawSessionNotes = () => {
+  const keys = Object.keys(notesStore.value)
+    .filter((k) => k.startsWith("session:") && notesStore.get(k))
+    .sort()
+    .join("\n");
+  if (keys === sessionNoteKeys) return;
+  if (sessionNotesBox.contains(document.activeElement)) {
+    sessionNotesBox.addEventListener("focusout", () => setTimeout(drawSessionNotes), { once: true });
+    return;
+  }
+  sessionNoteKeys = keys;
+  sessionNotesBox.firstElementChild?.dispose?.();
+  sessionNotesBox.replaceChildren(renderSessionNotes(programSessions, { notes: notesStore, tz }));
+};
+drawSessionNotes();
+notesStore.addEventListener("input", drawSessionNotes);
+invalidation.then(() => {
+  notesStore.removeEventListener("input", drawSessionNotes);
+  sessionNotesBox.firstElementChild?.dispose?.();
+});
+display(sessionNotesBox);
 ```
 
 ```js

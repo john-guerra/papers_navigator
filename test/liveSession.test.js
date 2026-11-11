@@ -256,6 +256,12 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("a paper session has no session note field (only its talks' notes)", () => {
+    const { el } = setup();
+    expect(el.querySelector(".live-event-notes")).toBeNull();
+    el.remove();
+  });
+
   it("dispose flushes the quick notes", () => {
     const { el } = setup();
     expect(() => el.dispose()).not.toThrow();
@@ -298,16 +304,6 @@ describe("session view: a session without papers (plenary, panel)", () => {
     expect(note.textContent).toContain("Plenary");
     expect(note.querySelector("a").href).toBe("https://ieeevis.org/s/awards");
     el.dispose();
-  });
-});
-
-describe("the session view wears the program's type color", () => {
-  it("on its header", () => {
-    const { el } = setup({ sessionColors: { full: "full" } });
-    expect(el.querySelector("[data-type-color]").dataset.typeColor).toBe(
-      "full",
-    );
-    el.remove();
   });
 });
 

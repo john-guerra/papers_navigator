@@ -157,7 +157,7 @@ export function renderBreakView(
     detailsHref,
     inMyPapers,
     onToggle,
-    // The conference's session type → color (config sessionTypeColors), for each card's stripe
+    // The conference's session type → color (config sessionTypeColors), for each card's corner shadow
     sessionColors,
     // Notes (get(id)): an event card shows yours (session:<id>)
     notes,

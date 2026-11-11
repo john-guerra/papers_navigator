@@ -1,6 +1,8 @@
 import { reportStorageFailure } from "./storageHealth.js";
 /**
- * Paper notes (#152): a private note on any paper, whether or not it is in My Papers.
+ * Paper notes (#152): a private note on any paper, whether or not it is in My Papers. The same
+ * store keeps notes on Live's sessions without papers (plenaries, panels…) under
+ * `session:<sessionId>` (src/lib/live.js sessionNoteId), so ids are paper ids or that prefix.
  *
  * Privacy: notes live only in this browser's localStorage, per conference
  * (`papersNavigator:<id>:notes`), and in the My Papers export file so they can move devices.
