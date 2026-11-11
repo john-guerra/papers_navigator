@@ -1,6 +1,6 @@
 import { html } from "htl";
 import { formatTime } from "../lib/time.js";
-import { sessionTypeColor, talkAt } from "../lib/live.js";
+import { sessionNoteId, talkAt } from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { verdict } from "./verdict.js";
 import { followToggles } from "./followToggles.js";
@@ -28,8 +28,6 @@ export function renderSessionView(
     slot,
     at,
     tz,
-    // The conference's session type → color (config sessionTypeColors), for the header stripe
-    sessionColors,
     mineIds,
     ratings,
     notes,
@@ -104,15 +102,22 @@ export function renderSessionView(
       ${post.slot} ${note} ${details.panel}
     </li>`;
   });
+  // A session without papers (plenary, panel, meetup…): a note of its own (John), stored with
+  // the paper notes under session:<id> so Export carries it
+  const eventNote =
+    session.event && notes
+      ? quickNote(
+          { id: sessionNoteId(session), title: session.sessionName },
+          { notes },
+        )
+      : null;
+  if (eventNote) disposers.push(() => eventNote.dispose());
   const leave = html`<button type="button" class="btn-text live-leave">
     Leave session
   </button>`;
   leave.onclick = onLeave;
   const el = html`<section class="live-checked-in">
-    <header
-      class="live-checked-head"
-      data-type-color=${sessionTypeColor(session, sessionColors)}
-    >
+    <header class="live-checked-head">
       <div>
         <h2 class="live-session-name">${session.sessionName}</h2>
         <div class="live-where">
@@ -131,6 +136,7 @@ export function renderSessionView(
           </p>`
         : ""
     }
+    ${eventNote ? html`<div class="live-event-notes">${eventNote}</div>` : ""}
     <ol class="live-talks">
       ${rows}
     </ol>

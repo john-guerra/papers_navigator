@@ -2,15 +2,15 @@ import { html } from "htl";
 import { formatDay } from "../lib/time.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { titleLink } from "./liveBreak.js";
-import { discussionLink, postToggle } from "./livePost.js";
-import { followToggles } from "./followToggles.js";
 
 const when = (p) => p.start ?? p.sessionStart ?? "~";
 
 /**
  * "Papers I rated" (#203): every rated paper, best first then by time, with its stars, pill,
- * award, title (opening the details) and note. Filters: a day and "4★ and up"; changes go to
- * `onFilter({minRating, day})` (the page keeps them and redraws).
+ * award, title (opening the details) and note; nothing else, to keep the list short (John: no
+ * My Papers toggle, Post or Discussion here; they're on the talks and in the details). Filters:
+ * a day and "4★ and up"; changes go to `onFilter({minRating, day})` (the page keeps them and
+ * redraws).
  */
 export function renderRatedPapers(
   papers,
@@ -22,17 +22,8 @@ export function renderRatedPapers(
     onFilter,
     onOpen,
     detailsHref,
-    // Bluesky (#203 Stage C): (paper) => post panel, and paper id → discussion post URL
-    postPanel = null,
-    discussion = null,
-    // Ids whose Post panel was open (kept across redraws), and its close callback
-    openPosts = null,
-    onClosePost,
     // 👎 Not for me (#208): listed after the starred papers
     dislikedIds = [],
-    // Stage E: the My Papers toggle on rows (Add / In My Papers)
-    inMyPapers,
-    onToggle,
   },
 ) {
   const rated = papers
@@ -71,13 +62,8 @@ export function renderRatedPapers(
     onFilter({ minRating: box.checked ? 4 : 0, day: select.value || null });
   select.onchange = report;
   box.onchange = report;
-  const toggles = onToggle ? followToggles({ inMyPapers, onToggle }) : null;
   const rows = shown.map((p) => {
     const n = ratings[p.id];
-    const post = postToggle(p, postPanel, {
-      open: Boolean(openPosts?.has(p.id)),
-      onClose: onClosePost,
-    });
     return html`<li class="rated-paper" data-paper-id=${p.id}>
       <div class="rated-stars" aria-hidden="true">
         ${"★".repeat(n)}${"☆".repeat(5 - n)}
@@ -87,11 +73,6 @@ export function renderRatedPapers(
         ${typePill(p)}${awardMark(p)}${titleLink(p, { detailsHref, onOpen })}
       </div>
       ${notes[p.id] ? html`<p class="rated-note">📝 ${notes[p.id]}</p>` : ""}
-      <div class="rated-actions">
-        ${toggles ? toggles.toggle(p) : ""} ${post.button}
-        ${discussion?.get(p.id) ? discussionLink(discussion.get(p.id)) : ""}
-      </div>
-      ${post.slot}
     </li>`;
   });
   const el = html`<section class="rated-papers">
@@ -130,21 +111,5 @@ export function renderRatedPapers(
         : ""
     }
   </section>`;
-  // My Papers changed: refresh the toggles in place, so focus stays (minor 3)
-  el.update = () => toggles?.update();
   return el;
-}
-
-/**
- * Typing in a text field inside `box` (a Post draft): the page waits to redraw "Papers I rated"
- * until you leave it. A filter control having focus doesn't count (#206 quick review: the
- * filters must apply at once).
- */
-export function typingIn(box) {
-  const active = globalThis.document?.activeElement;
-  return Boolean(
-    active &&
-    box.contains(active) &&
-    active.matches?.("textarea, input:not([type]), input[type=text]"),
-  );
 }

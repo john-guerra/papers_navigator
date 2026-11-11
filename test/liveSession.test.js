@@ -256,6 +256,12 @@ describe("renderSessionView (#203)", () => {
     el.remove();
   });
 
+  it("a paper session has no session note field (only its talks' notes)", () => {
+    const { el } = setup();
+    expect(el.querySelector(".live-event-notes")).toBeNull();
+    el.remove();
+  });
+
   it("dispose flushes the quick notes", () => {
     const { el } = setup();
     expect(() => el.dispose()).not.toThrow();
@@ -301,11 +307,48 @@ describe("session view: a session without papers (plenary, panel)", () => {
   });
 });
 
-describe("the session view wears the program's type color", () => {
-  it("on its header", () => {
-    const { el } = setup({ sessionColors: { full: "full" } });
-    expect(el.querySelector("[data-type-color]").dataset.typeColor).toBe(
-      "full",
+describe("notes on sessions without papers (John: panels, plenaries and all)", () => {
+  const event = () => {
+    const [own] = programDays(papers, TZ, [
+      {
+        sessionId: "awards",
+        type: "plenary",
+        typeLabel: "Plenary",
+        title: "Awards",
+        room: "Hall America",
+        start: et("17:00"),
+        end: et("18:30"),
+        paperIds: [],
+      },
+    ])[0].slots.filter((s) => s.sessions[0].sessionId === "awards");
+    return own;
+  };
+  it("checked in to one, a quick note saves under session:<id>", () => {
+    const own = event();
+    const notes = fakeNotes();
+    notes.get = (id) => (id === "session:awards" ? "Ask about the jury" : "");
+    const el = renderSessionView(own.sessions[0], {
+      slot: own,
+      at: new Date(et("17:10")),
+      tz: TZ,
+      mineIds: new Set(),
+      ratings: fakeRatings(),
+      notes,
+      onSwitch: vi.fn(),
+      onLeave: vi.fn(),
+      onOpen: vi.fn(),
+      detailsHref: () => "#",
+    });
+    document.body.append(el);
+    const field = el.querySelector(".live-event-notes .quick-note");
+    expect(field.getAttribute("aria-label")).toBe("Quick note on Awards");
+    expect(field.value).toBe("Ask about the jury");
+    field.value = "Ask about the jury; 3 best papers";
+    field.dispatchEvent(new Event("input"));
+    el.dispose();
+    expect(notes.set).toHaveBeenCalledWith(
+      "session:awards",
+      "Ask about the jury; 3 best papers",
     );
     el.remove();
   });

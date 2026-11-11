@@ -1,6 +1,11 @@
 import { html } from "htl";
 import { formatDay, formatTime } from "../lib/time.js";
-import { rankSessions, sessionSummary, sessionTypeColor } from "../lib/live.js";
+import {
+  rankSessions,
+  sessionNoteId,
+  sessionSummary,
+  sessionTypeColor,
+} from "../lib/live.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { followToggles } from "./followToggles.js";
 
@@ -56,8 +61,12 @@ export function eventLink(session) {
 
 function sessionCard(
   session,
-  { tz, mineIds, onGoing, detailsHref, onOpen, toggles, sessionColors },
+  { tz, mineIds, onGoing, detailsHref, onOpen, toggles, sessionColors, notes },
 ) {
+  // Your note on a session without papers (written when checked in to it)
+  const myNote = session.event
+    ? (notes?.get(sessionNoteId(session)) ?? "")
+    : "";
   const list = html`<ol class="live-papers"></ol>`;
   const show = (n) => {
     list.replaceChildren(
@@ -103,6 +112,7 @@ function sessionCard(
       }
     </header>
     <p class="live-summary">${sessionSummary(session)}</p>
+    ${myNote ? html`<p class="live-event-mynote">📝 ${myNote}</p>` : ""}
     ${
       session.event
         ? eventLink(session)
@@ -147,8 +157,10 @@ export function renderBreakView(
     detailsHref,
     inMyPapers,
     onToggle,
-    // The conference's session type → color (config sessionTypeColors), for each card's stripe
+    // The conference's session type → color (config sessionTypeColors), for each card's corner shadow
     sessionColors,
+    // Notes (get(id)): an event card shows yours (session:<id>)
+    notes,
   },
 ) {
   // "Add to My Papers" / "In My Papers" on each paper (John), refreshed in place by setMine
@@ -166,6 +178,7 @@ export function renderBreakView(
     detailsHref,
     toggles,
     sessionColors,
+    notes,
   };
   const mineIn = (slot) =>
     slot.sessions.reduce(

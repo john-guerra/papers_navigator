@@ -24,8 +24,9 @@ import { showToast } from "./components/toast.js";
 import { liveClockControl } from "./components/liveClockControl.js";
 import { renderBreakView } from "./components/liveBreak.js";
 import { renderSessionView } from "./components/liveSession.js";
-import { renderRatedPapers, typingIn } from "./components/ratedPapers.js";
+import { renderRatedPapers } from "./components/ratedPapers.js";
 import { renderAttendedPapers } from "./components/attendedPapers.js";
+import { renderSessionNotes } from "./components/sessionNotes.js";
 import { createViewHost } from "./components/liveViewHost.js";
 import { renderPostPanel } from "./components/postPanel.js";
 import { createHandlesStore, loadDiscussion } from "./lib/bluesky.js";
@@ -76,9 +77,8 @@ const ratedState = { minRating: 0, day: null };
 const handlesStore = createHandlesStore(conference.id);
 const postLinkSetting = createBooleanSetting(`papersNavigator:${conference.id}:postToolLink`, false);
 const toolLink = (p) => new URL(`./?paper=${encodeURIComponent(p.shortId ?? p.id)}`, conference.siteUrl).href;
-// Opened from a talk or a rated paper. The draft follows your rating and note until you edit it;
-// open panels are kept here, so a redrawn list puts the same panel (draft, photos) back
-// (one cache per list, so a panel never moves from a talk to the rated list)
+// Opened from a talk. The draft follows your rating and note until you edit it; open panels are
+// kept here, so a redrawn list puts the same panel (draft, photos) back
 const postPanels = () => {
   const cache = new Map();
   return {
@@ -94,7 +94,6 @@ const postPanels = () => {
   };
 };
 const sessionPosts = postPanels();
-const ratedPosts = postPanels();
 const newPostPanel = (p) =>
   renderPostPanel(p, {
     rating: () => ratingsStore.get(p.id),
@@ -211,7 +210,6 @@ liveView.show(
           slot: slotOf(session, days, at),
           at,
           tz,
-          sessionColors: conference.sessionTypeColors,
           mineIds,
           mine,
           ratings: ratingsStore,
@@ -230,6 +228,7 @@ liveView.show(
       : renderBreakView(slots, {
           tz,
           sessionColors: conference.sessionTypeColors,
+          notes: notesStore,
           mineIds,
           onGoing: commit,
           onPickSlot: (slot) => clock.setTo(new Date(slot.start)),
@@ -261,15 +260,10 @@ if (!session) viewState.scrolledFor = null;
 <h2 class="live-rated-title">Papers I rated</h2>
 
 ```js
-// Redrawn when ratings, notes or the discussion links change, and in place when a filter
-// changes; open Post panels come back (ratedPosts). Not while you type in a draft there: after you
-// leave it (filters apply at once).
+// Redrawn when ratings or notes change, and in place when a filter changes (stars, title and
+// note only: no toggles, Post or Discussion, to keep it short)
 const ratedBox = html`<div></div>`;
 const drawRated = () => {
-  if (typingIn(ratedBox)) {
-    ratedBox.addEventListener("focusout", () => setTimeout(drawRated), { once: true });
-    return;
-  }
   ratedBox.replaceChildren(
     renderRatedPapers(papers, {
       ratings: ratingsState,
@@ -280,21 +274,10 @@ const drawRated = () => {
       onFilter: (next) => (Object.assign(ratedState, next), drawRated()),
       onOpen: openPaper,
       detailsHref,
-      postPanel: ratedPosts.open,
-      discussion,
-      openPosts: ratedPosts.cache,
-      onClosePost: ratedPosts.close,
-      // Stage E: Add / In My Papers on each row
-      inMyPapers,
-      onToggle: toggleMyPapers,
     }),
   );
 };
 drawRated();
-// The toggles follow My Papers in place, so a pressed button keeps focus
-const updateRated = () => ratedBox.firstElementChild?.update?.();
-store.addEventListener("input", updateRated);
-invalidation.then(() => store.removeEventListener("input", updateRated));
 display(ratedBox);
 ```
 
@@ -323,6 +306,43 @@ const updateAttended = () => attendedBox.firstElementChild?.update?.();
 store.addEventListener("input", updateAttended);
 invalidation.then(() => store.removeEventListener("input", updateAttended));
 display(attendedBox);
+```
+
+<h2 class="live-rated-title">Session notes</h2>
+
+```js
+// Notes on plenaries, panels and meetups (session:<id>), reachable after their slot (#223
+// review). Redrawn only when the set of noted sessions changes, never while you type in it.
+const sessionNotesBox = html`<div></div>`;
+let sessionNoteKeys = null;
+let drawingSessionNotes = false;
+const sessionNoteKeysNow = () =>
+  Object.keys(notesStore.value)
+    .filter((k) => k.startsWith("session:") && notesStore.get(k))
+    .sort()
+    .join("\n");
+const drawSessionNotes = () => {
+  if (sessionNoteKeysNow() === sessionNoteKeys) return;
+  if (sessionNotesBox.contains(document.activeElement)) {
+    sessionNotesBox.addEventListener("focusout", () => setTimeout(drawSessionNotes), { once: true });
+    return;
+  }
+  // Disposing saves pending typing, which can fire this again: ignore that nested call, then
+  // read the keys after it so the list matches the store
+  if (drawingSessionNotes) return;
+  drawingSessionNotes = true;
+  sessionNotesBox.firstElementChild?.dispose?.();
+  sessionNoteKeys = sessionNoteKeysNow();
+  sessionNotesBox.replaceChildren(renderSessionNotes(programSessions, { notes: notesStore, tz }));
+  drawingSessionNotes = false;
+};
+drawSessionNotes();
+notesStore.addEventListener("input", drawSessionNotes);
+invalidation.then(() => {
+  notesStore.removeEventListener("input", drawSessionNotes);
+  sessionNotesBox.firstElementChild?.dispose?.();
+});
+display(sessionNotesBox);
 ```
 
 ```js

@@ -3389,13 +3389,10 @@ body #vg-tooltip-element table tr td.value {
   border-radius: var(--rounded-md);
   background: var(--color-surface);
 }
-/* The program's session color as a subtle left stripe (its cards' accent, muted) */
-.live-session[data-type-color],
-.live-checked-head[data-type-color] {
-  border-left: 4px solid var(--type-color);
-}
-.live-checked-head[data-type-color] {
-  padding-left: var(--spacing-sm);
+/* The program's session color (its cards' accent, muted) as a hard shadow at the card's lower
+   right corner (John), so the card keeps its hairline border */
+.live-session[data-type-color] {
+  box-shadow: 4px 4px 0 var(--type-color);
 }
 .live-session.is-recommended {
   border-color: var(--color-on-surface-muted);
@@ -3425,6 +3422,28 @@ body #vg-tooltip-element table tr td.value {
 }
 .live-summary {
   margin: var(--spacing-xs) 0;
+}
+/* Your note on a session without papers (key session:<id>): the field when checked in, the
+   note itself on its card */
+.session-notes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.session-note {
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-outline);
+}
+.session-note-name {
+  font: var(--typography-title-paper);
+}
+.live-event-notes {
+  margin: var(--spacing-sm) 0;
+}
+.live-event-mynote {
+  margin: var(--spacing-xs) 0;
+  font: var(--typography-body-sm);
+  white-space: pre-line;
 }
 /* A plenary, panel or meetup (no papers): its link to the VIS program */
 .live-event-note {
@@ -3672,12 +3691,6 @@ body #vg-tooltip-element table tr td.value {
 .post-photo-buttons button,
 .post-send button {
   min-height: 44px;
-}
-.rated-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  align-items: center;
 }
 .live-discussion {
   font: var(--typography-body-sm);

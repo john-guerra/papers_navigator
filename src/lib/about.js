@@ -28,7 +28,7 @@ export const STORAGE_ITEMS = [
   },
   {
     key: "papersNavigator:<id>:notes",
-    what: "Your notes on papers (My note in a paper's details)",
+    what: "Your notes on papers (My note in a paper's details) and on sessions without papers, like plenaries and panels (Live page)",
   },
   {
     key: "papersNavigator:<id>:ratings",
