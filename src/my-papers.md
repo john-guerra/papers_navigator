@@ -5,6 +5,7 @@ toc: false
 
 ```js
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
+import { startSyncTracking } from "./lib/sync/track.js";
 import { applyRules, createMyPapers, createRulesStore, filterByReason, normalizeRule, pickReason, reasonOptions, ruleOnlyCount } from "./lib/rules.js";
 import { facetValues } from "./lib/filters.js";
 import { renderWatching } from "./components/watching.js";
@@ -78,6 +79,7 @@ const ratingsState = Generators.input(ratingsStore);
 const dislikedStore = createDislikedStore(conference.id);
 const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
+invalidation.then(startSyncTracking(conference.id, { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }));
 const attendedState = Generators.input(attendedStore);
 const dislikedState = Generators.input(dislikedStore);
 // Stage E: how many things you'd lose without a backup (storageHealth.js)

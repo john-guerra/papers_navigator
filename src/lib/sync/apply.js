@@ -6,6 +6,7 @@ import { createNotesStore } from "../notes.js";
 import { createRatingsStore } from "../ratings.js";
 import { createRulesStore, normalizeRule } from "../rules.js";
 import { reportStorageFailure } from "../storageHealth.js";
+import { busy } from "./busy.js";
 import { stableHash } from "./clock.js";
 import { fromEntries, splitKey, toEntries } from "./entries.js";
 import { readState } from "./state.js";
@@ -287,7 +288,8 @@ function saveUndo(ctx, changes, { label, from }) {
  * no store can hold (left alone), `failed` keys a store couldn't save (left as they were). Throws
  * with `code: "storage"`, having changed nothing, when the snapshot or the meta can't be saved.
  */
-export function applyTransfer(ctx, resolutions, { from, label } = {}) {
+export const applyTransfer = busy(applyTransferNow);
+function applyTransferNow(ctx, resolutions, { from, label } = {}) {
   const now = nowOf(ctx);
   const byKey = new Map();
   const skipped = [];
@@ -375,9 +377,7 @@ function undoRecord(ctx, rec) {
  * entry still as it left it goes back to its previous value and version; the others are
  * skipped. Returns `{reverted, skipped}` (keys).
  */
-export function undoLastImport(ctx) {
-  return undoRecord(ctx, loadUndo(ctx));
-}
+export const undoLastImport = busy((ctx) => undoRecord(ctx, loadUndo(ctx)));
 
 /**
  * Replaces all the data with snapshot `i` (`listSnapshots` order), after snapshotting the
@@ -386,7 +386,8 @@ export function undoLastImport(ctx) {
  * or concurrent value never silently overrides it. Returns an undo (`() => {reverted,
  * skipped}`). Throws, having changed nothing, when the snapshot is damaged or storage is full.
  */
-export function restoreSnapshot(ctx, i) {
+export const restoreSnapshot = busy(restoreSnapshotNow);
+function restoreSnapshotNow(ctx, i) {
   const snap = listSnapshots(ctx)[i];
   if (!snap) throw new Error("This copy of your data is no longer saved.");
   const now = nowOf(ctx);

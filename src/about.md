@@ -7,6 +7,7 @@ toc: false
 import { STORAGE_ITEMS, conferenceDateRange, hostName } from "./lib/about.js";
 import { bindMyPapersBadge } from "./components/badge.js";
 import { createFollowedStore } from "./lib/followed.js";
+import { startSyncTracking } from "./lib/sync/track.js";
 import { createMyPapers, createRulesStore } from "./lib/rules.js";
 ```
 
@@ -18,7 +19,10 @@ const papers = FileAttachment("data/papers.json").json();
 
 ```js
 // The navbar's My Papers count, like every other page
-const store = createMyPapers({ followed: createFollowedStore(conference.id), rules: createRulesStore(conference.id), papers });
+const followedStore = createFollowedStore(conference.id);
+const rulesStore = createRulesStore(conference.id);
+const store = createMyPapers({ followed: followedStore, rules: rulesStore, papers });
+invalidation.then(startSyncTracking(conference.id, { followed: followedStore, rules: rulesStore }));
 invalidation.then(bindMyPapersBadge(store));
 const sourceHost = hostName(conference.listingUrl ?? conference.baseUrl);
 const dates = conferenceDateRange(conference.days);

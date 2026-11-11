@@ -6,6 +6,7 @@ toc: false
 ```js
 import { storageBanner } from "./components/dataSafety.js";
 import { createFollowedStore } from "./lib/followed.js";
+import { startSyncTracking } from "./lib/sync/track.js";
 import { createMyPapers, createRulesStore, matches, normalizeRule } from "./lib/rules.js";
 import { watchButton } from "./components/watchButton.js";
 import { researchRule, startTopicRefresh, thresholdFor, topicPreview, topicRule } from "./lib/researchTopics.js";
@@ -99,6 +100,7 @@ const ratingsStore = createRatingsStore(conference.id);
 const dislikedStore = createDislikedStore(conference.id);
 const attendedStore = createAttendedStore(conference.id);
 invalidation.then(() => (dislikedStore.dispose(), attendedStore.dispose()));
+invalidation.then(startSyncTracking(conference.id, { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }));
 invalidation.then(() => ratingsStore.dispose());
 invalidation.then(bindRatingMarkers(document.querySelector(".explore-list"), ratingsStore, { disliked: dislikedStore, attended: attendedStore }));
 // "My research" (#27): pasted abstracts, kept in this browser only
