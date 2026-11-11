@@ -67,6 +67,15 @@ def test_parse_paper(paper):
     assert paper["abstract"].startswith("This paper examines how large language model")
 
 
+def test_parse_paper_keeps_the_conference_bluesky_handle(paper):
+    # The conference page links some authors' Bluesky profiles next to their name
+    by_name = {a["name"]: a for a in paper["authors"]}
+    assert by_name["Kuangshi Ai"]["bluesky"] == "kuangshiai.bsky.social"
+    assert by_name["Kuangshi Ai"]["affiliation"] == "University of Notre Dame"
+    # Authors without one get no key (papers.json stays small)
+    assert "bluesky" not in paper["authors"][0]
+
+
 def test_parse_paper_missing_fields_are_none():
     paper = parse_paper("<html><body><h1>Only a title</h1></body></html>")
     assert paper["title"] == "Only a title"

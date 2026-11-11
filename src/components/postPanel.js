@@ -5,18 +5,21 @@ import {
   composeUrl,
   graphemes,
   affiliationMatch,
+  NO_HANDLE,
   profileUrl,
   searchAccounts,
 } from "../lib/bluesky.js";
 
 let uid = 0;
+let detailsUid = 0;
 
 /**
  * "Post" on Bluesky (#203 Stage C): an editable draft for `paper` ("<title>" by <authors>
  * ★★★★ <note>, a link, #ieeevis) with a live "n / 300" count; the link is the conference page
  * or this tool's (`linkSetting`, remembered); each author can be looked up on Bluesky (their
  * name is the only thing sent, and only on tap) and you pick the right account, never
- * automatically (`handles`, remembered by name). Photos ("Take photo", "Choose photos") go
+ * automatically (`handles`, remembered by name). A handle the conference lists next to an
+ * author's name (`author.bluesky`) is used until you pick another or remove it. Photos ("Take photo", "Choose photos") go
  * with "Share…" (the phone's share menu, when it can share them); "Copy text & open Bluesky"
  * always works. Nothing is posted from here.
  */
@@ -42,6 +45,15 @@ export function renderPostPanel(
   const affiliationOf = new Map(
     (paper.authors ?? []).map((a) => [a.name, a.affiliation ?? ""]),
   );
+  const listedOf = new Map(
+    (paper.authors ?? []).map((a) => [a.name, a.bluesky ?? ""]),
+  );
+  // The handle in the draft: yours, else the conference's (unless you removed it)
+  const handleOf = (name) => {
+    const mine = handles.get(name);
+    if (mine === NO_HANDLE) return "";
+    return mine || listedOf.get(name) || "";
+  };
   const area = html`<textarea
     class="post-text"
     rows="5"
@@ -71,7 +83,7 @@ export function renderPostPanel(
     composePost({
       title: paper.title,
       authors: names,
-      handles: Object.fromEntries(names.map((n) => [n, handles.get(n)])),
+      handles: Object.fromEntries(names.map((n) => [n, handleOf(n)])),
       rating: now(rating),
       note: now(note),
       link: linkSetting.value && toolLink ? toolLink : (paper.url ?? ""),
@@ -121,7 +133,8 @@ export function renderPostPanel(
   const authorRow = (name) => {
     const row = html`<li class="post-author"></li>`;
     const draw = (results = null, message = "") => {
-      const handle = handles.get(name);
+      const handle = handleOf(name);
+      const fromConference = handle && !handles.get(name);
       const find = html`<button type="button" class="btn-text post-find">
         Find on Bluesky
       </button>`;
@@ -142,39 +155,56 @@ export function renderPostPanel(
         ✕
       </button>`;
       forget.onclick = () => {
-        handles.set(name, "");
+        // A removed conference handle stays removed; yours is just forgotten
+        handles.set(name, listedOf.get(name) ? NO_HANDLE : "");
         draw();
         refresh();
       };
       const list = results?.length
         ? html`<div class="post-accounts">
             ${results.map((a) => {
-              // Who is this? bio, activity and the paper's affiliation help pick the right one
+              // One line to pick from; who is this? (bio, activity, the paper's affiliation) on ⓘ
               const hint = affiliationMatch(a.bio, affiliationOf.get(name));
               const stats = accountStats(a);
               const b = html`<button type="button" class="post-account">
-                ${a.avatar ? html`<img src=${a.avatar} alt="" width="32" height="32" loading="lazy" />` : ""}
-                <span class="post-account-text">
-                  <span class="post-account-name">${a.name || a.handle}</span>
-                  <span class="muted">@${a.handle}</span>
-                  ${a.bio ? html`<span class="post-bio">${a.bio}</span>` : ""}
-                  ${stats ? html`<span class="post-stats muted">${stats}</span>` : ""}
-                  ${hint ? html`<span class="post-hint">✓ Matches the paper: ${hint}</span>` : ""}
-                </span>
+                ${a.avatar ? html`<img src=${a.avatar} alt="" width="24" height="24" loading="lazy" />` : ""}
+                <span class="post-account-name">${a.name || a.handle}</span>
+                <span class="muted post-account-handle">@${a.handle}</span>
+                ${hint ? html`<span class="post-match" role="img" aria-label=${`Matches the paper: ${hint}`} title=${`Matches the paper: ${hint}`}>✓</span>` : ""}
               </button>`;
               b.onclick = () => {
                 handles.set(name, a.handle);
                 draw();
                 refresh();
               };
-              const view = html`<a
-                class="post-view"
-                href=${profileUrl(a.handle)}
-                target="_blank"
-                rel="noopener"
-                >View on Bluesky ↗</a
-              >`;
-              return html`<div class="post-result">${b}${view}</div>`;
+              const detailsId = `post-details-${id}-${++detailsUid}`;
+              const more = html`<button
+                type="button"
+                class="btn-text post-more"
+                aria-expanded="false"
+                aria-controls=${detailsId}
+                aria-label=${`About @${a.handle}`}
+              >
+                ⓘ
+              </button>`;
+              const details = html`<div class="post-details" id=${detailsId}>
+                ${a.bio ? html`<p class="post-bio">${a.bio}</p>` : ""}
+                ${stats ? html`<p class="post-stats muted">${stats}</p>` : ""}
+                ${hint ? html`<p class="post-hint">✓ Matches the paper: ${hint}</p>` : ""}
+                <a
+                  class="post-view"
+                  href=${profileUrl(a.handle)}
+                  target="_blank"
+                  rel="noopener"
+                  >View on Bluesky ↗</a
+                >
+              </div>`;
+              more.onclick = () => {
+                const open = !details.classList.contains("is-open");
+                details.classList.toggle("is-open", open);
+                more.setAttribute("aria-expanded", String(open));
+              };
+              return html`<div class="post-result">${b}${more}${details}</div>`;
             })}
             ${(() => {
               const none = html`<button
@@ -191,7 +221,17 @@ export function renderPostPanel(
       row.replaceChildren(
         html`<span class="post-author-name">${name}</span>`,
         handle
-          ? html`<span class="post-handle">@${handle} ${forget}</span>`
+          ? html`<span class="post-handle"
+              >@${handle}
+              ${
+                fromConference
+                  ? html`<span class="muted post-source"
+                      >from the conference page</span
+                    >`
+                  : ""
+              }
+              ${forget}</span
+            >`
           : find,
         message
           ? html`<span class="muted post-author-message">${message}</span>`

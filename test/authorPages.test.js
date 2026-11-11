@@ -121,6 +121,42 @@ describe("renderAuthorProfile (#78)", () => {
     expect(el.querySelector(".paper .author-link")).not.toBeNull();
   });
 
+  it("links the Bluesky account the conference lists for them", () => {
+    const author = {
+      ...index[0],
+      bluesky: [
+        { value: "ann.bsky.social", count: 2 },
+        { value: "ann2.bsky.social", count: 1 },
+      ],
+    };
+    const el = renderAuthorProfile(author, {
+      tz,
+      tzLabel: "ET",
+      myPapers: () => [],
+      inMyPapers: () => false,
+    });
+    const links = [...el.querySelectorAll(".author-bluesky a")];
+    expect(links.map((a) => a.getAttribute("href"))).toEqual([
+      "https://bsky.app/profile/ann.bsky.social",
+      "https://bsky.app/profile/ann2.bsky.social",
+    ]);
+    expect(links[0].textContent).toContain("@ann.bsky.social");
+    expect(links[0].getAttribute("rel")).toContain("noopener");
+    expect(el.querySelector(".author-bluesky").textContent).toContain(
+      "conference",
+    );
+  });
+
+  it("no Bluesky line when the conference lists none", () => {
+    const el = renderAuthorProfile(index[0], {
+      tz,
+      tzLabel: "ET",
+      myPapers: () => [],
+      inMyPapers: () => false,
+    });
+    expect(el.querySelector(".author-bluesky")).toBeNull();
+  });
+
   it("adds all with one button and reflects My Papers in place, with conflicts", () => {
     const { el, onAddAll, set } = setup([other]);
     const add = el.querySelector(".author-add button");

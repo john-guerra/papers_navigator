@@ -107,6 +107,28 @@ describe("buildAuthorIndex", () => {
       "ETH Zürich",
     ]);
   });
+  it("keeps the Bluesky handles the conference lists, with counts (most first)", () => {
+    const listed = [
+      {
+        id: "a",
+        authors: [{ name: "Lace Padilla", bluesky: "lace.bsky.social" }],
+      },
+      { id: "b", authors: [{ name: "Lace  padilla" }] },
+      {
+        id: "c",
+        authors: [{ name: "Lace Padilla", bluesky: "lace.bsky.social" }],
+      },
+      {
+        id: "d",
+        authors: [{ name: "Lace Padilla", bluesky: "other.bsky.social" }],
+      },
+    ];
+    expect(buildAuthorIndex(listed)[0].bluesky).toEqual([
+      { value: "lace.bsky.social", count: 2 },
+      { value: "other.bsky.social", count: 1 },
+    ]);
+    expect(index[0].bluesky).toEqual([]);
+  });
   it("counts a paper once even if the author is listed twice", () => {
     const twice = [{ id: "x", authors: [{ name: "A" }, { name: "a" }] }];
     expect(buildAuthorIndex(twice)[0].papers).toHaveLength(1);

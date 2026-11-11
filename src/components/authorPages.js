@@ -10,6 +10,7 @@ import {
   nextPresentation,
   topics,
 } from "../lib/authors.js";
+import { profileUrl } from "../lib/bluesky.js";
 import { planAdd } from "../lib/selection.js";
 import { PapersList, conferenceLink } from "../widgets/papersList.js";
 import { followToggles } from "./followToggles.js";
@@ -288,7 +289,7 @@ export function renderAuthorProfile(
           : html`<span class="muted">No affiliation listed</span>`
       }
     </p>
-    ${homonymNote}
+    ${blueskyLine(author.bluesky)} ${homonymNote}
     <div class="author-actions">${watch}${addSlot}</div>
     <h2>When they present</h2>
     <p class="author-days">
@@ -331,4 +332,22 @@ export function renderAuthorProfile(
     drawMine();
   };
   return el;
+}
+
+/** "On Bluesky: @handle ↗ (listed on the conference page)", or "" when it lists none. */
+function blueskyLine(handles = []) {
+  if (!handles.length) return "";
+  return html`<p class="author-bluesky">
+    On Bluesky:
+    ${handles.map(
+      (d, i) =>
+        html`${i ? " · " : ""}<a
+            href=${profileUrl(d.value)}
+            target="_blank"
+            rel="noopener noreferrer"
+            >@${d.value} ↗</a
+          >`,
+    )}
+    <span class="muted">(as listed on the conference page)</span>
+  </p>`;
 }
