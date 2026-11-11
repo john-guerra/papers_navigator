@@ -99,6 +99,31 @@ describe("mergeTransfer", () => {
     expect(r.counts).toEqual({ added: 0, changed: 0, removed: 0, same: 2 });
   });
 
+  it("equal versions with different values are a clash, never a silent skip (a repeated version number)", () => {
+    // A device whose :sync saves kept failing across a reload can reuse a counter: {L:2} meant
+    // one value in the file it exported and another here
+    const local = makeLocal({
+      "note/p1": ["value three", { L: 2 }],
+      "rating/p2": [4, { L: 2 }],
+      "rating/p3": [5, { L: 1 }],
+    });
+    const incoming = makeIncoming({
+      "note/p1": ["value two", { L: 2 }],
+      "rating/p2": [2, { L: 2 }],
+      "rating/p3": [5, { L: 1 }],
+    });
+    const r = mergeTransfer(local, incoming);
+    expect(r.clashes.map((c) => c.key).sort()).toEqual([
+      "note/p1",
+      "rating/p2",
+    ]);
+    expect(r.apply).not.toHaveProperty("note/p1");
+    expect(r.apply).not.toHaveProperty("rating/p2");
+    // same version, same value: nothing to do
+    expect(r.apply).not.toHaveProperty("rating/p3");
+    expect(r.counts.same).toBe(1);
+  });
+
   it("gives one clash for two different concurrent ratings, not applied", () => {
     const local = makeLocal({ "rating/p1": [2, { L: 2, P: 1 }] });
     const incoming = makeIncoming({ "rating/p1": [5, { L: 1, P: 2 }, T2] });

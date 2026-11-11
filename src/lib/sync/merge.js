@@ -119,7 +119,10 @@ export function mergeTransfer(local, incoming) {
       found.unrecorded ? bump(mine.v, UNRECORDED) : mine.v,
       theirs.v,
     );
-    if (order === "a" || order === "equal") {
+    // Equal versions with different values only happen when a device reused a counter (its
+    // :sync saves failed across a reload): treat them as concurrent, so the person sees a clash
+    // instead of one change being silently skipped
+    if (order === "a" || (order === "equal" && sameValue(key, mine, theirs))) {
       counts.same++;
       continue;
     }
