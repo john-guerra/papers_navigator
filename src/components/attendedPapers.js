@@ -2,7 +2,6 @@ import { html } from "htl";
 import { formatDay, formatTime } from "../lib/time.js";
 import { awardMark, typePill } from "../widgets/paperMarks.js";
 import { titleLink } from "./liveBreak.js";
-import { followToggles } from "./followToggles.js";
 
 /**
  * "Mark attended" / "✓ Attended" (#208; in details "I was there" / "✓ I was there"): a toggle
@@ -52,25 +51,18 @@ export function renderAttendedPapers(
     tz,
     onOpen,
     detailsHref,
-    // Stage E: the My Papers toggle on rows (Add / In My Papers)
-    inMyPapers,
-    onToggle,
   },
 ) {
-  const toggles = onToggle ? followToggles({ inMyPapers, onToggle }) : null;
   const list = papers
     .filter((p) => isOn(attended[p.id]))
     .sort((a, b) => (when(a) < when(b) ? -1 : 1));
   if (!list.length)
-    return Object.assign(
-      html`<section class="attended-papers">
-        <p class="muted">
-          Papers you attend show up here: check in with Going here, or tap I was
-          there.
-        </p>
-      </section>`,
-      { update() {} },
-    );
+    return html`<section class="attended-papers">
+      <p class="muted">
+        Papers you attend show up here: check in with Going here, or tap I was
+        there.
+      </p>
+    </section>`;
   const days = [...new Set(list.map((p) => p.day ?? ""))];
   const verdictOf = (p) => {
     if (ratings[p.id])
@@ -114,7 +106,7 @@ export function renderAttendedPapers(
                     <span class="paper-head"
                       >${typePill(p)}${awardMark(p)}${titleLink(p, { detailsHref, onOpen })}</span
                     >
-                    ${verdictOf(p)} ${toggles ? toggles.toggle(p) : ""}
+                    ${verdictOf(p)}
                     ${notes[p.id] ? html`<p class="rated-note">📝 ${notes[p.id]}</p>` : ""}
                   </li>`,
               )}
@@ -122,7 +114,5 @@ export function renderAttendedPapers(
         </section>`,
     )}
   </section>`;
-  // My Papers changed: refresh the toggles in place, so focus stays (minor 3)
-  el.update = () => toggles?.update();
   return el;
 }

@@ -295,16 +295,9 @@ const drawAttended = () =>
       tz,
       onOpen: openPaper,
       detailsHref,
-      // Stage E: Add / In My Papers on each row, following My Papers
-      inMyPapers,
-      onToggle: toggleMyPapers,
     }),
   );
 drawAttended();
-// The toggles follow My Papers in place, so a pressed button keeps focus
-const updateAttended = () => attendedBox.firstElementChild?.update?.();
-store.addEventListener("input", updateAttended);
-invalidation.then(() => store.removeEventListener("input", updateAttended));
 display(attendedBox);
 ```
 
