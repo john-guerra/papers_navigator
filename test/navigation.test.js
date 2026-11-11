@@ -18,7 +18,11 @@ function page(path = "/", head = "") {
 
 /** The head's inline scripts, in order (classic first, then the module). */
 const headScripts = () =>
-  [...config.head.matchAll(/<script[^>]*>([^]*?)<\/script>/g)].map((m) => m[1]);
+  [
+    ...config
+      .head({ title: "Live", path: "/live" })
+      .matchAll(/<script[^>]*>([^]*?)<\/script>/g),
+  ].map((m) => m[1]);
 
 /** Loads the header at `path` as built (cleanUrls: false makes Framework link to "x.html") and
  * runs the head's "current page" script. */

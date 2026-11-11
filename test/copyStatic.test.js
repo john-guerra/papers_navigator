@@ -11,6 +11,18 @@ describe("copyStatic (#18)", () => {
     // never outside src/
     expect(staticFiles({ ogImage: "../secret.png" })).toEqual([]);
   });
+  it("and each page's own social card, once each, never outside src/", () => {
+    expect(
+      staticFiles({
+        ogImage: "og.png",
+        pageImages: {
+          "/live": "og-live.png",
+          "/about": "og.png",
+          "/x": "../bad.png",
+        },
+      }),
+    ).toEqual(["og.png", "og-live.png"]);
+  });
   it("copies listed files from src to dist", async () => {
     const root = await mkdtemp(join(tmpdir(), "copy-static-"));
     await mkdir(join(root, "src"));

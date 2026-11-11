@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import config from "../observablehq.config.js";
 
 const classicScript = [
-  ...config.head.matchAll(/<script>([^]*?)<\/script>/g),
+  ...config
+    .head({ title: "Live", path: "/live" })
+    .matchAll(/<script>([^]*?)<\/script>/g),
 ].map((m) => m[1])[0];
 
 /** A page with the head's classic script run; `body` is the page's static HTML. */

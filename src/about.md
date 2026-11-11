@@ -46,9 +46,9 @@ const storageTable = html`<table class="about-storage">
 
 <div class="about">
 
-# About ${conference.name} Papers
+# About ${conference.name} Papers Navigator
 
-<p class="lede">Papers Navigator helps you find the ${conference.name} papers you care about (${dates}), keep them in a personal list, and know which room to be in. It runs entirely in your browser: no account, nothing collected.</p>
+<p class="lede">Papers Navigator, an open-source tool by <a href="https://johnguerra.co">John Alexis Guerra Gómez</a>, helps you find the ${conference.name} papers you care about (${dates}), keep them in a personal list, and know which room to be in. It runs entirely in your browser: no account, nothing collected.</p>
 
 <nav class="about-toc" aria-label="On this page">
 

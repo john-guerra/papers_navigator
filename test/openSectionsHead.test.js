@@ -6,7 +6,9 @@ import { OPEN_SECTIONS_KEY } from "../src/components/collapsibleSections.js";
 
 describe("the head script (#162: folded from the first paint)", () => {
   const classicScript = [
-    ...config.head.matchAll(/<script>([^]*?)<\/script>/g),
+    ...config
+      .head({ title: "Live", path: "/live" })
+      .matchAll(/<script>([^]*?)<\/script>/g),
   ].map((m) => m[1])[0];
   const run = (stored) => {
     const { window } = new JSDOM(

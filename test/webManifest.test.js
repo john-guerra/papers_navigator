@@ -62,13 +62,13 @@ describe("writeManifest", () => {
 describe("the head links the manifest and the icons", () => {
   it("by absolute URL, like the social card, so Framework leaves them unhashed", async () => {
     const { siteUrl } = await loadConferenceConfig();
-    expect(config.head).toContain(
+    expect(config.head({ title: "Live", path: "/live" })).toContain(
       `<link rel="manifest" href="${siteUrl}manifest.webmanifest">`,
     );
-    expect(config.head).toContain(
+    expect(config.head({ title: "Live", path: "/live" })).toContain(
       `<link rel="apple-touch-icon" href="${siteUrl}icon-180.png">`,
     );
-    expect(config.head).toContain(
+    expect(config.head({ title: "Live", path: "/live" })).toContain(
       `<link rel="icon" type="image/png" sizes="32x32" href="${siteUrl}icon-32.png">`,
     );
   });
