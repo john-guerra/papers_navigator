@@ -114,10 +114,12 @@ export function createNotesStore(
   };
   events?.addEventListener?.("storage", onStorage);
   store.dispose = () => events?.removeEventListener?.("storage", onStorage);
-  // One note set as is ("" deletes it)
+  // One note set as is ("" deletes it). Starts from what is saved: a note that couldn't be
+  // saved stays on screen for this visit, but is never written later in another's place.
   const write = (id, note) => {
-    if ((value[id] ?? "") === note) return true;
-    const next = { ...value };
+    const saved = load();
+    if ((saved[id] ?? "") === note && (value[id] ?? "") === note) return true;
+    const next = { ...saved };
     if (note) next[id] = note;
     else delete next[id];
     return save(next);
@@ -133,11 +135,13 @@ export function createNotesStore(
     return () => previous && !value[id] && write(id, previous);
   };
   store.merge = (incoming) => {
+    value = load();
     const before = value;
     const { notes, added, combined } = mergeNotes(value, incoming);
     if (added || combined) save(notes);
     // Undo puts back each note the import changed, unless you edited it since
     const undo = () => {
+      value = load();
       const next = { ...value };
       let changed = false;
       for (const id of Object.keys(notes)) {
@@ -158,7 +162,11 @@ export function createNotesStore(
     const next = { ...load() };
     for (const id of remove) delete next[id];
     Object.assign(next, cleanNotes(put));
-    return save(next);
+    if (save(next)) return true;
+    // Not saved: show what is saved, so nothing writes these notes later by accident
+    value = load();
+    store.dispatchEvent(new Event("input"));
+    return false;
   };
   Object.defineProperty(store, "value", { get: () => value });
   return store;

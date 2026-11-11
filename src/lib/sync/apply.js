@@ -140,7 +140,10 @@ export function listSnapshots(ctx) {
   }
 }
 
-/** Saves `state` as the newest snapshot; throws (nothing changed) when it can't. */
+/**
+ * Saves `state` as the newest snapshot; throws (nothing changed) when it can't. Returns a
+ * function that takes it back (when what follows fails, so it doesn't rotate a useful one out).
+ */
 function saveSnapshot(ctx, state, label) {
   const payload = exportMyPapers(state, {
     device: ctx.meta.device,
@@ -151,11 +154,21 @@ function saveSnapshot(ctx, state, label) {
     ...listSnapshots(ctx),
   ].slice(0, MAX_SNAPSHOTS);
   const key = snapshotsKey(ctx.conferenceId);
+  const storage = storageOf(ctx);
+  const previous = storage.getItem(key);
+  const takeBack = () => {
+    try {
+      if (previous == null) storage.removeItem?.(key);
+      else storage.setItem(key, previous);
+    } catch {
+      // the extra snapshot stays: harmless
+    }
+  };
   const attempts = list.length > 1 ? [list, list.slice(0, -1)] : [list];
   for (const kept of attempts) {
     try {
-      storageOf(ctx).setItem(key, JSON.stringify(kept));
-      return;
+      storage.setItem(key, JSON.stringify(kept));
+      return takeBack;
     } catch {
       // storage full: retry once without the oldest snapshot
     }
@@ -189,13 +202,12 @@ function removeUndo(ctx, rec) {
  * snapshot or the meta can't be saved.
  */
 function commit(ctx, changes, { label, from }) {
-  const now = nowOf(ctx);
   const state = readState(ctx.conferenceId, storageOf(ctx));
   const before = toEntries(state);
   const rawRules = new Map(state.rules.map((r) => [r.id, r]));
 
   // 1. Snapshot
-  saveSnapshot(ctx, state, label);
+  const takeBackSnapshot = saveSnapshot(ctx, state, label);
 
   // 2. Meta, for every key, before any store changes
   const metaEntries = ctx.meta.read();
@@ -215,45 +227,58 @@ function commit(ctx, changes, { label, from }) {
   for (const c of changes)
     if (c.meta) metaEntries[c.key] = c.meta;
     else delete metaEntries[c.key];
-  if (!ctx.meta.write(metaEntries))
+  if (!ctx.meta.write(metaEntries)) {
+    takeBackSnapshot();
     throw storageError(
       "Couldn't save the import's change history (this browser's storage is full), so nothing was changed.",
     );
+  }
 
   // 3. Stores
   writeStores(ctx, changes);
 
-  // A store that couldn't save (it reported it) keeps its old value: put its meta back
+  // A store that couldn't save (it reported it) keeps its old value: put its meta back. If
+  // even that fails, the caller warns (a reload's reconcile then versions what is there).
   const after = currentEntries(ctx);
   const failed = record.filter((r) => hashIn(after, r.key) !== r.afterHash);
+  let rollbackFailed = false;
   if (failed.length) {
     const m = ctx.meta.read();
     for (const r of failed)
       if (r.beforeMeta) m[r.key] = r.beforeMeta;
       else delete m[r.key];
-    ctx.meta.write(m);
+    if (!ctx.meta.write(m)) {
+      rollbackFailed = true;
+      reportStorageFailure();
+    }
   }
   const done = record.filter((r) => !failed.includes(r));
 
   // 4. Undo record
+  return {
+    applied: done.map((r) => r.key),
+    failed: failed.map((r) => r.key),
+    rollbackFailed,
+    undo: saveUndo(ctx, done, { label, from }),
+  };
+}
+
+/** Saves the undo record of `changes` (it stays usable on this page if it can't be saved). */
+function saveUndo(ctx, changes, { label, from }) {
+  const at = nowOf(ctx).toISOString();
   const undo = {
-    id: `${now.toISOString()}~${Math.random().toString(36).slice(2, 10)}`,
-    at: now.toISOString(),
+    id: `${at}~${Math.random().toString(36).slice(2, 10)}`,
+    at,
     label,
     from,
-    changes: done,
+    changes,
   };
   try {
     storageOf(ctx).setItem(undoKey(ctx.conferenceId), JSON.stringify(undo));
   } catch {
-    // the returned undo() still works on this page
     reportStorageFailure();
   }
-  return {
-    applied: done.map((r) => r.key),
-    failed: failed.map((r) => r.key),
-    undo: () => undoRecord(ctx, undo),
-  };
+  return () => undoRecord(ctx, undo);
 }
 
 /**
@@ -349,55 +374,66 @@ export function undoLastImport(ctx) {
 }
 
 /**
- * Replaces all the data with snapshot `i` (`listSnapshots` order) and its versions, after
- * snapshotting the current data. Returns an undo (`() => {reverted, skipped}`). Throws, having
- * changed nothing, when the snapshot is damaged or storage is full.
+ * Replaces all the data with snapshot `i` (`listSnapshots` order), after snapshotting the
+ * current data. The restored data is a new change on this device: every difference gets a
+ * version bumped here (an entry the snapshot lacks gets a tombstone), so another device's older
+ * or concurrent value never silently overrides it. Returns an undo (`() => {reverted,
+ * skipped}`). Throws, having changed nothing, when the snapshot is damaged or storage is full.
  */
 export function restoreSnapshot(ctx, i) {
   const snap = listSnapshots(ctx)[i];
   if (!snap) throw new Error("This copy of your data is no longer saved.");
   const now = nowOf(ctx);
   const parsed = parseMyPapersFile(snap.payload);
-  const sync = parsed.sync ?? {};
+  // Version any local edit not recorded yet, so the undo below covers only the restore's changes
+  ctx.meta.reconcile(currentEntries(ctx), now);
+  const state = readState(ctx.conferenceId, storageOf(ctx));
+  const before = toEntries(state);
+  const rawBefore = new Map(state.rules.map((r) => [r.id, r]));
+  const metaBefore = ctx.meta.read();
   const target = toEntries(parsed);
-  const rawRules = new Map();
+  const rawTarget = new Map();
   for (const r of parsed.rules) {
     const n = normalizeRule(r);
-    if (n) rawRules.set(n.id, r);
+    if (n) rawTarget.set(n.id, r);
   }
-  const current = currentEntries(ctx);
-  const metaEntries = ctx.meta.read();
-  const keys = new Set([
-    ...Object.keys(target),
-    ...Object.keys(current),
-    ...Object.keys(sync),
-    ...Object.keys(metaEntries),
-  ]);
   const changes = [];
-  for (const key of keys) {
+  for (const key of new Set([...Object.keys(target), ...Object.keys(before)])) {
     if (!isSyncKey(key)) continue;
-    const s = sync[key];
-    let change;
-    if (own(target, key)) {
-      const value = canonical(key, target[key], now);
-      if (value === undefined) continue;
-      const meta =
-        s && !s.deleted ? { v: s.v, t: s.t, h: stableHash(value) } : null;
-      change = { key, value, meta, raw: rawRules.get(splitKey(key)[1]) };
-      if (splitKey(key)[0] !== "rule") delete change.raw;
-    } else {
-      const meta = s?.deleted ? { v: s.v, t: s.t, h: "", deleted: true } : null;
-      change = { key, deleted: true, meta };
+    const [store, id] = splitKey(key);
+    if (!own(target, key)) {
+      changes.push({ key, deleted: true });
+      continue;
     }
-    const unchanged =
-      hashIn(current, key) ===
-        (change.deleted ? "" : stableHash(change.value)) &&
-      sameRecord(metaEntries[key], change.meta);
-    if (!unchanged) changes.push(change);
+    const value = canonical(key, target[key], now);
+    if (value === undefined || hashIn(before, key) === stableHash(value))
+      continue;
+    changes.push({
+      key,
+      value,
+      ...(store === "rule" && rawTarget.has(id) && { raw: rawTarget.get(id) }),
+    });
   }
   if (!changes.length) return () => NONE;
-  return commit(ctx, changes, {
-    label: `Before restoring the copy from ${snap.at}`,
-    from: "snapshot",
-  }).undo;
+
+  const label = `Before restoring the copy from ${snap.at}`;
+  saveSnapshot(ctx, state, label);
+  writeStores(ctx, changes);
+  const changed = ctx.meta.reconcile(currentEntries(ctx), now);
+  const after = currentEntries(ctx);
+  const metaAfter = ctx.meta.read();
+  const record = changed.map((key) => {
+    const [store, id] = splitKey(key);
+    return {
+      key,
+      had: own(before, key),
+      ...(own(before, key) && { before: before[key] }),
+      ...(store === "rule" &&
+        rawBefore.has(id) && { beforeRaw: rawBefore.get(id) }),
+      beforeMeta: metaBefore[key] ?? null,
+      afterHash: hashIn(after, key),
+      afterMeta: metaAfter[key] ?? null,
+    };
+  });
+  return saveUndo(ctx, record, { label, from: "snapshot" });
 }

@@ -242,3 +242,23 @@ describe("notes applyEntries (two-way transfer)", () => {
     });
   });
 });
+
+describe("a failed save never leaves memory ahead of storage", () => {
+  it("applyEntries that can't save keeps the saved notes, and later writes start from storage", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    notes.set("n1", "mine");
+    const setItem = storage.setItem;
+    storage.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    expect(notes.applyEntries({ put: { n1: "theirs" } })).toBe(false);
+    expect(notes.value).toEqual({ n1: "mine" });
+    storage.setItem = setItem;
+    notes.set("n2", "other");
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({
+      n1: "mine",
+      n2: "other",
+    });
+  });
+});

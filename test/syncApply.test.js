@@ -14,6 +14,7 @@ import {
   undoLastImport,
 } from "../src/lib/sync/apply.js";
 import { toEntries } from "../src/lib/sync/entries.js";
+import { mergeTransfer } from "../src/lib/sync/merge.js";
 import { createSyncMeta } from "../src/lib/sync/meta.js";
 import { readState } from "../src/lib/sync/state.js";
 
@@ -279,13 +280,17 @@ describe("snapshots", () => {
       from: "p",
       label: "Import from phone",
     });
+    const metaBefore = ctx.meta.read();
     const undo = restoreSnapshot(ctx, 0);
     let s = readState("conf", ctx.storage);
     expect(s.followed.map((d) => d.id)).toEqual(["b", "a"]);
     expect(s.notes).toEqual({ n1: "my own note" });
     expect(s.exceptions).toEqual([]);
-    // meta is the snapshot's again, consistent with the stores
-    expect(ctx.meta.read()["followed/a"].v).toEqual({ me: 1 });
+    // the restore is a new change on this device, consistent with the stores
+    expect(ctx.meta.read()["followed/a"]).toMatchObject({
+      v: { other: 1, me: 1 },
+    });
+    expect(ctx.meta.read()["followed/a"].deleted).toBeUndefined();
     expect(ctx.meta.reconcile(toEntries(s), T1)).toEqual([]);
     // restoring snapshotted the state it replaced
     expect(listSnapshots(ctx)).toHaveLength(2);
@@ -296,7 +301,49 @@ describe("snapshots", () => {
     s = readState("conf", ctx.storage);
     expect(s.followed.map((d) => d.id)).toEqual(["b", "c"]);
     expect(s.notes).toEqual({ n2: "hello" });
+    expect(ctx.meta.read()).toEqual(metaBefore);
     expect(ctx.meta.reconcile(toEntries(s), T1)).toEqual([]);
+  });
+
+  it("a key added after the snapshot becomes this device's tombstone", () => {
+    const ctx = device();
+    applyTransfer(ctx, RESOLUTIONS(), { from: "p", label: "x" });
+    restoreSnapshot(ctx, 0);
+    expect(ctx.meta.read()["note/n2"]).toEqual({
+      v: { other: 1, me: 1 },
+      t: T1.toISOString(),
+      h: "",
+      deleted: true,
+    });
+  });
+
+  it("a restored value is never silently lost to the other device's later edit", () => {
+    const ctx = device();
+    // B's value arrives, then the person restores the copy from before it
+    applyTransfer(
+      ctx,
+      [{ key: "rating/r1", value: 4, v: { me: 1, B: 1 }, t }],
+      { from: "B", label: "x" },
+    );
+    restoreSnapshot(ctx, 0);
+    expect(ctx.stores.ratings.get("r1")).toBe(2);
+    const local = () => ({
+      entries: toEntries(readState("conf", ctx.storage)),
+      meta: ctx.meta.read(),
+    });
+    // B sends its value again: the restore wins
+    const again = mergeTransfer(local(), {
+      entries: { "rating/r1": 4 },
+      sync: { "rating/r1": { v: { me: 1, B: 1 }, t } },
+    });
+    expect(again.apply).toEqual({});
+    // B edited it since: a clash, never an overwrite
+    const edited = mergeTransfer(local(), {
+      entries: { "rating/r1": 5 },
+      sync: { "rating/r1": { v: { me: 1, B: 2 }, t } },
+    });
+    expect(edited.apply).toEqual({});
+    expect(edited.clashes.map((c) => c.key)).toEqual(["rating/r1"]);
   });
 });
 
@@ -343,6 +390,43 @@ describe("storage failures", () => {
     expect(
       ctx.meta.reconcile(toEntries(readState("conf", ctx.storage)), T1),
     ).toEqual([]);
+  });
+
+  it("a failed notes write leaves the live store as storage has it", () => {
+    const ctx = device();
+    ctx.storage.fail = (k) => k === "papersNavigator:conf:notes";
+    applyTransfer(ctx, RESOLUTIONS(), { from: "p", label: "x" });
+    expect(ctx.stores.notes.value).toEqual({ n1: "my own note" });
+    ctx.storage.fail = () => false;
+    ctx.stores.notes.set("n5", "later");
+    const saved = JSON.parse(ctx.storage.getItem("papersNavigator:conf:notes"));
+    expect(saved).toEqual({ n1: "my own note", n5: "later" });
+    expect(ctx.stores.notes.value).toEqual(saved);
+  });
+
+  it("says so when the meta can't be put back after a store failure", () => {
+    const ctx = device();
+    let metaWrites = 0;
+    ctx.storage.fail = (k) =>
+      k === "papersNavigator:conf:notes" || (k === META && ++metaWrites > 1);
+    const result = applyTransfer(ctx, RESOLUTIONS(), { from: "p", label: "x" });
+    expect(result.failed.sort()).toEqual(["note/n1", "note/n2"]);
+    expect(result.rollbackFailed).toBe(true);
+    expect(storageHealth.failed).toBe(true);
+  });
+
+  it("a failed meta write doesn't rotate snapshots out", () => {
+    const ctx = device();
+    applyTransfer(ctx, [{ key: "rating/x1", value: 1, v: V, t }], {
+      from: "p",
+      label: "import 1",
+    });
+    const saved = ctx.storage.getItem(SNAPSHOTS);
+    ctx.storage.fail = (k) => k === META;
+    expect(() =>
+      applyTransfer(ctx, RESOLUTIONS(), { from: "p", label: "x" }),
+    ).toThrow(/nothing was changed/i);
+    expect(ctx.storage.getItem(SNAPSHOTS)).toBe(saved);
   });
 
   it("drops the oldest snapshot when three don't fit", () => {
