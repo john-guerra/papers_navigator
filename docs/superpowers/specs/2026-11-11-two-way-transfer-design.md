@@ -174,3 +174,12 @@ separate from Safari (WebKit bug 181849). People choose either, so:
   Import in the app); the backup reminder's iPhone line (`src/components/dataSafety.js:91`) says so.
 - The PWA itself (manifest, icons from the chosen "map of papers" design, `apple-touch-icon`) is a
   separate small PR; this design does not depend on it.
+
+## As built
+
+Decisions carried from the reviews:
+
+1. **Metadata never clashes.** A paper's reason/date and an attended mark's time are metadata: they never clash and don't sync once both devices have the item.
+2. **Restore and undo.** Restoring a backup or a saved copy is a new local change, so it wins on the next transfer. Undo of an import puts back the previous versions (so importing the same file again applies it again).
+3. **Migrated entries.** An entry that existed before tracking got its change time at migration, so that is its "last changed".
+4. **A sidecar change log, not one keyed store.** Versions live in `papersNavigator:<id>:sync` beside the existing stores instead of moving every store onto one keyed store. Older cached tabs (still running old code) keep writing the old stores and cannot strip version fields they don't know about, because there are none inside those stores.

@@ -376,6 +376,7 @@ export function renderTransferImport(
 
   /** Which choice a `newestForAll` resolution of `c` is. */
   function choiceOf(c, r) {
+    // exact equality is intended: which side the resolution matches, not "did it change?"
     const hash = (x) => (x.deleted ? "" : stableHash(x.value));
     if (hash(r) === hash(c.local) && !!r.deleted === !!c.local.deleted)
       return "local";
@@ -387,6 +388,7 @@ export function renderTransferImport(
   /** The data here changed since the summary: show it again instead of applying it. */
   function stale() {
     const now = merge();
+    // exact equality is intended: a staleness check, not "did it change?"
     const key = (m) =>
       stableHash({ apply: m.apply, clashes: m.clashes, counts: m.counts });
     if (key(now) === key(merged)) return false;
@@ -465,7 +467,10 @@ export function renderTransferImport(
         notes.push(
           `${titleOf(clash)} changed since, so it no longer needs a choice.`,
         );
-      } else if (stableHash(fresh.local) !== stableHash(clash.local)) {
+      } else if (
+        // exact equality is intended: a staleness check, not "did it change?"
+        stableHash(fresh.local) !== stableHash(clash.local)
+      ) {
         open = open.map((c) => (c.key === clash.key ? fresh : c));
         notes.push(`${titleOf(clash)} changed here since: check it again.`);
       } else current.push(fresh);

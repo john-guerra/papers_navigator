@@ -34,6 +34,13 @@ describe("About page privacy facts", () => {
     for (const key of keys) expect(listed).toContain(key);
   });
 
+  it("lists the two-way transfer keys in plain words", () => {
+    const by = Object.fromEntries(STORAGE_ITEMS.map((d) => [d.key, d.what]));
+    expect(by["papersNavigator:<id>:sync"]).toMatch(/version/);
+    expect(by["papersNavigator:<id>:syncUndo"]).toMatch(/7 days/);
+    expect(by["papersNavigator:<id>:syncSnapshots"]).toMatch(/at most 3/);
+  });
+
   it("the page, nav and service worker know about about.html", () => {
     expect(read("../observablehq.config.js")).toMatch(/path: "\/about"/);
     expect(read("../observablehq.config.js")).toContain('href="./about"');

@@ -15,6 +15,18 @@ export const STORAGE_ITEMS = [
     what: "Your previous list, kept after a Replace or Import so you can restore it",
   },
   {
+    key: "papersNavigator:<id>:sync",
+    what: "Which version of each item this device has (so a transfer knows what changed), and a random id for this device",
+  },
+  {
+    key: "papersNavigator:<id>:syncUndo",
+    what: "Your last import, kept for 7 days so you can undo it",
+  },
+  {
+    key: "papersNavigator:<id>:syncSnapshots",
+    what: "Copies of your data from before your last imports, so you can restore one (at most 3)",
+  },
+  {
     key: "papersNavigator:<id>:rules",
     what: "Your watches (researchers, institutions, research topics) and their cached matches",
   },

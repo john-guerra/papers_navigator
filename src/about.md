@@ -105,7 +105,7 @@ Previous versions: the <a href="https://johnguerra.co/viz/chi2026Papers/" target
 
 ### What stays in this browser
 
-Everything you do is saved in this browser's local storage, separately for each conference, and only on this device (another browser or phone has its own list until you share or export it):
+Everything you do is saved in this browser's local storage, separately for each conference, and only on this device (another browser or phone has its own list until you share or move it):
 
 ${storageTable}
 
@@ -123,6 +123,7 @@ The fonts (Newsreader and Source Sans 3) are served by this site itself.
 
 - **Share list** and **Send to my phone** build a link that carries your list inside the link itself, after the <code>#</code> (for example <code>…/my-papers.html#follow=…</code>). Browsers never send that part to the server; whoever you give the link to sees the list. The QR code is drawn in your browser. Your notes and My research abstracts are never put in a link.
 - **Export JSON** saves a file on your device (it includes your notes, your ratings and the abstracts of research topics you watch). **Import JSON** reads a file you pick; nothing is uploaded.
+- **Send to my other device**, **Copy** and **Paste** (My Papers) move everything between, say, a laptop and a phone: the file goes where you send it (the share sheet, a download), the text goes to your clipboard, and on a laptop you can drop a file on My Papers. Nothing goes through a server or a link.
 
 ### Delete your data
 
@@ -243,6 +244,8 @@ On a laptop the itinerary and **All my papers** take the main column; sharing an
 - **Share list** (phones) opens your phone's share sheet. On a laptop, **Send to my phone** shows a QR code and **Copy link**. The link carries the papers you added and your watches (researchers, institutions, research topics), but not your My research abstracts.
 - Opening a shared link offers **Merge into my list**, **Replace my list** (asks first, and can be undone) or **Ignore**.
 - **Export JSON** saves your list, reasons, watches and notes to a file; **Import JSON** brings it back, on this or another device (merge or replace). Imported notes are always added to yours: when a paper has a different note in each, both texts are kept.
+- **Moving everything between devices:** use **Send to my other device** (or **Copy**) on one, then **Import** (or **Paste**, or drop the file on a laptop) on the other. It carries your list, watches (including My research abstracts), notes (including session notes), ratings, 👎 and attended papers. Removals and edits travel too. Before anything changes you see a summary; when both devices changed the same item you choose which to keep (or **Use the newest for all**). **Undo this import** works for 7 days, and **Restore data from before…** brings back a copy saved before one of your last 3 imports. The data only goes into the file, share sheet or clipboard you choose.
+- On iPhone, a Home Screen app keeps its own data, separate from Safari: move your list into it with **Send to my other device** and **Import**.
 - After a replace, **Restore previous list** brings back the list you had.
 
 ### At the venue and offline
