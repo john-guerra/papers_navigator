@@ -114,12 +114,11 @@ export function createNotesStore(
   };
   events?.addEventListener?.("storage", onStorage);
   store.dispose = () => events?.removeEventListener?.("storage", onStorage);
-  // One note set as is ("" deletes it). Starts from what is saved: a note that couldn't be
-  // saved stays on screen for this visit, but is never written later in another's place.
+  // One note set as is ("" deletes it). Starts from the notes in memory: one you typed that
+  // couldn't be saved is kept for this visit and saved by the next write that succeeds.
   const write = (id, note) => {
-    const saved = load();
-    if ((saved[id] ?? "") === note && (value[id] ?? "") === note) return true;
-    const next = { ...saved };
+    if ((value[id] ?? "") === note) return true;
+    const next = { ...value };
     if (note) next[id] = note;
     else delete next[id];
     return save(next);
@@ -134,14 +133,20 @@ export function createNotesStore(
     if (previous) write(id, "");
     return () => previous && !value[id] && write(id, previous);
   };
+  // Imported notes that couldn't be saved don't stay in memory, where the next write would save
+  // them in place of yours: memory goes back to what it was (your unsaved typing included)
+  const saveImported = (next, previous) => {
+    if (save(next)) return true;
+    value = previous;
+    store.dispatchEvent(new Event("input"));
+    return false;
+  };
   store.merge = (incoming) => {
-    value = load();
     const before = value;
     const { notes, added, combined } = mergeNotes(value, incoming);
-    if (added || combined) save(notes);
+    if (added || combined) saveImported(notes, before);
     // Undo puts back each note the import changed, unless you edited it since
     const undo = () => {
-      value = load();
       const next = { ...value };
       let changed = false;
       for (const id of Object.keys(notes)) {
@@ -159,14 +164,11 @@ export function createNotesStore(
    * `remove`, in one write.
    */
   store.applyEntries = ({ put = {}, remove = [] } = {}) => {
-    const next = { ...load() };
+    const previous = value;
+    const next = { ...value };
     for (const id of remove) delete next[id];
     Object.assign(next, cleanNotes(put));
-    if (save(next)) return true;
-    // Not saved: show what is saved, so nothing writes these notes later by accident
-    value = load();
-    store.dispatchEvent(new Event("input"));
-    return false;
+    return saveImported(next, previous);
   };
   Object.defineProperty(store, "value", { get: () => value });
   return store;

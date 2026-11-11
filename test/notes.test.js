@@ -262,3 +262,36 @@ describe("a failed save never leaves memory ahead of storage", () => {
     });
   });
 });
+
+describe("unsaved typing survives until a write succeeds (#transfer fix round 2)", () => {
+  const failing = (storage) => {
+    const setItem = storage.setItem;
+    storage.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    return () => (storage.setItem = setItem);
+  };
+
+  it("a note that couldn't be saved is saved by the next successful write", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    const restore = failing(storage);
+    expect(notes.set("n1", "typed while full")).toBe(false);
+    expect(notes.get("n1")).toBe("typed while full");
+    restore();
+    expect(notes.set("n2", "later")).toBe(true);
+    expect(JSON.parse(storage.data.get(KEY))).toEqual({
+      n1: "typed while full",
+      n2: "later",
+    });
+  });
+
+  it("a merge that can't be saved leaves notes as storage has them", () => {
+    const storage = memoryStorage();
+    const notes = createNotesStore("conf", storage, null);
+    notes.set("n1", "mine");
+    failing(storage);
+    notes.merge({ n2: "imported" });
+    expect(notes.value).toEqual({ n1: "mine" });
+  });
+});

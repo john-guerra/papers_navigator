@@ -316,7 +316,13 @@ export function applyTransfer(ctx, resolutions, { from, label } = {}) {
     });
   }
   if (!byKey.size)
-    return { applied: [], failed: [], skipped, undo: () => NONE };
+    return {
+      applied: [],
+      failed: [],
+      skipped,
+      rollbackFailed: false,
+      undo: () => NONE,
+    };
   return { ...commit(ctx, [...byKey.values()], { label, from }), skipped };
 }
 

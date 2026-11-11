@@ -154,6 +154,20 @@ describe("applyTransfer", () => {
     expect(ctx.stores.notes.get("n3")).toBe(long);
   });
 
+  it("returns the same shape when there is nothing to apply", () => {
+    const { undo, ...rest } = applyTransfer(device(), [], {
+      from: "p",
+      label: "x",
+    });
+    expect(rest).toEqual({
+      applied: [],
+      failed: [],
+      skipped: [],
+      rollbackFailed: false,
+    });
+    expect(undo()).toEqual({ reverted: [], skipped: [] });
+  });
+
   it("records the meta before the stores (the two-tab order)", () => {
     const ctx = device();
     const order = [];
