@@ -15,7 +15,6 @@
   "baseUrl": "https://ieeevis.org/year/2026",
   "listingUrl": "https://ieeevis.org/year/2026/program/content/",
   "sessionsUrl": "https://ieeevis.org/year/2026/program/sessions",
-  "fetcher": "ieeevis",
   "projections": ["umap", "tsne", "pca"],
   "clusters": {
     "minClusterSize": 12,
