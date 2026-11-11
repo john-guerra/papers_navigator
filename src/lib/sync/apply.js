@@ -318,8 +318,8 @@ function saveUndo(ctx, changes, { label, from, base }) {
  * plus the clash resolutions). `continueImport` (an earlier result's `undoId`) adds answers
  * given later to that import: no new snapshot, and one undo takes back the whole import (when
  * its record is gone, this is a new import). Returns `{applied, failed, skipped, undo, undoId}`:
- * `skipped` are values
- * no store can hold (left alone), `failed` keys a store couldn't save (left as they were). Throws
+ * `skipped` are values no store can hold (left alone), `failed` keys a store couldn't save (left
+ * as they were), `undoId` null when nothing was written. Throws
  * with `code: "storage"`, having changed nothing, when the snapshot or the meta can't be saved.
  */
 export const applyTransfer = busy(applyTransferNow);
@@ -362,7 +362,8 @@ function applyTransferNow(
       skipped,
       rollbackFailed: false,
       undo: () => NONE,
-      undoId: (continueImport && openRecord(ctx, continueImport)?.id) || null,
+      // nothing written, nothing to undo (a caller must keep its earlier undo)
+      undoId: null,
     };
   return {
     ...commit(ctx, [...byKey.values()], { label, from, continueImport }),

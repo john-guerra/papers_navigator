@@ -222,11 +222,14 @@ export function renderTransferImport(
       );
       return null;
     }
-    // A later answer that joined the import's record: its undo now covers the whole import
-    if (importId && result.undoId === importId)
-      undos[undos.length - 1] = result.undo;
-    else undos.push(result.undo);
-    importId = result.undoId ?? importId;
+    // A later answer that joined the import's record: its undo now covers the whole import.
+    // An answer that wrote nothing has nothing to undo and leaves the import's undo alone.
+    if (result.applied.length) {
+      if (importId && result.undoId === importId)
+        undos[undos.length - 1] = result.undo;
+      else undos.push(result.undo);
+      importId = result.undoId ?? importId;
+    }
     onChange();
     return result;
   }

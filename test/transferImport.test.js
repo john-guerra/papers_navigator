@@ -266,6 +266,25 @@ describe("renderTransferImport", () => {
     expect(ids(ctx)).toEqual(["a", "b"]);
   });
 
+  it("a later answer that writes nothing keeps Undo this import working", () => {
+    const ctx = laptop();
+    ctx.stores.rules.add({ type: "author", value: "Bob" }, T0);
+    ctx.meta.reconcile(toEntries(state(ctx)), T0);
+    const parsed = phoneFile();
+    // a rule no store can hold: its id isn't its value's
+    parsed.rules = [{ id: "author:bob", type: "author", value: "Carl" }];
+    parsed.sync["rule/author:bob"] = { v: { ph: 1 }, t };
+    const el = render(parsed, ctx);
+    buttonNamed(el, "Skip these for now").click();
+    expect(ids(ctx)).toEqual(["a", "c"]);
+    const row = [...el.querySelectorAll(".transfer-clashes > li")].find((li) =>
+      li.textContent.includes("Bob"),
+    );
+    buttonNamed(row, "Keep iPhone's").click();
+    buttonNamed(el, "Undo this import").click();
+    expect(ids(ctx)).toEqual(["a", "b"]);
+  });
+
   it("Undo this import clears the open clash list", () => {
     const ctx = laptop();
     const el = render(phoneFile(), ctx);

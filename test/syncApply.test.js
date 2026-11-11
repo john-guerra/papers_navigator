@@ -604,6 +604,30 @@ describe("continuing an import (answers given later)", () => {
     expect(s.followed.map((d) => d.id).sort()).toEqual(["a", "b"]);
   });
 
+  it("an answer that writes nothing gives no undoId", () => {
+    const ctx = device();
+    const first = applyTransfer(
+      ctx,
+      [{ key: "rating/x1", value: 1, v: V, t }],
+      {
+        from: "iPhone",
+        label: "a",
+      },
+    );
+    const later = applyTransfer(
+      ctx,
+      [{ key: "rating/r1", value: 9, v: V, t }],
+      {
+        from: "iPhone",
+        label: "a",
+        continueImport: first.undoId,
+      },
+    );
+    expect(later.applied).toEqual([]);
+    expect(later.undoId).toBeNull();
+    expect(lastImport(ctx).count).toBe(1);
+  });
+
   it("starts a new record when that import's record is gone", () => {
     const ctx = device();
     const first = applyTransfer(
