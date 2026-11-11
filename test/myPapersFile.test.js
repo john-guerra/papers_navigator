@@ -267,6 +267,14 @@ describe("My Papers file v3", () => {
     ["array v", { "followed/a": { v: [1], t } }],
     ["deleted not true", { "followed/a": { v: { d: 1 }, t, deleted: "yes" } }],
     [
+      "unrecorded pseudo-device",
+      { "followed/a": { v: { "~unrecorded": 1 }, t } },
+    ],
+    ["negative counter", { "followed/a": { v: { d: -1 }, t } }],
+    ["deleted false", { "followed/a": { v: { d: 1 }, t, deleted: false } }],
+    ["t too long", { "followed/a": { v: { d: 1 }, t: "x".repeat(41) } }],
+    ["t not a string", { "followed/a": { v: { d: 1 }, t: 5 } }],
+    [
       "one bad among good",
       { "note/a": { v: { d: 1 }, t }, "followed/a": { t } },
     ],
@@ -299,6 +307,14 @@ describe("My Papers file v3", () => {
       }),
     );
     expect(Object.keys(r.sync)).toEqual(["followed/a"]);
+  });
+
+  it("drops a top-level __proto__ key without polluting", () => {
+    const s = JSON.parse(`{"__proto__":{"v":{"d":1},"t":"${t}"}}`);
+    const r = parseMyPapersFile(exp({ sync: s }));
+    expect(r.sync).toEqual({});
+    expect({}.v).toBeUndefined();
+    expect(Object.getPrototypeOf(r.sync)).toBe(Object.prototype);
   });
 
   it("drops keys without a store separator", () => {

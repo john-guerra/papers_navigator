@@ -1,5 +1,6 @@
 import { bump, compare, join, stableHash } from "./clock.js";
-import { splitKey, STORES } from "./entries.js";
+import { splitKey } from "./entries.js";
+import { UNRECORDED, isPlainObject, isSyncKey, isVector } from "./validate.js";
 
 /**
  * Merge of an imported transfer file into this device's data. Pure: decides, per entry key,
@@ -7,31 +8,7 @@ import { splitKey, STORES } from "./entries.js";
  * is ever dropped without that choice.
  */
 
-const isPlainObject = (x) =>
-  x !== null && typeof x === "object" && !Array.isArray(x);
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-
-/**
- * Pseudo device standing for a local change the meta hasn't recorded. It only takes part in
- * `compare` (so such a change is never silently dominated) and is never stored or returned.
- * The leading "~" can't occur in a device id, and incoming vectors carrying it are rejected.
- */
-const UNRECORDED = "~unrecorded";
-const BAD_DEVICES = new Set([
-  "__proto__",
-  "constructor",
-  "prototype",
-  UNRECORDED,
-]);
-
-const isVector = (v) =>
-  isPlainObject(v) &&
-  Object.entries(v).every(
-    ([d, n]) => !BAD_DEVICES.has(d) && Number.isInteger(n) && n > 0,
-  );
-
-const isSyncKey = (key) =>
-  key.includes("/") && STORES.includes(splitKey(key)[0]);
 
 const isNoteKey = (key) => splitKey(key)[0] === "note";
 

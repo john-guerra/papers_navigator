@@ -3,26 +3,22 @@ import { cleanNotes } from "./notes.js";
 import { cleanRatings } from "./ratings.js";
 import { cleanDisliked } from "./disliked.js";
 import { cleanAttended } from "./attended.js";
-import { STORES, splitKey } from "./sync/entries.js";
+import { isPlainObject, isSyncKey, isVector } from "./sync/validate.js";
 
 const DAMAGED = "This file's change history is damaged.";
-const BAD_DEVICES = new Set(["__proto__", "constructor", "prototype"]);
-const isPlain = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
 
 function cleanSync(sync) {
-  if (!isPlain(sync)) throw new Error(DAMAGED);
+  if (!isPlainObject(sync)) throw new Error(DAMAGED);
   const out = {};
   for (const [key, r] of Object.entries(sync)) {
     const ok =
-      isPlain(r) &&
-      isPlain(r.v) &&
-      Object.entries(r.v).every(
-        ([d, n]) => !BAD_DEVICES.has(d) && Number.isInteger(n) && n > 0,
-      ) &&
+      isPlainObject(r) &&
+      isVector(r.v) &&
       typeof r.t === "string" &&
+      r.t.length <= 40 &&
       (r.deleted === undefined || r.deleted === true);
     if (!ok) throw new Error(DAMAGED);
-    if (!key.includes("/") || !STORES.includes(splitKey(key)[0])) continue;
+    if (!isSyncKey(key)) continue;
     out[key] = {
       v: { ...r.v },
       t: r.t,
@@ -118,7 +114,7 @@ export function exportNote(
  */
 export function parseMyPapersFile(text) {
   const data = JSON.parse(text);
-  if (isPlain(data) && data.version > 3)
+  if (isPlainObject(data) && data.version > 3)
     throw new Error(
       "This file was made by a newer version of Papers Navigator. Reload the page and try again.",
     );
