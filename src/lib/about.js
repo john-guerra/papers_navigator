@@ -20,11 +20,11 @@ export const STORAGE_ITEMS = [
   },
   {
     key: "papersNavigator:<id>:syncUndo",
-    what: "Your last import, kept for 7 days so you can undo it",
+    what: "Your last import and what it replaced, kept for 7 days so you can undo it (Delete saved copies in My Papers removes it)",
   },
   {
     key: "papersNavigator:<id>:syncSnapshots",
-    what: "Copies of your data from before your last imports, so you can restore one (at most 3)",
+    what: "Copies of your data from before your last imports, so you can restore one (at most 3, each kept 14 days; Delete saved copies in My Papers removes them)",
   },
   {
     key: "papersNavigator:<id>:rules",

@@ -83,7 +83,9 @@ function kind(key, prev, next) {
 /**
  * @param local `{entries: {[key]: value}, meta: {[key]: {v, t, h, deleted?}}}`
  * @param incoming `{entries: {[key]: value}, sync: {[key]: {v, t, deleted?}}, device}`
- * @returns `{apply: {[key]: {value?, deleted?, v, t}}, clashes, counts}`
+ * @returns `{apply: {[key]: {value?, deleted?, v, t}}, clashes, counts, unmatched}`:
+ *   `unmatched` counts the file's values that have no valid version record and differ from
+ *   this device's, so they are left out (the person is told, never silently)
  */
 export function mergeTransfer(local, incoming) {
   const apply = {};
@@ -152,7 +154,19 @@ export function mergeTransfer(local, incoming) {
     clashes.push({ key, local: mine, incoming: theirs });
   }
 
-  return { apply, clashes, counts };
+  let unmatched = 0;
+  for (const key of Object.keys(inc.entries)) {
+    if (!isSyncKey(key) || incomingSide(inc, key)) continue;
+    const here = own(loc.entries, key) ? loc.entries[key] : undefined;
+    if (
+      here !== undefined &&
+      identity(key, here) === identity(key, inc.entries[key])
+    )
+      continue;
+    unmatched++;
+  }
+
+  return { apply, clashes, counts, unmatched };
 }
 
 /** Resolves a clash as the person chose: "local", "incoming" or "both" (note texts only). */
@@ -173,16 +187,23 @@ export function resolveClash(clash, choice, device) {
     : { key, value: s.value, v, t };
 }
 
+const hasResearch = (s) =>
+  !s.deleted && Array.isArray(s.value?.research) && s.value.research.length > 0;
+
 /**
  * "Newest for all": the later `t` wins (ties keep local), except that two note texts are kept
- * both, and a note text always beats a deletion or a non-text.
+ * both, a note text always beats a deletion or a non-text, and a My research rule is never
+ * decided by time: this device's is kept (the file's when only it has abstracts), so no
+ * abstract is dropped without the person choosing.
  */
 export function newestForAll(clashes, device) {
   return clashes.map((c) => {
     const mineText = isNoteText(c.key, c.local);
     const theirText = isNoteText(c.key, c.incoming);
     let choice;
-    if (mineText && theirText) choice = "both";
+    if (hasResearch(c.local)) choice = "local";
+    else if (hasResearch(c.incoming)) choice = "incoming";
+    else if (mineText && theirText) choice = "both";
     else if (mineText) choice = "local";
     else if (theirText) choice = "incoming";
     else

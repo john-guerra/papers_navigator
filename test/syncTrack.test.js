@@ -154,3 +154,34 @@ describe("startSyncTracking", () => {
     warn.mockRestore();
   });
 });
+
+describe("expired transfer copies", () => {
+  it("removes an expired undo record and saved copies older than 14 days on start", () => {
+    const s = fakeStorage();
+    const old = new Date(Date.now() - 15 * 24 * 3600_000).toISOString();
+    const recent = new Date(Date.now() - 24 * 3600_000).toISOString();
+    s.setItem(
+      "papersNavigator:conf:syncUndo",
+      JSON.stringify({
+        id: "x",
+        at: new Date(Date.now() - 8 * 24 * 3600_000).toISOString(),
+        changes: [{ key: "note/a", had: true, before: "secret" }],
+      }),
+    );
+    s.setItem(
+      "papersNavigator:conf:syncSnapshots",
+      JSON.stringify([
+        { at: recent, label: "new", payload: "{}" },
+        { at: old, label: "old", payload: "secret" },
+      ]),
+    );
+    const stop = startSyncTracking("conf", {}, { storage: s });
+    expect(s.m.has("papersNavigator:conf:syncUndo")).toBe(false);
+    expect(
+      JSON.parse(s.m.get("papersNavigator:conf:syncSnapshots")).map(
+        (x) => x.label,
+      ),
+    ).toEqual(["new"]);
+    stop();
+  });
+});

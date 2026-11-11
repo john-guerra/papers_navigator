@@ -10,7 +10,11 @@ import { createNotesStore } from "../src/lib/notes.js";
 import { createRatingsStore } from "../src/lib/ratings.js";
 import { createRulesStore } from "../src/lib/rules.js";
 import { resetStorageHealth } from "../src/lib/storageHealth.js";
-import { applyTransfer, listSnapshots } from "../src/lib/sync/apply.js";
+import {
+  applyTransfer,
+  lastImport,
+  listSnapshots,
+} from "../src/lib/sync/apply.js";
 import { toEntries } from "../src/lib/sync/entries.js";
 import { createSyncMeta } from "../src/lib/sync/meta.js";
 import { readState } from "../src/lib/sync/state.js";
@@ -103,6 +107,8 @@ const mount = (el) => (document.body.append(el), el);
 const buttonNamed = (el, name) =>
   [...el.querySelectorAll("button")].find((b) => b.textContent.trim() === name);
 const text = (el) => el.textContent.replace(/\s+/g, " ");
+const sides = (row) =>
+  [...row.querySelectorAll(".clash-side")].map((p) => text(p).trim());
 const state = (ctx) => readState("conf", ctx.storage);
 const ids = (ctx) =>
   state(ctx)
@@ -148,7 +154,8 @@ describe("renderTransferImport", () => {
     const rows = el.querySelectorAll(".transfer-clashes > li");
     expect(rows).toHaveLength(1);
     expect(rows[0].querySelector("h4").textContent).toBe("The rated paper");
-    expect(text(rows[0])).toContain("iPhone: ★★★☆☆ · Mac: ★★★★★");
+    // two labelled lines, one per device
+    expect(sides(rows[0])).toEqual(["iPhone: ★★★☆☆", "Mac: ★★★★★"]);
     expect(buttonNamed(rows[0], "Keep iPhone's")).toBeTruthy();
     expect(buttonNamed(rows[0], "Keep Mac's")).toBeTruthy();
     // "Keep both" is for two note texts only
@@ -354,9 +361,10 @@ describe("renderTransferImport", () => {
     delete parsed.notes.n1;
     const el = render(parsed, ctx);
     const row = el.querySelector(".transfer-clashes > li");
-    expect(text(row)).toContain(
-      "iPhone: note removed · Mac: laptop note, edited",
-    );
+    expect(sides(row)).toEqual([
+      "iPhone: note removed",
+      "Mac: laptop note, edited",
+    ]);
   });
 
   it("says when the file has nothing new", () => {
@@ -427,14 +435,20 @@ describe("renderTransferImport", () => {
     buttonNamed(el, "Keep iPhone's").click();
     expect(state(ctx).ratings.r1).toBe(1);
     expect(text(el.querySelector("[aria-live]"))).toMatch(/changed here since/);
-    expect(text(el)).toContain("iPhone: ★★★☆☆ · Mac: ★☆☆☆☆");
+    expect(sides(el.querySelector(".transfer-clashes > li"))).toEqual([
+      "iPhone: ★★★☆☆",
+      "Mac: ★☆☆☆☆",
+    ]);
     buttonNamed(el, "Keep iPhone's").click();
     expect(state(ctx).ratings.r1).toBe(3);
   });
 
   it("names two devices of the same kind apart", () => {
     const el = render(phoneFile(), laptop(), { deviceName: "iPhone" });
-    expect(text(el)).toContain("Other iPhone: ★★★☆☆ · This iPhone: ★★★★★");
+    expect(sides(el.querySelector(".transfer-clashes > li"))).toEqual([
+      "Other iPhone: ★★★☆☆",
+      "This iPhone: ★★★★★",
+    ]);
     expect(buttonNamed(el, "Keep other iPhone's")).toBeTruthy();
     expect(buttonNamed(el, "Keep this iPhone's")).toBeTruthy();
   });
@@ -608,5 +622,117 @@ describe("renderImportHistory", () => {
       "couldn't be saved",
     );
     expect(text(el.querySelector("[aria-live]"))).toContain("The noted paper");
+  });
+});
+
+describe("final review fixes", () => {
+  const AGAIN =
+    "Importing the file from iPhone again will apply these changes again.";
+
+  it("Undo this import says what importing the file again does", () => {
+    const ctx = laptop();
+    const el = render(phoneFile(), ctx);
+    buttonNamed(el, "Keep iPhone's").click();
+    buttonNamed(el, "Apply").click();
+    buttonNamed(el, "Undo this import").click();
+    expect(text(el.querySelector("[aria-live]"))).toContain(AGAIN);
+  });
+
+  it("the history's Undo this import says it too (not for a restore)", () => {
+    const ctx = laptop();
+    applyTransfer(ctx, [{ key: "rating/r1", value: 4, v: { ph: 9 }, t }], {
+      from: "iPhone",
+      label: "x",
+    });
+    const el = mount(renderImportHistory(ctx, { tz: TZ }));
+    buttonNamed(el, "Undo this import").click();
+    expect(text(el.querySelector("[aria-live]"))).toContain(AGAIN);
+  });
+
+  it("a research rule clash shows its level and the start of its abstracts, with Show all", () => {
+    const ctx = laptop();
+    const mine = {
+      type: "topic",
+      value: "My research",
+      threshold: 0.42,
+      level: "good",
+      research: ["Laptop abstract about graphs. " + "more ".repeat(60)],
+    };
+    ctx.stores.rules.add(mine, T0);
+    ctx.meta.reconcile(toEntries(state(ctx)), T0);
+    const [key] = Object.keys(toEntries(state(ctx))).filter((k) =>
+      k.startsWith("rule/"),
+    );
+    const id = key.slice("rule/".length);
+    const theirs = {
+      id,
+      ...mine,
+      level: "strong",
+      threshold: 0.6,
+      research: ["Phone abstract about maps."],
+    };
+    const parsed = phoneFile({
+      sync: { [key]: { v: { ph: 1 }, t } },
+    });
+    parsed.rules = [theirs];
+    const el = render(parsed, ctx);
+    const row = [...el.querySelectorAll(".transfer-clashes > li")].find((r) =>
+      text(r).includes("abstract"),
+    );
+    const [phone, mac] = sides(row);
+    expect(phone).toContain("strong matches");
+    expect(phone).toContain("0.6");
+    expect(phone).toContain("Phone abstract about maps.");
+    expect(mac).toContain("good matches");
+    expect(mac).toContain("Laptop abstract about graphs.");
+    expect(mac).not.toContain("more ".repeat(60).trim());
+    buttonNamed(row, "Show all").click();
+    expect(text(row)).toContain("more ".repeat(60).trim());
+  });
+
+  it("says when file values couldn't be matched", () => {
+    const ctx = laptop();
+    const parsed = phoneFile({ notes: { zz: "orphan note" } });
+    const el = render(parsed, ctx);
+    expect(text(el)).toContain("1 item couldn't be matched; it was left out.");
+  });
+});
+
+describe("Delete saved copies", () => {
+  it("removes the saved copies and the undo record after an inline confirm", () => {
+    const ctx = laptop();
+    applyTransfer(ctx, [{ key: "rating/r1", value: 4, v: { ph: 9 }, t }], {
+      from: "iPhone",
+      label: "Before the import from iPhone",
+    });
+    const el = mount(renderImportHistory(ctx, { tz: TZ }));
+    buttonNamed(el, "Delete saved copies").click();
+    // nothing yet: an inline confirm
+    expect(listSnapshots(ctx)).toHaveLength(1);
+    expect(text(el)).toMatch(/Undo this import/);
+    buttonNamed(el, "Cancel").click();
+    expect(listSnapshots(ctx)).toHaveLength(1);
+    buttonNamed(el, "Delete saved copies").click();
+    buttonNamed(el, "Delete").click();
+    expect(listSnapshots(ctx)).toEqual([]);
+    expect(lastImport(ctx)).toBeNull();
+    expect(state(ctx).ratings.r1).toBe(4);
+    expect(text(el.querySelector("[aria-live]"))).toMatch(/deleted/i);
+    expect(buttonNamed(el, "Undo this import")).toBeUndefined();
+  });
+
+  it("removes an expired undo record when it renders", () => {
+    const ctx = laptop();
+    applyTransfer(ctx, [{ key: "rating/r1", value: 4, v: { ph: 9 }, t }], {
+      from: "iPhone",
+      label: "x",
+    });
+    mount(
+      renderImportHistory(
+        { ...ctx, now: new Date(T1.getTime() + 8 * 24 * 3600_000) },
+        { tz: TZ },
+      ),
+    );
+    expect(ctx.storage.m.has("papersNavigator:conf:syncUndo")).toBe(false);
   });
 });

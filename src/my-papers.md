@@ -7,6 +7,7 @@ toc: false
 import { createFollowedStore, resolveFollowed } from "./lib/followed.js";
 import { startSyncTracking } from "./lib/sync/track.js";
 import { createSyncMeta } from "./lib/sync/meta.js";
+import { exportTransfer } from "./lib/sync/exportFile.js";
 import { renderTransferImport } from "./components/transferImport.js";
 import { renderImportHistory } from "./components/importHistory.js";
 import { enableFileDrop, renderSendToDevice } from "./components/sendToDevice.js";
@@ -29,7 +30,7 @@ import { PapersList, conferenceLink } from "./widgets/papersList.js";
 import { authorUrl } from "./lib/authors.js";
 import { decodeShareHash, decodeShareWatches, resolveShortIds, shareUrl } from "./lib/share.js";
 import { withParams } from "./lib/urlState.js";
-import { deviceLabel, exportMyPapers, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
+import { deviceLabel, exportNote, parseMyPapersFile } from "./lib/myPapersFile.js";
 import { createNotesStore, importedNotesText, notesCount } from "./lib/notes.js";
 import { createRatingsStore, importedRatingsText } from "./lib/ratings.js";
 import { createDislikedStore, importedDislikedText } from "./lib/disliked.js";
@@ -255,7 +256,8 @@ const shareButton = renderShareButton({
 // Two-way transfer: the page's stores, so an import updates them (src/lib/sync/apply.js)
 const syncCtx = { stores: { followed: followedStore, rules: rulesStore, notes: notesStore, ratings: ratingsStore, disliked: dislikedStore, attended: attendedStore }, meta: createSyncMeta(conference.id), conferenceId: conference.id };
 const exportButton = html`<button>Export JSON</button>`;
-const exportText = () => exportMyPapers({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions, notes: notesStore.value, ratings: ratingsStore.value, disliked: dislikedStore.value, attended: attendedStore.value }, { device: syncCtx.meta.device, deviceName: deviceLabel(), sync: syncCtx.meta.read() });
+// Versions from the values themselves, so none is left out of a transfer (sync/exportFile.js)
+const exportText = () => exportTransfer({ followed: followedStore.value, rules: rulesStore.value.rules, exceptions: rulesStore.value.exceptions, notes: notesStore.value, ratings: ratingsStore.value, disliked: dislikedStore.value, attended: attendedStore.value }, syncCtx.meta, { deviceName: deviceLabel() });
 const downloadFile = (file) => {
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(file), download: file.name });
   a.click();
@@ -342,7 +344,8 @@ importInput.querySelector("input").onchange = async (event) => {
 };
 const sendToDevice = renderSendToDevice({ payload: exportText, fileName: `${conference.id}-my-papers.json`, title: conference.name, download: downloadFile, onPaste: importText, onSent: recordExport });
 document.querySelector(".mp-tools")?.append(sendToDevice);
-enableFileDrop(document.querySelector(".mp-tools"), importText);
+// A file dropped elsewhere on the page must not make the browser open it (and leave the page)
+invalidation.then(enableFileDrop(document.querySelector(".mp-tools"), importText, { doc: document, onStray: () => ((importStatus.textContent = "Drop the file on the My Papers data area."), importStatus.scrollIntoView?.({ block: "nearest" })) }));
 ```
 
 

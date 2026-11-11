@@ -9,6 +9,8 @@ import { createRulesStore } from "../src/lib/rules.js";
 import { resetStorageHealth, storageHealth } from "../src/lib/storageHealth.js";
 import {
   applyTransfer,
+  deleteSavedCopies,
+  expireTransferCopies,
   lastImport,
   listSnapshots,
   restorePayload,
@@ -66,16 +68,17 @@ function device(storage = fakeStorage(), now = T1) {
   return { stores, meta, conferenceId: "conf", storage, now };
 }
 
+/** State as the page's own store objects hold it (not re-read from storage). */
+const storeState = ({ stores }) => ({
+  followed: stores.followed.value,
+  ...stores.rules.value,
+  notes: stores.notes.value,
+  ratings: stores.ratings.value,
+  disliked: stores.disliked.value,
+  attended: stores.attended.value,
+});
 /** Entries as the page's own store objects hold them (not re-read from storage). */
-const storeEntries = ({ stores }) =>
-  toEntries({
-    followed: stores.followed.value,
-    ...stores.rules.value,
-    notes: stores.notes.value,
-    ratings: stores.ratings.value,
-    disliked: stores.disliked.value,
-    attended: stores.attended.value,
-  });
+const storeEntries = (ctx) => toEntries(storeState(ctx));
 
 const V = { other: 1 };
 const t = "2026-10-01T12:00:00.000Z";
@@ -702,5 +705,102 @@ describe("identity, not metadata (first trip)", () => {
     // undo still finds the import's entries as it left them
     expect(undoLastImport(ctx).skipped).toEqual([]);
     expect(readState("conf", ctx.storage).notes.a).toBeUndefined();
+  });
+});
+
+describe("saved copies and the undo record don't outlive their time", () => {
+  const UNDO = "papersNavigator:conf:syncUndo";
+
+  it("saved copies are kept 14 days: older ones are hidden and dropped on the next save", () => {
+    const ctx = device();
+    applyTransfer(ctx, [{ key: "rating/x1", value: 1, v: V, t }], {
+      from: "p",
+      label: "first",
+    });
+    const later = { ...ctx, now: new Date(T1.getTime() + 15 * DAY) };
+    expect(listSnapshots(later)).toEqual([]);
+    applyTransfer(later, [{ key: "rating/x2", value: 2, v: V, t }], {
+      from: "p",
+      label: "second",
+    });
+    expect(
+      JSON.parse(ctx.storage.m.get(SNAPSHOTS)).map((s) => s.label),
+    ).toEqual(["second"]);
+  });
+
+  it("expireTransferCopies removes an expired undo record and old copies from storage", () => {
+    const ctx = device();
+    applyTransfer(ctx, RESOLUTIONS(), { from: "phone", label: "x" });
+    expireTransferCopies({ ...ctx, now: new Date(T1.getTime() + 6 * DAY) });
+    expect(ctx.storage.m.has(UNDO)).toBe(true);
+    expect(ctx.storage.m.has(SNAPSHOTS)).toBe(true);
+    expireTransferCopies({ ...ctx, now: new Date(T1.getTime() + 8 * DAY) });
+    expect(ctx.storage.m.has(UNDO)).toBe(false);
+    expect(ctx.storage.m.has(SNAPSHOTS)).toBe(true);
+    expireTransferCopies({ ...ctx, now: new Date(T1.getTime() + 15 * DAY) });
+    expect(ctx.storage.m.has(SNAPSHOTS)).toBe(false);
+  });
+
+  it("lastImport removes an expired undo record when it reads it", () => {
+    const ctx = device();
+    applyTransfer(ctx, RESOLUTIONS(), { from: "phone", label: "x" });
+    expect(
+      lastImport({ ...ctx, now: new Date(T1.getTime() + 8 * DAY) }),
+    ).toBeNull();
+    expect(ctx.storage.m.has(UNDO)).toBe(false);
+  });
+
+  it("deleteSavedCopies removes the copies and the undo record, and leaves the data", () => {
+    const ctx = device();
+    applyTransfer(ctx, RESOLUTIONS(), { from: "phone", label: "x" });
+    const data = readState("conf", ctx.storage);
+    expect(deleteSavedCopies(ctx)).toBe(true);
+    expect(ctx.storage.m.has(UNDO)).toBe(false);
+    expect(ctx.storage.m.has(SNAPSHOTS)).toBe(false);
+    expect(listSnapshots(ctx)).toEqual([]);
+    expect(lastImport(ctx)).toBeNull();
+    expect(readState("conf", ctx.storage)).toEqual(data);
+  });
+});
+
+describe("exportTransfer: every exported value carries its version", () => {
+  it("storage full during reconcile: the export still carries the edit's new version, and the other device applies it", async () => {
+    const { exportTransfer } = await import("../src/lib/sync/exportFile.js");
+    const ctx = device();
+    // the other device got everything as of T0
+    const phone = {
+      entries: toEntries(readState("conf", ctx.storage)),
+      meta: ctx.meta.read(),
+    };
+    ctx.storage.fail = (k) => k === META;
+    ctx.stores.notes.set("n1", "edited while storage is full");
+    ctx.meta.reconcile(toEntries(readState("conf", ctx.storage)), T1);
+    const text = exportTransfer(storeState(ctx), ctx.meta, {
+      deviceName: "Mac",
+      now: T1,
+    });
+    const parsed = parseMyPapersFile(text);
+    expect(parsed.sync["note/n1"].v).toEqual({ me: 2 });
+    const merged = mergeTransfer(phone, {
+      entries: toEntries(parsed),
+      sync: parsed.sync,
+      device: parsed.device,
+    });
+    expect(merged.apply["note/n1"].value).toBe("edited while storage is full");
+    expect(merged.unmatched).toBe(0);
+  });
+
+  it("an edit not reconciled yet is versioned in the export too", async () => {
+    const { exportTransfer } = await import("../src/lib/sync/exportFile.js");
+    const ctx = device();
+    ctx.stores.ratings.set("r9", 4);
+    const before = ctx.storage.m.get(META);
+    const parsed = parseMyPapersFile(
+      exportTransfer(storeState(ctx), ctx.meta, { now: T1 }),
+    );
+    expect(parsed.sync["rating/r9"].v).toEqual({ me: 1 });
+    expect(parsed.ratings.r9).toBe(4);
+    // exporting writes nothing
+    expect(ctx.storage.m.get(META)).toBe(before);
   });
 });

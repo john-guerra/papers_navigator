@@ -29,6 +29,10 @@ let ids = 0;
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
+/** What an undone import means for the file (also importHistory.js). */
+export const importAgain = (device) =>
+  `Importing the file from ${device} again will apply these changes again.`;
+
 function button(label, onclick, kind = "btn-secondary") {
   const b = html`<button type="button" class=${kind}>${label}</button>`;
   b.onclick = onclick;
@@ -53,17 +57,17 @@ function stars(n) {
   >`;
 }
 
-/** A note's text, clamped with "Show all". */
-function noteText(text) {
-  const full = html`<span class="clash-note">${text}</span>`;
-  if (text.length <= NOTE_CLAMP) return full;
+/** `text` clamped with "Show all", which shows `full` (default: `text` itself). */
+function clamped(text, full = text) {
+  const whole = html`<span class="clash-note">${full}</span>`;
+  if (text.length <= NOTE_CLAMP && text === full) return whole;
   const short = html`<span class="clash-note"
-    >${text.slice(0, NOTE_CLAMP).trimEnd()}…</span
+    >${text.length > NOTE_CLAMP ? `${text.slice(0, NOTE_CLAMP).trimEnd()}…` : text}</span
   >`;
   const more = button(
     "Show all",
     () => {
-      short.replaceWith(full);
+      short.replaceWith(whole);
       more.remove();
     },
     "btn-text",
@@ -71,12 +75,28 @@ function noteText(text) {
   return html`<span>${short} ${more}</span>`;
 }
 
+/** A note's text, clamped with "Show all". */
+const noteText = (text) => clamped(text);
+
+/**
+ * A watch in plain words: its level and threshold, and for a My research topic the opening of
+ * its first abstract (Show all shows every abstract), so a clash isn't chosen blind.
+ */
 function ruleText(rule) {
   const parts = [];
   if (rule?.level) parts.push(`${rule.level} matches`);
-  if (rule?.research?.length)
-    parts.push(plural(rule.research.length, "abstract", "abstracts"));
-  return `watching${parts.length ? ` (${parts.join(", ")})` : ""}`;
+  if (Number.isFinite(rule?.threshold))
+    parts.push(`score ≥ ${Math.round(rule.threshold * 100) / 100}`);
+  const research = Array.isArray(rule?.research)
+    ? rule.research.filter((a) => typeof a === "string")
+    : [];
+  if (research.length)
+    parts.push(plural(research.length, "abstract", "abstracts"));
+  const head = `watching${parts.length ? ` (${parts.join(", ")})` : ""}`;
+  if (!research.length) return head;
+  return html`<span
+    >${head}: ${clamped(research[0], research.join("\n\n"))}</span
+  >`;
 }
 
 /** One side of a clash in plain words; `detail` adds what tells two similar values apart. */
@@ -204,6 +224,7 @@ export function renderTransferImport(
   let open = []; // clashes left for later ("Skip these for now")
   const undos = []; // this import's writes, in order
   let importId = null; // its undo record: answers given later join it
+  let restored = false; // a backup restored (not an import from another device)
 
   /** applyTransfer, saying what went wrong; null when nothing was changed. */
   function write(resolutions) {
@@ -256,6 +277,14 @@ export function renderTransferImport(
     return out.join("");
   }
 
+  /** File values with no version record (left out): said, never silently skipped. */
+  function unmatchedText() {
+    const n = merged?.unmatched ?? 0;
+    return n
+      ? ` ${plural(n, "item", "items")} couldn't be matched; ${n === 1 ? "it was" : "they were"} left out.`
+      : "";
+  }
+
   // --- A clash row -------------------------------------------------------------------------
 
   function clashRow(clash, onChoose) {
@@ -281,9 +310,13 @@ export function renderTransferImport(
     });
     return html`<li class="transfer-clash">
       <h4>${title}</h4>
-      <p class="clash-sides">
-        ${cap(other)}: ${sideText(clash.key, clash.incoming, { tz, detail })} ·
-        ${cap(mine)}: ${sideText(clash.key, clash.local, { tz, detail })}
+      <p class="clash-side">
+        <span class="clash-device">${cap(other)}:</span>
+        ${sideText(clash.key, clash.incoming, { tz, detail })}
+      </p>
+      <p class="clash-side">
+        <span class="clash-device">${cap(mine)}:</span>
+        ${sideText(clash.key, clash.local, { tz, detail })}
       </p>
       <div
         class="clash-choices"
@@ -313,7 +346,7 @@ export function renderTransferImport(
       show(
         html`<p>
           From ${theirs}: nothing new. Your data here already has everything in
-          this file.
+          this file.${unmatchedText()}
         </p>`,
         html`<div class="transfer-actions">
           ${button("Close", onDone, "btn-text")}
@@ -351,7 +384,7 @@ export function renderTransferImport(
     };
     show(
       html`<p class="transfer-summary">
-        From ${theirs}: ${changes || "no other changes"}.
+        From ${theirs}: ${changes || "no other changes"}.${unmatchedText()}
       </p>`,
       ...(clashes.length
         ? [
@@ -412,7 +445,9 @@ export function renderTransferImport(
     const result = write(resolutions);
     if (!result) return;
     open = [];
-    after(`Imported from ${theirs}${summaryTail()}.${problems(result)}`);
+    after(
+      `Imported from ${theirs}${summaryTail()}.${unmatchedText()}${problems(result)}`,
+    );
   }
 
   function skip() {
@@ -421,7 +456,7 @@ export function renderTransferImport(
     if (!result) return;
     open = [...merged.clashes];
     after(
-      `Imported from ${theirs}${summaryTail()}. ${cap(needChoice(open, "still "))}.${problems(result)}`,
+      `Imported from ${theirs}${summaryTail()}. ${cap(needChoice(open, "still "))}.${unmatchedText()}${problems(result)}`,
     );
   }
 
@@ -523,7 +558,8 @@ export function renderTransferImport(
       `Undid the import: ${plural(reverted, "change", "changes")} put back.` +
         (skipped
           ? ` ${plural(skipped, "change was", "changes were")} edited since, so ${skipped === 1 ? "it was" : "they were"} left as ${skipped === 1 ? "it is" : "they are"}.`
-          : ""),
+          : "") +
+        (restored ? "" : ` ${importAgain(theirs)}`),
     );
     show(
       html`<div class="transfer-actions">
@@ -568,9 +604,9 @@ export function renderTransferImport(
   }
 
   function restore() {
-    let restored;
+    let restoredNow;
     try {
-      restored = restorePayload(ctx, parsed, {
+      restoredNow = restorePayload(ctx, parsed, {
         label: "Before restoring a backup",
       });
     } catch (err) {
@@ -581,9 +617,10 @@ export function renderTransferImport(
       );
       return;
     }
-    undos.push(restored.undo);
+    restored = true;
+    undos.push(restoredNow.undo);
     onChange();
-    after(`Restored the backup.${problems({ failed: restored.failed })}`);
+    after(`Restored the backup.${problems({ failed: restoredNow.failed })}`);
   }
 
   if (parsed.device && parsed.device === ctx.meta.device) backupChoice();

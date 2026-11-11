@@ -38,7 +38,31 @@ describe("About page privacy facts", () => {
     const by = Object.fromEntries(STORAGE_ITEMS.map((d) => [d.key, d.what]));
     expect(by["papersNavigator:<id>:sync"]).toMatch(/version/);
     expect(by["papersNavigator:<id>:syncUndo"]).toMatch(/7 days/);
+    expect(by["papersNavigator:<id>:syncUndo"]).toMatch(/Delete saved copies/);
     expect(by["papersNavigator:<id>:syncSnapshots"]).toMatch(/at most 3/);
+    expect(by["papersNavigator:<id>:syncSnapshots"]).toMatch(/14 days/);
+    expect(by["papersNavigator:<id>:syncSnapshots"]).toMatch(
+      /Delete saved copies/,
+    );
+  });
+
+  it("Delete your data says how long transfer copies stay and how to remove them", () => {
+    const about = read("../src/about.md");
+    const section = about.slice(
+      about.indexOf("### Delete your data"),
+      about.indexOf("\n## ", about.indexOf("### Delete your data")),
+    );
+    expect(section).toMatch(/7 days/);
+    expect(section).toMatch(/14 days/);
+    expect(section).toContain("**Delete saved copies**");
+    // the code keeps those promises
+    expect(read("../src/lib/sync/expire.js")).toMatch(/UNDO_DAYS = 7;/);
+    expect(read("../src/lib/sync/expire.js")).toMatch(/SNAPSHOT_DAYS = 14;/);
+    expect(read("../src/components/importHistory.js")).toContain(
+      '"Delete saved copies"',
+    );
+    // and undoing an import says what importing the file again does
+    expect(about).toMatch(/again applies its changes again/);
   });
 
   it("the page, nav and service worker know about about.html", () => {

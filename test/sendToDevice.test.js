@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   enableFileDrop,
@@ -55,6 +56,7 @@ describe("send to my other device", () => {
       "ieeevis2026-my-papers.json",
     );
     expect(opts.share.share).not.toHaveBeenCalled();
+    expect(opts.onSent).toHaveBeenCalledOnce();
   });
 
   it("downloads when share is missing altogether", async () => {
@@ -88,7 +90,8 @@ describe("send to my other device", () => {
     expect(el.querySelector("[aria-live]").textContent).toBe(
       "Copied: paste it in My Papers on the other device",
     );
-    expect(opts.onSent).toHaveBeenCalled();
+    // the clipboard isn't a backup: the backup reminder keeps counting
+    expect(opts.onSent).not.toHaveBeenCalled();
   });
 
   it("hands pasted text to onPaste", async () => {
@@ -157,5 +160,78 @@ describe("drop a file on the data area", () => {
     area.dispatchEvent(dropEvent("drop", [file("a.png", "x")]));
     await flush();
     expect(onText).not.toHaveBeenCalled();
+  });
+});
+
+describe("a file dropped outside the data area", () => {
+  const dragEvent = (type, types = ["Files"], files = []) => {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    e.dataTransfer = { files, types };
+    return e;
+  };
+
+  function page() {
+    const area = document.createElement("div");
+    const elsewhere = document.createElement("p");
+    document.body.append(area, elsewhere);
+    const onText = vi.fn();
+    const onStray = vi.fn();
+    const stop = enableFileDrop(area, onText, { doc: document, onStray });
+    return { area, elsewhere, onText, onStray, stop };
+  }
+
+  it("doesn't let the browser open the file, and points to the data area", () => {
+    const { elsewhere, onText, onStray, stop } = page();
+    const over = dragEvent("dragover");
+    elsewhere.dispatchEvent(over);
+    expect(over.defaultPrevented).toBe(true);
+    const drop = dragEvent(
+      "drop",
+      ["Files"],
+      [{ name: "a.json", text: async () => "{}" }],
+    );
+    elsewhere.dispatchEvent(drop);
+    expect(drop.defaultPrevented).toBe(true);
+    expect(onStray).toHaveBeenCalledOnce();
+    expect(onText).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("leaves drags that carry no files, and drops on the data area, alone", async () => {
+    const { area, elsewhere, onText, onStray, stop } = page();
+    const text = dragEvent("dragover", ["text/plain"]);
+    elsewhere.dispatchEvent(text);
+    expect(text.defaultPrevented).toBe(false);
+    area.dispatchEvent(
+      dragEvent(
+        "drop",
+        ["Files"],
+        [{ name: "a.json", text: async () => "{}" }],
+      ),
+    );
+    await flush();
+    expect(onText).toHaveBeenCalledOnce();
+    expect(onStray).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("stop() removes the page-wide guard", () => {
+    const { elsewhere, stop } = page();
+    stop();
+    const over = dragEvent("dragover");
+    elsewhere.dispatchEvent(over);
+    expect(over.defaultPrevented).toBe(false);
+  });
+});
+
+describe("My Papers wiring", () => {
+  // jsdom's import.meta.url isn't a file URL: tests run from the repo root
+  const page = readFileSync("src/my-papers.md", "utf-8");
+  it("guards the whole page against stray file drops", () => {
+    expect(page).toMatch(/enableFileDrop\([^\n]*doc: document[^\n]*onStray/);
+    expect(page).toContain("Drop the file on the My Papers data area");
+  });
+  it("versions the exported file from the values themselves", () => {
+    expect(page).toMatch(/const exportText = \(\) => exportTransfer\(/);
   });
 });

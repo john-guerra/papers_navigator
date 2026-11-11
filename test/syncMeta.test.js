@@ -148,3 +148,99 @@ describe("createSyncMeta", () => {
     });
   });
 });
+
+describe("damaged records", () => {
+  it("drops records that aren't objects or whose version isn't a vector", () => {
+    const s = fakeStorage();
+    s.setItem(
+      KEY,
+      JSON.stringify({
+        device: "dev",
+        hv: 2,
+        entries: {
+          "note/x": null,
+          "rating/y": 5,
+          "note/z": { v: { dev: 0 }, t: "", h: "" },
+          "note/ok": {
+            v: { dev: 1 },
+            t: T.toISOString(),
+            h: identity("note/ok", "fine"),
+          },
+        },
+      }),
+    );
+    const meta = createSyncMeta("conf", s, () => "dev");
+    expect(Object.keys(meta.read())).toEqual(["note/ok"]);
+    expect(() =>
+      meta.reconcile({ "note/ok": "fine", "note/x": "back" }, T),
+    ).not.toThrow();
+    expect(meta.read()["note/x"].v).toEqual({ dev: 1 });
+  });
+
+  it("survives the exact damaged record from the review", () => {
+    const s = fakeStorage();
+    s.setItem(KEY, '{"entries":{"note/x":null,"rating/y":5}}');
+    const meta = createSyncMeta("conf", s, () => "dev");
+    expect(meta.reconcile({ "note/a": "hi" }, T)).toEqual(["note/a"]);
+  });
+});
+
+describe("when the version record can't be saved", () => {
+  function failingStorage() {
+    const s = fakeStorage();
+    s.full = false;
+    const set = s.setItem;
+    s.setItem = (k, v) => {
+      if (s.full && k === KEY) throw new Error("QuotaExceededError");
+      set(k, v);
+    };
+    return s;
+  }
+
+  it("reconcile still versions the edit on this page, and the next edit gets a newer version", () => {
+    const s = failingStorage();
+    const meta = createSyncMeta("conf", s, () => "dev");
+    meta.reconcile({ "note/a": "one" }, T);
+    s.full = true;
+    expect(meta.reconcile({ "note/a": "two" }, T)).toEqual(["note/a"]);
+    expect(meta.read()["note/a"].v).toEqual({ dev: 2 });
+    // another meta object on the same page (the import's) sees it too
+    expect(createSyncMeta("conf", s, () => "x").read()["note/a"].v).toEqual({
+      dev: 2,
+    });
+    meta.reconcile({ "note/a": "three" }, T);
+    expect(meta.read()["note/a"].v).toEqual({ dev: 3 });
+    // stored: still the last saved record
+    expect(JSON.parse(s.getItem(KEY)).entries["note/a"].v).toEqual({ dev: 1 });
+    s.full = false;
+    meta.reconcile({ "note/a": "three" }, T);
+    expect(JSON.parse(s.getItem(KEY)).entries["note/a"].v).toEqual({ dev: 3 });
+  });
+
+  it("forgets the unsaved record when another tab saved meanwhile", () => {
+    const s = failingStorage();
+    const meta = createSyncMeta("conf", s, () => "dev");
+    meta.reconcile({ "note/a": "one" }, T);
+    s.full = true;
+    meta.reconcile({ "note/a": "two" }, T);
+    s.full = false;
+    const doc = JSON.parse(s.getItem(KEY));
+    doc.entries["note/b"] = { v: { tab: 1 }, t: T.toISOString(), h: "x" };
+    s.setItem(KEY, JSON.stringify(doc));
+    expect(meta.read()["note/a"].v).toEqual({ dev: 1 });
+    expect(meta.read()["note/b"].v).toEqual({ tab: 1 });
+  });
+
+  it("preview versions the given values without saving anything", () => {
+    const s = fakeStorage();
+    const meta = createSyncMeta("conf", s, () => "dev");
+    meta.reconcile({ "note/a": "one", "note/b": "b" }, T);
+    const stored = s.getItem(KEY);
+    const out = meta.preview({ "note/a": "two" }, T);
+    expect(out["note/a"].v).toEqual({ dev: 2 });
+    expect(out["note/a"].h).toBe(identity("note/a", "two"));
+    expect(out["note/b"]).toMatchObject({ v: { dev: 2 }, deleted: true });
+    expect(s.getItem(KEY)).toBe(stored);
+    expect(meta.read()["note/a"].v).toEqual({ dev: 1 });
+  });
+});

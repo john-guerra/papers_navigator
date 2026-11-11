@@ -9,13 +9,30 @@ import { reportStorageFailure } from "../storageHealth.js";
 import { busy } from "./busy.js";
 import { stableHash } from "./clock.js";
 import { fromEntries, identity, splitKey, toEntries } from "./entries.js";
+import {
+  DAY,
+  UNDO_DAYS,
+  listSnapshots,
+  loadUndo,
+  nowOf,
+  snapshotsKey,
+  storageOf,
+  undoKey,
+  within,
+} from "./expire.js";
 import { readState } from "./state.js";
 import { isPlainObject, isSyncKey } from "./validate.js";
+
+export {
+  deleteSavedCopies,
+  expireTransferCopies,
+  listSnapshots,
+} from "./expire.js";
 
 /**
  * Writes an import into the stores (two-way transfer), so that nothing is ever lost:
  * - before anything changes, a snapshot of all the data (v3 payload; the last 3 per
- *   conference, newest first, at `papersNavigator:<id>:syncSnapshots`);
+ *   conference, newest first, each kept 14 days, at `papersNavigator:<id>:syncSnapshots`);
  * - then the version records (meta), then the stores, one write each: another tab that
  *   reconciles on a store's `storage` event already finds the import's versions recorded, so it
  *   doesn't take the imported values for its own edits;
@@ -28,15 +45,9 @@ import { isPlainObject, isSyncKey } from "./validate.js";
  * fresh store on `storage`), `meta` is `createSyncMeta(conferenceId, storage)`.
  */
 
-const DAY = 24 * 3600_000;
-const UNDO_DAYS = 7;
 const MAX_SNAPSHOTS = 3;
 const NONE = { reverted: [], skipped: [] };
 
-const snapshotsKey = (id) => `papersNavigator:${id}:syncSnapshots`;
-const undoKey = (id) => `papersNavigator:${id}:syncUndo`;
-const storageOf = (ctx) => ctx.storage ?? globalThis.localStorage;
-const nowOf = (ctx) => ctx.now ?? new Date();
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 /** `identity` of an entry as `toEntries` gives it; "" when absent (as a tombstone's `h`). */
 const hashIn = (entries, key) =>
@@ -121,26 +132,6 @@ function writeStores(ctx, changes) {
     if (keyed[name].length) get(name).putMany(keyed[name]);
 }
 
-/** Saved snapshots, newest first: `[{at, label, payload}]` (payload: a v3 My Papers file). */
-export function listSnapshots(ctx) {
-  try {
-    const list = JSON.parse(
-      storageOf(ctx).getItem(snapshotsKey(ctx.conferenceId)),
-    );
-    return Array.isArray(list)
-      ? list.filter(
-          (s) =>
-            isPlainObject(s) &&
-            typeof s.at === "string" &&
-            typeof s.label === "string" &&
-            typeof s.payload === "string",
-        )
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 /**
  * Saves `state` as the newest snapshot; throws (nothing changed) when it can't. Returns a
  * function that takes it back (when what follows fails, so it doesn't rotate a useful one out).
@@ -177,15 +168,6 @@ function saveSnapshot(ctx, state, label) {
   throw storageError(
     "Couldn't save a copy of your data first (this browser's storage is full), so nothing was changed.",
   );
-}
-
-function loadUndo(ctx) {
-  try {
-    const rec = JSON.parse(storageOf(ctx).getItem(undoKey(ctx.conferenceId)));
-    return isPlainObject(rec) && Array.isArray(rec.changes) ? rec : null;
-  } catch {
-    return null;
-  }
 }
 
 function removeUndo(ctx, rec) {
@@ -424,13 +406,16 @@ export const undoLastImport = busy((ctx) => undoRecord(ctx, loadUndo(ctx)));
 
 /**
  * The last import's undo record while it can still be undone (7 days): `{at, from, count}`
- * (`from`: the device name the import came from, "snapshot" or "backup"), else null.
+ * (`from`: the device name the import came from, "snapshot" or "backup"), else null (an
+ * expired record is removed).
  */
 export function lastImport(ctx) {
   const rec = loadUndo(ctx);
-  const at = Date.parse(rec?.at);
-  if (!rec || !Number.isFinite(at)) return null;
-  if (nowOf(ctx).getTime() - at > UNDO_DAYS * DAY) return null;
+  if (!rec) return null;
+  if (!within(ctx, rec.at, UNDO_DAYS)) {
+    removeUndo(ctx, rec);
+    return null;
+  }
   return {
     at: rec.at,
     from: typeof rec.from === "string" ? rec.from : "",

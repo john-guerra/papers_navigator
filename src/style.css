@@ -4176,6 +4176,14 @@ body #vg-tooltip-element table tr td.value {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* One line per device: "iPhone: …" / "Mac: …" */
+.transfer-import .clash-side {
+  margin: var(--spacing-xs) 0 0;
+  overflow-wrap: anywhere;
+}
+.clash-device {
+  font-weight: 600;
+}
 .clash-choices,
 .transfer-actions {
   display: flex;

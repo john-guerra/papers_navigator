@@ -337,6 +337,7 @@ describe("mergeTransfer", () => {
         apply: {},
         clashes: [],
         counts: { added: 0, changed: 0, removed: 0, same: 0 },
+        unmatched: 0,
       };
       expect(mergeTransfer()).toEqual(empty);
       expect(mergeTransfer(null, null)).toEqual(empty);
@@ -366,6 +367,8 @@ describe("mergeTransfer", () => {
         apply: {},
         clashes: [],
         counts: { added: 0, changed: 0, removed: 0, same: 0 },
+        // left out, and said so
+        unmatched: 4,
       });
     });
 
@@ -505,5 +508,57 @@ describe("newestForAll", () => {
         expect(compare(r.v, clashes[i][side].v)).toBe("a");
       }
     }
+  });
+});
+
+describe("newestForAll and My research rules", () => {
+  const research = (abstracts, extra = {}) => ({
+    type: "topic",
+    value: "My research",
+    threshold: 0.5,
+    level: "good",
+    research: abstracts,
+    ...extra,
+  });
+
+  it("keeps this device's research rule, even when the file's is newer", () => {
+    const c = {
+      key: "rule/research:my research",
+      local: { value: research(["my abstract"]), v: { L: 2 }, t: T1 },
+      incoming: {
+        value: research(["their abstract"], { level: "strong" }),
+        v: { P: 1 },
+        t: T2,
+      },
+    };
+    const [r] = newestForAll([c], "L");
+    expect(r.value.research).toEqual(["my abstract"]);
+    expect(compare(r.v, c.incoming.v)).toBe("a");
+  });
+
+  it("never drops abstracts for a deletion", () => {
+    const c = {
+      key: "rule/research:my research",
+      local: { deleted: true, v: { L: 2 }, t: T2 },
+      incoming: { value: research(["their abstract"]), v: { P: 1 }, t: T1 },
+    };
+    expect(newestForAll([c], "L")[0].value.research).toEqual([
+      "their abstract",
+    ]);
+  });
+});
+
+describe("file values without a version record", () => {
+  it("counts them as unmatched instead of skipping them silently", () => {
+    const local = makeLocal({ "note/a": ["same", { L: 1 }] });
+    const incoming = makeIncoming({ "rating/r": [4, { P: 1 }] });
+    incoming.entries["note/x"] = "no record";
+    incoming.entries["note/a"] = "same"; // identical here: nothing lost
+    incoming.entries["rating/bad"] = 3;
+    incoming.sync["rating/bad"] = { v: { P: 0 }, t: T1 };
+    const r = mergeTransfer(local, incoming);
+    expect(r.unmatched).toBe(2);
+    expect(r.apply["rating/r"].value).toBe(4);
+    expect(r.apply["note/x"]).toBeUndefined();
   });
 });

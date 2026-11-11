@@ -1,16 +1,21 @@
 import { html } from "htl";
 import {
+  deleteSavedCopies,
+  expireTransferCopies,
   lastImport,
   listSnapshots,
   restoreSnapshot,
   undoLastImport,
 } from "../lib/sync/apply.js";
 import { formatWhen } from "../lib/time.js";
+import { importAgain } from "./transferImport.js";
 
 /**
  * My Papers' data area after a transfer: "Undo this import" while the last import's undo record
  * is under 7 days old (also after a reload), and, folded, the saved copies of the data from
- * before each import, each restored after an inline confirm (no native dialog) and undoable.
+ * before each import (14 days), each restored after an inline confirm (no native dialog) and
+ * undoable, and "Delete saved copies" (also the undo record; inline confirm). Expired ones are
+ * removed whenever it draws.
  * `ctx` is apply.js's; `refresh({showUndo})` redraws it (the page hides its Undo while the
  * import panel offers its own). Hidden when there is nothing to show.
  */
@@ -63,7 +68,8 @@ export function renderImportHistory(
   };
 
   function undoImport() {
-    const what = isRestore(lastImport(ctx)?.from) ? "restore" : "import";
+    const from = lastImport(ctx)?.from;
+    const what = isRestore(from) ? "restore" : "import";
     let r;
     try {
       r = undoLastImport(ctx);
@@ -80,9 +86,43 @@ export function renderImportHistory(
       `Undid the ${what}: ${n} ${n === 1 ? "change" : "changes"} put back.` +
         (r.skipped.length
           ? ` ${r.skipped.length} edited since ${r.skipped.length === 1 ? "was" : "were"} left as ${r.skipped.length === 1 ? "it is" : "they are"}.`
+          : "") +
+        (what === "import"
+          ? ` ${importAgain(from || "the other device")}`
           : ""),
     );
     onChange();
+    refresh();
+  }
+
+  // Inline confirm (no native dialog); the data itself stays
+  const deleteLine = html`<p class="import-history-delete"></p>`;
+  function drawDelete() {
+    deleteLine.replaceChildren(button("Delete saved copies", askDelete));
+  }
+  function askDelete() {
+    const cancel = button("Cancel", () => {
+      drawDelete();
+      deleteLine.querySelector("button")?.focus?.();
+    });
+    deleteLine.replaceChildren(
+      html`<span role="group" aria-label="Delete saved copies"
+        ><span
+          >Delete these copies and the undo of your last import? Your current
+          data stays.</span
+        >
+        ${button("Delete", removeCopies, "btn-primary")} ${cancel}</span
+      >`,
+    );
+    cancel.focus?.();
+  }
+  function removeCopies() {
+    const ok = deleteSavedCopies(ctx);
+    say(
+      ok
+        ? "Deleted the saved copies of your data and the undo of your last import."
+        : "Couldn't delete the saved copies: this browser didn't allow it.",
+    );
     refresh();
   }
 
@@ -163,6 +203,7 @@ export function renderImportHistory(
 
   function refresh(options = {}) {
     showUndo = options.showUndo ?? true;
+    expireTransferCopies(ctx);
     const last = showUndo ? lastImport(ctx) : null;
     undoLine.replaceChildren(
       ...(last
@@ -181,13 +222,15 @@ export function renderImportHistory(
     copies.replaceChildren(
       html`<summary>Saved copies of your data (${snaps.length})</summary>`,
       html`<p class="muted">
-        Saved before each import, the last 3. Restoring one replaces your
-        current data.
+        Saved before each import, the last 3, for 14 days. Restoring one
+        replaces your current data.
       </p>`,
       html`<ul>
         ${snaps.map(snapshotItem)}
       </ul>`,
+      deleteLine,
     );
+    drawDelete();
     copies.open = wasOpen;
     copies.hidden = !snaps.length;
     root.hidden = !last && !snaps.length && !status.textContent;
